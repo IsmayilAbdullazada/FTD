@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #F8F9FA;
+    color: #0F172A;
+    overflow-x: hidden;
+  }
+}
+
+
+/* Custom mobile utility helpers */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

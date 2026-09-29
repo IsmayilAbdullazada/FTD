@@ -1,0 +1,136 @@
+import React, { useState, useEffect } from 'react';
+import {
+  FileCheck,
+  ShieldAlert,
+  Clock,
+  User,
+  X,
+  RefreshCw,
+} from 'lucide-react';
+import { ModerationAuditEvent } from '../types';
+import { api } from '../services/api';
+
+interface AuditLedgerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
+  const [events, setEvents] = useState<ModerationAuditEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadAudit = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getAuditEvents();
+      setEvents(data);
+    } catch (err) {
+      console.error('Failed to load audit ledger:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadAudit();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2">
+            <FileCheck className="w-5 h-5 text-[#002D72]" />
+            <div>
+              <h3 className="font-semibold text-base text-slate-900">
+                Moderation Audit Ledger
+              </h3>
+              <p className="text-xs text-slate-500">
+                Record of clinician triage decisions and safety reviews.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadAudit}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded"
+              title="Refresh"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 overflow-y-auto flex-1 divide-y divide-slate-100 text-xs">
+          {loading ? (
+            <div className="text-center py-12 text-slate-400">Loading audit records...</div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">No audit events recorded yet.</div>
+          ) : (
+            events.map((evt) => (
+              <div key={evt.id} className="py-3.5 space-y-1.5 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                      evt.actionTaken === 'APPROVE'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : evt.actionTaken === 'REJECT'
+                        ? 'bg-rose-100 text-rose-800'
+                        : evt.actionTaken === 'CLINICAL_REDIRECT'
+                        ? 'bg-blue-100 text-blue-900'
+                        : 'bg-slate-100 text-slate-800'
+                    }`}>
+                      {evt.actionTaken}
+                    </span>
+                    <span className="font-bold text-slate-800">
+                      Entity: {evt.entityType} ({evt.entityId})
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    <span>{new Date(evt.createdAt).toLocaleString()}</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-slate-600 text-[11px]">
+                  <User className="w-3 h-3 text-slate-400" />
+                  <span>Moderator: <strong>{evt.moderatorName}</strong></span>
+                  {evt.reason && (
+                    <span className="text-slate-500 font-mono text-[10px] bg-slate-100 px-1.5 rounded">
+                      Reason: {evt.reason}
+                    </span>
+                  )}
+                </div>
+
+                {evt.notes && (
+                  <p className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
+                    {evt.notes}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="p-4 border-t border-slate-200 bg-slate-50 text-right">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold"
+          >
+            Close Ledger
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

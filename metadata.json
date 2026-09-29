@@ -1,0 +1,7 @@
+{
+  "name": "Johns Hopkins FTD Care Partner Community",
+  "description": "Secure, clinician-moderated knowledge exchange and peer support platform for Frontotemporal Dementia care partners, featuring real-time deflection, Epic EHR escalation, and clinical RAG.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

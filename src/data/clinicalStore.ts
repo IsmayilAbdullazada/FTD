@@ -1,0 +1,392 @@
+import {
+  CurrentUser,
+  PersonaOption,
+  CommunityGroup,
+  ClinicalResource,
+  Post,
+  Comment,
+  QueueItem,
+  ModerationAuditEvent,
+  DirectMessage,
+  DeflectionMatch,
+  PhiAlert,
+  RejectionReason,
+} from '../types';
+
+export const INITIAL_USERS: (CurrentUser & { phoneNumber?: string })[] = [
+  {
+    id: 'user-clinician-1',
+    email: 'sgulyan1@jhmi.edu',
+    role: 'CLINICIAN_MODERATOR',
+    firstName: 'Seema',
+    lastName: 'Gulyani',
+    phoneNumber: '(410) 955-5000',
+    clinicPatientId: 'STAFF-MD-409',
+    anonymousHandle: 'Dr. Seema Gulyani',
+    avatarColor: '#002D72',
+    badgeLabel: 'Clinician Moderator',
+  },
+  {
+    id: 'user-care-1',
+    email: 'sarah.smith@example.com',
+    role: 'CARE_PARTNER',
+    firstName: 'Sarah',
+    lastName: 'Smith',
+    phoneNumber: '(410) 555-8841',
+    clinicPatientId: 'JHM-99210-FTD',
+    anonymousHandle: 'CarePartner-882',
+    avatarColor: '#1E40AF',
+    badgeLabel: 'Care Partner',
+  },
+  {
+    id: 'user-care-2',
+    email: 'marcus.vance@example.com',
+    role: 'CARE_PARTNER',
+    firstName: 'Marcus',
+    lastName: 'Vance',
+    phoneNumber: '(443) 555-3921',
+    clinicPatientId: 'JHM-77341-FTD',
+    anonymousHandle: 'CarePartner-419',
+    avatarColor: '#047857',
+    badgeLabel: 'Care Partner',
+  },
+  {
+    id: 'user-care-3',
+    email: 'elena.rostova@example.com',
+    role: 'CARE_PARTNER',
+    firstName: 'Elena',
+    lastName: 'Rostova',
+    phoneNumber: '(717) 555-1299',
+    clinicPatientId: 'JHM-44091-FTD',
+    anonymousHandle: 'CarePartner-204',
+    avatarColor: '#6D28D9',
+    badgeLabel: 'Care Partner',
+  },
+  {
+    id: 'user-admin-1',
+    email: 'cs-admin@cs.jhu.edu',
+    role: 'SYSTEM_ADMIN',
+    firstName: 'Hopkins',
+    lastName: 'CS Infrastructure Lead',
+    anonymousHandle: 'JHU CS Admin',
+    avatarColor: '#475569',
+    badgeLabel: 'System Administrator',
+  },
+];
+
+export const INITIAL_GROUPS: CommunityGroup[] = [
+  {
+    id: 'group-general',
+    name: 'General Clinic Forum',
+    slug: 'general-community',
+    description: 'Clinic-wide discussion board for all verified FTD care partners across all geographic regions.',
+    isGeneralBoard: true,
+    geographicRegion: 'All Regions',
+    tag: 'GLOBAL',
+    isActive: true,
+    memberCount: 84,
+  },
+  {
+    id: 'group-baltimore',
+    name: 'Baltimore Metro Cohort',
+    slug: 'baltimore-metro',
+    description: 'Local peer support for families in Baltimore City, Baltimore County, Towson, and surrounding areas.',
+    isGeneralBoard: false,
+    geographicRegion: 'Baltimore Metro (MD)',
+    radiusMiles: 30,
+    tag: 'GEO_BALTIMORE',
+    isActive: true,
+    memberCount: 38,
+  },
+  {
+    id: 'group-eastern-shore',
+    name: 'Eastern Shore Cohort',
+    slug: 'eastern-shore',
+    description: 'Connecting care partners in Easton, Cambridge, Salisbury, and Maryland Eastern Shore rural corridors.',
+    isGeneralBoard: false,
+    geographicRegion: 'Eastern Shore (MD/DE)',
+    radiusMiles: 60,
+    tag: 'GEO_EASTERN_SHORE',
+    isActive: true,
+    memberCount: 16,
+  },
+  {
+    id: 'group-catonsville',
+    name: 'Catonsville / Howard County Cohort',
+    slug: 'catonsville-howard',
+    description: 'Targeted support for Catonsville, Columbia, Ellicott City, and Howard County regional families.',
+    isGeneralBoard: false,
+    geographicRegion: 'Catonsville & Howard County',
+    radiusMiles: 25,
+    tag: 'GEO_CATONSVILLE',
+    isActive: true,
+    memberCount: 22,
+  },
+  {
+    id: 'group-pennsylvania',
+    name: 'Pennsylvania / York County Cohort',
+    slug: 'pennsylvania-york',
+    description: 'Care partners traveling from Southern PA, York, and Lancaster into Johns Hopkins for specialized neurology.',
+    isGeneralBoard: false,
+    geographicRegion: 'Pennsylvania / Southern PA',
+    radiusMiles: 50,
+    tag: 'GEO_PA',
+    isActive: true,
+    memberCount: 14,
+  },
+];
+
+export const INITIAL_RESOURCES: ClinicalResource[] = [
+  {
+    id: 'res-aftd-incontinence',
+    title: 'AFTD Practical Care Sheet: Managing Incontinence in bvFTD',
+    summary: 'Clinical guidelines on loss of bowel/bladder awareness, toileting schedules, and behavioral strategies without confrontation.',
+    contentBody: `In Behavioral Variant FTD (bvFTD), incontinence often stems not from urological failure, but from frontal lobe disinhibition and loss of interoceptive awareness.
+
+Key Strategies:
+1. Scheduled Voiding Routine: Escort patient to restroom every 90-120 minutes on a fixed timer rather than asking "Do you need to go?" (asking frequently triggers automatic oppositional refusal).
+2. Adaptive Garments: Tear-away side pull-ons with quiet cloth liners reduce tactile defensiveness compared to noisy plastic briefs.
+3. Visual Cueing: Leave restroom door open with the toilet in direct sightline, illuminated by high-contrast warm lighting. Use contrasting color toilet seats (dark blue on white porcelain).
+4. Fluid Management: Maintain high hydration during morning and early afternoon to prevent UTIs, but taper fluids 2 hours before bedtime.
+5. Escalation Warning: Sudden acute incontinence or delirium may signal a urinary tract infection (UTI). Contact the clinic promptly for urinalysis.`,
+    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/incontinence/',
+    diseaseDomain: 'FTD',
+    category: 'INCONTINENCE',
+    keyTakeaways: [
+      'Scheduled voiding every 90-120 minutes prevents resistance',
+      'Use quiet cloth-backed tear-away briefs rather than crinkly plastic',
+      'High-contrast colored toilet seat assists visual spatial processing',
+      'Rule out UTI if sudden acute incontinence develops',
+    ],
+    createdAt: '2026-01-20T10:00:00Z',
+  },
+  {
+    id: 'res-aftd-bathing',
+    title: 'De-escalating Bathing and Shower Agitation in Frontotemporal Dementia',
+    summary: 'Trauma-informed, non-pharmacological protocols for severe shower resistance, sponge throwing, and tactile hypersensitivity.',
+    contentBody: `Shower aggression in FTD is almost always driven by sensory overload (the sound of rushing water, cold air, naked vulnerability) and loss of cognitive sequence comprehension.
+
+Recommended Clinic Protocols:
+1. Towel Bathing Method: Keep the patient wrapped in large warm bath towels. Uncover only one limb at a time to wash with warm, no-rinse soothing washcloths.
+2. Ambient Preparation: Heat the bathroom to 78°F with a portable radiant heater before undressing begins. Run the water beforehand so the sound is constant rather than a sudden startling blast.
+3. Remove Overhead Showers: Overhead water sprays directly onto the face feel like an assault to a disinhibited frontal lobe. Use a handheld wand directed strictly at the feet and torso.
+4. Sing or Play Familiar Music: Familiar songs from early adulthood occupy the auditory cortex and decrease amygdala threat responses.
+5. NEVER Argue or Restrain: If agitation escalates to physical defense, step back, ensure physical safety, disengage calmly, and re-attempt 45 minutes later with a different caregiver or technique.`,
+    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/daily-care/',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [
+      'Pre-warm the bathroom to 78°F before undressing',
+      'Utilize no-rinse warm towel bathing when showers cause terror',
+      'Handheld shower wand directed away from face',
+      'Music and step-by-step calm reassurance reduces fight-or-flight',
+    ],
+    createdAt: '2026-02-05T12:00:00Z',
+  },
+  {
+    id: 'res-medicaid-legal',
+    title: 'Medicaid Long-Term Care & Elder Law Resource Guide (Maryland & PA)',
+    summary: 'Guidance on Medicaid five-year look-back, spousal impoverishment protections, and vetted elder law counsel in MD/PA.',
+    contentBody: `Navigating long-term residential memory care placement requires early legal structuring before cognitive impairment prevents signing Powers of Attorney.
+
+Crucial Facts for Care Partners:
+1. Spousal Impoverishment Protections: In Maryland, the community spouse can retain the primary residence, one automobile, and a substantial Community Spouse Resource Allowance (CSRA) up to statutory limits (~$154,140 in 2026).
+2. Five-Year Lookback Rule: Any gift or transfer of assets for less than fair market value within 60 months prior to Medicaid application triggers penalty periods.
+3. Special Needs / Supplemental Trusts: Enable families to provide quality-of-life enhancements for the diagnosed individual without jeopardizing Medicaid eligibility.
+4. Clinic Vetted Contacts: Maryland Legal Aid Senior Legal Helpline: 1-800-999-8904. National Academy of Elder Law Attorneys (NAELA) directory at naela.org.`,
+    externalUrl: 'https://aging.maryland.gov/Pages/medicaid-long-term-care.aspx',
+    diseaseDomain: 'FTD',
+    category: 'LEGAL_MEDICAID',
+    keyTakeaways: [
+      'Community spouse retains primary home and protected asset allowance',
+      'Beware 60-month lookback on uncompensated transfers',
+      'Execute Durable Financial & Medical Powers of Attorney immediately',
+      'Consult vetted NAELA-certified elder law counsel',
+    ],
+    createdAt: '2026-02-18T15:30:00Z',
+  },
+  {
+    id: 'res-safety-wandering',
+    title: 'FTD Wandering, Elopement & Impulsive Driving Risk Management',
+    summary: 'Mitigating acute safety risks from loss of hazard awareness, GPS tracker placement, and driving retirement.',
+    contentBody: `Unlike Alzheimer's wandering where patients are disoriented and looking for childhood homes, bvFTD wandering is frequently purposeful and rapid (e.g., compulsive walks along known routes or fixated shopping trips), but with total disregard for oncoming traffic.
+
+Protocols:
+1. Discrete GPS Tracking: Affix discreet Apple AirTags or AngelSense wearable devices in shoe insoles or jacket linings (wristwatches are often discarded).
+2. Key Camouflage & Disabling: Discontinue driving privileges decisively. Hide car keys, install a battery disconnect switch or fuse-pull rather than debating driving competence.
+3. Door Alarms: Install magnetic chime sensors on exterior doors placed at top of door frame outside normal line of sight.
+4. Safe Return Registry: File a wandering profile with local Baltimore / county police departments including recent photo, favorite walking spots, and de-escalation instructions.`,
+    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/safety/',
+    diseaseDomain: 'FTD',
+    category: 'SAFETY_WANDERING',
+    keyTakeaways: [
+      'Place GPS trackers in shoe insoles or sewn into jackets',
+      'Physically disable vehicle rather than engaging in logic arguments',
+      'Register with local county Safe Return police program',
+      'High door-frame chimes alert family during night wandering',
+    ],
+    createdAt: '2026-03-05T09:15:00Z',
+  },
+];
+
+export const INITIAL_POSTS: Post[] = [
+  {
+    id: 'post-1',
+    title: 'Struggling with aggressive outburst when bathing my father',
+    content: 'My father becomes verbally aggressive and throws objects whenever we try to enter the shower. What sensory or calm approaches have worked for your families?',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-care-1',
+      anonymousHandle: 'CarePartner-882',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#1E40AF',
+    },
+    assignedGroups: [INITIAL_GROUPS[0], INITIAL_GROUPS[1]],
+    createdAt: '2026-09-20T08:30:00Z',
+    commentCount: 2,
+    upvotes: 7,
+  },
+  {
+    id: 'post-2',
+    title: 'Quiet tear-away brief recommendations for incontinence resistance?',
+    content: 'Mom rejects standard adult diapers because of the loud plastic crinkling noise. We are trying scheduled toileting but need leak protection for medical transport.',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-care-2',
+      anonymousHandle: 'CarePartner-419',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#047857',
+    },
+    assignedGroups: [INITIAL_GROUPS[0], INITIAL_GROUPS[2]],
+    createdAt: '2026-09-22T12:00:00Z',
+    commentCount: 3,
+    upvotes: 11,
+  },
+  {
+    id: 'post-3',
+    title: 'Elder Law Attorney specializing in Maryland Medicaid Spend-Down',
+    content: 'Can anyone recommend an elder law practice in Southern PA or Baltimore County who understands young-onset FTD and spousal asset protections?',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-care-3',
+      anonymousHandle: 'CarePartner-204',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#6D28D9',
+    },
+    assignedGroups: [INITIAL_GROUPS[0], INITIAL_GROUPS[1], INITIAL_GROUPS[4]],
+    createdAt: '2026-09-24T15:00:00Z',
+    commentCount: 1,
+    upvotes: 5,
+  },
+];
+
+export const INITIAL_COMMENTS: Comment[] = [
+  {
+    id: 'comm-1',
+    content: 'Dr. Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    author: {
+      userId: 'user-clinician-1',
+      anonymousHandle: 'Dr. Seema Gulyani',
+      badgeLabel: 'Clinician Moderator',
+      avatarColor: '#002D72',
+    },
+    createdAt: '2026-09-20T11:00:00Z',
+  },
+  {
+    id: 'comm-2',
+    content: 'We started playing big-band jazz from his 20s about 15 minutes before the bathroom door even opened. It made a remarkable difference in keeping him grounded.',
+    author: {
+      userId: 'user-care-2',
+      anonymousHandle: 'CarePartner-419',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#047857',
+    },
+    createdAt: '2026-09-20T12:15:00Z',
+  },
+];
+
+export const INITIAL_QUEUE_ITEMS: QueueItem[] = [
+  {
+    id: 'post-pending-1',
+    type: 'POST',
+    author: {
+      userId: 'user-care-1',
+      realName: 'Sarah Smith',
+      email: 'sarah.smith@example.com',
+      phone: '(410) 555-8841',
+      clinicPatientId: 'JHM-99210-FTD',
+      anonymousHandle: 'CarePartner-882',
+      avatarColor: '#1E40AF',
+    },
+    title: 'Urgent: What dose of Seroquel should I give my father for night wandering?',
+    rawContent: 'He was pacing all night from 1 AM to 5 AM and almost fell down the back stairs. The prescription bottle says 25mg but should I increase it to 50mg tonight so he sleeps?',
+    sanitizedContent: 'He was pacing all night from 1 AM to 5 AM and almost fell down the back stairs. The prescription bottle says 25mg but should I increase it to 50mg tonight so he sleeps?',
+    suggestedCohort: INITIAL_GROUPS[1],
+    assignedGroupIds: ['group-baltimore', 'group-general'],
+    isUrgentClinical: true,
+    phiAlerts: [],
+    createdAt: '2026-09-28T09:45:00Z',
+  },
+  {
+    id: 'post-pending-2',
+    type: 'POST',
+    author: {
+      userId: 'user-care-2',
+      realName: 'Marcus Vance',
+      email: 'marcus.vance@example.com',
+      phone: '(443) 555-3921',
+      clinicPatientId: 'JHM-77341-FTD',
+      anonymousHandle: 'CarePartner-419',
+      avatarColor: '#047857',
+    },
+    title: 'Has anyone tried high-dose Lion Mane mushroom extracts for reversing aphasia?',
+    rawContent: 'I saw an advertisement claiming Lion Mane mushroom tincture can regenerate frontal lobe neurons and reverse primary progressive aphasia. Should I buy this $180 supply?',
+    sanitizedContent: 'I saw an advertisement claiming Lion Mane mushroom tincture can regenerate frontal lobe neurons and reverse primary progressive aphasia. Should I buy this $180 supply?',
+    suggestedCohort: INITIAL_GROUPS[2],
+    assignedGroupIds: ['group-eastern-shore', 'group-general'],
+    phiAlerts: [],
+    createdAt: '2026-09-28T10:10:00Z',
+  },
+  {
+    id: 'post-pending-3',
+    type: 'POST',
+    author: {
+      userId: 'user-care-3',
+      realName: 'Elena Rostova',
+      email: 'elena.rostova@example.com',
+      phone: '(717) 555-1299',
+      clinicPatientId: 'JHM-44091-FTD',
+      anonymousHandle: 'CarePartner-204',
+      avatarColor: '#6D28D9',
+    },
+    title: 'Dispute with neighbor over wandering - need local advice',
+    rawContent: 'My husband Robert walked over to 412 Elm St and entered their backyard garden yesterday. The neighbor threatened to call the police. My cell is (410) 555-9122 if someone can call me.',
+    sanitizedContent: 'My husband [Name Redacted] walked over to [Local Address Redacted] and entered their backyard garden yesterday. The neighbor threatened to call the police.',
+    suggestedCohort: INITIAL_GROUPS[3],
+    assignedGroupIds: ['group-catonsville', 'group-general'],
+    phiAlerts: [
+      {
+        type: 'PERSON',
+        text: 'Robert',
+        startIndex: 11,
+        endIndex: 17,
+        explanation: 'Detected individual name associated with family member.',
+      },
+      {
+        type: 'LOCATION',
+        text: '412 Elm St',
+        startIndex: 33,
+        endIndex: 43,
+        explanation: 'Detected physical street address.',
+      },
+      {
+        type: 'PHONE',
+        text: '(410) 555-9122',
+        startIndex: 124,
+        endIndex: 138,
+        explanation: 'Detected direct phone number.',
+      },
+    ],
+    createdAt: '2026-09-28T11:05:00Z',
+  },
+];

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Phone,
-  Bell,
+  Shield,
   MessageSquare,
   BookOpen,
   Sparkles,
-  Shield,
-  MessageCircle,
+  Bell,
+  Phone,
   ChevronDown,
+  Check,
 } from 'lucide-react';
 import { CurrentUser, PersonaOption, DirectMessage } from '../types';
 
@@ -39,109 +39,105 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [showPersonaMenu, setShowPersonaMenu] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const reviewAlertsCount = (isClinician || isAdmin) ? pendingTriageCount : 0;
+  const reviewAlertsCount = isClinician || isAdmin ? pendingTriageCount : 0;
   const totalNotificationBadge = unreadCount + reviewAlertsCount;
 
   return (
     <>
-      {/* CLEAN, MINIMAL HEADER */}
+      {/* MODERN MINIMALIST NAVBAR (Standard Laptop Layout + Preserved Mobile/Tablet) */}
       <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          {/* Logo & Platform Name */}
-          <button
-            onClick={() => setActiveTab('feed')}
-            className="flex items-center gap-2 text-left"
-          >
-            <div className="w-7 h-7 rounded-md bg-[#002D72] flex items-center justify-center text-white font-bold text-xs tracking-wider shrink-0">
-              JH
-            </div>
-            <div className="leading-tight">
-              <span className="font-semibold text-slate-900 text-sm block">
-                FTD Care Partner Circle
-              </span>
-              <span className="text-[11px] text-slate-500 block">
-                Johns Hopkins Medicine
-              </span>
-            </div>
-          </button>
-
-          {/* Header Action Items */}
-          <div className="flex items-center gap-2">
-            {/* Direct Emergency Call Button */}
-            <a
-              href="tel:4105553832"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:text-[#002D72] hover:bg-slate-100 transition border border-slate-200"
-              title="Call Clinic Support Line: (410) 555-FTDC"
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between">
+          {/* LEFT: Institutional Logo + Standard Left-Aligned Desktop Navigation */}
+          <div className="flex items-center gap-6 lg:gap-8">
+            {/* Branding */}
+            <button
+              onClick={() => setActiveTab(isClinician || isAdmin ? 'moderation' : 'feed')}
+              className="flex items-center gap-2.5 text-left group shrink-0"
             >
-              <Phone className="w-3.5 h-3.5 text-[#002D72]" />
-              <span className="hidden sm:inline">(410) 555-FTDC</span>
-            </a>
+              <div className="w-8 h-8 rounded-lg bg-[#002D72] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-2xs group-hover:bg-blue-900 transition">
+                JH
+              </div>
+              <div className="leading-tight">
+                <span className="font-semibold text-slate-900 text-sm tracking-tight block">
+                  FTD Care Partner Circle
+                </span>
+                <span className="text-[11px] text-slate-500 block font-normal">
+                  Johns Hopkins Medicine
+                </span>
+              </div>
+            </button>
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 ml-1 text-xs">
-              <button
-                onClick={() => setActiveTab('feed')}
-                className={`px-3 py-1.5 rounded-lg transition font-medium ${
-                  activeTab === 'feed'
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                Discussions
-              </button>
-              <button
-                onClick={() => setActiveTab('knowledge')}
-                className={`px-3 py-1.5 rounded-lg transition font-medium ${
-                  activeTab === 'knowledge'
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                Guides
-              </button>
-              <button
-                onClick={onOpenAssistant}
-                className="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium flex items-center gap-1"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>AI Guide</span>
-              </button>
+            {/* Subtle Divider between brand and nav on laptop */}
+            <div className="hidden md:block h-5 w-px bg-slate-200" />
 
-              {/* Caregiver direct messages with Dr. Seema */}
-              {!isClinician && !isAdmin && (
-                <button
-                  onClick={() => setActiveTab('messages')}
-                  className={`px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1 ${
-                    activeTab === 'messages'
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Dr. Seema Messages</span>
-                </button>
-              )}
-
-              {/* Clinician Moderator Console */}
+            {/* Standard Desktop Navigation Links (Clean, left-aligned, standard SaaS/community layout) */}
+            <nav className="hidden md:flex items-center gap-1">
+              {/* Clinician Dashboard */}
               {(isClinician || isAdmin) && (
                 <button
                   onClick={() => setActiveTab('moderation')}
-                  className={`px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
                     activeTab === 'moderation'
-                      ? 'bg-[#002D72] text-white'
-                      : 'text-[#002D72] bg-blue-50 hover:bg-blue-100'
+                      ? 'bg-blue-50 text-[#002D72]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
                   <Shield className="w-3.5 h-3.5" />
-                  <span>Moderator Console</span>
+                  <span>Dashboard</span>
                   {pendingTriageCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
                       {pendingTriageCount}
                     </span>
                   )}
                 </button>
               )}
+
+              <button
+                onClick={() => setActiveTab('feed')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                  activeTab === 'feed'
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Discussions</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('knowledge')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+                  activeTab === 'knowledge'
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Guides</span>
+              </button>
+
+              <button
+                onClick={onOpenAssistant}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5 transition"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Assistant</span>
+              </button>
             </nav>
+          </div>
+
+          {/* RIGHT: Quick Clinic Contact, Notification Center & User Profile */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Direct Clinic Support Line */}
+            <a
+              href="tel:4105553832"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-[#002D72] hover:bg-slate-50 transition border border-slate-200"
+              title="Johns Hopkins FTD Caregiver Support Line"
+            >
+              <Phone className="w-3.5 h-3.5 text-[#002D72]" />
+              <span className="hidden lg:inline text-slate-500 font-medium">Clinic Line:</span>
+              <span className="text-[#002D72] font-semibold">(410) 555-FTDC</span>
+            </a>
 
             {/* Notification Bell */}
             <button
@@ -150,63 +146,92 @@ export const Header: React.FC<HeaderProps> = ({
               aria-label="Notifications"
               title={
                 totalNotificationBadge > 0
-                  ? `${totalNotificationBadge} pending alerts & reviews`
+                  ? `${totalNotificationBadge} pending reviews and alerts`
                   : 'Notifications'
               }
             >
               <Bell className="w-4 h-4" />
               {totalNotificationBadge > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-rose-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-rose-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                   {totalNotificationBadge}
                 </span>
               )}
             </button>
 
-            {/* Persona Switcher / Profile */}
+            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+            {/* User Profile & Persona Switcher */}
             <div className="relative">
               <button
                 onClick={() => setShowPersonaMenu(!showPersonaMenu)}
-                className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-slate-100 transition text-xs text-slate-700"
-                title="Switch Profile / Demo User"
+                className="flex items-center gap-2 p-1 sm:px-2 py-1 rounded-lg hover:bg-slate-100 transition text-xs border border-transparent hover:border-slate-200"
+                title="Switch persona or test account"
               >
                 <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0"
                   style={{ backgroundColor: currentUser.avatarColor || '#002D72' }}
                 >
                   {currentUser.firstName[0]}
                 </div>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
+
+                <div className="hidden lg:block text-left leading-tight">
+                  <div className="font-semibold text-slate-900 text-xs">
+                    {currentUser.firstName} {currentUser.lastName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium">
+                    {isClinician ? 'Clinician Moderator' : 'Care Partner'}
+                  </div>
+                </div>
+
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </button>
 
+              {/* Persona Switcher Dropdown */}
               {showPersonaMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50 text-xs">
-                  <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Current: {currentUser.role === 'CLINICIAN_MODERATOR' ? 'Dr. Seema (Moderator)' : currentUser.anonymousHandle}
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 text-xs animate-in fade-in zoom-in-95">
+                  <div className="px-3 py-1.5 border-b border-slate-100">
+                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      Current Active User
+                    </div>
+                    <div className="font-semibold text-slate-900 mt-0.5">
+                      {currentUser.firstName} {currentUser.lastName}
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {isClinician ? 'Dr. Seema Gulyani (Clinician Moderator)' : currentUser.anonymousHandle}
+                    </div>
                   </div>
-                  <div className="my-1 border-t border-slate-100" />
-                  <div className="px-3 py-1 text-[11px] text-slate-500">
+
+                  <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Switch Test Persona:
                   </div>
-                  {allPersonas.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        onSwitchPersona(p.id);
-                        setShowPersonaMenu(false);
-                      }}
-                      className={`w-full px-3 py-2 text-left hover:bg-slate-50 flex items-center justify-between transition ${
-                        p.id === currentUser.id ? 'font-semibold text-[#002D72] bg-blue-50/50' : 'text-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <div>{p.name}</div>
-                        <div className="text-[10px] text-slate-400">{p.handle}</div>
-                      </div>
-                      {p.id === currentUser.id && (
-                        <span className="text-[10px] font-bold text-[#002D72]">Active</span>
-                      )}
-                    </button>
-                  ))}
+
+                  <div className="space-y-0.5 px-1">
+                    {allPersonas.map((p) => {
+                      const isCurrent = p.id === currentUser.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            onSwitchPersona(p.id);
+                            setShowPersonaMenu(false);
+                          }}
+                          className={`w-full px-2.5 py-2 text-left rounded-lg transition flex items-center justify-between ${
+                            isCurrent
+                              ? 'bg-blue-50 text-[#002D72] font-semibold'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-semibold">{p.name}</div>
+                            <div className="text-[10px] text-slate-400">
+                              {p.role === 'CLINICIAN_MODERATOR' ? 'Clinician Moderator' : p.handle}
+                            </div>
+                          </div>
+                          {isCurrent && <Check className="w-3.5 h-3.5 text-[#002D72]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -214,23 +239,42 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </header>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 safe-bottom">
-        <div className="max-w-md mx-auto grid grid-cols-4 h-13 items-center text-center">
+      {/* MOBILE BOTTOM NAVIGATION BAR (Exact previous responsive mobile/tablet layout preserved) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 safe-bottom">
+        <div
+          className={`max-w-md mx-auto grid ${
+            isClinician || isAdmin ? 'grid-cols-4' : 'grid-cols-3'
+          } h-13 items-center text-center`}
+        >
+          {(isClinician || isAdmin) && (
+            <button
+              onClick={() => setActiveTab('moderation')}
+              className={`flex flex-col items-center justify-center py-1 transition relative ${
+                activeTab === 'moderation' ? 'text-[#002D72] font-bold' : 'text-slate-500'
+              }`}
+            >
+              <Shield className="w-5 h-5" />
+              <span className="text-[10px] mt-0.5">Dashboard</span>
+              {pendingTriageCount > 0 && (
+                <span className="absolute top-1.5 right-6 w-2 h-2 rounded-full bg-amber-500" />
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab('feed')}
             className={`flex flex-col items-center justify-center py-1 transition ${
-              activeTab === 'feed' ? 'text-[#002D72] font-semibold' : 'text-slate-500'
+              activeTab === 'feed' ? 'text-[#002D72] font-bold' : 'text-slate-500'
             }`}
           >
             <MessageSquare className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5">Posts</span>
+            <span className="text-[10px] mt-0.5">Discussions</span>
           </button>
 
           <button
             onClick={() => setActiveTab('knowledge')}
             className={`flex flex-col items-center justify-center py-1 transition ${
-              activeTab === 'knowledge' ? 'text-[#002D72] font-semibold' : 'text-slate-500'
+              activeTab === 'knowledge' ? 'text-[#002D72] font-bold' : 'text-slate-500'
             }`}
           >
             <BookOpen className="w-5 h-5" />
@@ -242,37 +286,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex flex-col items-center justify-center py-1 text-slate-500 hover:text-indigo-600 transition"
           >
             <Sparkles className="w-5 h-5 text-indigo-600" />
-            <span className="text-[10px] mt-0.5 text-indigo-700 font-medium">AI Help</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (isClinician || isAdmin) {
-                setActiveTab('moderation');
-              } else {
-                setActiveTab('messages');
-              }
-            }}
-            className={`flex flex-col items-center justify-center py-1 transition relative ${
-              activeTab === 'moderation' || activeTab === 'messages'
-                ? 'text-[#002D72] font-semibold'
-                : 'text-slate-500'
-            }`}
-          >
-            {isClinician || isAdmin ? (
-              <>
-                <Shield className="w-5 h-5" />
-                <span className="text-[10px] mt-0.5">Console</span>
-                {pendingTriageCount > 0 && (
-                  <span className="absolute top-1.5 right-6 w-2 h-2 rounded-full bg-amber-500" />
-                )}
-              </>
-            ) : (
-              <>
-                <MessageCircle className="w-5 h-5 text-emerald-600" />
-                <span className="text-[10px] mt-0.5">Messages</span>
-              </>
-            )}
+            <span className="text-[10px] mt-0.5 text-indigo-700 font-semibold">Assistant</span>
           </button>
         </div>
       </nav>

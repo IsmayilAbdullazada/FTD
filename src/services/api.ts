@@ -322,7 +322,6 @@ export const api = {
     status: string;
     newEntityStatus: string;
     message: string;
-    epicSummary?: string;
     indexedToRag?: boolean;
   }> => {
     return safeFetchJson(
@@ -374,19 +373,16 @@ export const api = {
           };
         }
 
-        // Clinical escalation -> automatically opens a private chat thread from Dr. Seema
+        // Clinical escalation -> divert to Clinic Caregiver Support Line
         if (queueIdx >= 0) localQueue.splice(queueIdx, 1);
 
         if (item) {
-          localPrivateChats.push({
-            id: `chat-msg-${Date.now()}`,
-            conversationId: `chat-${item.author.userId}`,
-            senderId: 'user-clinician-1',
-            senderName: 'Dr. Seema Gulyani',
-            senderRole: 'CLINICIAN_MODERATOR',
-            recipientId: item.author.userId,
-            recipientName: item.author.realName,
-            content: `Hello ${item.author.realName.split(' ')[0]}, I reviewed your inquiry regarding "${item.title}". Because this involves specific clinical and medical symptoms, I am reaching out to you privately here so we can coordinate your care safely.`,
+          localDirectMessages.unshift({
+            id: `dm-${Date.now()}`,
+            recipientUserId: item.author.userId,
+            title: 'Medical Inquiry Diverted to Clinical Support Line',
+            message: 'Prescription medications, acute medical symptoms, and clinical questions cannot be addressed on public peer boards. Please contact the Johns Hopkins FTD Clinic Support Line directly at (410) 555-FTDC.',
+            type: 'CLINICAL_ESCALATION',
             createdAt: new Date().toISOString(),
             read: false,
           });
@@ -395,7 +391,7 @@ export const api = {
         return {
           status: 'SUCCESS',
           newEntityStatus: 'CLINICAL_REDIRECT',
-          message: 'Diverted to private clinical message with caregiver.',
+          message: 'Diverted to clinic caregiver support line.',
         };
       }
     );
@@ -569,7 +565,7 @@ export const api = {
         const drugKeywords = ['seroquel', 'haldol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'prescribe'];
         if (drugKeywords.some((d) => q.includes(d))) {
           return {
-            answer: "Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please contact Dr. Seema's clinic via your Epic patient portal or reach out through the clinic support line at (410) 555-FTDC.",
+            answer: "Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic support line at (410) 555-FTDC.",
             isMedicationRefusal: true,
             citedResources: [],
           };

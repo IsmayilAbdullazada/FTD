@@ -8,10 +8,8 @@ import {
   X,
   PhoneCall,
   Check,
-  MessageSquare,
-  ShieldAlert,
   ArrowRight,
-  ExternalLink,
+  Shield,
 } from 'lucide-react';
 import { DirectMessage, QueueItem, CurrentUser } from '../types';
 import { api } from '../services/api';
@@ -24,7 +22,6 @@ interface NotificationsModalProps {
   pendingQueue: QueueItem[];
   onRefreshNotifications: () => void;
   onQueueUpdated: () => void;
-  onOpenPrivateChatWithCaregiver?: (caregiverId: string) => void;
   onNavigateToConsole?: () => void;
 }
 
@@ -36,7 +33,6 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   pendingQueue,
   onRefreshNotifications,
   onQueueUpdated,
-  onOpenPrivateChatWithCaregiver,
   onNavigateToConsole,
 }) => {
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -86,7 +82,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         action: 'REJECT',
         rejectionCode: 'CLINICAL_MEDICATION_QUERY',
         rejectionMessage:
-          'This query contains prescription medication or medical dosing questions that must be handled privately by Dr. Seema’s clinic team.',
+          'This query contains prescription medication or medical dosing questions that must be handled by Dr. Seema’s clinic team.',
       });
       setFeedbackToast(`Rejected "${item.title}"`);
       setTimeout(() => setFeedbackToast(null), 3000);
@@ -98,14 +94,6 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
     }
   };
 
-  // Quick Reply Privately directly from notification
-  const handleQuickReply = (item: QueueItem) => {
-    onClose();
-    if (onOpenPrivateChatWithCaregiver) {
-      onOpenPrivateChatWithCaregiver(item.author.userId);
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
@@ -114,7 +102,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-slate-700" />
             <h3 className="font-semibold text-sm text-slate-900">
-              {isClinician ? 'Clinician Triage & Notifications' : 'Your Messages & Notifications'}
+              {isClinician ? 'Clinician Triage & Notifications' : 'Your Notifications'}
             </h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
@@ -147,7 +135,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     }}
                     className="text-[11px] font-semibold text-[#002D72] hover:underline flex items-center gap-0.5"
                   >
-                    <span>Full Console</span>
+                    <span>Open Console</span>
                     <ArrowRight className="w-3 h-3" />
                   </button>
                 )}
@@ -210,15 +198,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           </button>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleQuickReply(item)}
-                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded font-semibold text-[11px] flex items-center gap-1 transition"
-                          title="Message Caregiver Privately"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>Reply Privately</span>
-                        </button>
+                        {onNavigateToConsole && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onNavigateToConsole();
+                            }}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold text-[11px] flex items-center gap-1 transition"
+                          >
+                            <Shield className="w-3 h-3 text-[#002D72]" />
+                            <span>Inspect</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -231,7 +223,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           <div className="space-y-2">
             {isClinician && (
               <div className="text-xs font-semibold text-slate-600 uppercase tracking-wider pt-2">
-                System & Clinic Alerts
+                Clinic & System Alerts
               </div>
             )}
 
@@ -273,6 +265,18 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   <p className="text-[11px] leading-relaxed text-slate-700 font-sans">
                     {msg.message}
                   </p>
+
+                  {msg.type === 'CLINICAL_ESCALATION' && (
+                    <div className="pt-1">
+                      <a
+                        href="tel:4105553832"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#002D72] hover:underline"
+                      >
+                        <PhoneCall className="w-3 h-3" />
+                        <span>Call Clinic Caregiver Line: (410) 555-FTDC</span>
+                      </a>
+                    </div>
+                  )}
 
                   <div className="text-[10px] text-slate-400 flex items-center gap-1 pt-1 border-t border-slate-100">
                     <Clock className="w-3 h-3" />

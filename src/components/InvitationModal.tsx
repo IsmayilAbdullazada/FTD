@@ -191,7 +191,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
 
             <div>
               <label className="block font-bold uppercase tracking-wider text-slate-500 mb-1">
-                Patient Epic / Clinic Chart ID
+                Johns Hopkins Clinic Patient ID
               </label>
               <input
                 type="text"

@@ -30,9 +30,7 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'assistant',
-      text: `Hello. I am your Johns Hopkins FTD caregiving guide. I provide practical behavioral de-escalation, incontinence routines, and legal/Medicaid navigation approved by Dr. Seema Gulyani.
-
-How can I help you today?`,
+      text: `Hello. I can help answer caregiving questions using guides approved by Dr. Seema Gulyani, such as daily routines, managing agitation, and legal support. How can I help you today?`,
       timestamp: 'Now',
     },
   ]);
@@ -80,10 +78,10 @@ How can I help you today?`,
   };
 
   const samplePrompts = [
-    'How to handle incontinence resistance',
     'Tips for calming bathing agitation',
-    'Seroquel dosage for night wandering',
-    'Maryland Medicaid spend-down rules',
+    'How to handle resistance to hygiene',
+    'Restlessness and night wandering',
+    'Medicaid and legal planning',
   ];
 
   return (
@@ -93,10 +91,10 @@ How can I help you today?`,
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
           <div>
             <h2 className="font-semibold text-slate-900 text-sm">
-              FTD Care Assistant
+              Care Assistant
             </h2>
             <p className="text-[11px] text-slate-500">
-              Grounded in Dr. Seema Gulyani's clinical protocols
+              Approved care guides from Dr. Seema Gulyani
             </p>
           </div>
           <button

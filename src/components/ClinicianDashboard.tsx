@@ -1,26 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Shield,
   CheckCircle,
   XCircle,
-  Send,
-  User,
-  Clock,
-  Shield,
-  MessageSquare,
   Users,
   Search,
   Plus,
-  RefreshCw,
-  ChevronRight,
-  ShieldAlert,
-  ArrowRight,
+  Layers,
+  MapPin,
+  AlertTriangle,
+  Phone,
+  Check,
+  X,
+  Sparkles,
+  UserPlus,
 } from 'lucide-react';
 import {
   QueueItem,
   CommunityGroup,
   RejectionReason,
   GroupMember,
-  PrivateConversationMessage,
 } from '../types';
 import { api } from '../services/api';
 
@@ -29,6 +28,7 @@ interface ClinicianDashboardProps {
   onQueueUpdated: () => void;
   onOpenInvite: () => void;
   onOpenAudit: () => void;
+  onCohortCreated?: () => void;
 }
 
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
@@ -36,13 +36,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onQueueUpdated,
   onOpenInvite,
   onOpenAudit,
+  onCohortCreated,
 }) => {
-  // Main dashboard sub-tabs: 'queue' | 'members' | 'messages'
-  const [activeTab, setActiveTab] = useState<'queue' | 'members' | 'messages'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'cohorts'>('queue');
 
-  // ----------------------------------------------------
-  // TAB 1: PENDING QUEUE & REVIEW
-  // ----------------------------------------------------
+  // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -59,25 +57,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
   const activeItem = queueItems[selectedIndex] || null;
 
-  // ----------------------------------------------------
-  // TAB 2: GROUPS & MEMBERS MANAGEMENT
-  // ----------------------------------------------------
+  // Groups and Members State
   const [members, setMembers] = useState<GroupMember[]>([]);
-  const [selectedGroupFilter, setSelectedGroupFilter] = useState('all');
+  const [selectedCohortFilter, setSelectedCohortFilter] = useState('all');
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [reassigningUser, setReassigningUser] = useState<GroupMember | null>(null);
   const [targetNewGroupId, setTargetNewGroupId] = useState('');
 
-  // ----------------------------------------------------
-  // TAB 3: PRIVATE 1-ON-1 CHAT WITH CAREGIVERS
-  // ----------------------------------------------------
-  const [activeChatCaregiverId, setActiveChatCaregiverId] = useState<string>('user-care-1');
-  const [chatMessages, setChatMessages] = useState<PrivateConversationMessage[]>([]);
-  const [chatInputText, setChatInputText] = useState('');
-  const [loadingChat, setLoadingChat] = useState(false);
+  // Create Group Modal State
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupRegion, setNewGroupRegion] = useState('');
+  const [newGroupRadius, setNewGroupRadius] = useState('35');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
 
-  // Load Queue
   const loadQueue = async () => {
     setLoadingQueue(true);
     try {
@@ -94,7 +89,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  // Load Members
   const loadMembers = async (groupId?: string) => {
     setLoadingMembers(true);
     try {
@@ -107,78 +101,32 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  // Load Chat Messages
-  const loadChat = async (caregiverId: string) => {
-    setLoadingChat(true);
-    try {
-      const msgs = await api.getPrivateChat(caregiverId);
-      setChatMessages(msgs);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingChat(false);
-    }
-  };
-
   useEffect(() => {
     loadQueue();
     loadMembers();
-    loadChat(activeChatCaregiverId);
   }, []);
 
   const initItemState = (item: QueueItem) => {
     setSanitizedDraft(item.sanitizedContent || item.rawContent);
-    const defaultGroups = [item.suggestedCohort.id];
-    const general = cohorts.find((c) => c.isGeneralBoard);
-    if (general && !defaultGroups.includes(general.id)) {
-      defaultGroups.push(general.id);
-    }
-    setSelectedGroupIds(defaultGroups);
+    setSelectedGroupIds(
+      item.assignedGroupIds && item.assignedGroupIds.length > 0
+        ? item.assignedGroupIds
+        : cohorts.slice(0, 1).map((c) => c.id)
+    );
     setModeratorNotes('');
   };
 
-  useEffect(() => {
-    if (activeItem) {
-      initItemState(activeItem);
-    }
-  }, [selectedIndex, activeItem?.id]);
-
-  useEffect(() => {
-    loadChat(activeChatCaregiverId);
-  }, [activeChatCaregiverId]);
-
-  const cannedTemplates: Record<RejectionReason, string> = {
-    CLINICAL_MEDICATION_QUERY:
-      'Prescription medications and drug dosages cannot be evaluated on this peer forum. Dr. Seema’s clinical team has been notified. For urgent issues, please call the Clinic Caregiver Support Line at (410) 555-FTDC.',
-    UNVERIFIED_TREATMENT:
-      'To safeguard vulnerable caregivers from misinformation and financial exploitation, our clinic only approves scientifically verified clinical protocols.',
-    POTENTIAL_PHI_EXPOSURE:
-      'Your post contains sensitive personal identifying information (e.g. personal telephone, street address, or full patient legal name) which breaches privacy policies.',
-    FAMILY_DYNAMICS_OUT_OF_SCOPE:
-      'This discussion centers on acute personal family disputes outside the scope of dementia clinical management.',
-    INAPPROPRIATE_LANGUAGE:
-      'This post contains language that does not meet our community standards for a compassionate, supportive care partner environment.',
-    OTHER:
-      'Your submission could not be approved at this time. Please contact Dr. Seema’s team for additional clarification.',
+  const handleSelectItem = (idx: number) => {
+    setSelectedIndex(idx);
+    initItemState(queueItems[idx]);
   };
 
-  const handleAutoRedactPii = () => {
-    if (!activeItem || !activeItem.phiAlerts) return;
-    let redacted = activeItem.rawContent;
-    redacted = redacted.replace(/(\+?\d{1,2}[\s.-]?)?(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})/g, '[Phone Redacted]');
-    redacted = redacted.replace(/\b\d+\s+([A-Za-z0-9\s]+)?(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln)\b/gi, '[Local Address Redacted]');
-    redacted = redacted.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/g, '[Email Redacted]');
-    redacted = redacted.replace(/\b(my husband|my wife|my father|my mother)\s+([A-Z][a-z]+)\b/gi, '$1 [Name Redacted]');
-
-    setSanitizedDraft(redacted);
-    setActionSuccessNotice('Flagged personal details sanitized.');
-    setTimeout(() => setActionSuccessNotice(null), 3000);
-  };
-
-  const handleApprove = async () => {
+  // Publish post
+  const handlePublish = async () => {
     if (!activeItem) return;
+
     try {
-      await api.performModerationAction({
+      const res = await api.performModerationAction({
         entityId: activeItem.id,
         entityType: 'POST',
         action: 'APPROVE',
@@ -187,627 +135,849 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         moderatorNotes,
       });
 
-      setActionSuccessNotice(`Post "${activeItem.title}" approved & published.`);
-      setTimeout(() => setActionSuccessNotice(null), 3000);
+      setActionSuccessNotice(res.message || 'Post published.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+
       onQueueUpdated();
-      loadQueue();
+      await loadQueue();
     } catch (err) {
-      console.error(err);
-      alert('Failed to approve post');
+      console.error('Failed to publish:', err);
+      alert('Error publishing post.');
     }
   };
 
+  // Reject
   const handleConfirmReject = async () => {
     if (!activeItem) return;
-    const msg = customRejectionText || cannedTemplates[rejectionCode];
 
     try {
-      await api.performModerationAction({
+      const res = await api.performModerationAction({
         entityId: activeItem.id,
         entityType: 'POST',
         action: 'REJECT',
         rejectionCode,
-        rejectionMessage: msg,
+        rejectionMessage:
+          customRejectionText.trim() ||
+          'Your post could not be shared publicly. Please review the note from Dr. Seema.',
         moderatorNotes,
       });
 
       setShowRejectModal(false);
-      setActionSuccessNotice('Post rejected. Private explanation delivered to author.');
-      setTimeout(() => setActionSuccessNotice(null), 3000);
+      setCustomRejectionText('');
+      setActionSuccessNotice(res.message || 'Post rejected.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+
       onQueueUpdated();
-      loadQueue();
+      await loadQueue();
     } catch (err) {
-      console.error(err);
-      alert('Failed to reject post');
+      console.error('Failed to reject:', err);
+      alert('Error rejecting post.');
     }
   };
 
-  // Direct private outreach from review card
-  const handleOpenPrivateChatFromPost = () => {
+  // Redirect to Clinic Support Line
+  const handleClinicRedirect = async () => {
     if (!activeItem) return;
-    setActiveChatCaregiverId(activeItem.author.userId);
-    setActiveTab('messages');
-  };
-
-  // Send private chat message
-  const handleSendPrivateChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInputText.trim()) return;
 
     try {
-      await api.sendPrivateChatMessage({
-        caregiverId: activeChatCaregiverId,
-        senderId: 'user-clinician-1',
-        content: chatInputText.trim(),
+      const res = await api.performModerationAction({
+        entityId: activeItem.id,
+        entityType: 'POST',
+        action: 'CLINICAL_REDIRECT',
+        moderatorNotes: 'Diverted to clinic phone support (410) 555-FTDC.',
       });
-      setChatInputText('');
-      loadChat(activeChatCaregiverId);
+
+      setActionSuccessNotice('Caregiver notified to contact the clinic line.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+
+      onQueueUpdated();
+      await loadQueue();
     } catch (err) {
-      console.error(err);
+      console.error('Failed clinic redirect:', err);
+      alert('Error updating post.');
     }
   };
 
-  // Reassign member cohort
-  const handleReassignGroup = async () => {
-    if (!reassigningUser || !targetNewGroupId) return;
+  // Auto clean personal info
+  const handleCleanPersonalInfo = () => {
+    if (!activeItem) return;
+    let cleaned = activeItem.rawContent;
+    activeItem.phiAlerts.forEach((alertItem) => {
+      cleaned = cleaned.replace(new RegExp(alertItem.text, 'gi'), `[${alertItem.type} removed]`);
+    });
+    setSanitizedDraft(cleaned);
+  };
 
+  // Reassign Group
+  const handleConfirmReassign = async () => {
+    if (!reassigningUser || !targetNewGroupId) return;
     try {
       await api.updateMemberGroup(reassigningUser.userId, targetNewGroupId);
-      const newGroupName = cohorts.find((c) => c.id === targetNewGroupId)?.name || targetNewGroupId;
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.userId === reassigningUser.userId
-            ? { ...m, primaryGroupId: targetNewGroupId, primaryGroupName: newGroupName }
-            : m
-        )
-      );
       setReassigningUser(null);
-      setActionSuccessNotice(`Reassigned member to ${newGroupName}`);
+      setTargetNewGroupId('');
+      setActionSuccessNotice(`Member moved to new group.`);
       setTimeout(() => setActionSuccessNotice(null), 3000);
+      loadMembers(selectedCohortFilter);
     } catch (err) {
       console.error(err);
+      alert('Failed to update group');
     }
   };
 
-  const activeChatMember = members.find((m) => m.userId === activeChatCaregiverId) || {
-    userId: activeChatCaregiverId,
-    realName: 'Sarah Smith',
-    anonymousHandle: 'CarePartner-882',
-    primaryGroupName: 'Baltimore Metro Cohort',
+  // Create Group Handler
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim() || isSubmittingGroup) return;
+
+    setIsSubmittingGroup(true);
+    try {
+      const slug = newGroupName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+      await api.createCohort({
+        name: newGroupName.trim(),
+        slug,
+        description: newGroupDescription.trim() || `Local group for ${newGroupRegion.trim() || newGroupName.trim()} caregivers.`,
+        geographicRegion: newGroupRegion.trim() || 'Local Area',
+        radiusMiles: Number(newGroupRadius) || 35,
+        tag: 'GEO_CUSTOM',
+      });
+
+      setShowCreateGroupModal(false);
+      setNewGroupName('');
+      setNewGroupRegion('');
+      setNewGroupDescription('');
+      setActionSuccessNotice(`Group "${newGroupName}" created.`);
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+
+      if (onCohortCreated) onCohortCreated();
+      loadMembers();
+    } catch (err) {
+      console.error('Failed to create group:', err);
+      alert('Could not create group.');
+    } finally {
+      setIsSubmittingGroup(false);
+    }
   };
 
+  const filteredMembers = members.filter((m) => {
+    const q = searchMemberQuery.toLowerCase();
+    const matchesSearch =
+      m.realName.toLowerCase().includes(q) ||
+      m.anonymousHandle.toLowerCase().includes(q) ||
+      (m.clinicPatientId || '').toLowerCase().includes(q);
+    const matchesGroup =
+      selectedCohortFilter === 'all' || m.primaryGroupId === selectedCohortFilter;
+    return matchesSearch && matchesGroup;
+  });
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-4 space-y-4">
+    <div className="max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-5">
       {/* TOP HEADER */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              Dr. Seema's Moderation Console
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Dashboard
             </h1>
+            <span className="text-xs bg-blue-50 text-[#002D72] font-semibold px-2.5 py-0.5 rounded-md">
+              Dr. Seema Gulyani
+            </span>
           </div>
-          <p className="text-xs text-slate-500">
-            Clinical review, regional cohort management, and private caregiver support.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
-            onClick={onOpenInvite}
-            className="px-3 py-1.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            onClick={() => setShowCreateGroupModal(true)}
+            className="flex-1 sm:flex-initial px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Invite Caregiver</span>
+            <span>New Group</span>
           </button>
+
+          <button
+            onClick={onOpenInvite}
+            className="flex-1 sm:flex-initial px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+            <span>Invite Member</span>
+          </button>
+
           <button
             onClick={onOpenAudit}
-            className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-medium transition"
+            className="px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg text-xs font-medium transition"
           >
-            Audit Log
+            Activity Log
           </button>
         </div>
       </div>
 
       {actionSuccessNotice && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs px-3.5 py-2 rounded-lg flex items-center justify-between animate-in fade-in">
-          <span>{actionSuccessNotice}</span>
-          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs px-4 py-2.5 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">{actionSuccessNotice}</span>
+          </div>
+          <button onClick={() => setActionSuccessNotice(null)} className="text-emerald-700 hover:text-emerald-900">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* DASHBOARD TAB NAVIGATION */}
-      <div className="flex items-center gap-2 border-b border-slate-200 text-xs font-semibold">
-        <button
+      {/* 3 STAT CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div
           onClick={() => setActiveTab('queue')}
-          className={`pb-2 px-1 border-b-2 transition flex items-center gap-1.5 ${
+          className={`p-4 rounded-xl border transition cursor-pointer ${
             activeTab === 'queue'
-              ? 'border-[#002D72] text-[#002D72]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'bg-amber-50/40 border-amber-300'
+              : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
-          <Shield className="w-4 h-4" />
-          <span>Pending Review</span>
-          {queueItems.length > 0 && (
-            <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
-              {queueItems.length}
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span className="font-semibold text-xs text-slate-700">Pending Posts</span>
+            <Shield className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900">{queueItems.length}</span>
+            <span className="text-xs text-slate-500">
+              {queueItems.length === 1 ? 'needs review' : 'need review'}
             </span>
-          )}
-        </button>
+          </div>
+        </div>
 
-        <button
-          onClick={() => setActiveTab('members')}
-          className={`pb-2 px-1 border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === 'members'
-              ? 'border-[#002D72] text-[#002D72]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+        <div
+          onClick={() => setActiveTab('cohorts')}
+          className={`p-4 rounded-xl border transition cursor-pointer ${
+            activeTab === 'cohorts'
+              ? 'bg-blue-50/40 border-blue-300'
+              : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
-          <Users className="w-4 h-4" />
-          <span>Groups & Members</span>
-        </button>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span className="font-semibold text-xs text-slate-700">Groups</span>
+            <Layers className="w-4 h-4 text-[#002D72]" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900">{cohorts.length}</span>
+            <span className="text-xs text-slate-500">active</span>
+          </div>
+        </div>
 
-        <button
-          onClick={() => setActiveTab('messages')}
-          className={`pb-2 px-1 border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === 'messages'
-              ? 'border-[#002D72] text-[#002D72]'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
+        <div
+          onClick={() => setActiveTab('cohorts')}
+          className="p-4 rounded-xl border bg-white border-slate-200 hover:border-slate-300 transition cursor-pointer"
         >
-          <MessageSquare className="w-4 h-4" />
-          <span>Private Messages</span>
-        </button>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span className="font-semibold text-xs text-slate-700">Members</span>
+            <Users className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-slate-900">{members.length}</span>
+            <span className="text-xs text-slate-500">caregivers</span>
+          </div>
+        </div>
       </div>
 
-      {/* ------------------------------------------------- */}
-      {/* TAB 1: PENDING QUEUE & REVIEW */}
-      {/* ------------------------------------------------- */}
+      {/* TABS */}
+      <div className="border-b border-slate-200">
+        <div className="flex items-center gap-6 text-xs sm:text-sm font-semibold">
+          <button
+            onClick={() => setActiveTab('queue')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'queue'
+                ? 'border-[#002D72] text-[#002D72]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <span>Pending Posts</span>
+            {queueItems.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+                {queueItems.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('cohorts')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'cohorts'
+                ? 'border-[#002D72] text-[#002D72]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <span>Groups and Members</span>
+          </button>
+        </div>
+      </div>
+
+      {/* TAB 1: PENDING POSTS */}
       {activeTab === 'queue' && (
         <div className="space-y-4">
           {loadingQueue ? (
-            <div className="py-12 text-center text-slate-400 text-xs">
-              Loading pending items...
+            <div className="py-20 text-center text-slate-400 text-xs">
+              Loading posts...
             </div>
           ) : queueItems.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500 text-xs space-y-1">
-              <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-1" />
-              <div className="font-semibold text-slate-800 text-sm">All caught up!</div>
-              <p className="text-slate-400">No submissions are waiting in the moderation queue.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-              {/* Left Column: Queue List (4 cols) */}
-              <div className="md:col-span-4 bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-                <div className="p-3 bg-slate-50 text-xs font-semibold text-slate-600 flex items-center justify-between">
-                  <span>Pending Submissions</span>
-                  <button onClick={loadQueue} className="text-slate-400 hover:text-slate-600">
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="max-h-[500px] overflow-y-auto divide-y divide-slate-100">
-                  {queueItems.map((item, idx) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setSelectedIndex(idx)}
-                      className={`w-full text-left p-3 transition space-y-1 ${
-                        idx === selectedIndex ? 'bg-blue-50/70 border-l-4 border-l-[#002D72]' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="font-semibold text-xs text-slate-900 truncate">{item.title}</div>
-                      <div className="text-[11px] text-slate-500 flex items-center justify-between">
-                        <span>{item.author.realName}</span>
-                        <span className="font-mono text-[10px] text-[#002D72]">{item.author.clinicPatientId}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {item.suggestedCohort.name}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                <Check className="w-5 h-5" />
               </div>
-
-              {/* Right Column: Review & Action Panel (8 cols) */}
-              <div className="md:col-span-8 bg-white rounded-xl border border-slate-200 p-4 sm:p-5 space-y-4">
-                {activeItem ? (
-                  <>
-                    {/* Author Medical Info */}
-                    <div className="bg-slate-50 rounded-lg p-3 text-xs space-y-1 border border-slate-100">
-                      <div className="font-semibold text-slate-900 text-sm">{activeItem.title}</div>
-                      <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 pt-1 border-t border-slate-200">
-                        <div>Caregiver: <strong>{activeItem.author.realName}</strong></div>
-                        <div>Clinic ID: <strong className="font-mono text-[#002D72]">{activeItem.author.clinicPatientId}</strong></div>
-                        <div>Handle: <span className="font-mono">{activeItem.author.anonymousHandle}</span></div>
-                        <div>Phone: <span>{activeItem.author.phone}</span></div>
-                      </div>
-                    </div>
-
-                    {/* PII Alert Warning if detected */}
-                    {activeItem.phiAlerts && activeItem.phiAlerts.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold flex items-center gap-1 text-amber-900">
-                            <ShieldAlert className="w-4 h-4 text-amber-600" />
-                            <span>{activeItem.phiAlerts.length} Flagged Privacy Details</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleAutoRedactPii}
-                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold"
-                          >
-                            Redact Details
-                          </button>
-                        </div>
-                        <div className="text-[11px] text-amber-800 space-y-0.5">
-                          {activeItem.phiAlerts.map((a, i) => (
-                            <div key={i}>• "{a.text}" ({a.explanation})</div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Original Submitted Text */}
-                    <div className="space-y-1">
-                      <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                        Submitted Text
-                      </label>
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-800 leading-relaxed font-sans">
-                        {activeItem.rawContent}
-                      </div>
-                    </div>
-
-                    {/* Editable Sanitized Text */}
-                    <div className="space-y-1">
-                      <label className="block text-[11px] font-semibold text-[#002D72] uppercase tracking-wider">
-                        Sanitized Text for Community
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={sanitizedDraft}
-                        onChange={(e) => setSanitizedDraft(e.target.value)}
-                        className="w-full p-2.5 text-xs rounded-lg border border-blue-200 bg-blue-50/20 focus:outline-none focus:ring-1 focus:ring-[#002D72] font-sans"
-                      />
-                    </div>
-
-                    {/* Target Group Assignment */}
-                    <div className="space-y-1">
-                      <label className="block text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-                        Post to Cohort:
-                      </label>
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        {cohorts.map((c) => {
-                          const isSelected = selectedGroupIds.includes(c.id);
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedGroupIds(selectedGroupIds.filter((id) => id !== c.id));
-                                } else {
-                                  setSelectedGroupIds([...selectedGroupIds, c.id]);
-                                }
-                              }}
-                              className={`px-2.5 py-1 rounded-md border text-xs transition ${
-                                isSelected
-                                  ? 'bg-[#002D72] text-white border-[#002D72] font-medium'
-                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                              }`}
-                            >
-                              {c.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Decision Action Buttons */}
-                    <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleApprove}
-                        className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Approve & Publish</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowRejectModal(true)}
-                        className="py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleOpenPrivateChatFromPost}
-                        className="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Message Privately</span>
-                      </button>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ------------------------------------------------- */}
-      {/* TAB 2: GROUPS & MEMBERS MANAGEMENT */}
-      {/* ------------------------------------------------- */}
-      {activeTab === 'members' && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-semibold text-sm text-slate-900">
-                Care Partner Community Members
-              </h3>
-              <p className="text-xs text-slate-500">
-                Manage caregiver cohort assignments and access.
+              <h2 className="text-sm font-semibold text-slate-900">
+                No posts waiting
+              </h2>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                All caregiver submissions have been reviewed and published.
               </p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              {/* Left Column: Post list */}
+              <div className="lg:col-span-4 space-y-2">
+                <div className="text-xs font-semibold text-slate-600 px-1">
+                  Posts to review ({queueItems.length})
+                </div>
 
-            {/* Filter by group */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <label htmlFor="member-cohort-filter" className="text-xs text-slate-500 whitespace-nowrap">Cohort:</label>
-              <select
-                id="member-cohort-filter"
-                value={selectedGroupFilter}
-                onChange={(e) => {
-                  setSelectedGroupFilter(e.target.value);
-                  loadMembers(e.target.value);
-                }}
-                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
-              >
-                <option value="all">All Regional Cohorts</option>
-                {cohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Members Table */}
-          <div className="border border-slate-200 rounded-lg overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                <tr>
-                  <th className="p-3">Caregiver</th>
-                  <th className="p-3">Public Handle</th>
-                  <th className="p-3">Clinic Patient ID</th>
-                  <th className="p-3">Primary Cohort</th>
-                  <th className="p-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {members.map((m) => (
-                  <tr key={m.userId} className="hover:bg-slate-50 transition">
-                    <td className="p-3">
-                      <div className="font-medium text-slate-900">{m.realName}</div>
-                      <div className="text-[11px] text-slate-400">{m.email}</div>
-                    </td>
-                    <td className="p-3 font-mono text-slate-700">
-                      {m.anonymousHandle}
-                    </td>
-                    <td className="p-3 font-mono text-[#002D72]">
-                      {m.clinicPatientId || 'JHM-ON-FILE'}
-                    </td>
-                    <td className="p-3 text-slate-600">
-                      {m.primaryGroupName}
-                    </td>
-                    <td className="p-3 text-right space-x-1.5">
-                      <button
-                        onClick={() => {
-                          setReassigningUser(m);
-                          setTargetNewGroupId(m.primaryGroupId);
-                        }}
-                        className="px-2 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 rounded hover:bg-white"
+                <div className="space-y-2">
+                  {queueItems.map((item, idx) => {
+                    const isSelected = idx === selectedIndex;
+                    const hasPhi = item.phiAlerts && item.phiAlerts.length > 0;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleSelectItem(idx)}
+                        className={`p-3.5 rounded-xl border text-xs cursor-pointer transition space-y-1.5 ${
+                          isSelected
+                            ? 'bg-blue-50/70 border-[#002D72]'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
                       >
-                        Reassign Group
-                      </button>
-                      <button
-                        onClick={() => {
-                          setActiveChatCaregiverId(m.userId);
-                          setActiveTab('messages');
-                        }}
-                        className="px-2 py-1 text-[11px] font-semibold text-[#002D72] hover:bg-blue-50 border border-blue-200 rounded"
-                      >
-                        Chat
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-slate-900">
+                            {item.author.realName}
+                          </span>
+                          <span className="text-slate-400 text-[10px]">
+                            {item.author.clinicPatientId}
+                          </span>
+                        </div>
 
-          {/* Reassign Modal */}
-          {reassigningUser && (
-            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-sm w-full p-5 space-y-3">
-                <h4 className="font-semibold text-sm text-slate-900">
-                  Reassign {reassigningUser.realName}
-                </h4>
-                <p className="text-xs text-slate-500">
-                  Select new primary geographic cohort for this care partner:
-                </p>
+                        <div className="font-semibold text-slate-800 line-clamp-1">
+                          {item.title}
+                        </div>
 
-                <select
-                  value={targetNewGroupId}
-                  onChange={(e) => setTargetNewGroupId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
-                >
-                  {cohorts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.isGeneralBoard ? '(Global)' : `(${c.geographicRegion})`}
-                    </option>
-                  ))}
-                </select>
+                        <p className="text-slate-500 line-clamp-2 text-[11px] leading-relaxed">
+                          {item.rawContent}
+                        </p>
 
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    onClick={() => setReassigningUser(null)}
-                    className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleReassignGroup}
-                    className="px-3.5 py-1.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold"
-                  >
-                    Save Assignment
-                  </button>
+                        <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+                          <span>{item.author.anonymousHandle}</span>
+                          {hasPhi && (
+                            <span className="text-amber-700 bg-amber-100 font-medium px-1.5 py-0.5 rounded text-[10px]">
+                              Personal info found
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Right Column: Review details */}
+              {activeItem && (
+                <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 sm:p-6 space-y-5">
+                  {/* Author Banner */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <div className="font-semibold text-slate-900 text-sm">
+                        {activeItem.author.realName}{' '}
+                        <span className="font-normal text-slate-500 text-xs">
+                          (Shown as: {activeItem.author.anonymousHandle})
+                        </span>
+                      </div>
+                      <div className="text-slate-500 text-[11px] mt-0.5 flex items-center gap-2">
+                        <span>Patient ID: {activeItem.author.clinicPatientId}</span>
+                        <span>•</span>
+                        <span>Phone: {activeItem.author.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Original Question */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Original post
+                    </label>
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+                      <div className="font-semibold text-slate-900 text-sm">
+                        {activeItem.title}
+                      </div>
+                      <p className="text-slate-700 leading-relaxed font-sans whitespace-pre-line">
+                        {activeItem.rawContent}
+                      </p>
+                    </div>
+
+                    {/* Personal info alert */}
+                    {activeItem.phiAlerts && activeItem.phiAlerts.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Personal details detected ({activeItem.phiAlerts.length})</span>
+                          </span>
+                          <button
+                            onClick={handleCleanPersonalInfo}
+                            className="text-xs text-[#002D72] font-semibold hover:underline flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Remove personal info</span>
+                          </button>
+                        </div>
+                        <ul className="text-[11px] text-amber-800 space-y-1">
+                          {activeItem.phiAlerts.map((alertItem, i) => (
+                            <li key={i}>
+                              • Found "{alertItem.text}" ({alertItem.type}) — {alertItem.explanation}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Public Text to Publish */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-semibold text-slate-700">
+                        Public post text
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        Community will see this text
+                      </span>
+                    </div>
+                    <textarea
+                      rows={4}
+                      value={sanitizedDraft}
+                      onChange={(e) => setSanitizedDraft(e.target.value)}
+                      className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Group */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Group
+                    </label>
+                    <select
+                      value={selectedGroupIds[0] || cohorts[0]?.id}
+                      onChange={(e) => setSelectedGroupIds([e.target.value])}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                    >
+                      {cohorts.map((cohort) => (
+                        <option key={cohort.id} value={cohort.id}>
+                          {cohort.name} • {cohort.geographicRegion}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Private note */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-700">
+                      Private note (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={moderatorNotes}
+                      onChange={(e) => setModeratorNotes(e.target.value)}
+                      placeholder="Visible only to clinic staff"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handlePublish}
+                        className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Publish</span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        className="flex-1 sm:flex-initial px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                      >
+                        <X className="w-4 h-4" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleClinicRedirect}
+                      className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Call Clinic Line</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* ------------------------------------------------- */}
-      {/* TAB 3: PRIVATE 1-ON-1 CHAT WITH CAREGIVERS */}
-      {/* ------------------------------------------------- */}
-      {activeTab === 'messages' && (
-        <div className="bg-white rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-12 min-h-[500px] overflow-hidden">
-          {/* Caregivers List (4 cols) */}
-          <div className="md:col-span-4 border-r border-slate-200 divide-y divide-slate-100 flex flex-col">
-            <div className="p-3 bg-slate-50 text-xs font-semibold text-slate-600">
-              Caregiver Conversations
+      {/* TAB 2: GROUPS AND MEMBERS */}
+      {activeTab === 'cohorts' && (
+        <div className="space-y-6">
+          {/* Header Controls */}
+          <div className="flex items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                Groups and Members
+              </h2>
             </div>
-            <div className="overflow-y-auto divide-y divide-slate-100 flex-1">
-              {members.map((m) => {
-                const isSelected = m.userId === activeChatCaregiverId;
+
+            <button
+              onClick={() => setShowCreateGroupModal(true)}
+              className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Group</span>
+            </button>
+          </div>
+
+          {/* GROUPS CARDS */}
+          <div className="space-y-2.5">
+            <div className="text-xs font-semibold text-slate-700">
+              Groups ({cohorts.length})
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {cohorts.map((cohort) => {
+                const assignedCount = members.filter((m) => m.primaryGroupId === cohort.id).length;
                 return (
-                  <button
-                    key={m.userId}
-                    onClick={() => setActiveChatCaregiverId(m.userId)}
-                    className={`w-full text-left p-3 transition space-y-0.5 ${
-                      isSelected ? 'bg-blue-50/80 border-l-4 border-l-[#002D72]' : 'hover:bg-slate-50'
-                    }`}
+                  <div
+                    key={cohort.id}
+                    className="bg-white rounded-xl border border-slate-200 p-4 space-y-2.5 flex flex-col justify-between"
                   >
-                    <div className="font-semibold text-xs text-slate-900 flex items-center justify-between">
-                      <span>{m.realName}</span>
-                      <span className="font-mono text-[10px] text-slate-400">{m.anonymousHandle}</span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span className="font-semibold text-slate-900 text-sm">
+                          {cohort.name}
+                        </span>
+                        <span className="text-slate-500 text-xs">
+                          {assignedCount} {assignedCount === 1 ? 'member' : 'members'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{cohort.geographicRegion}</span>
+                      </div>
+
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {cohort.description}
+                      </p>
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      {m.primaryGroupName}
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end text-xs">
+                      <button
+                        onClick={() => setSelectedCohortFilter(cohort.id)}
+                        className="text-[#002D72] hover:underline font-semibold text-xs"
+                      >
+                        View members
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Chat Stream & Input (8 cols) */}
-          <div className="md:col-span-8 flex flex-col h-[500px]">
-            {/* Chat header */}
-            <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div>
-                <div className="font-semibold text-xs text-slate-900">
-                  {activeChatMember.realName} ({activeChatMember.anonymousHandle})
+          {/* MEMBERS LIST */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="text-xs font-semibold text-slate-700">
+                Members ({filteredMembers.length})
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchMemberQuery}
+                    onChange={(e) => setSearchMemberQuery(e.target.value)}
+                    placeholder="Search by name or ID..."
+                    className="w-full sm:w-60 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  />
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Confidential Clinician Direct Channel • Dr. Seema Gulyani
-                </div>
+
+                <select
+                  value={selectedCohortFilter}
+                  onChange={(e) => setSelectedCohortFilter(e.target.value)}
+                  className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                >
+                  <option value="all">All Groups</option>
+                  {cohorts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name.replace(/\s+Cohort$/i, '')}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/40 text-xs">
-              {chatMessages.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 text-xs">
-                  No previous messages. Send a message to start private communication.
-                </div>
-              ) : (
-                chatMessages.map((msg) => {
-                  const isClinician = msg.senderRole === 'CLINICIAN_MODERATOR';
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${isClinician ? 'items-end' : 'items-start'}`}
-                    >
-                      <div
-                        className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
-                          isClinician
-                            ? 'bg-[#002D72] text-white rounded-br-xs'
-                            : 'bg-white border border-slate-200 text-slate-800 rounded-bl-xs shadow-2xs'
-                        }`}
-                      >
-                        <div className="font-semibold text-[10px] pb-1 opacity-80">
-                          {msg.senderName}
-                        </div>
-                        <div className="whitespace-pre-line font-sans">{msg.content}</div>
-                      </div>
-                      <span className="text-[10px] text-slate-400 px-2 mt-0.5">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
+            {loadingMembers ? (
+              <div className="py-12 text-center text-slate-400 text-xs">
+                Loading members...
+              </div>
+            ) : filteredMembers.length === 0 ? (
+              <div className="py-8 text-center text-slate-500 text-xs">
+                No members found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
+                      <th className="py-2.5 px-3">Name</th>
+                      <th className="py-2.5 px-3">Patient ID</th>
+                      <th className="py-2.5 px-3">Contact</th>
+                      <th className="py-2.5 px-3">Group</th>
+                      <th className="py-2.5 px-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredMembers.map((m) => (
+                      <tr key={m.userId} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-slate-900">{m.realName}</div>
+                          <div className="text-[11px] text-slate-400">{m.anonymousHandle}</div>
+                        </td>
+                        <td className="py-3 px-3 text-[#002D72] font-semibold text-[11px]">
+                          {m.clinicPatientId}
+                        </td>
+                        <td className="py-3 px-3 text-slate-600">
+                          <div>{m.phone}</div>
+                          <div className="text-[11px] text-slate-400">{m.email}</div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-800">
+                          {m.primaryGroupName}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => {
+                              setReassigningUser(m);
+                              setTargetNewGroupId(m.primaryGroupId);
+                            }}
+                            className="px-2.5 py-1 text-xs text-[#002D72] hover:bg-blue-50 border border-slate-200 rounded font-semibold transition"
+                          >
+                            Move group
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE GROUP */}
+      {showCreateGroupModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+              <h3 className="font-semibold text-sm text-slate-900">
+                Create a Group
+              </h3>
+              <button
+                onClick={() => setShowCreateGroupModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Input form */}
-            <form onSubmit={handleSendPrivateChat} className="p-3 border-t border-slate-200 bg-white flex items-center gap-2">
-              <input
-                type="text"
-                value={chatInputText}
-                onChange={(e) => setChatInputText(e.target.value)}
-                placeholder={`Send private clinical message to ${activeChatMember.realName}...`}
-                className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
-              />
-              <button
-                type="submit"
-                disabled={!chatInputText.trim()}
-                className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-200 text-white rounded-lg text-xs font-semibold transition"
-              >
-                Send
-              </button>
+            <form onSubmit={handleCreateGroup} className="p-4 space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Group name
+                </label>
+                <input
+                  type="text"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="e.g. Annapolis Area"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Location or County
+                </label>
+                <input
+                  type="text"
+                  value={newGroupRegion}
+                  onChange={(e) => setNewGroupRegion(e.target.value)}
+                  placeholder="e.g. Anne Arundel County"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Description (optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={newGroupDescription}
+                  onChange={(e) => setNewGroupDescription(e.target.value)}
+                  placeholder="Local peer support for families in this area."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroupModal(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingGroup || !newGroupName.trim()}
+                  className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 text-white rounded-lg font-semibold transition"
+                >
+                  {isSubmittingGroup ? 'Creating...' : 'Create Group'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* CANNED REJECTION MODAL */}
+      {/* MODAL: REASSIGN MEMBER */}
+      {reassigningUser && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-4 space-y-4">
+            <div>
+              <h3 className="font-semibold text-sm text-slate-900">
+                Move Member to Another Group
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Moving <strong>{reassigningUser.realName}</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">
+                Select Group
+              </label>
+              <select
+                value={targetNewGroupId}
+                onChange={(e) => setTargetNewGroupId(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+              >
+                {cohorts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} • {c.geographicRegion}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setReassigningUser(null)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReassign}
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold transition"
+              >
+                Confirm Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REJECT POST */}
       {showRejectModal && activeItem && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-5 space-y-3.5">
-            <h3 className="font-semibold text-sm text-slate-900">
-              Reject Caregiver Submission
-            </h3>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-4 sm:p-5 space-y-4">
+            <div>
+              <h3 className="font-semibold text-sm text-slate-900">
+                Reject Post
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                The author will receive a private explanation.
+              </p>
+            </div>
 
-            <select
-              value={rejectionCode}
-              onChange={(e) => {
-                const code = e.target.value as RejectionReason;
-                setRejectionCode(code);
-                setCustomRejectionText(cannedTemplates[code]);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300"
-            >
-              <option value="CLINICAL_MEDICATION_QUERY">Prescription / Medication Question</option>
-              <option value="UNVERIFIED_TREATMENT">Unproven Supplement / Treatment</option>
-              <option value="POTENTIAL_PHI_EXPOSURE">Potential PHI Exposure</option>
-              <option value="FAMILY_DYNAMICS_OUT_OF_SCOPE">Family Dispute Out of Scope</option>
-              <option value="INAPPROPRIATE_LANGUAGE">Inappropriate Language</option>
-              <option value="OTHER">Other Clinical Reason</option>
-            </select>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Reason
+                </label>
+                <select
+                  value={rejectionCode}
+                  onChange={(e) => setRejectionCode(e.target.value as RejectionReason)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white font-medium"
+                >
+                  <option value="CLINICAL_MEDICATION_QUERY">
+                    Prescription or Medication Question
+                  </option>
+                  <option value="ACUTE_SAFETY_EMERGENCY">
+                    Emergency or Safety Concern
+                  </option>
+                  <option value="UNVERIFIED_MEDICAL_ADVICE">
+                    Unverified Medical Claim
+                  </option>
+                  <option value="EXPLICIT_PII_UNRESOLVED">
+                    Personal Information
+                  </option>
+                  <option value="COMMERCIAL_SOLICITATION">
+                    Promotional or Spam
+                  </option>
+                </select>
+              </div>
 
-            <textarea
-              rows={3}
-              value={customRejectionText || cannedTemplates[rejectionCode]}
-              onChange={(e) => setCustomRejectionText(e.target.value)}
-              className="w-full p-2.5 text-xs rounded-lg border border-slate-300 font-sans"
-            />
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Note to Author (optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={customRejectionText}
+                  onChange={(e) => setCustomRejectionText(e.target.value)}
+                  placeholder="Explain why this post could not be shared publicly..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                />
+              </div>
+            </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setShowRejectModal(false)}
@@ -818,9 +988,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmReject}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition"
               >
-                Confirm Rejection
+                Reject Post
               </button>
             </div>
           </div>

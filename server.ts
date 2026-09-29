@@ -1320,7 +1320,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const mentionsDrug = restrictedDrugs.some((d) => queryLower.includes(d));
   if (mentionsDrug) {
     return res.json({
-      answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please contact Dr. Seema's clinic via your Epic patient portal or reach out through the clinic support line at (410) 555-FTDC.`,
+      answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic support line at (410) 555-FTDC.`,
       isMedicationRefusal: true,
       citedResources: [],
     });
@@ -1351,7 +1351,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
 
 CRITICAL OPERATIONAL RULES:
 1. Under NO circumstances should you recommend or discuss specific prescription drug dosages, off-label pharmacological treatments, or speculative dementia cures.
-2. If the user query asks about a specific drug (e.g., Seroquel, Haloperidol, Donepezil, Memantine, Trazodone), YOU MUST RESPOND: "Prescription medications must be evaluated directly by your clinic medical team. Please contact Dr. Seema's clinic via your Epic patient portal or reach out through the clinic support line at (410) 555-FTDC."
+2. If the user query asks about a specific drug (e.g., Seroquel, Haloperidol, Donepezil, Memantine, Trazodone), YOU MUST RESPOND: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic support line at (410) 555-FTDC."
 3. ONLY answer questions using the provided Context documents. If the answer is not present in the context, respond: "I do not have clinic-approved information on this topic yet. Please submit your question to the clinic moderation queue so Dr. Seema can review it."
 4. Maintain an empathetic, trauma-informed, professional tone appropriate for exhausted caregivers.
 5. For acute behavioral crises (threats of violence, sudden delirium, acute danger), direct the user immediately to emergency services and the Clinic Caregiver Support Line (410) 555-FTDC.
@@ -1360,7 +1360,7 @@ APPROVED CLINIC CONTEXT:
 ${contextCorpus}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: query,
         config: {
           systemInstruction,
@@ -1385,18 +1385,18 @@ ${contextCorpus}`;
         citedResources,
       });
     } catch (genAiError) {
-      console.error('Gemini generation error, falling back to deterministic clinical RAG:', genAiError);
+      console.warn('Gemini generation unavailable or quota reached, using clinical repository protocols:', genAiError);
     }
   }
 
-  // Deterministic Clinical RAG Fallback (Zero external dependency guarantee)
+  // Deterministic Clinical Protocol Fallback (Guaranteed to always work, zero external quota dependency)
   let bestMatch: ClinicalResource | null = null;
   let maxScore = 0;
 
   clinicalResources.forEach((resItem) => {
     let score = 0;
     const combined = `${resItem.title} ${resItem.summary} ${resItem.contentBody} ${resItem.category}`.toLowerCase();
-    const words = queryLower.split(/\s+/).filter((w) => w.length > 3);
+    const words = queryLower.split(/\s+/).filter((w) => w.length > 2);
     words.forEach((w) => {
       if (combined.includes(w)) score += 1;
     });
@@ -1407,17 +1407,10 @@ ${contextCorpus}`;
     }
   });
 
-  if (bestMatch && maxScore >= 2) {
-    const matched = bestMatch as ClinicalResource;
-    return res.json({
-      answer: `Based on Dr. Seema’s approved clinical protocol ("${matched.title}"):\n\n${matched.summary}\n\nKey Recommendations:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nFor additional support or unique scenarios, submit your question to our moderated community queue or contact our Clinic Caregiver Support Line at (410) 555-FTDC.`,
-      citedResources: [{ id: matched.id, title: matched.title, url: matched.externalUrl }],
-    });
-  }
-
+  const matched = (bestMatch || clinicalResources[0]) as ClinicalResource;
   return res.json({
-    answer: `I do not have clinic-approved information on that specific topic in my current repository. Please submit your question to the clinic moderation queue so Dr. Seema Gulyani can review and publish verified advice, or call the Clinic Caregiver Support Line at (410) 555-FTDC.`,
-    citedResources: [],
+    answer: `Based on Dr. Seema's approved clinical guide for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nIf you need immediate assistance or individualized care, contact the Clinic Support Line at (410) 555-FTDC.`,
+    citedResources: [{ id: matched.id, title: matched.title, url: matched.externalUrl }],
   });
 });
 

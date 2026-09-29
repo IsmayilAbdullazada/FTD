@@ -4,8 +4,6 @@ import { CarePartnerFeed } from './components/CarePartnerFeed';
 import { PostComposer } from './components/PostComposer';
 import { ClinicianDashboard } from './components/ClinicianDashboard';
 import { KnowledgeBaseExplorer } from './components/KnowledgeBaseExplorer';
-import { CohortManagement } from './components/CohortManagement';
-import { CaregiverMessages } from './components/CaregiverMessages';
 import { RagAssistantModal } from './components/RagAssistantModal';
 import { InvitationModal } from './components/InvitationModal';
 import { AuditLedgerModal } from './components/AuditLedgerModal';
@@ -36,6 +34,13 @@ export default function App() {
       setCurrentUser(userRes.user);
       setAllPersonas(userRes.allPersonas);
 
+      // If user is Dr. Seema (Clinician), default directly to Dashboard
+      if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
+        setActiveTab('moderation');
+      } else {
+        setActiveTab('feed');
+      }
+
       const cohortsRes = await api.getCohorts();
       setCohorts(cohortsRes);
 
@@ -58,14 +63,10 @@ export default function App() {
   const handleSwitchPersona = (userId: string) => {
     loadUserAndData(userId);
     const targetPersona = allPersonas.find((p) => p.id === userId);
-    if (targetPersona?.role === 'CLINICIAN_MODERATOR') {
-      if (activeTab === 'compose' || activeTab === 'messages') {
-        setActiveTab('moderation');
-      }
+    if (targetPersona?.role === 'CLINICIAN_MODERATOR' || targetPersona?.role === 'SYSTEM_ADMIN') {
+      setActiveTab('moderation');
     } else {
-      if (activeTab === 'moderation') {
-        setActiveTab('feed');
-      }
+      setActiveTab('feed');
     }
   };
 
@@ -146,6 +147,10 @@ export default function App() {
             onQueueUpdated={handleQueueUpdated}
             onOpenAudit={() => setIsAuditOpen(true)}
             onOpenInvite={() => setIsInviteOpen(true)}
+            onCohortCreated={async () => {
+              const res = await api.getCohorts();
+              setCohorts(res);
+            }}
           />
         )}
 
@@ -154,22 +159,6 @@ export default function App() {
             initialResourceId={inspectedResourceId}
             onClearInitialResource={() => setInspectedResourceId(null)}
             currentUser={currentUser}
-          />
-        )}
-
-
-        {activeTab === 'messages' && (
-          <CaregiverMessages currentUser={currentUser} />
-        )}
-
-        {activeTab === 'cohorts' && (
-          <CohortManagement
-            cohorts={cohorts}
-            currentUser={currentUser}
-            onCohortCreated={async () => {
-              const res = await api.getCohorts();
-              setCohorts(res);
-            }}
           />
         )}
 
@@ -229,8 +218,8 @@ export default function App() {
         onRefreshNotifications={() => currentUser && loadUserAndData(currentUser.id)}
         onQueueUpdated={handleQueueUpdated}
         onNavigateToConsole={() => setActiveTab('moderation')}
-        onOpenPrivateChatWithCaregiver={(_caregiverId) => setActiveTab('moderation')}
       />
+
 
     </div>
   );

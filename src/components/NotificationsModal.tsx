@@ -19,6 +19,7 @@ interface NotificationsModalProps {
   onRefreshNotifications: () => void;
   onQueueUpdated: () => void;
   onNavigateToConsole?: () => void;
+  onNavigateToFeed?: () => void;
 }
 
 export const NotificationsModal: React.FC<NotificationsModalProps> = ({
@@ -30,6 +31,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   onRefreshNotifications,
   onQueueUpdated,
   onNavigateToConsole,
+  onNavigateToFeed,
 }) => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);

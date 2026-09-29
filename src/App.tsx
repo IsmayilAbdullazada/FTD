@@ -19,6 +19,7 @@ export default function App() {
   const [pendingTriageCount, setPendingTriageCount] = useState<number>(0);
   const [pendingQueue, setPendingQueue] = useState<QueueItem[]>([]);
   const [notifications, setNotifications] = useState<DirectMessage[]>([]);
+  const [feedNotice, setFeedNotice] = useState<string | null>(null);
 
   // Modals
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
@@ -123,6 +124,8 @@ export default function App() {
           <CarePartnerFeed
             currentUser={currentUser}
             cohorts={cohorts}
+            recentNotice={feedNotice}
+            onDismissNotice={() => setFeedNotice(null)}
             onOpenComposer={() => setActiveTab('compose')}
             onOpenAssistant={() => setIsAssistantOpen(true)}
           />
@@ -133,6 +136,7 @@ export default function App() {
             currentUser={currentUser}
             cohorts={cohorts}
             onPostSubmitted={() => {
+              setFeedNotice('Your question has been submitted and is currently being reviewed by Dr. Seema.');
               setActiveTab('feed');
               handleQueueUpdated();
             }}

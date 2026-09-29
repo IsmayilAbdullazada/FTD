@@ -113,7 +113,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
       console.error('Failed to create guide:', err);
-      alert('Could not save guide. Please try again.');
+      setSuccessToast('Could not save guide. Please verify all fields and try again.');
+      setTimeout(() => setSuccessToast(null), 4000);
     } finally {
       setIsSubmitting(false);
     }

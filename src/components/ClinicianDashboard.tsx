@@ -257,7 +257,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       loadMembers();
     } catch (err) {
       console.error('Failed to create group:', err);
-      alert('Could not create group.');
+      setActionSuccessNotice('Could not create group. Please check inputs and try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {
       setIsSubmittingGroup(false);
     }
@@ -286,10 +287,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => setShowCreateGroupModal(true)}
-            className="flex-1 sm:flex-initial px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs"
+            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
             <span>New Group</span>
@@ -297,7 +298,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           <button
             onClick={onOpenInvite}
-            className="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs"
+            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap"
           >
             <UserPlus className="w-4 h-4 text-slate-500" />
             <span>Invite Member</span>
@@ -305,7 +306,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           <button
             onClick={onOpenAudit}
-            className="px-3.5 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-xs sm:text-sm font-medium transition"
+            className="px-3.5 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-xs sm:text-sm font-medium transition whitespace-nowrap"
           >
             Activity Log
           </button>
@@ -385,10 +386,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* TABS */}
       <div className="border-b border-slate-200">
-        <div className="flex items-center gap-6 text-sm font-semibold">
+        <div className="flex items-center gap-4 sm:gap-6 text-sm font-semibold overflow-x-auto no-scrollbar flex-nowrap">
           <button
             onClick={() => setActiveTab('queue')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'queue'
                 ? 'border-[#002D72] text-[#002D72]'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -404,7 +405,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('cohorts')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'cohorts'
                 ? 'border-[#002D72] text-[#002D72]'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -418,7 +419,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('members')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
               activeTab === 'members'
                 ? 'border-[#002D72] text-[#002D72]'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -802,7 +803,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
+                    <tr className="border-b border-slate-200 text-slate-500 font-semibold text-xs whitespace-nowrap">
                       <th className="py-2.5 px-3">Caregiver</th>
                       <th className="py-2.5 px-3">Contact</th>
                       <th className="py-2.5 px-3">Assigned Group</th>
@@ -813,29 +814,29 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   <tbody className="divide-y divide-slate-100">
                     {filteredMembers.map((m) => (
                       <tr key={m.userId} className="hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 whitespace-nowrap">
                           <div className="font-semibold text-slate-900">{m.realName}</div>
-                          <div className="text-[11px] text-slate-400">{m.anonymousHandle}</div>
+                          <div className="text-xs text-slate-400">{m.anonymousHandle}</div>
                         </td>
-                        <td className="py-3 px-3 text-slate-600">
+                        <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
                           <div>{m.phone}</div>
-                          <div className="text-[11px] text-slate-400">{m.email}</div>
+                          <div className="text-xs text-slate-400">{m.email}</div>
                         </td>
-                        <td className="py-3 px-3 text-slate-800 font-medium">
+                        <td className="py-3 px-3 text-slate-800 font-medium whitespace-nowrap">
                           {m.primaryGroupName}
                         </td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-100">
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">
                             Active
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-right">
+                        <td className="py-3 px-3 text-right whitespace-nowrap">
                           <button
                             onClick={() => {
                               setReassigningUser(m);
                               setTargetNewGroupId(m.primaryGroupId);
                             }}
-                            className="px-2.5 py-1 text-xs text-[#002D72] hover:bg-blue-50 border border-slate-200 rounded font-semibold transition"
+                            className="px-2.5 py-1 text-xs text-[#002D72] hover:bg-blue-50 border border-slate-200 rounded-lg font-semibold transition"
                           >
                             Move group
                           </button>

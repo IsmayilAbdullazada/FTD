@@ -151,7 +151,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleIssue} className="space-y-3.5 text-xs">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold uppercase tracking-wider text-slate-500 mb-1">
                   Caregiver First Name

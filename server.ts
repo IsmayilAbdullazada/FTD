@@ -788,12 +788,13 @@ app.get('/api/v1/posts', (req, res) => {
   const role = (req.query.role as string) || 'CARE_PARTNER';
   const groupId = req.query.groupId as string;
   const statusFilter = req.query.status as string;
+  const currentUserId = req.query.userId as string;
 
   let filtered = [...posts];
 
-  // If Care Partner, STRICTLY only APPROVED posts
+  // If Care Partner, show APPROVED posts plus the current user's own submitted posts
   if (role === 'CARE_PARTNER') {
-    filtered = filtered.filter((p) => p.status === 'APPROVED');
+    filtered = filtered.filter((p) => p.status === 'APPROVED' || (currentUserId && p.authorId === currentUserId));
   } else if (statusFilter) {
     filtered = filtered.filter((p) => p.status === statusFilter);
   }
@@ -843,12 +844,22 @@ app.get('/api/v1/posts/:id', (req, res) => {
     return res.status(403).json({ error: 'This post is currently pending clinical moderation' });
   }
 
+  const currentUserId = (req.query.userId as string) || '';
+
   const postComments = comments
-    .filter((c) => c.postId === post.id && (role === 'CLINICIAN_MODERATOR' || c.status === 'APPROVED'))
+    .filter(
+      (c) =>
+        c.postId === post.id &&
+        (role === 'CLINICIAN_MODERATOR' ||
+          role === 'SYSTEM_ADMIN' ||
+          c.status === 'APPROVED' ||
+          (currentUserId && c.authorId === currentUserId))
+    )
     .map((c) => ({
       id: c.id,
       content: c.sanitizedContent || c.rawContent,
       author: projectAuthor(c.authorId, role),
+      status: c.status,
       createdAt: c.createdAt,
     }));
 

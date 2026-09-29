@@ -162,11 +162,12 @@ export const api = {
   },
 
   // Posts Feed
-  getPosts: async (options: { role: string; groupId?: string; status?: string }): Promise<{ total: number; posts: Post[] }> => {
+  getPosts: async (options: { role: string; groupId?: string; status?: string; userId?: string }): Promise<{ total: number; posts: Post[] }> => {
     const params = new URLSearchParams();
     params.set('role', options.role);
     if (options.groupId) params.set('groupId', options.groupId);
     if (options.status) params.set('status', options.status);
+    if (options.userId) params.set('userId', options.userId);
 
     return safeFetchJson(
       `/api/v1/posts?${params.toString()}`,
@@ -174,7 +175,7 @@ export const api = {
       () => {
         let filtered = [...localPosts];
         if (options.role === 'CARE_PARTNER') {
-          filtered = filtered.filter((p) => p.status === 'APPROVED');
+          filtered = filtered.filter((p) => p.status === 'APPROVED' || (options.userId && p.author.userId === options.userId));
         }
         if (options.groupId && options.groupId !== 'all') {
           filtered = filtered.filter((p) =>
@@ -189,9 +190,10 @@ export const api = {
     );
   },
 
-  getPostDetails: async (postId: string, role: string): Promise<{ post: Post; comments: Comment[] }> => {
+  getPostDetails: async (postId: string, role: string, userId?: string): Promise<{ post: Post; comments: Comment[] }> => {
+    const query = userId ? `?role=${role}&userId=${userId}` : `?role=${role}`;
     return safeFetchJson(
-      `/api/v1/posts/${postId}?role=${role}`,
+      `/api/v1/posts/${postId}${query}`,
       undefined,
       () => {
         const post = localPosts.find((p) => p.id === postId) || localPosts[0];

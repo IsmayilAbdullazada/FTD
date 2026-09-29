@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Heart,
   MessageSquare,
   Send,
   ShieldCheck,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { Post, Comment, CurrentUser } from '../types';
 import { api } from '../services/api';
@@ -27,15 +30,19 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   const [replyText, setReplyText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
+  const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
+  const [replyErrorMessage, setReplyErrorMessage] = useState<string | null>(null);
 
+  const replyFormRef = useRef<HTMLFormElement | null>(null);
+  const isClinician =
+    currentUser.role === 'CLINICIAN_MODERATOR' || currentUser.role === 'SYSTEM_ADMIN';
   const regionName = post.assignedGroups[0]?.name.replace('Cohort', '').trim();
   const currentLikes = post.upvotes + (isLiked ? 1 : 0);
 
   const loadComments = async () => {
     setLoadingComments(true);
     try {
-      const res = await api.getPostDetails(post.id, currentUser.role);
+      const res = await api.getPostDetails(post.id, currentUser.role, currentUser.id);
       setComments(res.comments || []);
     } catch (err) {
       console.error('Failed to load discussion comments:', err);
@@ -53,14 +60,36 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     e.preventDefault();
     if (!replyText.trim() || isSubmitting) return;
 
+    const submittedContent = replyText.trim();
     setIsSubmitting(true);
-    try {
-      const res = await api.addComment(post.id, replyText.trim(), currentUser.id);
-      setReplyText('');
-      setFeedbackNotice(res.message);
-      setTimeout(() => setFeedbackNotice(null), 3500);
+    setReplyErrorMessage(null);
 
-      // Refresh comments
+    try {
+      const res = await api.addComment(post.id, submittedContent, currentUser.id);
+      setReplyText('');
+
+      const confirmationText = isClinician
+        ? 'Your clinical response has been published.'
+        : 'Your reply was submitted successfully and sent to Dr. Seema for clinical safety review.';
+
+      setReplySuccessMessage(confirmationText);
+      setTimeout(() => setReplySuccessMessage(null), 6000);
+
+      // Optimistically insert user's comment if not yet returned
+      if (res.comment) {
+        setComments((prev) => {
+          if (prev.some((c) => c.id === res.comment.id)) return prev;
+          return [
+            ...prev,
+            {
+              ...res.comment,
+              status: isClinician ? 'APPROVED' : 'PENDING_MODERATION',
+            },
+          ];
+        });
+      }
+
+      // Refresh comments from server
       await loadComments();
 
       if (onPostUpdated) {
@@ -71,8 +100,8 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
       }
     } catch (err) {
       console.error('Failed to send reply:', err);
-      setFeedbackNotice('Unable to submit reply. Please try again.');
-      setTimeout(() => setFeedbackNotice(null), 3500);
+      setReplyErrorMessage('Unable to submit your reply right now. Please try again.');
+      setTimeout(() => setReplyErrorMessage(null), 5000);
     } finally {
       setIsSubmitting(false);
     }
@@ -100,12 +129,6 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </span>
         )}
       </div>
-
-      {feedbackNotice && (
-        <div className="bg-slate-100 border border-slate-200 text-slate-800 text-sm px-4 py-3 rounded-xl text-center animate-in fade-in">
-          {feedbackNotice}
-        </div>
-      )}
 
       {/* Main Discussion Post */}
       <article className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 space-y-4 shadow-xs">
@@ -178,23 +201,35 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
         ) : (
           <div className="space-y-3">
             {comments.map((comm) => {
-              const isClinician = comm.author.badgeLabel === 'Clinician Moderator' || comm.author.anonymousHandle.includes('Dr. Seema');
+              const isCommentClinician =
+                comm.author.badgeLabel === 'Clinician Moderator' ||
+                comm.author.anonymousHandle.includes('Dr. Seema');
+              const isPending = comm.status === 'PENDING_MODERATION';
+
               return (
                 <div
                   key={comm.id}
                   className={`rounded-2xl p-4 sm:p-5 text-sm space-y-2.5 border transition ${
-                    isClinician
+                    isCommentClinician
                       ? 'bg-blue-50/50 border-blue-200'
+                      : isPending
+                      ? 'bg-amber-50/40 border-amber-200/80 shadow-2xs'
                       : 'bg-white border-slate-200/80 shadow-2xs'
                   }`}
                 >
                   <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
                     <div className="flex items-center gap-2 font-semibold text-slate-800">
                       <span>{comm.author.anonymousHandle}</span>
-                      {isClinician && (
+                      {isCommentClinician && (
                         <span className="text-xs text-[#002D72] bg-blue-100/70 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
                           <ShieldCheck className="w-3.5 h-3.5 text-[#002D72]" />
                           <span>Clinician</span>
+                        </span>
+                      )}
+                      {isPending && (
+                        <span className="text-xs text-amber-800 bg-amber-100 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-700" />
+                          <span>Under Review by Dr. Seema</span>
                         </span>
                       )}
                     </div>
@@ -215,15 +250,39 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </div>
         )}
 
-        {/* Reply Composer Form */}
+        {/* Reply Composer Form with Clear Confirmation */}
         <form
+          ref={replyFormRef}
           onSubmit={handleSendReply}
-          className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 space-y-3 shadow-xs"
+          className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 space-y-3.5 shadow-xs"
         >
           <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
             <span className="font-semibold text-slate-700">Add your reply</span>
             <span>Replying as: <strong className="text-slate-800">{currentUser.anonymousHandle}</strong></span>
           </div>
+
+          {/* Inline Success Notice */}
+          {replySuccessMessage && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-950 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="font-semibold text-sm text-emerald-900">
+                  {isClinician ? 'Reply Published' : 'Reply Submitted for Clinical Review'}
+                </div>
+                <p className="text-xs text-emerald-800 leading-relaxed font-sans">
+                  {replySuccessMessage}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Inline Error Notice */}
+          {replyErrorMessage && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-900 p-3.5 rounded-xl flex items-center gap-2.5 text-xs sm:text-sm animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{replyErrorMessage}</span>
+            </div>
+          )}
 
           <textarea
             rows={3}
@@ -234,17 +293,26 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             required
           />
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
             <span className="text-xs text-slate-400">
               Reviewed by Dr. Seema to preserve privacy and clinical safety.
             </span>
             <button
               type="submit"
               disabled={!replyText.trim() || isSubmitting}
-              className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-200 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs"
+              className="px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition shadow-xs"
             >
-              <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Posting...' : 'Post Reply'}</span>
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Post Reply</span>
+                </>
+              )}
             </button>
           </div>
         </form>

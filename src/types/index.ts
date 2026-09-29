@@ -61,6 +61,7 @@ export interface Comment {
   id: string;
   content: string;
   author: AuthorProjection;
+  status?: PostStatus;
   createdAt: string;
 }
 

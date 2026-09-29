@@ -142,11 +142,28 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
 
                   {msg.citedResources && msg.citedResources.length > 0 && (
                     <div className="pt-2 border-t border-slate-100 space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                        Cited Hopkins Care Protocol:
+                      </span>
                       {msg.citedResources.map((res, i) => (
-                        <div key={i} className="flex items-center gap-1.5 text-xs text-[#002D72] font-semibold">
-                          <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">{res.title}</span>
-                        </div>
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenResource(res.id);
+                          }}
+                          className="flex items-center gap-1.5 text-xs text-[#002D72] hover:text-blue-900 font-semibold p-1.5 -mx-1.5 rounded-lg hover:bg-blue-50/80 transition w-full text-left group"
+                          title={`Read clinical guide: ${res.title}`}
+                        >
+                          <BookOpen className="w-3.5 h-3.5 shrink-0 text-blue-700" />
+                          <span className="truncate flex-1 underline decoration-blue-200 group-hover:decoration-blue-700 font-medium">
+                            {res.title}
+                          </span>
+                          <span className="text-[11px] text-blue-600 font-normal shrink-0 group-hover:translate-x-0.5 transition-transform">
+                            View guide →
+                          </span>
+                        </button>
                       ))}
                     </div>
                   )}

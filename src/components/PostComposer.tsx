@@ -5,6 +5,10 @@ import {
   BookOpen,
   ArrowLeft,
   CheckCircle,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { CurrentUser, CommunityGroup, DeflectionMatch } from '../types';
 import { api } from '../services/api';
@@ -31,6 +35,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submittedPostData, setSubmittedPostData] = useState<{
+    title: string;
+    cohortName: string;
+  } | null>(null);
 
   // Deflection state
   const [deflectionMatches, setDeflectionMatches] = useState<DeflectionMatch[]>([]);
@@ -72,6 +80,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      const assignedCohort = cohorts.find((c) => c.id === selectedCohortId);
       await api.createPost({
         title: title.trim(),
         content: content.trim(),
@@ -79,7 +88,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         authorId: currentUser.id,
       });
 
-      onPostSubmitted();
+      // Show comprehensive confirmation screen
+      setSubmittedPostData({
+        title: title.trim(),
+        cohortName: assignedCohort?.name || 'General Community',
+      });
     } catch (err) {
       console.error('Failed to submit post:', err);
       setSubmitError('Failed to submit question. Please try again.');
@@ -120,7 +133,64 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         </div>
       )}
 
-      {solvedByDeflection ? (
+      {submittedPostData ? (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-9 text-center space-y-5 shadow-xs animate-in fade-in">
+          <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 shadow-2xs">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="font-serif text-2xl font-semibold text-slate-900 tracking-tight">
+              Question Submitted for Clinical Review
+            </h2>
+            <p className="text-slate-600 text-sm sm:text-base max-w-md mx-auto leading-relaxed font-sans">
+              Thank you, {currentUser.firstName}. Your question has been safely received by Dr. Seema Gulyani.
+            </p>
+          </div>
+
+          {/* Submission Details Card */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5 text-left max-w-lg mx-auto space-y-3 text-xs sm:text-sm font-sans">
+            <div>
+              <span className="text-slate-400 block text-xs">Topic / Question:</span>
+              <span className="font-semibold text-slate-900 text-sm sm:text-base">
+                {submittedPostData.title}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-slate-600">
+              <span>Assigned Group:</span>
+              <span className="font-semibold text-slate-800">{submittedPostData.cohortName}</span>
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 text-emerald-800 text-xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Personal details are automatically verified & clinical safety checked</span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-500 text-xs">
+              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>Standard review time: within 24 hours</span>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => onPostSubmitted()}
+              className="w-full sm:w-auto px-6 py-3 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-xs"
+            >
+              <span>View in Discussions</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setSubmittedPostData(null);
+                setTitle('');
+                setContent('');
+              }}
+              className="w-full sm:w-auto px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-sm font-semibold transition"
+            >
+              Ask Another Question
+            </button>
+          </div>
+        </div>
+      ) : solvedByDeflection ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2 shadow-xs animate-in fade-in">
           <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
           <h3 className="font-serif text-lg font-semibold text-slate-900">

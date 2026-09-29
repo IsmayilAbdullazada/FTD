@@ -30,6 +30,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || ''
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Deflection state
   const [deflectionMatches, setDeflectionMatches] = useState<DeflectionMatch[]>([]);
@@ -69,6 +70,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     if (!title.trim() || !content.trim()) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await api.createPost({
         title: title.trim(),
@@ -80,7 +82,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       onPostSubmitted();
     } catch (err) {
       console.error('Failed to submit post:', err);
-      alert('Failed to submit question. Please try again.');
+      setSubmitError('Failed to submit question. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -96,52 +98,67 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-4 space-y-4">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Top Bar with Back Button */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition"
+          className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to discussions</span>
         </button>
-        <span className="text-xs text-slate-400">
-          Posting as: <strong className="text-slate-700">{currentUser.anonymousHandle}</strong>
+        <span className="text-xs sm:text-sm text-slate-500">
+          Posting as: <strong className="text-slate-800">{currentUser.anonymousHandle}</strong>
         </span>
       </div>
 
+      {submitError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm p-4 rounded-xl">
+          {submitError}
+        </div>
+      )}
+
       {solvedByDeflection ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 text-center space-y-2 animate-in fade-in">
-          <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto" />
-          <h3 className="text-sm font-semibold text-slate-900">
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2 shadow-xs animate-in fade-in">
+          <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
+          <h3 className="font-serif text-lg font-semibold text-slate-900">
             Glad the clinical resource was helpful!
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm text-slate-500">
             Returning you to discussions...
           </p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 space-y-5 shadow-xs">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-slate-900 tracking-tight">
+              Ask a Question
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Connect with fellow care partners and receive guidance verified by Dr. Seema Gulyani.
+            </p>
+          </div>
+
           {/* Deflection Tip (Gentle, single line, no giant cards) */}
           {deflectionMatches.length > 0 && (
-            <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-xs space-y-2 animate-in fade-in">
+            <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-4 text-sm space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-blue-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-700" />
+                <span className="font-medium text-[#002D72] flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-blue-700" />
                   <span>Clinical resource available:</span>
                 </span>
                 <button
                   type="button"
                   onClick={handleDiscardDraft}
-                  className="text-xs text-emerald-700 hover:underline font-semibold"
+                  className="text-xs sm:text-sm text-emerald-700 hover:underline font-semibold"
                 >
                   ✓ This answers my question
                 </button>
               </div>
 
-              <div className="text-slate-700 font-medium truncate">
+              <div className="text-slate-800 font-medium truncate">
                 {deflectionMatches[0].title}
               </div>
 
@@ -149,9 +166,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenResource(deflectionMatches[0].id!)}
-                  className="text-[#002D72] hover:underline flex items-center gap-1 text-[11px] font-semibold"
+                  className="text-[#002D72] hover:underline flex items-center gap-1 text-xs font-semibold pt-1"
                 >
-                  <BookOpen className="w-3 h-3" />
+                  <BookOpen className="w-3.5 h-3.5" />
                   <span>View clinical protocol</span>
                 </button>
               )}
@@ -159,8 +176,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           )}
 
           {/* Title Input */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-slate-800">
               Question or Topic
             </label>
             <input
@@ -168,14 +185,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Managing resistance when bathing"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white"
+              className="w-full px-4 py-2.5 text-base rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white transition"
               required
             />
           </div>
 
           {/* Description Textarea */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-slate-800">
               Details
             </label>
             <textarea
@@ -183,20 +200,20 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Share what is happening, what strategies you've tried, or what advice would be helpful..."
-              className="w-full p-3 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] leading-relaxed bg-white font-sans"
+              className="w-full p-4 text-base rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] leading-relaxed bg-white font-sans transition"
               required
             />
           </div>
 
           {/* Audience selection */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-700">
-              Audience
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-slate-800">
+              Target Group
             </label>
             <select
               value={selectedCohortId}
               onChange={(e) => setSelectedCohortId(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white text-slate-700"
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white text-slate-700 transition"
             >
               {cohorts.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -206,7 +223,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             </select>
           </div>
 
-          <p className="text-[11px] text-slate-500 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-sans">
             All inquiries are reviewed within 24 hours by Dr. Seema Gulyani. Personal names or addresses are automatically sanitized before publication.
           </p>
 
@@ -215,7 +232,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || isSubmitting}
-              className="w-full py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 text-white rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-xs"
             >
               <Send className="w-4 h-4" />
               <span>{isSubmitting ? 'Submitting...' : 'Submit Question'}</span>

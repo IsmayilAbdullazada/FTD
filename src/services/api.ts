@@ -659,9 +659,9 @@ export const api = {
   // Clinician Invitations
   issueInvitation: async (payload: {
     email: string;
-    firstName: string;
-    lastName: string;
-    clinicPatientId: string;
+    firstName?: string;
+    lastName?: string;
+    clinicPatientId?: string;
     primaryCohortSlug: string;
   }): Promise<{
     invitationId: string;

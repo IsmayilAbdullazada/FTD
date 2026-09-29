@@ -1176,8 +1176,8 @@ app.get('/api/v1/moderation/audit', (_req, res) => {
 app.post('/api/v1/auth/invitations', (req, res) => {
   const { email, firstName, lastName, clinicPatientId, primaryCohortSlug } = req.body;
 
-  if (!email || !clinicPatientId) {
-    return res.status(400).json({ error: 'Email and Clinic Patient ID are required' });
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
   }
 
   const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
@@ -1188,7 +1188,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
     email,
     firstName: firstName || 'Caregiver',
     lastName: lastName || '',
-    clinicPatientId,
+    clinicPatientId: clinicPatientId || '',
     primaryCohortSlug: primaryCohortSlug || 'baltimore-metro',
     token,
     expiresAt,
@@ -1205,7 +1205,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
     entityType: 'USER',
     entityId: newInvitation.id,
     actionTaken: 'INVITED_CARE_PARTNER',
-    notes: `Issued single-use invite for patient ID ${clinicPatientId} to cohort ${primaryCohortSlug}`,
+    notes: `Issued single-use invite for ${email} to cohort ${primaryCohortSlug}`,
     createdAt: new Date().toISOString(),
   });
 

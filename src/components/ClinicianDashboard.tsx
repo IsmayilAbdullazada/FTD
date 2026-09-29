@@ -14,6 +14,7 @@ import {
   X,
   Sparkles,
   UserPlus,
+  ArrowRight,
 } from 'lucide-react';
 import {
   QueueItem,
@@ -38,7 +39,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onOpenAudit,
   onCohortCreated,
 }) => {
-  const [activeTab, setActiveTab] = useState<'queue' | 'cohorts'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'cohorts' | 'members'>('queue');
 
   // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
@@ -267,7 +268,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     const matchesSearch =
       m.realName.toLowerCase().includes(q) ||
       m.anonymousHandle.toLowerCase().includes(q) ||
-      (m.clinicPatientId || '').toLowerCase().includes(q);
+      (m.email || '').toLowerCase().includes(q) ||
+      (m.phone || '').toLowerCase().includes(q);
     const matchesGroup =
       selectedCohortFilter === 'all' || m.primaryGroupId === selectedCohortFilter;
     return matchesSearch && matchesGroup;
@@ -278,37 +280,32 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {/* TOP HEADER */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Dashboard
-            </h1>
-            <span className="text-xs bg-blue-50 text-[#002D72] font-semibold px-2.5 py-0.5 rounded-md">
-              Dr. Seema Gulyani
-            </span>
-          </div>
+          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+            Dashboard
+          </h1>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => setShowCreateGroupModal(true)}
-            className="flex-1 sm:flex-initial px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+            className="flex-1 sm:flex-initial px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>New Group</span>
           </button>
 
           <button
             onClick={onOpenInvite}
-            className="flex-1 sm:flex-initial px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+            className="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs"
           >
-            <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+            <UserPlus className="w-4 h-4 text-slate-500" />
             <span>Invite Member</span>
           </button>
 
           <button
             onClick={onOpenAudit}
-            className="px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg text-xs font-medium transition"
+            className="px-3.5 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-xs sm:text-sm font-medium transition"
           >
             Activity Log
           </button>
@@ -316,7 +313,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       </div>
 
       {actionSuccessNotice && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs px-4 py-2.5 rounded-xl flex items-center justify-between">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-medium">{actionSuccessNotice}</span>
@@ -328,22 +325,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       )}
 
       {/* 3 STAT CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
         <div
           onClick={() => setActiveTab('queue')}
-          className={`p-4 rounded-xl border transition cursor-pointer ${
+          className={`p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'queue'
-              ? 'bg-amber-50/40 border-amber-300'
-              : 'bg-white border-slate-200 hover:border-slate-300'
+              ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold text-xs text-slate-700">Pending Posts</span>
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
+            <span className="font-semibold text-slate-700">Pending Posts</span>
             <Shield className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{queueItems.length}</span>
-            <span className="text-xs text-slate-500">
+          <div className="mt-2.5 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums">{queueItems.length}</span>
+            <span className="text-xs sm:text-sm text-slate-500">
               {queueItems.length === 1 ? 'needs review' : 'need review'}
             </span>
           </div>
@@ -351,40 +348,44 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
         <div
           onClick={() => setActiveTab('cohorts')}
-          className={`p-4 rounded-xl border transition cursor-pointer ${
+          className={`p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'cohorts'
-              ? 'bg-blue-50/40 border-blue-300'
-              : 'bg-white border-slate-200 hover:border-slate-300'
+              ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold text-xs text-slate-700">Groups</span>
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
+            <span className="font-semibold text-slate-700">Groups</span>
             <Layers className="w-4 h-4 text-[#002D72]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{cohorts.length}</span>
-            <span className="text-xs text-slate-500">active</span>
+          <div className="mt-2.5 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums">{cohorts.length}</span>
+            <span className="text-xs sm:text-sm text-slate-500">active</span>
           </div>
         </div>
 
         <div
-          onClick={() => setActiveTab('cohorts')}
-          className="p-4 rounded-xl border bg-white border-slate-200 hover:border-slate-300 transition cursor-pointer"
+          onClick={() => setActiveTab('members')}
+          className={`p-5 rounded-2xl border transition cursor-pointer ${
+            activeTab === 'members'
+              ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300'
+              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+          }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold text-xs text-slate-700">Members</span>
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
+            <span className="font-semibold text-slate-700">Members</span>
             <Users className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{members.length}</span>
-            <span className="text-xs text-slate-500">caregivers</span>
+          <div className="mt-2.5 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums">{members.length}</span>
+            <span className="text-xs sm:text-sm text-slate-500">caregivers</span>
           </div>
         </div>
       </div>
 
       {/* TABS */}
       <div className="border-b border-slate-200">
-        <div className="flex items-center gap-6 text-xs sm:text-sm font-semibold">
+        <div className="flex items-center gap-6 text-sm font-semibold">
           <button
             onClick={() => setActiveTab('queue')}
             className={`pb-3 flex items-center gap-2 border-b-2 transition ${
@@ -395,7 +396,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           >
             <span>Pending Posts</span>
             {queueItems.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold tabular-nums">
                 {queueItems.length}
               </span>
             )}
@@ -409,7 +410,24 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            <span>Groups and Members</span>
+            <span>Groups</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold tabular-nums">
+              {cohorts.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('members')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition ${
+              activeTab === 'members'
+                ? 'border-[#002D72] text-[#002D72]'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <span>Members</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold tabular-nums">
+              {members.length}
+            </span>
           </button>
         </div>
       </div>
@@ -459,9 +477,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                           <span className="font-semibold text-slate-900">
                             {item.author.realName}
                           </span>
-                          <span className="text-slate-400 text-[10px]">
-                            {item.author.clinicPatientId}
-                          </span>
                         </div>
 
                         <div className="font-semibold text-slate-800 line-clamp-1">
@@ -499,9 +514,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </span>
                       </div>
                       <div className="text-slate-500 text-[11px] mt-0.5 flex items-center gap-2">
-                        <span>Patient ID: {activeItem.author.clinicPatientId}</span>
-                        <span>•</span>
                         <span>Phone: {activeItem.author.phone}</span>
+                        <span>•</span>
+                        <span>Email: {activeItem.author.email}</span>
                       </div>
                     </div>
                   </div>
@@ -632,15 +647,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 2: GROUPS AND MEMBERS */}
+      {/* TAB 2: GROUPS */}
       {activeTab === 'cohorts' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Header Controls */}
-          <div className="flex items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200">
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                Groups and Members
+                Community Groups
               </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Regional and clinic-wide support cohorts. Click any group card to view its enrolled members.
+              </p>
             </div>
 
             <button
@@ -653,58 +671,87 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           </div>
 
           {/* GROUPS CARDS */}
-          <div className="space-y-2.5">
-            <div className="text-xs font-semibold text-slate-700">
-              Groups ({cohorts.length})
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-600 px-1">
+              <span className="font-semibold text-slate-700">All Groups ({cohorts.length})</span>
+              <span className="text-slate-400">Click a card to filter members</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {cohorts.map((cohort) => {
                 const assignedCount = members.filter((m) => m.primaryGroupId === cohort.id).length;
                 return (
                   <div
                     key={cohort.id}
-                    className="bg-white rounded-xl border border-slate-200 p-4 space-y-2.5 flex flex-col justify-between"
+                    onClick={() => {
+                      setSelectedCohortFilter(cohort.id);
+                      setActiveTab('members');
+                    }}
+                    className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-3.5 flex flex-col justify-between cursor-pointer group hover:border-[#002D72] hover:shadow-xs transition-all text-left"
+                    role="button"
+                    tabIndex={0}
                   >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span className="font-semibold text-slate-900 text-sm">
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-serif font-semibold text-slate-900 text-base group-hover:text-[#002D72] transition">
                           {cohort.name}
                         </span>
-                        <span className="text-slate-500 text-xs">
+                        <span className="shrink-0 text-xs font-semibold text-slate-600">
                           {assignedCount} {assignedCount === 1 ? 'member' : 'members'}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{cohort.geographicRegion}</span>
                       </div>
 
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed font-sans">
                         {cohort.description}
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-end text-xs">
-                      <button
-                        onClick={() => setSelectedCohortFilter(cohort.id)}
-                        className="text-[#002D72] hover:underline font-semibold text-xs"
-                      >
-                        View members
-                      </button>
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm text-slate-500 group-hover:text-[#002D72] transition">
+                      <span className="text-xs text-slate-400">Click to view members</span>
+                      <span className="font-semibold text-xs flex items-center gap-1">
+                        <span>View members</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
+        </div>
+      )}
 
-          {/* MEMBERS LIST */}
+      {/* TAB 3: MEMBERS */}
+      {activeTab === 'members' && (
+        <div className="space-y-4">
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="text-xs font-semibold text-slate-700">
-                Members ({filteredMembers.length})
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900">
+                    Caregiver Members ({filteredMembers.length})
+                  </h2>
+                  {selectedCohortFilter !== 'all' && (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#002D72] text-xs font-medium flex items-center gap-1">
+                      <span>Group: {cohorts.find((c) => c.id === selectedCohortFilter)?.name || selectedCohortFilter}</span>
+                      <button
+                        onClick={() => setSelectedCohortFilter('all')}
+                        className="hover:text-rose-600 p-0.5 ml-0.5"
+                        title="Clear group filter"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Verified care partners enrolled across Johns Hopkins cohorts.
+                </p>
               </div>
 
               {/* Filters */}
@@ -715,8 +762,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     type="text"
                     value={searchMemberQuery}
                     onChange={(e) => setSearchMemberQuery(e.target.value)}
-                    placeholder="Search by name or ID..."
-                    className="w-full sm:w-60 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                    placeholder="Search by name, handle, or contact..."
+                    className="w-full sm:w-64 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
                   />
                 </div>
 
@@ -740,18 +787,26 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 Loading members...
               </div>
             ) : filteredMembers.length === 0 ? (
-              <div className="py-8 text-center text-slate-500 text-xs">
-                No members found.
+              <div className="py-12 text-center space-y-2">
+                <p className="text-slate-500 text-xs">No members found matching your search or filter.</p>
+                {selectedCohortFilter !== 'all' && (
+                  <button
+                    onClick={() => setSelectedCohortFilter('all')}
+                    className="text-xs text-[#002D72] hover:underline font-semibold"
+                  >
+                    Clear group filter and show all
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
-                      <th className="py-2.5 px-3">Name</th>
-                      <th className="py-2.5 px-3">Patient ID</th>
+                      <th className="py-2.5 px-3">Caregiver</th>
                       <th className="py-2.5 px-3">Contact</th>
-                      <th className="py-2.5 px-3">Group</th>
+                      <th className="py-2.5 px-3">Assigned Group</th>
+                      <th className="py-2.5 px-3">Status</th>
                       <th className="py-2.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
@@ -762,15 +817,17 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                           <div className="font-semibold text-slate-900">{m.realName}</div>
                           <div className="text-[11px] text-slate-400">{m.anonymousHandle}</div>
                         </td>
-                        <td className="py-3 px-3 text-[#002D72] font-semibold text-[11px]">
-                          {m.clinicPatientId}
-                        </td>
                         <td className="py-3 px-3 text-slate-600">
                           <div>{m.phone}</div>
                           <div className="text-[11px] text-slate-400">{m.email}</div>
                         </td>
-                        <td className="py-3 px-3 text-slate-800">
+                        <td className="py-3 px-3 text-slate-800 font-medium">
                           {m.primaryGroupName}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-100">
+                            Active
+                          </span>
                         </td>
                         <td className="py-3 px-3 text-right">
                           <button

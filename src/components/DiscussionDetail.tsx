@@ -71,7 +71,8 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
       }
     } catch (err) {
       console.error('Failed to send reply:', err);
-      alert('Unable to submit reply. Please try again.');
+      setFeedbackNotice('Unable to submit reply. Please try again.');
+      setTimeout(() => setFeedbackNotice(null), 3500);
     } finally {
       setIsSubmitting(false);
     }
@@ -82,44 +83,44 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* Top Back Navigation Bar */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition"
+          className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to discussions</span>
         </button>
 
         {regionName && (
-          <span className="text-xs text-slate-500 font-medium">
+          <span className="text-xs sm:text-sm text-slate-500 font-medium">
             {regionName}
           </span>
         )}
       </div>
 
       {feedbackNotice && (
-        <div className="bg-slate-100 border border-slate-200 text-slate-800 text-xs px-3.5 py-2.5 rounded-lg text-center animate-in fade-in">
+        <div className="bg-slate-100 border border-slate-200 text-slate-800 text-sm px-4 py-3 rounded-xl text-center animate-in fade-in">
           {feedbackNotice}
         </div>
       )}
 
       {/* Main Discussion Post */}
-      <article className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 space-y-3.5 shadow-2xs">
+      <article className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 space-y-4 shadow-xs">
         {/* Author Metadata */}
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-1.5 font-medium">
+        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
+          <div className="flex items-center gap-2 font-medium">
             <span className="text-slate-900 font-semibold">{post.author.anonymousHandle}</span>
             {regionName && (
               <>
-                <span>•</span>
+                <span aria-hidden="true" className="text-slate-300">·</span>
                 <span>{regionName}</span>
               </>
             )}
           </div>
-          <span className="text-slate-400 text-[11px]">
+          <span className="text-slate-400 text-xs">
             {new Date(post.createdAt).toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
@@ -129,19 +130,19 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
         </div>
 
         {/* Post Title */}
-        <h1 className="text-base sm:text-lg font-semibold text-slate-900 leading-snug">
+        <h1 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 leading-snug tracking-tight">
           {post.title}
         </h1>
 
         {/* Full Post Content */}
-        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
+        <p className="text-base sm:text-[17px] text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
           {post.content}
         </p>
 
         {/* Bottom Actions Row */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-1.5 text-slate-600 font-medium">
-            <MessageSquare className="w-4 h-4" />
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-slate-600 font-medium">
+            <MessageSquare className="w-4 h-4 text-slate-400" />
             <span>{comments.length} {comments.length === 1 ? 'reply' : 'replies'}</span>
           </div>
 
@@ -153,51 +154,51 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 : 'border-slate-200 hover:bg-slate-50 text-slate-700'
             }`}
           >
-            <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600 text-rose-600' : ''}`} />
+            <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 text-rose-600' : ''}`} />
             <span>{currentLikes} helpful</span>
           </button>
         </div>
       </article>
 
       {/* Replies Thread Section */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold text-slate-800">
           Community Replies ({comments.length})
         </h2>
 
         {loadingComments ? (
-          <div className="py-8 text-center text-slate-400 text-xs">
+          <div className="py-10 text-center text-slate-400 text-sm">
             Loading replies...
           </div>
         ) : comments.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs space-y-1">
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm space-y-1">
             <p className="font-medium text-slate-700">No replies yet.</p>
-            <p className="text-slate-400">Be the first to share your experience or practical advice.</p>
+            <p className="text-slate-400 text-xs sm:text-sm">Be the first to share your experience or practical advice.</p>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {comments.map((comm) => {
               const isClinician = comm.author.badgeLabel === 'Clinician Moderator' || comm.author.anonymousHandle.includes('Dr. Seema');
               return (
                 <div
                   key={comm.id}
-                  className={`rounded-xl p-3.5 sm:p-4 text-xs space-y-2 border transition ${
+                  className={`rounded-2xl p-4 sm:p-5 text-sm space-y-2.5 border transition ${
                     isClinician
-                      ? 'bg-blue-50/60 border-blue-200'
-                      : 'bg-white border-slate-200'
+                      ? 'bg-blue-50/50 border-blue-200'
+                      : 'bg-white border-slate-200/80 shadow-2xs'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
+                    <div className="flex items-center gap-2 font-semibold text-slate-800">
                       <span>{comm.author.anonymousHandle}</span>
                       {isClinician && (
-                        <span className="text-[10px] text-[#002D72] bg-blue-100/70 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3 text-[#002D72]" />
+                        <span className="text-xs text-[#002D72] bg-blue-100/70 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#002D72]" />
                           <span>Clinician</span>
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       {new Date(comm.createdAt).toLocaleDateString([], {
                         month: 'short',
                         day: 'numeric',
@@ -205,7 +206,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
+                  <p className="text-sm sm:text-[15px] text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
                     {comm.content}
                   </p>
                 </div>
@@ -217,9 +218,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
         {/* Reply Composer Form */}
         <form
           onSubmit={handleSendReply}
-          className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 space-y-2.5 shadow-2xs"
+          className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 space-y-3 shadow-xs"
         >
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
             <span className="font-semibold text-slate-700">Add your reply</span>
             <span>Replying as: <strong className="text-slate-800">{currentUser.anonymousHandle}</strong></span>
           </div>
@@ -229,20 +230,20 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             placeholder="Share helpful advice, words of encouragement, or practical tips..."
-            className="w-full p-3 text-xs sm:text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] font-sans leading-relaxed"
+            className="w-full p-3.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] font-sans leading-relaxed"
             required
           />
 
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-[11px] text-slate-400">
-              Reviewed by Dr. Seema to preserve privacy and safety.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+            <span className="text-xs text-slate-400">
+              Reviewed by Dr. Seema to preserve privacy and clinical safety.
             </span>
             <button
               type="submit"
               disabled={!replyText.trim() || isSubmitting}
-              className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-200 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+              className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-200 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-4 h-4" />
               <span>{isSubmitting ? 'Posting...' : 'Post Reply'}</span>
             </button>
           </div>

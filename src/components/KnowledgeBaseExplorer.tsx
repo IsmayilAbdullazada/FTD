@@ -120,63 +120,66 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-4 space-y-4">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              Care Guides
+          <div className="flex items-center gap-3">
+            <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+              Clinical Guides & Care Sheets
             </h1>
-            <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-              <ShieldCheck className="w-3 h-3 text-emerald-700" />
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Doctor approved</span>
-            </span>
+            </div>
           </div>
+          <p className="text-sm text-slate-500 mt-1 font-sans">
+            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins FTD specialists.
+          </p>
         </div>
 
         {/* Clinician Action: Add Guide */}
         {isClinician && (
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0"
+            className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition shrink-0 shadow-xs"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>Add Guide</span>
           </button>
         )}
       </div>
 
       {successToast && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs px-3.5 py-2 rounded-lg flex items-center justify-between animate-in fade-in">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in">
           <span>{successToast}</span>
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
         </div>
       )}
 
-      {/* FILTER AND SEARCH BAR (No horizontal scrolling capsules) */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+      {/* FILTER AND SEARCH BAR */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search toileting, agitation, Medicaid, wandering..."
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white"
+            placeholder="Search toileting, bathing agitation, Medicaid, wandering safety..."
+            className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white shadow-2xs"
           />
         </div>
 
         {/* Clean Dropdown Filter for Disciplines */}
         <div className="flex items-center gap-2">
-          <label htmlFor="discipline-select" className="text-xs text-slate-500 whitespace-nowrap font-medium">
-            Discipline:
+          <label htmlFor="discipline-select" className="text-xs sm:text-sm text-slate-500 whitespace-nowrap font-medium">
+            Topic:
           </label>
           <select
             id="discipline-select"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+            className="px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72] shadow-2xs"
           >
             {categories.map((cat) => (
               <option key={cat.key} value={cat.key}>
@@ -189,43 +192,46 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
       {/* RESOURCES LIST */}
       {loading ? (
-        <div className="py-16 text-center text-slate-400 text-xs">
+        <div className="py-20 text-center text-slate-400 text-sm">
           Loading clinical protocols...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500 text-xs space-y-1">
-          <p className="font-semibold text-slate-700">No resources found.</p>
-          <p className="text-slate-400">Try changing your search terms or selecting another discipline.</p>
+        <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-500 text-sm space-y-2">
+          <p className="font-semibold text-slate-700">No resources found matching your search.</p>
+          <p className="text-slate-400 text-xs sm:text-sm">Try using different keywords or selecting "All Topics".</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((res) => (
             <article
               key={res.id}
               onClick={() => setActiveResource(res)}
-              className="bg-white rounded-xl border border-slate-200 p-4 space-y-2 hover:border-[#002D72]/40 hover:shadow-2xs transition cursor-pointer flex flex-col justify-between"
+              className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 space-y-3 hover:border-slate-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-500">
                   <span className="font-semibold text-[#002D72]">
                     {categories.find((c) => c.key === res.category)?.label || res.category}
                   </span>
                   <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
                 </div>
 
-                <h3 className="font-semibold text-xs sm:text-sm text-slate-900 leading-snug">
+                <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 leading-snug group-hover:text-[#002D72] transition">
                   {res.title}
                 </h3>
 
-                <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                <p className="text-sm sm:text-[15px] text-slate-600 line-clamp-3 leading-relaxed font-sans">
                   {res.summary}
                 </p>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-[#002D72] font-semibold">
-                <span>View Full Protocol →</span>
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm text-[#002D72] font-semibold">
+                <span className="flex items-center gap-1 group-hover:underline">
+                  <span>Read protocol</span>
+                  <span>→</span>
+                </span>
                 {res.externalUrl && (
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-[#002D72]" />
                 )}
               </div>
             </article>
@@ -238,12 +244,12 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
             {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-200 flex items-start justify-between gap-3 bg-white">
-              <div className="space-y-1">
-                <span className="text-[11px] font-semibold text-[#002D72] uppercase tracking-wider">
+            <div className="p-5 sm:p-6 border-b border-slate-200 flex items-start justify-between gap-4 bg-white">
+              <div className="space-y-1.5">
+                <span className="text-xs font-semibold text-[#002D72] uppercase tracking-wider">
                   {categories.find((c) => c.key === activeResource.category)?.label || activeResource.category}
                 </span>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                <h2 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 leading-snug tracking-tight">
                   {activeResource.title}
                 </h2>
               </div>
@@ -252,40 +258,40 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   setActiveResource(null);
                   if (onClearInitialResource) onClearInitialResource();
                 }}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Scrollable Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm leading-relaxed text-slate-700">
-              <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3.5 text-xs text-slate-800 space-y-1">
-                <div className="font-semibold text-[#002D72]">Clinical Summary</div>
-                <p>{activeResource.summary}</p>
+            <div className="p-5 sm:p-7 overflow-y-auto space-y-5 text-sm sm:text-base leading-relaxed text-slate-700">
+              <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-4 text-sm text-slate-800 space-y-1.5">
+                <div className="font-semibold text-[#002D72] text-xs uppercase tracking-wider">Clinical Overview</div>
+                <p className="leading-relaxed">{activeResource.summary}</p>
               </div>
 
               {/* Protocol Content */}
               <div className="space-y-2">
                 <div className="font-semibold text-slate-900 text-xs uppercase tracking-wider">
-                  Protocol Guidelines
+                  Step-by-Step Care Strategies
                 </div>
-                <div className="whitespace-pre-line text-xs sm:text-sm font-sans text-slate-800 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="whitespace-pre-line text-sm sm:text-[15px] font-sans text-slate-800 bg-slate-50 p-5 rounded-xl border border-slate-200/80 leading-relaxed">
                   {activeResource.contentBody}
                 </div>
               </div>
 
               {/* Key Takeaways */}
               {activeResource.keyTakeaways && activeResource.keyTakeaways.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="font-semibold text-slate-900 text-xs uppercase tracking-wider">
-                    Key Recommendations
+                    Key Clinical Recommendations
                   </div>
-                  <ul className="space-y-1.5 text-xs">
+                  <ul className="space-y-2 text-sm">
                     {activeResource.keyTakeaways.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                        <span>{point}</span>
+                      <li key={idx} className="flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed text-slate-700">{point}</span>
                       </li>
                     ))}
                   </ul>
@@ -294,16 +300,16 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs sm:text-sm">
               {activeResource.externalUrl ? (
                 <a
                   href={activeResource.externalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#002D72] hover:underline font-semibold flex items-center gap-1"
+                  className="text-[#002D72] hover:underline font-semibold flex items-center gap-1.5"
                 >
                   <span>Official AFTD Source</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <ExternalLink className="w-4 h-4" />
                 </a>
               ) : (
                 <span className="text-slate-400">Johns Hopkins Internal Protocol</span>
@@ -314,7 +320,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   setActiveResource(null);
                   if (onClearInitialResource) onClearInitialResource();
                 }}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold"
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-semibold transition"
               >
                 Close
               </button>

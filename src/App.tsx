@@ -183,8 +183,11 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
-        <div>Johns Hopkins Medicine • Frontotemporal Dementia Clinic</div>
+      <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 font-sans">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <span>Johns Hopkins Medicine · Frontotemporal Dementia Center</span>
+          <span className="text-slate-400">Care Partner Circle · Clinician Moderated</span>
+        </div>
       </footer>
 
       {/* MODALS */}

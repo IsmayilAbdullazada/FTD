@@ -303,6 +303,69 @@ export const api = {
     );
   },
 
+  updatePost: async (postId: string, payload: { title?: string; content?: string; targetCohortId?: string }): Promise<{ post: Post; message: string }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const post = localPosts.find((p) => p.id === postId);
+        if (post) {
+          if (payload.title) post.title = payload.title;
+          if (payload.content) post.content = payload.content;
+          if (payload.targetCohortId) {
+            const grp = localCohorts.find((c) => c.id === payload.targetCohortId);
+            if (grp) post.assignedGroups = [grp];
+          }
+        }
+        return { post: post || localPosts[0], message: 'Question updated.' };
+      }
+    );
+  },
+
+  deletePost: async (postId: string): Promise<{ success: boolean; message: string }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}`,
+      { method: 'DELETE' },
+      () => {
+        const idx = localPosts.findIndex((p) => p.id === postId);
+        if (idx !== -1) localPosts.splice(idx, 1);
+        return { success: true, message: 'Question withdrawn successfully.' };
+      }
+    );
+  },
+
+  updateComment: async (postId: string, commentId: string, content: string): Promise<{ comment: Comment; message: string }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}/comments/${commentId}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      },
+      () => {
+        const comment = localComments.find((c) => c.id === commentId);
+        if (comment) comment.content = content;
+        return { comment: comment || localComments[0], message: 'Reply updated.' };
+      }
+    );
+  },
+
+  deleteComment: async (postId: string, commentId: string): Promise<{ success: boolean; message: string }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}/comments/${commentId}`,
+      { method: 'DELETE' },
+      () => {
+        const idx = localComments.findIndex((c) => c.id === commentId);
+        if (idx !== -1) localComments.splice(idx, 1);
+        return { success: true, message: 'Reply withdrawn successfully.' };
+      }
+    );
+  },
+
   // Moderation Queue & Triage
   getModerationQueue: async (): Promise<{ totalPending: number; items: QueueItem[] }> => {
     return safeFetchJson('/api/v1/moderation/queue', undefined, () => ({

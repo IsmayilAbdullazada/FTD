@@ -143,7 +143,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       await loadQueue();
     } catch (err) {
       console.error('Failed to publish:', err);
-      alert('Error publishing post.');
+      setActionSuccessNotice('Error publishing post. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
 
@@ -172,7 +173,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       await loadQueue();
     } catch (err) {
       console.error('Failed to reject:', err);
-      alert('Error rejecting post.');
+      setActionSuccessNotice('Error rejecting post. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
 
@@ -195,7 +197,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       await loadQueue();
     } catch (err) {
       console.error('Failed clinic redirect:', err);
-      alert('Error updating post.');
+      setActionSuccessNotice('Error updating post. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
 
@@ -221,7 +224,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       loadMembers(selectedCohortFilter);
     } catch (err) {
       console.error(err);
-      alert('Failed to update group');
+      setActionSuccessNotice('Failed to update member group. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
 
@@ -853,8 +857,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* MODAL: CREATE GROUP */}
       {showCreateGroupModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
+        <div
+          onClick={() => setShowCreateGroupModal(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden cursor-default"
+          >
             <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
               <h3 className="font-semibold text-sm text-slate-900">
                 Create a Group
@@ -932,8 +942,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* MODAL: REASSIGN MEMBER */}
       {reassigningUser && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-4 space-y-4">
+        <div
+          onClick={() => setReassigningUser(null)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-4 space-y-4 cursor-default"
+          >
             <div>
               <h3 className="font-semibold text-sm text-slate-900">
                 Move Member to Another Group
@@ -982,8 +998,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* MODAL: REJECT POST */}
       {showRejectModal && activeItem && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-4 sm:p-5 space-y-4">
+        <div
+          onClick={() => setShowRejectModal(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-4 sm:p-5 space-y-4 cursor-default"
+          >
             <div>
               <h3 className="font-semibold text-sm text-slate-900">
                 Reject Post

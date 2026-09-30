@@ -73,6 +73,17 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     };
   }, [title, content, solvedByDeflection]);
 
+  // Auto fadeout confirmation after 3.5 seconds
+  useEffect(() => {
+    if (!submittedPostData) return;
+
+    const timer = setTimeout(() => {
+      onPostSubmitted();
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, [submittedPostData, onPostSubmitted]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
@@ -91,7 +102,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       // Show comprehensive confirmation screen
       setSubmittedPostData({
         title: title.trim(),
-        cohortName: assignedCohort?.name || 'General Community',
+        cohortName: assignedCohort
+          ? assignedCohort.name.replace(/\s+Cohort$/i, '')
+          : 'General Clinic-Wide',
       });
     } catch (err) {
       console.error('Failed to submit post:', err);
@@ -189,6 +202,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               Ask Another Question
             </button>
           </div>
+
+          <p className="text-xs text-slate-400 pt-1">
+            Returning to discussions automatically in 3 seconds...
+          </p>
         </div>
       ) : solvedByDeflection ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2 shadow-xs animate-in fade-in">
@@ -285,11 +302,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               onChange={(e) => setSelectedCohortId(e.target.value)}
               className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white text-slate-700 transition"
             >
-              {cohorts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} {c.isGeneralBoard ? '(Clinic-Wide)' : `(${c.geographicRegion})`}
-                </option>
-              ))}
+              {cohorts.map((c) => {
+                const cleanName = c.name.replace(/\s+Cohort$/i, '');
+                return (
+                  <option key={c.id} value={c.id}>
+                    {cleanName}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

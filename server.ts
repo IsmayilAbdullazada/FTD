@@ -959,6 +959,83 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
   });
 });
 
+// Update Pending Post
+app.put('/api/v1/posts/:id', (req, res) => {
+  const { title, content, targetCohortId } = req.body;
+  const post = posts.find((p) => p.id === req.params.id);
+
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  if (title) post.title = title.trim();
+  if (content) {
+    post.rawContent = content.trim();
+    post.sanitizedContent = content.trim();
+    post.phiAlerts = scanForPhi(`${post.title} ${content}`);
+  }
+  if (targetCohortId) {
+    post.assignedGroupIds = [targetCohortId];
+    post.suggestedCohortId = targetCohortId;
+  }
+  post.updatedAt = new Date().toISOString();
+
+  res.json({
+    post,
+    message: 'Your question was updated and remains in clinical review.',
+  });
+});
+
+// Delete / Cancel Pending Post
+app.delete('/api/v1/posts/:id', (req, res) => {
+  const index = posts.findIndex((p) => p.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  posts.splice(index, 1);
+  // Also remove associated comments
+  const remainingComments = comments.filter((c) => c.postId !== req.params.id);
+  comments.length = 0;
+  comments.push(...remainingComments);
+
+  res.json({ success: true, message: 'Question withdrawn successfully.' });
+});
+
+// Update Pending Comment
+app.put('/api/v1/posts/:postId/comments/:commentId', (req, res) => {
+  const { content } = req.body;
+  const comment = comments.find((c) => c.id === req.params.commentId && c.postId === req.params.postId);
+
+  if (!comment) {
+    return res.status(404).json({ error: 'Comment not found' });
+  }
+
+  if (content) {
+    comment.rawContent = content.trim();
+    comment.sanitizedContent = content.trim();
+  }
+
+  res.json({ comment, message: 'Reply updated.' });
+});
+
+// Delete / Cancel Pending Comment
+app.delete('/api/v1/posts/:postId/comments/:commentId', (req, res) => {
+  const index = comments.findIndex((c) => c.id === req.params.commentId && c.postId === req.params.postId);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Comment not found' });
+  }
+
+  const comment = comments[index];
+  const post = posts.find((p) => p.id === req.params.postId);
+  if (post && comment.status === 'APPROVED' && post.commentCount > 0) {
+    post.commentCount -= 1;
+  }
+
+  comments.splice(index, 1);
+  res.json({ success: true, message: 'Reply withdrawn successfully.' });
+});
+
 // Moderation Triage Queue (Clinician Only)
 app.get('/api/v1/moderation/queue', (_req, res) => {
   const pendingPosts = posts.filter((p) => p.status === 'PENDING_MODERATION');

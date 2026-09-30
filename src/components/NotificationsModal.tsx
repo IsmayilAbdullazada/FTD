@@ -93,8 +93,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+      >
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-white">
           <div className="flex items-center gap-2.5">
@@ -248,9 +254,29 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     {msg.message}
                   </p>
 
-                  <div className="text-xs text-slate-400 flex items-center gap-1.5 pt-1.5 border-t border-slate-100">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                  <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 text-slate-400" />
+                      <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!msg.read) handleMarkRead(msg.id);
+                        onClose();
+                        if (msg.type === 'APPROVAL' && onNavigateToFeed) {
+                          onNavigateToFeed();
+                        } else if (onNavigateToFeed) {
+                          onNavigateToFeed();
+                        }
+                      }}
+                      className="text-xs font-semibold text-[#002D72] hover:underline flex items-center gap-1 shrink-0"
+                    >
+                      <span>Open Discussions</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               ))

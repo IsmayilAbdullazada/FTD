@@ -20,6 +20,16 @@ export default function App() {
   const [pendingQueue, setPendingQueue] = useState<QueueItem[]>([]);
   const [notifications, setNotifications] = useState<DirectMessage[]>([]);
   const [feedNotice, setFeedNotice] = useState<string | null>(null);
+  const [feedResetKey, setFeedResetKey] = useState<number>(0);
+
+  // Auto-fade submission notice after 3.5 seconds
+  useEffect(() => {
+    if (!feedNotice) return;
+    const timer = setTimeout(() => {
+      setFeedNotice(null);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [feedNotice]);
 
   // Modals
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
@@ -103,6 +113,13 @@ export default function App() {
     );
   }
 
+  const handleSelectTab = (tab: string) => {
+    if (tab === 'feed') {
+      setFeedResetKey((prev) => prev + 1);
+    }
+    setActiveTab(tab);
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col text-slate-800 font-sans selection:bg-[#002D72]/15 selection:text-[#002D72]">
       {/* Universal Top Header with Emergency Banner & Persona Switcher */}
@@ -111,7 +128,7 @@ export default function App() {
         allPersonas={allPersonas}
         onSwitchPersona={handleSwitchPersona}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSelectTab}
         pendingTriageCount={pendingTriageCount}
         notifications={notifications}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
@@ -124,6 +141,7 @@ export default function App() {
           <CarePartnerFeed
             currentUser={currentUser}
             cohorts={cohorts}
+            resetKey={feedResetKey}
             recentNotice={feedNotice}
             onDismissNotice={() => setFeedNotice(null)}
             onOpenComposer={() => setActiveTab('compose')}
@@ -225,6 +243,7 @@ export default function App() {
         onRefreshNotifications={() => currentUser && loadUserAndData(currentUser.id)}
         onQueueUpdated={handleQueueUpdated}
         onNavigateToConsole={() => setActiveTab('moderation')}
+        onNavigateToFeed={() => setActiveTab('feed')}
       />
 
 

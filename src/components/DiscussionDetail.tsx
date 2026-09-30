@@ -8,6 +8,9 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { Post, Comment, CurrentUser } from '../types';
 import { api } from '../services/api';
@@ -20,11 +23,12 @@ interface DiscussionDetailProps {
 }
 
 export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
-  post,
+  post: initialPost,
   currentUser,
   onBack,
   onPostUpdated,
 }) => {
+  const [post, setPost] = useState<Post>(initialPost);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
   const [replyText, setReplyText] = useState('');
@@ -33,9 +37,25 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
   const [replyErrorMessage, setReplyErrorMessage] = useState<string | null>(null);
 
+  // Main post editing
+  const [isEditingMainPost, setIsEditingMainPost] = useState(false);
+  const [mainPostTitle, setMainPostTitle] = useState(initialPost.title);
+  const [mainPostContent, setMainPostContent] = useState(initialPost.content);
+  const [isSavingMainPost, setIsSavingMainPost] = useState(false);
+  const [showWithdrawPostModal, setShowWithdrawPostModal] = useState(false);
+  const [isWithdrawingPost, setIsWithdrawingPost] = useState(false);
+
+  // Comment editing
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [isSavingComment, setIsSavingComment] = useState(false);
+
   const replyFormRef = useRef<HTMLFormElement | null>(null);
   const isClinician =
     currentUser.role === 'CLINICIAN_MODERATOR' || currentUser.role === 'SYSTEM_ADMIN';
+  const isMainPostPending = post.status === 'PENDING_MODERATION';
+  const isMainPostAuthor = post.author.anonymousHandle === currentUser.anonymousHandle;
+
   const regionName = post.assignedGroups[0]?.name.replace('Cohort', '').trim();
   const currentLikes = post.upvotes + (isLiked ? 1 : 0);
 
@@ -55,6 +75,98 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     loadComments();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [post.id]);
+
+  const handleSaveMainPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mainPostTitle.trim() || !mainPostContent.trim()) return;
+
+    setIsSavingMainPost(true);
+    try {
+      const res = await api.updatePost(post.id, {
+        title: mainPostTitle.trim(),
+        content: mainPostContent.trim(),
+      });
+      setPost({
+        ...post,
+        title: mainPostTitle.trim(),
+        content: mainPostContent.trim(),
+      });
+      setIsEditingMainPost(false);
+      setReplySuccessMessage(res.message || 'Question updated successfully.');
+      setTimeout(() => setReplySuccessMessage(null), 3500);
+      if (onPostUpdated) {
+        onPostUpdated({
+          ...post,
+          title: mainPostTitle.trim(),
+          content: mainPostContent.trim(),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update question:', err);
+      setReplyErrorMessage('Unable to update question. Please try again.');
+      setTimeout(() => setReplyErrorMessage(null), 3500);
+    } finally {
+      setIsSavingMainPost(false);
+    }
+  };
+
+  const handleConfirmWithdrawPost = async () => {
+    setIsWithdrawingPost(true);
+    try {
+      await api.deletePost(post.id);
+      setShowWithdrawPostModal(false);
+      onBack();
+    } catch (err) {
+      console.error('Failed to withdraw question:', err);
+      setReplyErrorMessage('Unable to withdraw question.');
+      setTimeout(() => setReplyErrorMessage(null), 3500);
+      setIsWithdrawingPost(false);
+    }
+  };
+
+  const handleStartEditComment = (comm: Comment) => {
+    setEditingCommentId(comm.id);
+    setEditCommentText(comm.content);
+  };
+
+  const handleSaveComment = async (commId: string) => {
+    if (!editCommentText.trim()) return;
+    setIsSavingComment(true);
+    try {
+      await api.updateComment(post.id, commId, editCommentText.trim());
+      setComments((prev) =>
+        prev.map((c) => (c.id === commId ? { ...c, content: editCommentText.trim() } : c))
+      );
+      setEditingCommentId(null);
+      setReplySuccessMessage('Reply updated successfully.');
+      setTimeout(() => setReplySuccessMessage(null), 3500);
+    } catch (err) {
+      console.error('Failed to update reply:', err);
+      setReplyErrorMessage('Failed to update reply.');
+      setTimeout(() => setReplyErrorMessage(null), 3500);
+    } finally {
+      setIsSavingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commId: string) => {
+    // Optimistic removal from display immediately
+    setComments((prev) => prev.filter((c) => c.id !== commId));
+    setReplySuccessMessage('Reply withdrawn successfully.');
+    setTimeout(() => setReplySuccessMessage(null), 3500);
+
+    try {
+      await api.deleteComment(post.id, commId);
+      if (onPostUpdated) {
+        onPostUpdated({
+          ...post,
+          commentCount: Math.max(0, post.commentCount - 1),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  };
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +225,27 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
+      {/* FLOATING TOP CONFIRMATION BANNER (Always on top of viewport, regardless of scroll) */}
+      {replySuccessMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 pointer-events-none animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="bg-slate-900/95 text-white backdrop-blur-md p-3.5 sm:p-4 rounded-2xl shadow-2xl border border-slate-700/50 flex items-center justify-between gap-3 pointer-events-auto">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span className="text-xs sm:text-sm font-medium leading-snug text-slate-100">
+                {replySuccessMessage}
+              </span>
+            </div>
+            <button
+              onClick={() => setReplySuccessMessage(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition shrink-0"
+              aria-label="Dismiss message"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Back Navigation Bar */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-200">
         <button
@@ -131,19 +264,23 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
       </div>
 
       {/* Main Discussion Post */}
-      <article className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 space-y-4 shadow-xs">
+      <article
+        className={`rounded-2xl border p-5 sm:p-7 space-y-4 shadow-xs ${
+          isMainPostPending ? 'bg-amber-50/20 border-amber-200' : 'bg-white border-slate-200/90'
+        }`}
+      >
         {/* Author Metadata */}
         <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
-          <div className="flex items-center gap-2 font-medium">
-            <span className="text-slate-900 font-semibold">{post.author.anonymousHandle}</span>
+          <div className="flex items-center gap-2 font-medium min-w-0">
+            <span className="text-slate-900 font-semibold truncate">{post.author.anonymousHandle}</span>
             {regionName && (
               <>
-                <span aria-hidden="true" className="text-slate-300">·</span>
-                <span>{regionName}</span>
+                <span aria-hidden="true" className="text-slate-300 shrink-0">·</span>
+                <span className="truncate">{regionName}</span>
               </>
             )}
           </div>
-          <span className="text-slate-400 text-xs">
+          <span className="text-slate-400 text-xs shrink-0 pl-2">
             {new Date(post.createdAt).toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
@@ -152,35 +289,110 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </span>
         </div>
 
-        {/* Post Title */}
-        <h1 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 leading-snug tracking-tight">
-          {post.title}
-        </h1>
+        {/* Post Title & Content or Edit Form */}
+        {isEditingMainPost ? (
+          <form onSubmit={handleSaveMainPost} className="space-y-3 pt-2">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Edit Title
+              </label>
+              <input
+                type="text"
+                value={mainPostTitle}
+                onChange={(e) => setMainPostTitle(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] text-base font-semibold"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Edit Details
+              </label>
+              <textarea
+                rows={4}
+                value={mainPostContent}
+                onChange={(e) => setMainPostContent(e.target.value)}
+                className="w-full p-3.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] leading-relaxed text-sm"
+                required
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingMainPost(false)}
+                className="px-3.5 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingMainPost || !mainPostTitle.trim() || !mainPostContent.trim()}
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs font-semibold transition"
+              >
+                {isSavingMainPost ? 'Saving...' : 'Save Updates'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <h1 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 leading-snug tracking-tight">
+              {post.title}
+            </h1>
+            <p className="text-base sm:text-[17px] text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
+              {post.content}
+            </p>
+          </>
+        )}
 
-        {/* Full Post Content */}
-        <p className="text-base sm:text-[17px] text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
-          {post.content}
-        </p>
+        {/* Bottom Actions Row: If pending, show Edit & Cancel buttons instead of replies/helpful! */}
+        {isMainPostPending ? (
+          <div className="pt-4 border-t border-amber-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-amber-800 font-medium flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>This question is currently awaiting Dr. Seema's clinical safety verification</span>
+            </span>
 
-        {/* Bottom Actions Row */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
-          <div className="flex items-center gap-2 text-slate-600 font-medium">
-            <MessageSquare className="w-4 h-4 text-slate-400" />
-            <span>{comments.length} {comments.length === 1 ? 'reply' : 'replies'}</span>
+            {isMainPostAuthor && !isEditingMainPost && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingMainPost(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-amber-100/50 text-slate-700 border border-slate-300 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                >
+                  <Pencil className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Edit Question</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowWithdrawPostModal(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Cancel Submission</span>
+                </button>
+              </div>
+            )}
           </div>
+        ) : (
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-slate-600 font-medium">
+              <MessageSquare className="w-4 h-4 text-slate-400" />
+              <span>{comments.length} {comments.length === 1 ? 'reply' : 'replies'}</span>
+            </div>
 
-          <button
-            onClick={handleToggleLike}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition ${
-              isLiked
-                ? 'bg-rose-50 border-rose-200 text-rose-600 font-semibold'
-                : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-            }`}
-          >
-            <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 text-rose-600' : ''}`} />
-            <span>{currentLikes} helpful</span>
-          </button>
-        </div>
+            <button
+              onClick={handleToggleLike}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition ${
+                isLiked
+                  ? 'bg-rose-50 border-rose-200 text-rose-600 font-semibold'
+                  : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 text-rose-600' : ''}`} />
+              <span>{currentLikes} helpful</span>
+            </button>
+          </div>
+        )}
       </article>
 
       {/* Replies Thread Section */}
@@ -205,6 +417,8 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 comm.author.badgeLabel === 'Clinician Moderator' ||
                 comm.author.anonymousHandle.includes('Dr. Seema');
               const isPending = comm.status === 'PENDING_MODERATION';
+              const isAuthor = comm.author.anonymousHandle === currentUser.anonymousHandle;
+              const isEditingThis = editingCommentId === comm.id;
 
               return (
                 <div
@@ -241,9 +455,59 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                     </span>
                   </div>
 
-                  <p className="text-sm sm:text-[15px] text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
-                    {comm.content}
-                  </p>
+                  {isEditingThis ? (
+                    <div className="space-y-2 pt-1">
+                      <textarea
+                        rows={3}
+                        value={editCommentText}
+                        onChange={(e) => setEditCommentText(e.target.value)}
+                        className="w-full p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] text-sm bg-white"
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingCommentId(null)}
+                          className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveComment(comm.id)}
+                          disabled={isSavingComment || !editCommentText.trim()}
+                          className="px-4 py-1.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold transition"
+                        >
+                          {isSavingComment ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm sm:text-[15px] text-slate-700 leading-relaxed font-sans whitespace-pre-line select-text">
+                      {comm.content}
+                    </p>
+                  )}
+
+                  {/* Actions for pending comment author: Edit and Cancel */}
+                  {isPending && isAuthor && !isEditingThis && (
+                    <div className="pt-2 border-t border-amber-200/60 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditComment(comm)}
+                        className="px-2.5 py-1 text-xs bg-white hover:bg-amber-100/50 text-slate-700 border border-slate-300 rounded-lg font-medium flex items-center gap-1 transition"
+                      >
+                        <Pencil className="w-3 h-3 text-slate-500" />
+                        <span>Edit reply</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(comm.id)}
+                        className="px-2.5 py-1 text-xs bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-medium flex items-center gap-1 transition"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-500" />
+                        <span>Cancel reply</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -260,21 +524,6 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             <span className="font-semibold text-slate-700">Add your reply</span>
             <span>Replying as: <strong className="text-slate-800">{currentUser.anonymousHandle}</strong></span>
           </div>
-
-          {/* Inline Success Notice */}
-          {replySuccessMessage && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-950 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <div className="font-semibold text-sm text-emerald-900">
-                  {isClinician ? 'Reply Published' : 'Reply Submitted for Clinical Review'}
-                </div>
-                <p className="text-xs text-emerald-800 leading-relaxed font-sans">
-                  {replySuccessMessage}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Inline Error Notice */}
           {replyErrorMessage && (
@@ -317,6 +566,56 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </div>
         </form>
       </section>
+
+      {/* MODAL: CONFIRM WITHDRAW QUESTION (With backdrop click to exit) */}
+      {showWithdrawPostModal && (
+        <div
+          onClick={() => setShowWithdrawPostModal(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif font-semibold text-lg text-slate-900">
+                  Withdraw Question?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  This will remove your question from clinical review.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs sm:text-sm text-slate-700 font-medium line-clamp-2">
+              "{post.title}"
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShowWithdrawPostModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+              >
+                Keep Question
+              </button>
+              <button
+                type="button"
+                disabled={isWithdrawingPost}
+                onClick={handleConfirmWithdrawPost}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isWithdrawingPost ? 'Withdrawing...' : 'Yes, Withdraw Question'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

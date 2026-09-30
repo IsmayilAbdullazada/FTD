@@ -85,8 +85,14 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-3 sm:p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+      >
         {/* Clean Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
           <div>

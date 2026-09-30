@@ -9,6 +9,7 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { CurrentUser, CommunityGroup, DeflectionMatch } from '../types';
 import { api } from '../services/api';
@@ -19,6 +20,16 @@ interface PostComposerProps {
   onPostSubmitted: () => void;
   onCancel: () => void;
   onOpenResource: (resourceId: string) => void;
+  onOpenDiscussion: (postId: string) => void;
+}
+
+interface DiscussionDeflectionMatch {
+  postId: string;
+  title: string;
+  snippet: string;
+  authorHandle: string;
+  replyCount: number;
+  matchScore: number;
 }
 
 export const PostComposer: React.FC<PostComposerProps> = ({
@@ -27,6 +38,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   onPostSubmitted,
   onCancel,
   onOpenResource,
+  onOpenDiscussion,
 }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -42,16 +54,18 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
   // Deflection state
   const [deflectionMatches, setDeflectionMatches] = useState<DeflectionMatch[]>([]);
+  const [discussionMatches, setDiscussionMatches] = useState<DiscussionDeflectionMatch[]>([]);
   const [solvedByDeflection, setSolvedByDeflection] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Subtle deflection lookup
+  // Deflection lookup: checks both clinical resources AND existing discussions/replies
   useEffect(() => {
     if (solvedByDeflection) return;
 
     const queryText = `${title} ${content}`.trim();
-    if (queryText.length < 18) {
+    if (queryText.length < 8) {
       setDeflectionMatches([]);
+      setDiscussionMatches([]);
       return;
     }
 
@@ -61,12 +75,16 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const res = await api.deflectQuery(queryText);
-        setDeflectionMatches(res.deflectionMatches || []);
+        const [resourceRes, discussionRes] = await Promise.all([
+          api.deflectQuery(queryText),
+          api.checkDiscussionMatches({ title, content }),
+        ]);
+        setDeflectionMatches(resourceRes.deflectionMatches || []);
+        setDiscussionMatches(discussionRes.matches || []);
       } catch (err) {
         console.error('Deflection lookup error:', err);
       }
-    }, 300);
+    }, 250);
 
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
@@ -228,8 +246,51 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             </p>
           </div>
 
-          {/* Deflection Tip (Gentle, single line, no giant cards) */}
-          {deflectionMatches.length > 0 && (
+          {/* Discussion Answer Match Deflection (Finds answers already in existing discussions) */}
+          {discussionMatches.length > 0 && (
+            <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-4 sm:p-5 space-y-3 animate-in fade-in shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-emerald-950 flex items-center gap-1.5 text-xs sm:text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Already answered in community discussions:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="text-xs text-emerald-800 hover:text-emerald-950 font-semibold underline shrink-0"
+                >
+                  ✓ This answers my question
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <h4 className="font-serif font-semibold text-slate-900 text-sm sm:text-base leading-snug">
+                  "{discussionMatches[0].title}"
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans line-clamp-2">
+                  {discussionMatches[0].snippet}
+                </p>
+                <div className="text-xs text-slate-400 pt-0.5">
+                  Answered in discussion with {discussionMatches[0].replyCount} {discussionMatches[0].replyCount === 1 ? 'reply' : 'replies'}
+                </div>
+              </div>
+
+              <div className="pt-1 flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => onOpenDiscussion(discussionMatches[0].postId)}
+                  className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Go to this discussion & read answers</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Clinical Protocol Deflection Tip */}
+          {deflectionMatches.length > 0 && discussionMatches.length === 0 && (
             <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-4 text-sm space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-[#002D72] flex items-center gap-1.5">

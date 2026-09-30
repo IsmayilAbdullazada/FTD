@@ -18,6 +18,8 @@ interface CarePartnerFeedProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
   resetKey?: number;
+  targetDiscussionId?: string | null;
+  onClearTargetDiscussion?: () => void;
   recentNotice?: string | null;
   onDismissNotice?: () => void;
   onOpenComposer: () => void;
@@ -28,6 +30,8 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   currentUser,
   cohorts,
   resetKey,
+  targetDiscussionId,
+  onClearTargetDiscussion,
   recentNotice,
   onDismissNotice,
   onOpenComposer,
@@ -38,6 +42,17 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   const [selectedGroupTab, setSelectedGroupTab] = useState<string>('all');
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  // If directed to a specific discussion from deflection
+  useEffect(() => {
+    if (targetDiscussionId && posts.length > 0) {
+      const match = posts.find((p) => p.id === targetDiscussionId);
+      if (match) {
+        setSelectedPost(match);
+        if (onClearTargetDiscussion) onClearTargetDiscussion();
+      }
+    }
+  }, [targetDiscussionId, posts, onClearTargetDiscussion]);
 
   // Editing pending post
   const [editingPost, setEditingPost] = useState<Post | null>(null);

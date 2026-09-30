@@ -296,6 +296,17 @@ const groupMemberships: { userId: string; groupId: string }[] = [
   { userId: 'user-care-3', groupId: 'group-pennsylvania' },
 ];
 
+function getUserAllowedGroups(userId: string, role: string): string[] {
+  if (role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN') {
+    return communityGroups.map((g) => g.id);
+  }
+  const userMemberships = groupMemberships.filter((m) => m.userId === userId).map((m) => m.groupId);
+  if (userMemberships.length > 0) {
+    return Array.from(new Set(['group-general', ...userMemberships]));
+  }
+  return ['group-general', 'group-baltimore'];
+}
+
 const clinicalResources: ClinicalResource[] = [
   {
     id: 'res-aftd-incontinence',
@@ -471,15 +482,32 @@ function scanForPhi(text: string): PhiAlert[] {
 // Initial posts seeded
 const posts: Post[] = [
   {
+    id: 'post-general-1',
+    authorId: 'user-clinician-1',
+    title: 'General Clinic Forum: Managing apathy vs depression in frontotemporal dementia',
+    rawContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    sanitizedContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-09-18T10:00:00Z',
+    assignedGroupIds: ['group-general'],
+    suggestedCohortId: 'group-general',
+    phiAlerts: [],
+    createdAt: '2026-09-18T10:00:00Z',
+    updatedAt: '2026-09-18T10:00:00Z',
+    commentCount: 1,
+    upvotes: 9,
+  },
+  {
     id: 'post-1',
     authorId: 'user-care-1',
     title: 'Struggling with aggressive outburst when bathing my father',
     rawContent: 'My father becomes verbally aggressive and throws sponges whenever we try to enter the shower. What sensory or calm approaches have worked for your families?',
-    sanitizedContent: 'My father becomes verbally aggressive and throws objects whenever we try to enter the shower. What sensory or calm approaches have worked for your families?',
+    sanitizedContent: 'My father becomes verbally aggressive and throws objects whenever we try to enter the shower. What sensory or calm approaches have worked for your families in the Baltimore area?',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-20T10:15:00Z',
-    assignedGroupIds: ['group-general', 'group-baltimore'],
+    assignedGroupIds: ['group-baltimore'],
     suggestedCohortId: 'group-baltimore',
     phiAlerts: [],
     createdAt: '2026-09-20T08:30:00Z',
@@ -492,11 +520,11 @@ const posts: Post[] = [
     authorId: 'user-care-2',
     title: 'Quiet tear-away brief recommendations for incontinence resistance?',
     rawContent: 'Mom rejects standard adult diapers because of the loud plastic crinkling noise. We are trying scheduled toileting but need leak protection for rides to Easton appointments.',
-    sanitizedContent: 'Mom rejects standard adult diapers because of the loud plastic crinkling noise. We are trying scheduled toileting but need leak protection for medical transport.',
+    sanitizedContent: 'Mom rejects standard adult diapers because of the loud plastic crinkling noise. We are trying scheduled toileting but need leak protection for medical transport across the Bay Bridge.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-22T14:40:00Z',
-    assignedGroupIds: ['group-general', 'group-eastern-shore'],
+    assignedGroupIds: ['group-eastern-shore'],
     suggestedCohortId: 'group-eastern-shore',
     phiAlerts: [],
     createdAt: '2026-09-22T12:00:00Z',
@@ -513,7 +541,7 @@ const posts: Post[] = [
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-24T16:20:00Z',
-    assignedGroupIds: ['group-pennsylvania', 'group-baltimore', 'group-general'],
+    assignedGroupIds: ['group-pennsylvania'],
     suggestedCohortId: 'group-pennsylvania',
     phiAlerts: [],
     createdAt: '2026-09-24T15:00:00Z',
@@ -591,6 +619,17 @@ const posts: Post[] = [
 
 const comments: Comment[] = [
   {
+    id: 'comm-gen-1',
+    postId: 'post-general-1',
+    authorId: 'user-clinician-1',
+    rawContent: 'Dr. Seema Gulyani: Great observation. Apathy does not equal clinical depression in FTD. Break activities down into simple 1-step tactile prompts (like folding warm towels or sorting coins) rather than asking "Do you want to do this?".',
+    sanitizedContent: 'Dr. Seema Gulyani: Great observation. Apathy does not equal clinical depression in FTD. Break activities down into simple 1-step tactile prompts (like folding warm towels or sorting coins) rather than asking "Do you want to do this?".',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-09-18T12:00:00Z',
+    createdAt: '2026-09-18T12:00:00Z',
+  },
+  {
     id: 'comm-1',
     postId: 'post-1',
     authorId: 'user-clinician-1',
@@ -622,6 +661,39 @@ const comments: Comment[] = [
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-22T15:00:00Z',
     createdAt: '2026-09-22T14:50:00Z',
+  },
+  {
+    id: 'comm-4',
+    postId: 'post-2',
+    authorId: 'user-clinician-1',
+    rawContent: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    sanitizedContent: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-09-22T15:20:00Z',
+    createdAt: '2026-09-22T15:20:00Z',
+  },
+  {
+    id: 'comm-5',
+    postId: 'post-2',
+    authorId: 'user-care-3',
+    rawContent: 'Replacing the white toilet seat with a dark blue one helped my mom find the toilet independently without having accidents right outside the door.',
+    sanitizedContent: 'Replacing the white toilet seat with a dark blue one helped my mom find the toilet independently without having accidents right outside the door.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-09-22T16:05:00Z',
+    createdAt: '2026-09-22T16:05:00Z',
+  },
+  {
+    id: 'comm-6',
+    postId: 'post-3',
+    authorId: 'user-care-2',
+    rawContent: 'We consulted with an elder law attorney in Towson who helped us set up a special needs trust and protect spousal assets before Medicaid application. Maryland Legal Aid also has great caregiver resources.',
+    sanitizedContent: 'We consulted with an elder law attorney in Towson who helped us set up a special needs trust and protect spousal assets before Medicaid application. Maryland Legal Aid also has great caregiver resources.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-09-24T16:30:00Z',
+    createdAt: '2026-09-24T16:30:00Z',
   },
 ];
 
@@ -744,8 +816,19 @@ app.get('/api/v1/users/me', (req, res) => {
 });
 
 // Community Groups / Cohorts
-app.get('/api/v1/cohorts', (_req, res) => {
-  res.json(communityGroups);
+app.get('/api/v1/cohorts', (req, res) => {
+  const userId = (req.query.userId as string) || '';
+  const role = (req.query.role as string) || 'CARE_PARTNER';
+
+  // Dr. Seema (Clinician Moderator / System Admin) has access to discussions across ALL groups
+  if (role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN') {
+    return res.json(communityGroups);
+  }
+
+  // Care Partner: strictly restricted to General Forum and their assigned regional cohort
+  const allowedGroupIds = getUserAllowedGroups(userId, role);
+  const userCohorts = communityGroups.filter((g) => allowedGroupIds.includes(g.id));
+  res.json(userCohorts);
 });
 
 app.post('/api/v1/cohorts', (req, res) => {
@@ -783,24 +866,34 @@ app.post('/api/v1/cohorts', (req, res) => {
   res.status(201).json(newCohort);
 });
 
-// Feed: Browse Posts (With RLS Anonymity & Group Scoping)
+// Feed: Browse Posts (Strict Regional Isolation & RBAC)
 app.get('/api/v1/posts', (req, res) => {
   const role = (req.query.role as string) || 'CARE_PARTNER';
   const groupId = req.query.groupId as string;
   const statusFilter = req.query.status as string;
-  const currentUserId = req.query.userId as string;
+  const currentUserId = (req.query.userId as string) || '';
+
+  const allowedGroupIds = getUserAllowedGroups(currentUserId, role);
 
   let filtered = [...posts];
 
   // If Care Partner, show APPROVED posts plus the current user's own submitted posts
   if (role === 'CARE_PARTNER') {
     filtered = filtered.filter((p) => p.status === 'APPROVED' || (currentUserId && p.authorId === currentUserId));
+
+    // STRICT REGIONAL BOUNDARY: Care Partners can only see posts in General Forum or their assigned regional cohort
+    filtered = filtered.filter(
+      (p) => p.assignedGroupIds.some((gId) => allowedGroupIds.includes(gId)) || (currentUserId && p.authorId === currentUserId)
+    );
   } else if (statusFilter) {
     filtered = filtered.filter((p) => p.status === statusFilter);
   }
 
   // Filter by Group Visibility if specified
   if (groupId && groupId !== 'all') {
+    if (role === 'CARE_PARTNER' && !allowedGroupIds.includes(groupId)) {
+      return res.status(403).json({ error: 'You do not have access to this regional group.' });
+    }
     filtered = filtered.filter((p) => p.assignedGroupIds.includes(groupId));
   }
 
@@ -819,7 +912,7 @@ app.get('/api/v1/posts', (req, res) => {
       assignedGroups,
       isUrgentClinical: p.isUrgentClinical,
       createdAt: p.createdAt,
-      commentCount: p.commentCount,
+      commentCount: comments.filter((c) => c.postId === p.id && c.status === 'APPROVED').length,
       upvotes: p.upvotes,
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? p.phiAlerts : undefined,
     };
@@ -840,11 +933,19 @@ app.get('/api/v1/posts/:id', (req, res) => {
     return res.status(404).json({ error: 'Post not found' });
   }
 
-  if (role === 'CARE_PARTNER' && post.status !== 'APPROVED') {
-    return res.status(403).json({ error: 'This post is currently pending clinical moderation' });
-  }
-
   const currentUserId = (req.query.userId as string) || '';
+  const allowedGroupIds = getUserAllowedGroups(currentUserId, role);
+
+  // Care partners can view approved posts in their allowed groups, or their own submission
+  if (role === 'CARE_PARTNER') {
+    if (post.status !== 'APPROVED' && post.authorId !== currentUserId) {
+      return res.status(403).json({ error: 'This post is currently pending clinical moderation' });
+    }
+    const hasGroupAccess = post.assignedGroupIds.some((gId) => allowedGroupIds.includes(gId));
+    if (!hasGroupAccess && post.authorId !== currentUserId) {
+      return res.status(403).json({ error: 'You do not have access to this regional discussion.' });
+    }
+  }
 
   const postComments = comments
     .filter(
@@ -857,6 +958,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
     )
     .map((c) => ({
       id: c.id,
+      postId: c.postId,
       content: c.sanitizedContent || c.rawContent,
       author: projectAuthor(c.authorId, role),
       status: c.status,
@@ -874,10 +976,90 @@ app.get('/api/v1/posts/:id', (req, res) => {
       assignedGroups: communityGroups.filter((g) => post.assignedGroupIds.includes(g.id)),
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? post.phiAlerts : undefined,
       createdAt: post.createdAt,
+      commentCount: postComments.filter((c) => c.status === 'APPROVED').length,
       upvotes: post.upvotes,
     },
     comments: postComments,
   });
+});
+
+// Keyword matching against existing discussions and replies for composer deflection
+app.post('/api/v1/deflection/discussions', (req, res) => {
+  const { title = '', content = '' } = req.body;
+  const rawText = `${title} ${content}`.toLowerCase();
+
+  const stopWords = new Set([
+    'the', 'and', 'for', 'that', 'this', 'with', 'have', 'from', 'what', 'when',
+    'where', 'who', 'how', 'why', 'are', 'was', 'were', 'will', 'would', 'could',
+    'should', 'can', 'about', 'just', 'some', 'any', 'not', 'you', 'your', 'our',
+    'their', 'they', 'them', 'she', 'her', 'his', 'him', 'does', 'did', 'been',
+  ]);
+
+  const queryWords = rawText
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !stopWords.has(w));
+
+  if (queryWords.length === 0) {
+    return res.json({ matches: [] });
+  }
+
+  const approvedPosts = posts.filter((p) => p.status === 'APPROVED');
+  const matches: {
+    postId: string;
+    title: string;
+    snippet: string;
+    authorHandle: string;
+    replyCount: number;
+    matchScore: number;
+  }[] = [];
+
+  for (const post of approvedPosts) {
+    const postComments = comments.filter((c) => c.postId === post.id && c.status === 'APPROVED');
+    let bestScore = 0;
+    let bestSnippet = post.sanitizedContent || post.rawContent;
+
+    // 1. Title match (highest weight)
+    const titleLower = post.title.toLowerCase();
+    const titleMatches = queryWords.filter((w) => titleLower.includes(w)).length;
+    if (titleMatches > 0) {
+      bestScore += titleMatches * 3;
+    }
+
+    // 2. Content match
+    const contentLower = (post.sanitizedContent || post.rawContent).toLowerCase();
+    const contentMatches = queryWords.filter((w) => contentLower.includes(w)).length;
+    if (contentMatches > 0) {
+      bestScore += contentMatches * 1.5;
+    }
+
+    // 3. Comments match
+    for (const comm of postComments) {
+      const commLower = (comm.sanitizedContent || comm.rawContent).toLowerCase();
+      const commMatches = queryWords.filter((w) => commLower.includes(w)).length;
+      if (commMatches > 0) {
+        const commScore = commMatches * 2;
+        if (commScore > bestScore) {
+          bestScore = commScore;
+          bestSnippet = comm.sanitizedContent || comm.rawContent;
+        }
+      }
+    }
+
+    if (bestScore >= 2) {
+      matches.push({
+        postId: post.id,
+        title: post.title,
+        snippet: bestSnippet.slice(0, 160) + (bestSnippet.length > 160 ? '...' : ''),
+        authorHandle: projectAuthor(post.authorId, 'CARE_PARTNER').anonymousHandle,
+        replyCount: postComments.length,
+        matchScore: bestScore,
+      });
+    }
+  }
+
+  matches.sort((a, b) => b.matchScore - a.matchScore);
+  res.json({ matches: matches.slice(0, 2) });
 });
 
 // Draft / Submit Post (Care Partner or Clinician)
@@ -1565,49 +1747,51 @@ app.post('/api/v1/chat/private', (req, res) => {
 });
 
 // Cohort Member Management for Moderator
+const cohortMembersStore = [
+  {
+    userId: 'user-care-1',
+    realName: 'Sarah Smith',
+    email: 'sarah.smith@example.com',
+    phone: '(410) 555-8841',
+    clinicPatientId: 'JHM-99210-FTD',
+    anonymousHandle: 'CarePartner-882',
+    primaryGroupId: 'group-baltimore',
+    primaryGroupName: 'Baltimore Metro Cohort',
+    role: 'CARE_PARTNER',
+    status: 'ACTIVE',
+    joinedAt: '2026-08-15',
+  },
+  {
+    userId: 'user-care-2',
+    realName: 'Marcus Vance',
+    email: 'marcus.vance@example.com',
+    phone: '(443) 555-3921',
+    clinicPatientId: 'JHM-77341-FTD',
+    anonymousHandle: 'CarePartner-419',
+    primaryGroupId: 'group-eastern-shore',
+    primaryGroupName: 'Eastern Shore Cohort',
+    role: 'CARE_PARTNER',
+    status: 'ACTIVE',
+    joinedAt: '2026-08-20',
+  },
+  {
+    userId: 'user-care-3',
+    realName: 'Elena Rostova',
+    email: 'elena.rostova@example.com',
+    phone: '(717) 555-1299',
+    clinicPatientId: 'JHM-44091-FTD',
+    anonymousHandle: 'CarePartner-204',
+    primaryGroupId: 'group-pennsylvania',
+    primaryGroupName: 'Pennsylvania / York County Cohort',
+    role: 'CARE_PARTNER',
+    status: 'ACTIVE',
+    joinedAt: '2026-09-02',
+  },
+];
+
 app.get('/api/v1/cohorts/members', (req, res) => {
   const groupId = req.query.groupId as string;
-  let members = [
-    {
-      userId: 'user-care-1',
-      realName: 'Sarah Smith',
-      email: 'sarah.smith@example.com',
-      phone: '(410) 555-8841',
-      clinicPatientId: 'JHM-99210-FTD',
-      anonymousHandle: 'CarePartner-882',
-      primaryGroupId: 'group-baltimore',
-      primaryGroupName: 'Baltimore Metro Cohort',
-      role: 'CARE_PARTNER',
-      status: 'ACTIVE',
-      joinedAt: '2026-08-15',
-    },
-    {
-      userId: 'user-care-2',
-      realName: 'Marcus Vance',
-      email: 'marcus.vance@example.com',
-      phone: '(443) 555-3921',
-      clinicPatientId: 'JHM-77341-FTD',
-      anonymousHandle: 'CarePartner-419',
-      primaryGroupId: 'group-eastern-shore',
-      primaryGroupName: 'Eastern Shore Cohort',
-      role: 'CARE_PARTNER',
-      status: 'ACTIVE',
-      joinedAt: '2026-08-20',
-    },
-    {
-      userId: 'user-care-3',
-      realName: 'Elena Rostova',
-      email: 'elena.rostova@example.com',
-      phone: '(717) 555-1299',
-      clinicPatientId: 'JHM-44091-FTD',
-      anonymousHandle: 'CarePartner-204',
-      primaryGroupId: 'group-pennsylvania',
-      primaryGroupName: 'Pennsylvania / York County Cohort',
-      role: 'CARE_PARTNER',
-      status: 'ACTIVE',
-      joinedAt: '2026-09-02',
-    },
-  ];
+  let members = [...cohortMembersStore];
 
   if (groupId && groupId !== 'all') {
     members = members.filter((m) => m.primaryGroupId === groupId);
@@ -1617,7 +1801,40 @@ app.get('/api/v1/cohorts/members', (req, res) => {
 });
 
 app.post('/api/v1/cohorts/members/reassign', (req, res) => {
-  res.json({ success: true });
+  const { userId, newGroupId } = req.body;
+  const targetCohort = communityGroups.find((g) => g.id === newGroupId);
+
+  if (!targetCohort) {
+    return res.status(404).json({ error: 'Target cohort not found' });
+  }
+
+  // Update groupMemberships: update regional group
+  const existingIdx = groupMemberships.findIndex((m) => m.userId === userId && m.groupId !== 'group-general');
+  if (existingIdx >= 0) {
+    groupMemberships[existingIdx].groupId = newGroupId;
+  } else {
+    groupMemberships.push({ userId, groupId: newGroupId });
+  }
+
+  // Update cohortMembersStore
+  const member = cohortMembersStore.find((m) => m.userId === userId);
+  if (member) {
+    member.primaryGroupId = newGroupId;
+    member.primaryGroupName = targetCohort.name;
+  }
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'MEMBER_ASSIGNMENT' as any,
+    entityId: userId,
+    actionTaken: 'REASSIGNED_COHORT',
+    notes: `Assigned user ${userId} to ${targetCohort.name}`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ success: true, newGroupId, groupName: targetCohort.name });
 });
 
 // -------------------------------------------------------------

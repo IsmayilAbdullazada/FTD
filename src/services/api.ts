@@ -30,6 +30,11 @@ let localPosts = [...INITIAL_POSTS];
 let localComments = [...INITIAL_COMMENTS];
 let localQueue = [...INITIAL_QUEUE_ITEMS];
 let localAuditEvents: ModerationAuditEvent[] = [];
+let localUserCohortAssignments: Record<string, string> = {
+  'user-care-1': 'group-baltimore',
+  'user-care-2': 'group-eastern-shore',
+  'user-care-3': 'group-pennsylvania',
+};
 let localDirectMessages: DirectMessage[] = [
   {
     id: 'dm-1',
@@ -123,8 +128,19 @@ export const api = {
   },
 
   // Groups / Cohorts
-  getCohorts: async (): Promise<CommunityGroup[]> => {
-    return safeFetchJson('/api/v1/cohorts', undefined, () => [...localCohorts]);
+  getCohorts: async (options?: { userId?: string; role?: string }): Promise<CommunityGroup[]> => {
+    const params = new URLSearchParams();
+    if (options?.userId) params.set('userId', options.userId);
+    if (options?.role) params.set('role', options.role);
+    const q = params.toString() ? `?${params.toString()}` : '';
+
+    return safeFetchJson(`/api/v1/cohorts${q}`, undefined, () => {
+      if (options?.role === 'CLINICIAN_MODERATOR' || options?.role === 'SYSTEM_ADMIN') {
+        return [...localCohorts];
+      }
+      const assigned = localUserCohortAssignments[options?.userId || 'user-care-1'] || 'group-baltimore';
+      return localCohorts.filter((c) => c.isGeneralBoard || c.id === assigned);
+    });
   },
 
   createCohort: async (payload: {
@@ -173,9 +189,18 @@ export const api = {
       `/api/v1/posts?${params.toString()}`,
       undefined,
       () => {
-        let filtered = [...localPosts];
+        let filtered = localPosts.map((p) => ({
+          ...p,
+          commentCount: localComments.filter((c) => c.postId === p.id && (c.status === 'APPROVED' || !c.status)).length,
+        }));
         if (options.role === 'CARE_PARTNER') {
-          filtered = filtered.filter((p) => p.status === 'APPROVED' || (options.userId && p.author.userId === options.userId));
+          const userAssigned = localUserCohortAssignments[options.userId || 'user-care-1'] || 'group-baltimore';
+          const allowed = ['group-general', userAssigned];
+          filtered = filtered.filter(
+            (p) =>
+              (p.status === 'APPROVED' && p.assignedGroups.some((g) => allowed.includes(g.id))) ||
+              (options.userId && p.author.userId === options.userId)
+          );
         }
         if (options.groupId && options.groupId !== 'all') {
           filtered = filtered.filter((p) =>
@@ -196,8 +221,14 @@ export const api = {
       `/api/v1/posts/${postId}${query}`,
       undefined,
       () => {
-        const post = localPosts.find((p) => p.id === postId) || localPosts[0];
-        const comments = localComments.filter((c) => c.author.userId === post.author.userId || true);
+        const found = localPosts.find((p) => p.id === postId);
+        const post = found
+          ? {
+              ...found,
+              commentCount: localComments.filter((c) => c.postId === found.id && (c.status === 'APPROVED' || !c.status)).length,
+            }
+          : localPosts[0];
+        const comments = localComments.filter((c) => c.postId === postId);
         return { post, comments };
       }
     );
@@ -236,6 +267,7 @@ export const api = {
           commentCount: 0,
           upvotes: 0,
         };
+        localPosts.unshift(newPost);
 
         const queueItem: QueueItem = {
           id: newPost.id,
@@ -283,6 +315,7 @@ export const api = {
         const author = localUsers.find((u) => u.id === authorId) || localUsers[1];
         const newComm: Comment = {
           id: `comm-${Date.now()}`,
+          postId,
           content,
           author: {
             userId: author.id,
@@ -290,11 +323,12 @@ export const api = {
             badgeLabel: author.badgeLabel,
             avatarColor: author.avatarColor,
           },
+          status: author.role === 'CLINICIAN_MODERATOR' ? 'APPROVED' : 'PENDING_MODERATION',
           createdAt: new Date().toISOString(),
         };
         localComments.push(newComm);
         const post = localPosts.find((p) => p.id === postId);
-        if (post) post.commentCount += 1;
+        if (post && newComm.status === 'APPROVED') post.commentCount += 1;
         return {
           comment: newComm,
           message: author.role === 'CLINICIAN_MODERATOR' ? 'Reply posted.' : 'Reply submitted for moderation review.',
@@ -575,6 +609,7 @@ export const api = {
         body: JSON.stringify({ userId, newGroupId }),
       },
       () => {
+        localUserCohortAssignments[userId] = newGroupId;
         return { success: true };
       }
     );
@@ -612,6 +647,92 @@ export const api = {
         });
 
         return { deflectionMatches: matches.slice(0, 3) };
+      }
+    );
+  },
+
+  // Keyword matching against existing community discussions & answers
+  checkDiscussionMatches: async (payload: { title: string; content: string }): Promise<{
+    matches: {
+      postId: string;
+      title: string;
+      snippet: string;
+      authorHandle: string;
+      replyCount: number;
+      matchScore: number;
+    }[];
+  }> => {
+    return safeFetchJson(
+      '/api/v1/deflection/discussions',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const rawText = `${payload.title} ${payload.content}`.toLowerCase();
+        const stopWords = new Set([
+          'the', 'and', 'for', 'that', 'this', 'with', 'have', 'from', 'what', 'when',
+          'where', 'who', 'how', 'why', 'are', 'was', 'were', 'will', 'would', 'could',
+          'should', 'can', 'about', 'just', 'some', 'any', 'not', 'you', 'your', 'our',
+          'their', 'they', 'them', 'she', 'her', 'his', 'him', 'does', 'did', 'been',
+        ]);
+        const queryWords = rawText
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .split(/\s+/)
+          .filter((w) => w.length >= 3 && !stopWords.has(w));
+
+        if (queryWords.length === 0) return { matches: [] };
+
+        const matches: {
+          postId: string;
+          title: string;
+          snippet: string;
+          authorHandle: string;
+          replyCount: number;
+          matchScore: number;
+        }[] = [];
+        const approvedPosts = localPosts.filter((p) => p.status === 'APPROVED');
+
+        for (const post of approvedPosts) {
+          const postComments = localComments.filter((c) => c.postId === post.id);
+          let bestScore = 0;
+          let bestSnippet = post.content;
+
+          const titleLower = post.title.toLowerCase();
+          const titleMatches = queryWords.filter((w) => titleLower.includes(w)).length;
+          if (titleMatches > 0) bestScore += titleMatches * 3;
+
+          const contentLower = post.content.toLowerCase();
+          const contentMatches = queryWords.filter((w) => contentLower.includes(w)).length;
+          if (contentMatches > 0) bestScore += contentMatches * 1.5;
+
+          for (const comm of postComments) {
+            const commLower = comm.content.toLowerCase();
+            const commMatches = queryWords.filter((w) => commLower.includes(w)).length;
+            if (commMatches > 0) {
+              const commScore = commMatches * 2;
+              if (commScore > bestScore) {
+                bestScore = commScore;
+                bestSnippet = comm.content;
+              }
+            }
+          }
+
+          if (bestScore >= 2) {
+            matches.push({
+              postId: post.id,
+              title: post.title,
+              snippet: bestSnippet.slice(0, 160) + (bestSnippet.length > 160 ? '...' : ''),
+              authorHandle: post.author.anonymousHandle,
+              replyCount: postComments.length,
+              matchScore: bestScore,
+            });
+          }
+        }
+
+        matches.sort((a, b) => b.matchScore - a.matchScore);
+        return { matches: matches.slice(0, 2) };
       }
     );
   },

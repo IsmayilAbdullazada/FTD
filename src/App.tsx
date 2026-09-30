@@ -21,6 +21,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<DirectMessage[]>([]);
   const [feedNotice, setFeedNotice] = useState<string | null>(null);
   const [feedResetKey, setFeedResetKey] = useState<number>(0);
+  const [targetDiscussionId, setTargetDiscussionId] = useState<string | null>(null);
 
   // Auto-fade submission notice after 3.5 seconds
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function App() {
         setActiveTab('feed');
       }
 
-      const cohortsRes = await api.getCohorts();
+      const cohortsRes = await api.getCohorts({ userId: userRes.user.id, role: userRes.user.role });
       setCohorts(cohortsRes);
 
       const queueRes = await api.getModerationQueue();
@@ -142,6 +143,8 @@ export default function App() {
             currentUser={currentUser}
             cohorts={cohorts}
             resetKey={feedResetKey}
+            targetDiscussionId={targetDiscussionId}
+            onClearTargetDiscussion={() => setTargetDiscussionId(null)}
             recentNotice={feedNotice}
             onDismissNotice={() => setFeedNotice(null)}
             onOpenComposer={() => setActiveTab('compose')}
@@ -160,6 +163,10 @@ export default function App() {
             }}
             onCancel={() => setActiveTab('feed')}
             onOpenResource={handleOpenResourceFromDeflection}
+            onOpenDiscussion={(postId) => {
+              setTargetDiscussionId(postId);
+              setActiveTab('feed');
+            }}
           />
         )}
 

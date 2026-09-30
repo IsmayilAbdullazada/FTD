@@ -231,9 +231,25 @@ Protocols:
 
 export const INITIAL_POSTS: Post[] = [
   {
+    id: 'post-general-1',
+    title: 'General Clinic Forum: Managing apathy vs depression in frontotemporal dementia',
+    content: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-clinician-1',
+      anonymousHandle: 'Dr. Seema Gulyani',
+      badgeLabel: 'Clinician Moderator',
+      avatarColor: '#002D72',
+    },
+    assignedGroups: [INITIAL_GROUPS[0]],
+    createdAt: '2026-09-18T10:00:00Z',
+    commentCount: 1,
+    upvotes: 9,
+  },
+  {
     id: 'post-1',
     title: 'Struggling with aggressive outburst when bathing my father',
-    content: 'My father becomes verbally aggressive and throws objects whenever we try to enter the shower. What sensory or calm approaches have worked for your families?',
+    content: 'My father becomes verbally aggressive and throws objects whenever we try to enter the shower. What sensory or calm approaches have worked for your families in the Baltimore area?',
     status: 'APPROVED',
     author: {
       userId: 'user-care-1',
@@ -241,7 +257,7 @@ export const INITIAL_POSTS: Post[] = [
       badgeLabel: 'Care Partner',
       avatarColor: '#1E40AF',
     },
-    assignedGroups: [INITIAL_GROUPS[0], INITIAL_GROUPS[1]],
+    assignedGroups: [INITIAL_GROUPS[1]],
     createdAt: '2026-09-20T08:30:00Z',
     commentCount: 2,
     upvotes: 7,
@@ -249,7 +265,7 @@ export const INITIAL_POSTS: Post[] = [
   {
     id: 'post-2',
     title: 'Quiet tear-away brief recommendations for incontinence resistance?',
-    content: 'Mom rejects standard adult diapers because of the loud plastic crinkling noise. We are trying scheduled toileting but need leak protection for medical transport.',
+    content: 'Mom rejects standard adult diapers because of the loud plastic crinkling noise. We are trying scheduled toileting but need leak protection for medical transport across the Bay Bridge.',
     status: 'APPROVED',
     author: {
       userId: 'user-care-2',
@@ -257,7 +273,7 @@ export const INITIAL_POSTS: Post[] = [
       badgeLabel: 'Care Partner',
       avatarColor: '#047857',
     },
-    assignedGroups: [INITIAL_GROUPS[0], INITIAL_GROUPS[2]],
+    assignedGroups: [INITIAL_GROUPS[2]],
     createdAt: '2026-09-22T12:00:00Z',
     commentCount: 3,
     upvotes: 11,
@@ -273,7 +289,7 @@ export const INITIAL_POSTS: Post[] = [
       badgeLabel: 'Care Partner',
       avatarColor: '#6D28D9',
     },
-    assignedGroups: [INITIAL_GROUPS[0], INITIAL_GROUPS[1], INITIAL_GROUPS[4]],
+    assignedGroups: [INITIAL_GROUPS[4]],
     createdAt: '2026-09-24T15:00:00Z',
     commentCount: 1,
     upvotes: 5,
@@ -282,8 +298,23 @@ export const INITIAL_POSTS: Post[] = [
 
 export const INITIAL_COMMENTS: Comment[] = [
   {
+    id: 'comm-gen-1',
+    postId: 'post-general-1',
+    content: 'Dr. Seema Gulyani: Remember to break tasks into concrete 1-step tactile prompts (like folding warm towels or sorting familiar coins) rather than asking open-ended questions like "What do you want to do today?".',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-clinician-1',
+      anonymousHandle: 'Dr. Seema Gulyani',
+      badgeLabel: 'Clinician Moderator',
+      avatarColor: '#002D72',
+    },
+    createdAt: '2026-09-18T12:00:00Z',
+  },
+  {
     id: 'comm-1',
+    postId: 'post-1',
     content: 'Dr. Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
       anonymousHandle: 'Dr. Seema Gulyani',
@@ -294,7 +325,9 @@ export const INITIAL_COMMENTS: Comment[] = [
   },
   {
     id: 'comm-2',
+    postId: 'post-1',
     content: 'We started playing big-band jazz from his 20s about 15 minutes before the bathroom door even opened. It made a remarkable difference in keeping him grounded.',
+    status: 'APPROVED',
     author: {
       userId: 'user-care-2',
       anonymousHandle: 'CarePartner-419',
@@ -302,6 +335,58 @@ export const INITIAL_COMMENTS: Comment[] = [
       avatarColor: '#047857',
     },
     createdAt: '2026-09-20T12:15:00Z',
+  },
+  {
+    id: 'comm-3',
+    postId: 'post-2',
+    content: 'We use the Tranquility Premium OverNight pull-ons. The outer layer is a breathable peach cloth texture rather than vinyl plastic, so there is almost no rustling sound.',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-care-1',
+      anonymousHandle: 'CarePartner-882',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#1E40AF',
+    },
+    createdAt: '2026-09-22T14:50:00Z',
+  },
+  {
+    id: 'comm-4',
+    postId: 'post-2',
+    content: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-clinician-1',
+      anonymousHandle: 'Dr. Seema Gulyani',
+      badgeLabel: 'Clinician Moderator',
+      avatarColor: '#002D72',
+    },
+    createdAt: '2026-09-22T15:20:00Z',
+  },
+  {
+    id: 'comm-5',
+    postId: 'post-2',
+    content: 'Replacing the white toilet seat with a dark blue one helped my mom find the toilet independently without having accidents right outside the door.',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-care-3',
+      anonymousHandle: 'CarePartner-204',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#6D28D9',
+    },
+    createdAt: '2026-09-22T16:05:00Z',
+  },
+  {
+    id: 'comm-6',
+    postId: 'post-3',
+    content: 'We consulted with an elder law attorney in Towson who helped us set up a special needs trust and protect spousal assets before Medicaid application. Maryland Legal Aid also has great caregiver resources.',
+    status: 'APPROVED',
+    author: {
+      userId: 'user-care-2',
+      anonymousHandle: 'CarePartner-419',
+      badgeLabel: 'Care Partner',
+      avatarColor: '#047857',
+    },
+    createdAt: '2026-09-24T16:30:00Z',
   },
 ];
 

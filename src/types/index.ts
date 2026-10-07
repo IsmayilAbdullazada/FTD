@@ -2,6 +2,12 @@ export type UserRole = 'CARE_PARTNER' | 'CLINICIAN_MODERATOR' | 'SYSTEM_ADMIN';
 
 export type PostStatus = 'DRAFT' | 'PENDING_MODERATION' | 'APPROVED' | 'REJECTED' | 'CLINICAL_REDIRECT';
 
+export type UpdateCategory = 'CLINICAL_TRIAL' | 'MEDICATION' | 'RESEARCH' | 'ANNOUNCEMENT';
+
+export type TrialStatus = 'RECRUITING' | 'CLOSED';
+
+export type EventType = 'CARE_PARTNER_CONFERENCE' | 'SUPPORT_GROUP' | 'SOCIAL';
+
 export type RejectionReason =
   | 'CLINICAL_MEDICATION_QUERY'
   | 'UNVERIFIED_TREATMENT'
@@ -180,4 +186,27 @@ export interface PersonaOption {
   role: UserRole;
   handle: string;
   clinicId?: string;
+}
+
+export interface ClinicUpdate {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  category: UpdateCategory;
+  condition: 'FTD' | 'AD' | 'BOTH';
+  trialStatus?: TrialStatus;
+  externalUrl?: string;
+  authorId: string;
+  createdAt: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: EventType;
+  startsAt: string; // 'YYYY-MM-DDTHH:mm'
+  location: string;
+  description?: string;
+  authorId: string;
 }

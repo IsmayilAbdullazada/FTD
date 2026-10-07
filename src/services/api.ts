@@ -12,6 +12,8 @@ import {
   PrivateConversationMessage,
   GroupMember,
   RejectionReason,
+  ClinicUpdate, 
+  CalendarEvent,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -73,6 +75,74 @@ let localPrivateChats: PrivateConversationMessage[] = [
   },
 ];
 
+let localUpdates: ClinicUpdate[] = [
+  {
+    id: 'upd-1',
+    title: 'Welcome to Clinic Updates',
+    summary: 'This is where the clinic will share news for care partners.',
+    body:
+      'This section will be kept up to date by the clinic team.\n\nYou can expect:\n• Clinical trials that are recruiting or recently closed\n• Newly approved medications\n• Scientific discoveries explained in plain language\n• Announcements from the clinic\n\nIf you have questions about anything posted here, please contact the Clinic Support Line at (410) 555-FTDC.',
+    category: 'ANNOUNCEMENT',
+    condition: 'BOTH',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-10-05T09:00:00Z',
+  },
+  {
+    id: 'upd-2',
+    title: 'Sample: Caregiver Wellbeing Study (Recruiting)',
+    summary: 'Placeholder entry showing how a recruiting clinical trial will appear.',
+    body:
+      'SAMPLE ENTRY: replace with a real study.\n\nWho can participate: [eligibility criteria]\nWhat participation involves: [visits, time commitment, location]\nHow to learn more: [contact or registry link]\n\nParticipation is voluntary and does not affect your loved one\'s care at the clinic.',
+    category: 'CLINICAL_TRIAL',
+    condition: 'FTD',
+    trialStatus: 'RECRUITING',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-10-03T09:00:00Z',
+  },
+  {
+    id: 'upd-3',
+    title: 'Sample: Completed Study, Enrollment Closed',
+    summary: 'Placeholder entry showing how a closed clinical trial will appear.',
+    body:
+      'SAMPLE ENTRY: replace with a real study.\n\nThis study is no longer enrolling. Results, when available, will be summarized here.\n\nQuestions can be directed to the Clinic Support Line at (410) 555-FTDC.',
+    category: 'CLINICAL_TRIAL',
+    condition: 'AD',
+    trialStatus: 'CLOSED',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-09-28T09:00:00Z',
+  },
+  {
+    id: 'upd-4',
+    title: 'Sample: Newly Approved Medication Notice',
+    summary: 'Placeholder entry showing how medication news will appear.',
+    body:
+      'SAMPLE ENTRY: replace with verified information.\n\nWhat was approved and for which condition: [details]\nWhat it may mean for families: [plain-language summary]\n\nPlease do not start, stop, or change any medication based on this post. Discuss all medication questions with your clinical team.',
+    category: 'MEDICATION',
+    condition: 'BOTH',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-09-25T09:00:00Z',
+  },
+  {
+    id: 'upd-5',
+    title: 'Sample: Research Findings in Plain Language',
+    summary: 'Placeholder entry showing how a scientific discovery summary will appear.',
+    body:
+      'SAMPLE ENTRY: replace with a real summary.\n\nWhat researchers found: [summary]\nWhy it matters: [context]\nWhat it does not mean: [limits of the findings]\n\nSource: [link to publication or news release]',
+    category: 'RESEARCH',
+    condition: 'FTD',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-09-20T09:00:00Z',
+  },
+];
+
+let localEvents: CalendarEvent[] = [
+  { id: 'evt-1', title: 'Caregiver Check-in', type: 'SUPPORT_GROUP', startsAt: '2026-10-14T18:00', location: 'Zoom (link sent by email)', description: 'Informal evening check-in for care partners.', authorId: 'user-clinician-1' },
+  { id: 'evt-2', title: 'Baltimore Metro Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-10-21T18:30', location: 'Johns Hopkins Outpatient Center, Baltimore', description: 'Monthly in-person group for Baltimore-area families.', authorId: 'user-clinician-1' },
+  { id: 'evt-3', title: 'Care Partner Fall Lunch', type: 'SOCIAL', startsAt: '2026-10-25T12:00', location: 'TBD (Baltimore area)', description: 'A relaxed get-together. Loved ones are welcome.', authorId: 'user-clinician-1' },
+  { id: 'evt-4', title: 'Care Partner Conference: Planning Ahead', type: 'CARE_PARTNER_CONFERENCE', startsAt: '2026-11-07T09:30', location: 'Hybrid: in person and Zoom', description: 'A half-day conference on legal, financial, and care planning.', authorId: 'user-clinician-1' },
+  { id: 'evt-5', title: 'Eastern Shore Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-11-12T17:30', location: 'Zoom', description: 'Virtual meeting for Eastern Shore families.', authorId: 'user-clinician-1' },
+  { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
+];
 
 async function safeFetchJson<T>(
   url: string,
@@ -807,6 +877,68 @@ export const api = {
         return newRes;
       }
     );
+  },
+
+  // Clinic Updates
+  getUpdates: async (): Promise<ClinicUpdate[]> => {
+    return safeFetchJson('/api/v1/updates', undefined, () => [...localUpdates]);
+  },
+
+  createUpdate: async (payload: Omit<ClinicUpdate, 'id' | 'createdAt'>): Promise<ClinicUpdate> => {
+    return safeFetchJson(
+      '/api/v1/updates',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const u: ClinicUpdate = {
+          id: `upd-${Date.now()}`,
+          ...payload,
+          createdAt: new Date().toISOString(),
+        };
+        localUpdates.unshift(u);
+        return u;
+      }
+    );
+  },
+
+  // deletes: pass userId as a query param
+  deleteUpdate: async (id: string, userId: string): Promise<{ success: boolean }> => {
+    return safeFetchJson(`/api/v1/updates/${id}?userId=${userId}`, { method: 'DELETE' }, () => {
+      localUpdates = localUpdates.filter((u) => u.id !== id);
+      return { success: true };
+    });
+  },
+
+  // Calendar Events
+  getEvents: async (): Promise<CalendarEvent[]> => {
+    return safeFetchJson('/api/v1/events', undefined, () => [...localEvents]);
+  },
+
+  // createEvent: send authorId along with the event
+  createEvent: async (payload: Omit<CalendarEvent, 'id' | 'authorId'>, authorId: string): Promise<CalendarEvent> => {
+    return safeFetchJson(
+      '/api/v1/events',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, authorId }),
+      },
+      () => {
+        const e = { id: `evt-${Date.now()}`, ...payload, authorId } as CalendarEvent;
+        localEvents.push(e);
+        return e;
+      }
+    );
+  },
+
+  deleteEvent: async (id: string, userId: string): Promise<{ success: boolean }> => {
+    return safeFetchJson(`/api/v1/events/${id}?userId=${userId}`, { method: 'DELETE' }, () => {
+      localEvents = localEvents.filter((e) => e.id !== id);
+      return { success: true };
+    });
   },
 
 

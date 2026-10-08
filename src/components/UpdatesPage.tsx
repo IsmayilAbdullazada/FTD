@@ -25,7 +25,8 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | UpdateCategory>('ALL');
   const [conditionFilter, setConditionFilter] = useState<'ALL' | 'FTD' | 'AD'>('ALL');
   const [active, setActive] = useState<ClinicUpdate | null>(null);
-
+  const [pendingDelete, setPendingDelete] = useState<ClinicUpdate | null>(null);
+  
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -91,6 +92,8 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
     await api.deleteUpdate(u.id, currentUser.id);
     setUpdates((prev) => prev.filter((x) => x.id !== u.id));
     setActive(null);
+    setPendingDelete(null);
+    showToast(`Update "${u.title}" deleted.`);
   };
 
   const inputCls =
@@ -274,7 +277,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
                 )}
                 {canEdit && (
                   <button
-                    onClick={() => handleDelete(active)}
+                    onClick={() => setPendingDelete(active)}
                     className="text-red-600 hover:underline font-semibold flex items-center gap-1"
                   >
                     <Trash2 className="w-4 h-4" /> Delete
@@ -410,6 +413,38 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
           </div>
         </div>
       )}
+      {canEdit && pendingDelete && (
+        <div
+            onClick={() => setPendingDelete(null)}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
+        >
+            <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            >
+            <div className="space-y-1.5">
+                <h3 className="font-semibold text-slate-900">Delete this update?</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                "{pendingDelete.title}" will be removed for all care partners. This can't be undone.
+                </p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+                <button
+                onClick={() => setPendingDelete(null)}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 font-medium"
+                >
+                Cancel
+                </button>
+                <button
+                onClick={() => handleDelete(pendingDelete)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition"
+                >
+                Delete
+                </button>
+            </div>
+            </div>
+        </div>
+        )}
     </div>
   );
 };

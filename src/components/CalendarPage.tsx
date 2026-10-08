@@ -34,6 +34,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
   const [form, setForm] = useState(emptyForm());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
     api.getEvents().then(setEvents);
@@ -108,6 +109,9 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
   const handleDelete = async (ev: CalendarEvent) => {
     await api.deleteEvent(ev.id, currentUser.id);
     setEvents((prev) => prev.filter((x) => x.id !== ev.id));
+    setPendingDelete(null);
+    setToast(`"${ev.title}" removed from the calendar.`);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const inputCls =
@@ -281,7 +285,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
                 </div>
                 {canEdit && (
                   <button
-                    onClick={() => handleDelete(ev)}
+                    onClick={() => setPendingDelete(ev)}
                     aria-label="Delete event"
                     className="self-start p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition"
                   >
@@ -367,6 +371,40 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
           </div>
         </div>
       )}
+      {canEdit && pendingDelete && (
+        <div
+            onClick={() => setPendingDelete(null)}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
+        >
+            <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            >
+            <div className="space-y-1.5">
+                <h3 className="font-semibold text-slate-900">Delete this event?</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                "{pendingDelete.title}" on{' '}
+                {new Date(pendingDelete.startsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} will be
+                removed for all care partners. This can't be undone.
+                </p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+                <button
+                onClick={() => setPendingDelete(null)}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 font-medium"
+                >
+                Cancel
+                </button>
+                <button
+                onClick={() => handleDelete(pendingDelete)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition"
+                >
+                Delete
+                </button>
+            </div>
+            </div>
+        </div>
+        )}
     </div>
   );
 };

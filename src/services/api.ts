@@ -31,9 +31,11 @@ let localComments = [...INITIAL_COMMENTS];
 let localQueue = [...INITIAL_QUEUE_ITEMS];
 let localAuditEvents: ModerationAuditEvent[] = [];
 let localUserCohortAssignments: Record<string, string> = {
-  'user-care-1': 'group-baltimore',
-  'user-care-2': 'group-eastern-shore',
-  'user-care-3': 'group-pennsylvania',
+  'user-care-1': 'group-central-maryland',
+  'user-care-2': 'group-eastern-maryland',
+  'user-care-3': 'group-northern-maryland',
+  'user-care-4': 'group-western-maryland',
+  'user-care-5': 'group-southern-maryland',
 };
 let localDirectMessages: DirectMessage[] = [
   {
@@ -138,7 +140,7 @@ export const api = {
       if (options?.role === 'CLINICIAN_MODERATOR' || options?.role === 'SYSTEM_ADMIN') {
         return [...localCohorts];
       }
-      const assigned = localUserCohortAssignments[options?.userId || 'user-care-1'] || 'group-baltimore';
+      const assigned = localUserCohortAssignments[options?.userId || 'user-care-1'] || 'group-central-maryland';
       return localCohorts.filter((c) => c.isGeneralBoard || c.id === assigned);
     });
   },
@@ -194,7 +196,7 @@ export const api = {
           commentCount: localComments.filter((c) => c.postId === p.id && (c.status === 'APPROVED' || !c.status)).length,
         }));
         if (options.role === 'CARE_PARTNER') {
-          const userAssigned = localUserCohortAssignments[options.userId || 'user-care-1'] || 'group-baltimore';
+          const userAssigned = localUserCohortAssignments[options.userId || 'user-care-1'] || 'group-central-maryland';
           const allowed = ['group-general', userAssigned];
           filtered = filtered.filter(
             (p) =>
@@ -480,7 +482,7 @@ export const api = {
             id: `dm-${Date.now()}`,
             recipientUserId: item.author.userId,
             title: 'Medical Inquiry Diverted to Clinical Support Line',
-            message: 'Prescription medications, acute medical symptoms, and clinical questions cannot be addressed on public peer boards. Please contact the Johns Hopkins FTD Clinic Support Line directly at (410) 555-FTDC.',
+            message: 'Prescription medications, acute medical symptoms, and clinical questions cannot be addressed on public peer boards. Please contact the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.',
             type: 'CLINICAL_ESCALATION',
             createdAt: new Date().toISOString(),
             read: false,
@@ -558,8 +560,8 @@ export const api = {
             phone: '(410) 555-8841',
             clinicPatientId: 'JHM-99210-FTD',
             anonymousHandle: 'CarePartner-882',
-            primaryGroupId: 'group-baltimore',
-            primaryGroupName: 'Baltimore Metro Cohort',
+            primaryGroupId: 'group-central-maryland',
+            primaryGroupName: 'Central Maryland (Baltimore Metro)',
             role: 'CARE_PARTNER',
             status: 'ACTIVE',
             joinedAt: '2026-08-15',
@@ -571,8 +573,8 @@ export const api = {
             phone: '(443) 555-3921',
             clinicPatientId: 'JHM-77341-FTD',
             anonymousHandle: 'CarePartner-419',
-            primaryGroupId: 'group-eastern-shore',
-            primaryGroupName: 'Eastern Shore Cohort',
+            primaryGroupId: 'group-eastern-maryland',
+            primaryGroupName: 'Eastern Maryland (Eastern Shore)',
             role: 'CARE_PARTNER',
             status: 'ACTIVE',
             joinedAt: '2026-08-20',
@@ -584,11 +586,37 @@ export const api = {
             phone: '(717) 555-1299',
             clinicPatientId: 'JHM-44091-FTD',
             anonymousHandle: 'CarePartner-204',
-            primaryGroupId: 'group-pennsylvania',
-            primaryGroupName: 'Pennsylvania / York County Cohort',
+            primaryGroupId: 'group-northern-maryland',
+            primaryGroupName: 'Northern Maryland / Pennsylvania / Delaware',
             role: 'CARE_PARTNER',
             status: 'ACTIVE',
             joinedAt: '2026-09-02',
+          },
+          {
+            userId: 'user-care-4',
+            realName: 'David Chen',
+            email: 'david.chen@example.com',
+            phone: '(240) 555-6712',
+            clinicPatientId: 'JHM-55120-FTD',
+            anonymousHandle: 'CarePartner-512',
+            primaryGroupId: 'group-western-maryland',
+            primaryGroupName: 'Western Maryland (Frederick and surrounding areas)',
+            role: 'CARE_PARTNER',
+            status: 'ACTIVE',
+            joinedAt: '2026-09-10',
+          },
+          {
+            userId: 'user-care-5',
+            realName: 'Patricia Morales',
+            email: 'patricia.m@example.com',
+            phone: '(703) 555-8901',
+            clinicPatientId: 'JHM-63218-FTD',
+            anonymousHandle: 'CarePartner-633',
+            primaryGroupId: 'group-southern-maryland',
+            primaryGroupName: 'Southern Maryland / DC / Northern Virginia',
+            role: 'CARE_PARTNER',
+            status: 'ACTIVE',
+            joinedAt: '2026-09-15',
           },
         ];
 
@@ -737,6 +765,55 @@ export const api = {
     );
   },
 
+  // Instant discussion pool for real-time keystroke matching
+  getAllDiscussionsPool: async (): Promise<{
+    pool: {
+      id: string;
+      title: string;
+      content: string;
+      authorHandle: string;
+      authorBadge?: string;
+      cohortName?: string;
+      createdAt: string;
+      replies: {
+        id: string;
+        content: string;
+        authorHandle: string;
+        authorBadge?: string;
+        createdAt?: string;
+      }[];
+    }[];
+  }> => {
+    return safeFetchJson(
+      '/api/v1/deflection/discussions-pool',
+      undefined,
+      () => {
+        const approvedPosts = localPosts.filter((p) => p.status === 'APPROVED');
+        const pool = approvedPosts.map((p) => {
+          const postComments = localComments.filter((c) => c.postId === p.id && (c.status === 'APPROVED' || !c.status));
+          const cohort = p.assignedGroups?.[0];
+          return {
+            id: p.id,
+            title: p.title,
+            content: p.content,
+            authorHandle: p.author.anonymousHandle,
+            authorBadge: p.author.badgeLabel,
+            cohortName: cohort?.properName || cohort?.name || 'General Clinic Forum',
+            createdAt: p.createdAt,
+            replies: postComments.map((c) => ({
+              id: c.id,
+              content: c.content,
+              authorHandle: c.author.anonymousHandle,
+              authorBadge: c.author.badgeLabel,
+              createdAt: c.createdAt,
+            })),
+          };
+        });
+        return { pool };
+      }
+    );
+  },
+
   // Closed-loop RAG Assistant
   chatWithAssistant: async (query: string): Promise<{ answer: string; isMedicationRefusal?: boolean; citedResources?: any[] }> => {
     return safeFetchJson(
@@ -751,7 +828,7 @@ export const api = {
         const drugKeywords = ['seroquel', 'haldol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'prescribe'];
         if (drugKeywords.some((d) => q.includes(d))) {
           return {
-            answer: "Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic support line at (410) 555-FTDC.",
+            answer: "Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.",
             isMedicationRefusal: true,
             citedResources: [],
           };
@@ -763,7 +840,7 @@ export const api = {
         }) || localResources[0];
 
         return {
-          answer: `Based on Dr. Seema's clinical protocols for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nIf you have acute questions, please call our clinic line at (410) 555-FTDC.`,
+          answer: `Based on Dr. Seema's clinical protocols for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nFor clinical questions, please call the clinic direct line at (410) 955-5147 (option 2) or support line at (410) 502-4163. For life-threatening emergencies, call 911.`,
           citedResources: [{ id: matched.id, title: matched.title, url: matched.externalUrl }],
         };
       }

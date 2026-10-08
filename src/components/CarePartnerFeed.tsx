@@ -10,7 +10,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { Post, CommunityGroup, CurrentUser } from '../types';
+import { Post, CommunityGroup, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';
 import { DiscussionDetail } from './DiscussionDetail';
 
@@ -208,17 +208,17 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       )}
 
       {/* "ASK QUESTION" PROMPT */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-xs transition-colors">
         <button
           onClick={onOpenComposer}
-          className="flex-1 text-left text-slate-500 hover:text-slate-700 text-xs sm:text-base bg-slate-50/80 hover:bg-slate-100 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 transition border border-slate-200/60 font-sans truncate"
+          className="flex-1 text-left text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs sm:text-base bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 transition border border-slate-200/60 dark:border-slate-700 font-sans truncate cursor-pointer"
         >
           <span className="hidden sm:inline">Ask a question or share practical care advice with other caregivers...</span>
           <span className="sm:hidden">Ask a question or share care advice...</span>
         </button>
         <button
           onClick={onOpenComposer}
-          className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 transition shrink-0 shadow-xs whitespace-nowrap"
+          className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 transition shrink-0 shadow-xs whitespace-nowrap cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>New Post</span>
@@ -226,13 +226,13 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       </div>
 
       {/* INTUITIVE COMPACT GROUP SELECTOR */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 pb-3 border-b border-slate-200">
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 font-medium min-w-0">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium min-w-0">
           <span className="shrink-0">Viewing:</span>
-          <span className="font-semibold text-slate-900 truncate">
+          <span className="font-semibold text-slate-900 dark:text-slate-200 truncate">
             {selectedGroupTab === 'all'
               ? 'All Clinic Discussions'
-              : cohorts.find((c) => c.id === selectedGroupTab)?.name || 'Cohort'}
+              : getProperGroupName(cohorts.find((c) => c.id === selectedGroupTab))}
           </span>
         </div>
 
@@ -240,35 +240,32 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
           id="group-filter"
           value={selectedGroupTab}
           onChange={(e) => setSelectedGroupTab(e.target.value)}
-          className="w-auto px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72] transition shrink-0"
+          className="w-auto px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shrink-0 cursor-pointer"
         >
           <option value="all">All Groups</option>
-          {cohorts.map((cohort) => {
-            const shortName = cohort.name.replace(/\s+Cohort$/i, '');
-            return (
-              <option key={cohort.id} value={cohort.id}>
-                {shortName}
-              </option>
-            );
-          })}
+          {cohorts.map((cohort) => (
+            <option key={cohort.id} value={cohort.id}>
+              {getProperGroupName(cohort)}
+            </option>
+          ))}
         </select>
       </div>
 
       {/* POSTS LIST (Clean, tap-to-open discussions) */}
       <div className="space-y-4">
         {loading ? (
-          <div className="py-16 text-center text-slate-400 text-base font-sans">
+          <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-base font-sans">
             Loading discussions...
           </div>
         ) : posts.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-500 text-base space-y-3 shadow-xs">
-            <div className="font-serif font-semibold text-lg text-slate-800">No discussions found in this channel yet.</div>
-            <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400 text-base space-y-3 shadow-xs">
+            <div className="font-serif font-semibold text-lg text-slate-800 dark:text-slate-200">No discussions found in this channel yet.</div>
+            <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
               You can start the first conversation or check the Clinical Guides for guidance.
             </p>
             <button
               onClick={onOpenComposer}
-              className="text-[#002D72] font-semibold hover:underline text-sm inline-block pt-1"
+              className="text-[#002D72] dark:text-blue-400 font-semibold hover:underline text-sm inline-block pt-1 cursor-pointer"
             >
               Start the first discussion
             </button>
@@ -277,7 +274,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
           posts.map((post) => {
             const isLiked = !!likedPosts[post.id];
             const currentLikes = post.upvotes + (isLiked ? 1 : 0);
-            const regionName = post.assignedGroups[0]?.name.replace('Cohort', '').trim();
+            const regionName = getProperGroupName(post.assignedGroups[0]);
             const isPending = post.status === 'PENDING_MODERATION';
 
             return (
@@ -286,22 +283,22 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                 onClick={() => setSelectedPost(post)}
                 className={`rounded-2xl border p-5 sm:p-6 space-y-3.5 transition-all cursor-pointer group text-left ${
                   isPending
-                    ? 'bg-amber-50/30 border-amber-200 hover:border-amber-300 shadow-2xs'
-                    : 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-xs'
+                    ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:border-amber-300 dark:hover:border-amber-700/80 shadow-2xs'
+                    : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
                 }`}
               >
                 {/* Author Metadata */}
-                <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
+                <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-2 font-medium min-w-0">
-                    <span className="text-slate-900 font-semibold truncate">{post.author.anonymousHandle}</span>
+                    <span className="text-slate-900 dark:text-slate-200 font-semibold truncate">{post.author.anonymousHandle}</span>
                     {regionName && (
                       <>
-                        <span aria-hidden="true" className="text-slate-300 shrink-0">·</span>
-                        <span className="text-slate-500 truncate">{regionName}</span>
+                        <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                        <span className="text-slate-500 dark:text-slate-400 truncate">{regionName}</span>
                       </>
                     )}
                   </div>
-                  <span className="text-slate-400 text-xs shrink-0 pl-2">
+                  <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0 pl-2">
                     {new Date(post.createdAt).toLocaleDateString([], {
                       month: 'short',
                       day: 'numeric',
@@ -310,17 +307,17 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                 </div>
 
                 {/* Title */}
-                <h2 className="font-serif text-lg sm:text-xl font-semibold text-slate-900 leading-snug group-hover:text-[#002D72] transition">
+                <h2 className="font-serif text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
                   {post.title}
                 </h2>
 
                 {/* Body Content Snippet */}
-                <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed font-sans line-clamp-3">
+                <p className="text-[15px] sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-sans line-clamp-3">
                   {post.content}
                 </p>
 
                 {isPending && (
-                  <div className="text-xs text-amber-900 bg-amber-50/80 rounded-xl p-3 border border-amber-200/80 leading-relaxed font-sans">
+                  <div className="text-xs text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl p-3 border border-amber-200/80 dark:border-amber-900/60 leading-relaxed font-sans">
                     Your question was received and is currently under clinical safety review by Dr. Seema before being shared clinic-wide.
                   </div>
                 )}
@@ -328,11 +325,11 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                 {/* Actions Row */}
                 {isPending ? (
                   <div
-                    className="pt-3 border-t border-amber-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    className="pt-3 border-t border-amber-200/70 dark:border-amber-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex items-center gap-1.5 text-amber-900 font-medium">
-                      <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                    <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300 font-medium">
+                      <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
                       <span>Pending review by Dr. Seema</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -342,9 +339,9 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                           e.stopPropagation();
                           handleStartEdit(post);
                         }}
-                        className="px-3 py-1.5 bg-white hover:bg-amber-100/60 text-slate-700 border border-slate-300 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                        className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-amber-100/60 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                       >
-                        <Pencil className="w-3.5 h-3.5 text-slate-600" />
+                        <Pencil className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                         <span>Edit Question</span>
                       </button>
                       <button
@@ -353,29 +350,29 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                           e.stopPropagation();
                           setConfirmDeletePost(post);
                         }}
-                        className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs"
+                        className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                         <span>Cancel Submission</span>
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm text-slate-500">
-                    <div className="flex items-center gap-1.5 text-slate-600 font-medium group-hover:text-[#002D72] transition">
-                      <MessageSquare className="w-4 h-4 text-slate-400 group-hover:text-[#002D72]" />
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
+                      <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
                       <span>{post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}</span>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
 
                     <button
                       type="button"
                       onClick={(e) => handleToggleLike(e, post.id)}
-                      className={`flex items-center gap-1.5 transition py-1.5 px-3 rounded-lg hover:bg-slate-50 text-xs sm:text-sm ${
-                        isLiked ? 'text-rose-600 font-semibold' : 'text-slate-500 hover:text-slate-800'
+                      className={`flex items-center gap-1.5 transition py-1.5 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-xs sm:text-sm cursor-pointer ${
+                        isLiked ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                       }`}
                     >
-                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600' : ''}`} />
+                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 dark:fill-rose-400' : ''}`} />
                       <span>{currentLikes} helpful</span>
                     </button>
                   </div>
@@ -390,19 +387,19 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       {editingPost && (
         <div
           onClick={() => setEditingPost(null)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h3 className="font-serif font-semibold text-lg text-slate-900">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
                 Edit Question
               </h3>
               <button
                 onClick={() => setEditingPost(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -410,60 +407,60 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-sm font-sans">
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Topic / Question Title
                 </label>
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Details
                 </label>
                 <textarea
                   rows={4}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full p-3.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] leading-relaxed"
+                  className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 leading-relaxed"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-xs font-semibold text-slate-700">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Target Group
                 </label>
                 <select
                   value={editCohortId}
                   onChange={(e) => setEditCohortId(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 >
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name.replace(/\s+Cohort$/i, '')}
+                      {c.properName || c.name.replace(/\s+Cohort$/i, '')}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingPost(null)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingEdit || !editTitle.trim() || !editContent.trim()}
-                  className="px-5 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition"
+                  className="px-5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
                 >
                   {isSavingEdit ? 'Saving...' : 'Save Updates'}
                 </button>
@@ -477,35 +474,35 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       {confirmDeletePost && (
         <div
           onClick={() => setConfirmDeletePost(null)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-serif font-semibold text-lg text-slate-900">
+                <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
                   Withdraw Question?
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   This will remove your question from clinical review.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs sm:text-sm text-slate-700 font-medium line-clamp-2">
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium line-clamp-2">
               "{confirmDeletePost.title}"
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setConfirmDeletePost(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Keep Question
               </button>
@@ -513,7 +510,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                 type="button"
                 disabled={isDeletingPost}
                 onClick={handleConfirmWithdraw}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeletingPost ? 'Withdrawing...' : 'Yes, Withdraw Question'}</span>

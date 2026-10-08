@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Lora', Georgia, Cambria, 'Times New Roman', Times, serif;
@@ -23,6 +25,12 @@
     overflow-x: hidden;
     line-height: 1.625;
     letter-spacing: -0.011em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html.dark body {
+    background-color: #0B0F19;
+    color: #E2E8F0;
   }
 
   h1, h2, h3, h4, h5, h6 {

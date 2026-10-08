@@ -105,10 +105,10 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-[#002D72] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="font-serif font-bold text-[#002D72]">
-          Connecting to Johns Hopkins FTD Platform...
+      <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19] flex flex-col items-center justify-center p-4 transition-colors">
+        <div className="w-12 h-12 border-4 border-[#002D72] dark:border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="font-serif font-bold text-[#002D72] dark:text-blue-400">
+          Connecting to Hopkins Care Partner Connect...
         </p>
       </div>
     );
@@ -122,7 +122,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col text-slate-800 font-sans selection:bg-[#002D72]/15 selection:text-[#002D72]">
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19] flex flex-col text-slate-800 dark:text-slate-100 font-sans selection:bg-[#002D72]/15 selection:text-[#002D72] dark:selection:bg-blue-600/30 dark:selection:text-blue-200 transition-colors">
       {/* Universal Top Header with Emergency Banner & Persona Switcher */}
       <Header
         currentUser={currentUser}
@@ -193,16 +193,16 @@ export default function App() {
 
         {activeTab === 'audit' && (
           <div className="max-w-2xl mx-auto px-4 py-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-              <h2 className="text-base font-semibold text-slate-900">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 shadow-xs">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                 Audit Ledger
               </h2>
-              <p className="text-slate-500 text-xs">
+              <p className="text-slate-500 dark:text-slate-400 text-xs">
                 Inspect logged clinical reviews, approvals, and redactions.
               </p>
               <button
                 onClick={() => setIsAuditOpen(true)}
-                className="px-4 py-2 bg-[#002D72] text-white rounded-lg text-xs font-semibold"
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition"
               >
                 Open Audit Ledger
               </button>
@@ -212,10 +212,10 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500 font-sans">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-xs text-slate-500 dark:text-slate-400 font-sans transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-          <span>Johns Hopkins Medicine · Frontotemporal Dementia Center</span>
-          <span className="text-slate-400">Care Partner Circle · Clinician Moderated</span>
+          <span className="text-slate-700 dark:text-slate-300 font-medium">Johns Hopkins Medicine · Frontotemporal Dementia Center</span>
+          <span className="text-slate-400 dark:text-slate-500">Hopkins Care Partner Connect · Clinician Moderated</span>
         </div>
       </footer>
 

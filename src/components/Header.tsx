@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-2 sm:gap-3 lg:gap-4 flex-nowrap">
           {/* LEFT: Institutional Logo + Standard Left-Aligned Navigation */}
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-5 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0">
             {/* Branding - Responsive title avoids mobile & tablet overflow */}
             <button
               onClick={() => setActiveTab(isClinician || isAdmin ? 'moderation' : 'feed')}
@@ -67,7 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="leading-tight min-w-0">
                 <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight truncate block">
                   <span className="sm:hidden">Hopkins Connect</span>
-                  <span className="hidden sm:inline">Hopkins Care Partner Connect</span>
+                  <span className="hidden sm:inline xl:hidden">Care Partner Connect</span>
+                  <span className="hidden xl:inline">Hopkins Care Partner Connect</span>
                 </span>
                 <span className="hidden 2xl:block text-[11px] text-slate-500 dark:text-slate-400 font-normal">
                   Johns Hopkins Medicine
@@ -84,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
               {(isClinician || isAdmin) && (
                 <button
                   onClick={() => setActiveTab('moderation')}
-                  className={`px-2 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                     activeTab === 'moderation'
                       ? 'bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400 font-semibold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -102,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => setActiveTab('feed')}
-                className={`px-2 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'feed'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -114,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => setActiveTab('knowledge')}
-                className={`px-2 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'knowledge'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -126,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={onOpenAssistant}
-                className="px-2 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>Assistant</span>
@@ -135,9 +136,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* RIGHT: Quick Clinic Contact, Theme Toggle, Notification Center & User Profile */}
-          <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {/* Direct Clinic Support Line: shown on extra-wide laptop/desktop */}
-            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shrink-0 whitespace-nowrap">
+            <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shrink-0 whitespace-nowrap">
               <Phone className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
               <div className="flex items-center gap-1.5">
                 <a
@@ -164,21 +165,21 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={toggleTheme}
-              className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              className="w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? (
-                <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-400 transition-transform hover:rotate-45" />
+                <Sun className="w-4 h-4 text-amber-400 transition-transform hover:rotate-45" />
               ) : (
-                <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-slate-600 dark:text-slate-300 transition-transform hover:-rotate-12" />
+                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300 transition-transform hover:-rotate-12" />
               )}
             </button>
 
             {/* Notification Bell */}
             <button
               onClick={onOpenNotifications}
-              className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              className="relative w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
               aria-label="Notifications"
               title={
                 totalNotificationBadge > 0
@@ -186,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'Notifications'
               }
             >
-              <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              <Bell className="w-4 h-4" />
               {totalNotificationBadge > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-[#002D72] dark:bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center tabular-nums ring-1 ring-white dark:ring-slate-900">
                   {totalNotificationBadge}
@@ -194,14 +195,11 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* Divider between quick tools & profile (only on desktop where space is plentiful) */}
-            <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden lg:block shrink-0" />
-
             {/* User Profile & Persona Switcher */}
             <div className="relative shrink-0">
               <button
                 onClick={() => setShowPersonaMenu(!showPersonaMenu)}
-                className="flex items-center gap-1.5 p-1 sm:px-2 py-1 sm:py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700 shrink-0 cursor-pointer"
+                className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700 shrink-0 cursor-pointer"
                 title="Switch persona or appearance"
               >
                 <div
@@ -211,8 +209,8 @@ export const Header: React.FC<HeaderProps> = ({
                   {currentUser.firstName[0]}
                 </div>
 
-                <div className="hidden lg:block text-left leading-tight shrink-0">
-                  <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm whitespace-nowrap truncate max-w-[100px] xl:max-w-[140px]">
+                <div className="hidden xl:block text-left leading-tight shrink-0">
+                  <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm whitespace-nowrap truncate max-w-[120px]">
                     {isAdmin
                       ? 'CS Admin'
                       : isClinician
@@ -221,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-                <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                <ChevronDown className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
               </button>
 
               {/* Persona Switcher Dropdown */}

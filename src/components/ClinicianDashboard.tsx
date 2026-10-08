@@ -15,9 +15,13 @@ import {
   Sparkles,
   UserPlus,
   ArrowRight,
+  MessageSquare,
+  Clock,
+  Filter,
 } from 'lucide-react';
 import {
   QueueItem,
+  Post,
   CommunityGroup,
   RejectionReason,
   GroupMember,
@@ -32,6 +36,7 @@ interface ClinicianDashboardProps {
   onOpenInvite: () => void;
   onOpenAudit: () => void;
   onCohortCreated?: () => void;
+  onOpenDiscussion?: (postId: string) => void;
 }
 
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
@@ -40,8 +45,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onOpenInvite,
   onOpenAudit,
   onCohortCreated,
+  onOpenDiscussion,
 }) => {
-  const [activeTab, setActiveTab] = useState<'queue' | 'cohorts' | 'members'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members'>('queue');
 
   // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
@@ -50,7 +56,15 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
   const [sanitizedDraft, setSanitizedDraft] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [allowUnmoderatedReplies, setAllowUnmoderatedReplies] = useState(false);
   const [moderatorNotes, setModeratorNotes] = useState('');
+
+  // Discussions & Reply Policy State
+  const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [searchPostsQuery, setSearchPostsQuery] = useState('');
+  const [postsPolicyFilter, setPostsPolicyFilter] = useState<'all' | 'moderated' | 'unmoderated'>('all');
+  const [togglingPostId, setTogglingPostId] = useState<string | null>(null);
 
   // Rejection modal
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -104,9 +118,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
+  const loadPublishedPosts = async () => {
+    setLoadingPosts(true);
+    try {
+      const res = await api.getPosts({ role: 'CLINICIAN_MODERATOR' });
+      setPublishedPosts(res.posts || []);
+    } catch (err) {
+      console.error('Failed to load published posts:', err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
   useEffect(() => {
     loadQueue();
     loadMembers();
+    loadPublishedPosts();
   }, []);
 
   const initItemState = (item: QueueItem) => {
@@ -116,6 +143,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         ? item.assignedGroupIds
         : cohorts.slice(0, 1).map((c) => c.id)
     );
+    setAllowUnmoderatedReplies(item.allowUnmoderatedReplies ?? false);
     setModeratorNotes('');
   };
 
@@ -135,6 +163,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         action: 'APPROVE',
         assignedGroupIds: selectedGroupIds,
         sanitizedContent: sanitizedDraft,
+        allowUnmoderatedReplies,
         moderatorNotes,
       });
 
@@ -143,10 +172,36 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       onQueueUpdated();
       await loadQueue();
+      await loadPublishedPosts();
     } catch (err) {
       console.error('Failed to publish:', err);
       setActionSuccessNotice('Error publishing post. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
+    }
+  };
+
+  // Toggle reply moderation policy for a post
+  const handleTogglePostRepliesMode = async (post: Post) => {
+    setTogglingPostId(post.id);
+    const newAllowUnmoderated = !post.allowUnmoderatedReplies;
+    try {
+      await api.togglePostUnmoderatedReplies(post.id, newAllowUnmoderated);
+      setPublishedPosts((prev) =>
+        prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: newAllowUnmoderated } : p))
+      );
+      setActionSuccessNotice(
+        newAllowUnmoderated
+          ? `Replies for "${post.title.slice(0, 32)}..." are now unmoderated (open to all).`
+          : `Replies for "${post.title.slice(0, 32)}..." now require clinical moderation.`
+      );
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+      onQueueUpdated();
+    } catch (err) {
+      console.error('Failed to update reply moderation policy:', err);
+      setActionSuccessNotice('Failed to update reply moderation policy.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setTogglingPostId(null);
     }
   };
 
@@ -204,14 +259,31 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
+  // Helper to escape regex special characters
+  const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   // Auto clean personal info
   const handleCleanPersonalInfo = () => {
     if (!activeItem) return;
     let cleaned = activeItem.rawContent;
-    activeItem.phiAlerts.forEach((alertItem) => {
-      cleaned = cleaned.replace(new RegExp(alertItem.text, 'gi'), `[${alertItem.type} removed]`);
-    });
+    if (activeItem.phiAlerts && activeItem.phiAlerts.length > 0) {
+      activeItem.phiAlerts.forEach((alertItem) => {
+        if (alertItem.text) {
+          const escaped = escapeRegExp(alertItem.text.trim());
+          cleaned = cleaned.replace(new RegExp(escaped, 'gi'), `[${alertItem.type} removed]`);
+        }
+      });
+    }
+
+    // Comprehensive fallback for phone numbers (e.g. (410) 555-9122, 410-555-9122) and emails
+    const phonePattern = /(?:\+?1[-.\s]*)?(?:\(\d{3}\)|\b\d{3}\b)[-.\s]*\d{3}[-.\s]*\d{4}\b/g;
+    cleaned = cleaned.replace(phonePattern, '[PHONE removed]');
+    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+    cleaned = cleaned.replace(emailPattern, '[EMAIL removed]');
+
     setSanitizedDraft(cleaned);
+    setActionSuccessNotice('Personal details removed from draft.');
+    setTimeout(() => setActionSuccessNotice(null), 3000);
   };
 
   // Reassign Group
@@ -331,31 +403,49 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* 3 STAT CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* 4 STAT CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTab('queue')}
-          className={`p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'queue'
               ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-300 dark:ring-amber-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Pending Posts</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Pending</span>
             <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
-            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
               {queueItems.length === 1 ? 'needs review' : 'need review'}
             </span>
           </div>
         </div>
 
         <div
+          onClick={() => setActiveTab('discussions')}
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+            activeTab === 'discussions'
+              ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-300 dark:ring-indigo-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Discussions</span>
+            <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{publishedPosts.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">published</span>
+          </div>
+        </div>
+
+        <div
           onClick={() => setActiveTab('cohorts')}
-          className={`p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'cohorts'
               ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
@@ -365,15 +455,15 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <span className="font-semibold text-slate-700 dark:text-slate-300">Groups</span>
             <Layers className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
-            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">active</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">active</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('members')}
-          className={`p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'members'
               ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-300 dark:ring-emerald-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
@@ -383,9 +473,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <span className="font-semibold text-slate-700 dark:text-slate-300">Members</span>
             <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
-            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">caregivers</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">caregivers</span>
           </div>
         </div>
       </div>
@@ -407,6 +497,20 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 {queueItems.length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('discussions')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+              activeTab === 'discussions'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>Discussions</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
+              {publishedPosts.length}
+            </span>
           </button>
 
           <button
@@ -611,6 +715,41 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </select>
                   </div>
 
+                  {/* Reply Moderation Policy Toggle */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 pr-2">
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>Allow everyone to reply without moderation</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          By default, all replies to posts are moderated. Turn this on to allow care partners to reply immediately without prior moderation.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={allowUnmoderatedReplies}
+                          onChange={(e) => setAllowUnmoderatedReplies(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+                    {allowUnmoderatedReplies ? (
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Unmoderated mode active: community replies will post immediately. You can remove inappropriate replies at any time.</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>Default: replies will go to the moderation queue for review before publishing.</span>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Private note */}
                   <div className="space-y-1">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -660,7 +799,207 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 2: GROUPS */}
+      {/* TAB: DISCUSSIONS & REPLY POLICIES */}
+      {activeTab === 'discussions' && (
+        <div className="space-y-4">
+          {/* Header Controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Discussions & Reply Policies</span>
+                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                  ({publishedPosts.length} published)
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Manage reply moderation mode for discussions one by one. By default, all replies to posts are moderated. Turn on unmoderated mode to allow everyone to reply immediately, with moderator removal controls.
+              </p>
+            </div>
+
+            {/* Filter by Policy */}
+            <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('all')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                    postsPolicyFilter === 'all'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  All ({publishedPosts.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('moderated')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    postsPolicyFilter === 'moderated'
+                      ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Shield className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span>Moderated ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies).length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('unmoderated')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    postsPolicyFilter === 'unmoderated'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Open ({publishedPosts.filter((p) => p.allowUnmoderatedReplies).length})</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchPostsQuery}
+              onChange={(e) => setSearchPostsQuery(e.target.value)}
+              placeholder="Search discussions by title, author handle, or keywords..."
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"
+            />
+          </div>
+
+          {/* List of discussions */}
+          {loadingPosts ? (
+            <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-xs">
+              Loading discussions...
+            </div>
+          ) : (
+            (() => {
+              const filtered = publishedPosts.filter((p) => {
+                if (postsPolicyFilter === 'moderated' && p.allowUnmoderatedReplies) return false;
+                if (postsPolicyFilter === 'unmoderated' && !p.allowUnmoderatedReplies) return false;
+                if (searchPostsQuery.trim()) {
+                  const q = searchPostsQuery.toLowerCase();
+                  return (
+                    p.title.toLowerCase().includes(q) ||
+                    p.content.toLowerCase().includes(q) ||
+                    p.author.anonymousHandle.toLowerCase().includes(q)
+                  );
+                }
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 text-xs space-y-1">
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">No discussions match filter.</p>
+                    <p>Try modifying your search or policy filter above.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {filtered.map((post) => {
+                    const isUnmoderated = post.allowUnmoderatedReplies === true;
+                    const isTogglingThis = togglingPostId === post.id;
+                    const groupName = getProperGroupName(post.assignedGroups[0]);
+
+                    return (
+                      <div
+                        key={post.id}
+                        className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition hover:border-slate-300 dark:hover:border-slate-700"
+                      >
+                        <div className="space-y-2 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-semibold text-slate-900 dark:text-white truncate">
+                              {post.author.anonymousHandle}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate">
+                              {groupName}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-[11px]">
+                              {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
+                            </span>
+                          </div>
+
+                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+                            {post.title}
+                          </h3>
+
+                          <p className="text-slate-500 dark:text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                            {post.content}
+                          </p>
+
+                          {/* Status Badge */}
+                          <div className="pt-1 flex items-center gap-2 text-xs">
+                            {isUnmoderated ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>Unmoderated Replies: Anyone can reply immediately without pre-review</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-lg">
+                                <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>Moderated Replies (Default): Clinician review required</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions for this post */}
+                        <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                          <button
+                            type="button"
+                            disabled={isTogglingThis}
+                            onClick={() => handleTogglePostRepliesMode(post)}
+                            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs ${
+                              isUnmoderated
+                                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700'
+                                : 'bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white'
+                            }`}
+                          >
+                            {isTogglingThis ? (
+                              <span>Updating...</span>
+                            ) : isUnmoderated ? (
+                              <>
+                                <Shield className="w-3.5 h-3.5" />
+                                <span>Require Moderation</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Allow Open Replies</span>
+                              </>
+                            )}
+                          </button>
+
+                          {onOpenDiscussion && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenDiscussion(post.id)}
+                              className="w-full sm:w-auto px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span>View Discussion</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
+        </div>
+      )}
+
+      {/* TAB: GROUPS */}
       {activeTab === 'cohorts' && (
         <div className="space-y-5">
           {/* Header Controls */}

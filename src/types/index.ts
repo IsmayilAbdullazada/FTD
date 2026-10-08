@@ -85,6 +85,7 @@ export interface Post {
   author: AuthorProjection;
   assignedGroups: CommunityGroup[];
   isUrgentClinical?: boolean;
+  allowUnmoderatedReplies?: boolean;
   createdAt: string;
   commentCount: number;
   upvotes: number;
@@ -118,6 +119,7 @@ export interface QueueItem {
   suggestedCohort: CommunityGroup;
   assignedGroupIds: string[];
   isUrgentClinical?: boolean;
+  allowUnmoderatedReplies?: boolean;
   phiAlerts: PhiAlert[];
   createdAt: string;
 }

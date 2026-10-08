@@ -87,6 +87,7 @@ interface Post {
   isUrgentClinical?: boolean;
   assignedGroupIds: string[];
   suggestedCohortId?: string;
+  allowUnmoderatedReplies?: boolean;
   phiAlerts: PhiAlert[];
   createdAt: string;
   updatedAt: string;
@@ -979,6 +980,7 @@ app.get('/api/v1/posts', (req, res) => {
       createdAt: p.createdAt,
       commentCount: comments.filter((c) => c.postId === p.id && c.status === 'APPROVED').length,
       upvotes: p.upvotes,
+      allowUnmoderatedReplies: p.allowUnmoderatedReplies ?? false,
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? p.phiAlerts : undefined,
     };
   });
@@ -1043,6 +1045,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
       createdAt: post.createdAt,
       commentCount: postComments.filter((c) => c.status === 'APPROVED').length,
       upvotes: post.upvotes,
+      allowUnmoderatedReplies: post.allowUnmoderatedReplies ?? false,
     },
     comments: postComments,
   });
@@ -1210,7 +1213,8 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
   }
 
   const author = users.find((u) => u.id === authorId);
-  const isClinician = author?.role === 'CLINICIAN_MODERATOR';
+  const isClinician = author?.role === 'CLINICIAN_MODERATOR' || author?.role === 'SYSTEM_ADMIN';
+  const isUnmoderated = post.allowUnmoderatedReplies === true;
 
   const newComment: Comment = {
     id: `comm-${Date.now()}`,
@@ -1218,7 +1222,7 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
     authorId,
     rawContent: content,
     sanitizedContent: content,
-    status: isClinician ? 'APPROVED' : 'PENDING_MODERATION',
+    status: isClinician || isUnmoderated ? 'APPROVED' : 'PENDING_MODERATION',
     createdAt: new Date().toISOString(),
   };
 
@@ -1232,7 +1236,39 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
       ...newComment,
       author: projectAuthor(authorId, isClinician ? 'CLINICIAN_MODERATOR' : 'CARE_PARTNER'),
     },
-    message: isClinician ? 'Comment published immediately.' : 'Comment submitted for moderation review.',
+    message: isClinician || isUnmoderated ? 'Comment published immediately.' : 'Comment submitted for moderation review.',
+  });
+});
+
+// Toggle or update post unmoderated replies mode (Clinician Moderator)
+app.put('/api/v1/posts/:id/unmoderated-replies', (req, res) => {
+  const post = posts.find((p) => p.id === req.params.id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  const { allowUnmoderatedReplies } = req.body;
+  post.allowUnmoderatedReplies = Boolean(allowUnmoderatedReplies);
+  post.updatedAt = new Date().toISOString();
+
+  // If opening replies, also auto-approve existing pending comments on this thread
+  if (post.allowUnmoderatedReplies) {
+    comments
+      .filter((c) => c.postId === post.id && c.status === 'PENDING_MODERATION')
+      .forEach((c) => {
+        c.status = 'APPROVED';
+      });
+    post.commentCount = comments.filter((c) => c.postId === post.id && c.status === 'APPROVED').length;
+  }
+
+  res.json({
+    post: {
+      ...post,
+      allowUnmoderatedReplies: post.allowUnmoderatedReplies,
+    },
+    message: post.allowUnmoderatedReplies
+      ? 'Post updated: Anyone can now reply without moderation.'
+      : 'Post updated: All new replies now require clinical moderation.',
   });
 });
 
@@ -1352,7 +1388,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
 
 // Moderation Action (Approve / Reject / Clinical Escalate)
 app.post('/api/v1/moderation/action', (req, res) => {
-  const { entityId, action, assignedGroupIds, sanitizedContent, rejectionCode, rejectionMessage, moderatorNotes } = req.body;
+  const { entityId, action, assignedGroupIds, sanitizedContent, allowUnmoderatedReplies, rejectionCode, rejectionMessage, moderatorNotes } = req.body;
 
   const post = posts.find((p) => p.id === entityId);
   if (!post) {
@@ -1366,6 +1402,10 @@ app.post('/api/v1/moderation/action', (req, res) => {
 
   if (sanitizedContent) {
     post.sanitizedContent = sanitizedContent;
+  }
+
+  if (allowUnmoderatedReplies !== undefined) {
+    post.allowUnmoderatedReplies = Boolean(allowUnmoderatedReplies);
   }
 
   if (action === 'APPROVE') {

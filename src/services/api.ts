@@ -315,6 +315,11 @@ export const api = {
       },
       () => {
         const author = localUsers.find((u) => u.id === authorId) || localUsers[1];
+        const post = localPosts.find((p) => p.id === postId);
+        const isClinician = author.role === 'CLINICIAN_MODERATOR' || author.role === 'SYSTEM_ADMIN';
+        const isUnmoderated = post?.allowUnmoderatedReplies === true;
+        const newStatus = isClinician || isUnmoderated ? 'APPROVED' : 'PENDING_MODERATION';
+
         const newComm: Comment = {
           id: `comm-${Date.now()}`,
           postId,
@@ -325,15 +330,45 @@ export const api = {
             badgeLabel: author.badgeLabel,
             avatarColor: author.avatarColor,
           },
-          status: author.role === 'CLINICIAN_MODERATOR' ? 'APPROVED' : 'PENDING_MODERATION',
+          status: newStatus,
           createdAt: new Date().toISOString(),
         };
         localComments.push(newComm);
-        const post = localPosts.find((p) => p.id === postId);
         if (post && newComm.status === 'APPROVED') post.commentCount += 1;
         return {
           comment: newComm,
-          message: author.role === 'CLINICIAN_MODERATOR' ? 'Reply posted.' : 'Reply submitted for moderation review.',
+          message: isClinician || isUnmoderated ? 'Reply posted.' : 'Reply submitted for moderation review.',
+        };
+      }
+    );
+  },
+
+  togglePostUnmoderatedReplies: async (postId: string, allowUnmoderated: boolean): Promise<{ post: Post; message: string }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}/unmoderated-replies`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowUnmoderatedReplies: allowUnmoderated }),
+      },
+      () => {
+        const post = localPosts.find((p) => p.id === postId);
+        if (post) {
+          post.allowUnmoderatedReplies = allowUnmoderated;
+          if (allowUnmoderated) {
+            localComments
+              .filter((c) => c.postId === postId && c.status === 'PENDING_MODERATION')
+              .forEach((c) => {
+                c.status = 'APPROVED';
+              });
+            post.commentCount = localComments.filter((c) => c.postId === postId && c.status === 'APPROVED').length;
+          }
+        }
+        return {
+          post: post || localPosts[0],
+          message: allowUnmoderated
+            ? 'Post updated: Anyone can now reply without moderation.'
+            : 'Post updated: All new replies now require clinical moderation.',
         };
       }
     );
@@ -396,8 +431,15 @@ export const api = {
       { method: 'DELETE' },
       () => {
         const idx = localComments.findIndex((c) => c.id === commentId);
-        if (idx !== -1) localComments.splice(idx, 1);
-        return { success: true, message: 'Reply withdrawn successfully.' };
+        if (idx !== -1) {
+          const comm = localComments[idx];
+          const post = localPosts.find((p) => p.id === postId);
+          if (post && comm.status === 'APPROVED' && post.commentCount > 0) {
+            post.commentCount -= 1;
+          }
+          localComments.splice(idx, 1);
+        }
+        return { success: true, message: 'Reply removed successfully.' };
       }
     );
   },
@@ -416,6 +458,7 @@ export const api = {
     action: 'APPROVE' | 'REJECT' | 'CLINICAL_REDIRECT';
     assignedGroupIds?: string[];
     sanitizedContent?: string;
+    allowUnmoderatedReplies?: boolean;
     rejectionCode?: RejectionReason;
     rejectionMessage?: string;
     moderatorNotes?: string;
@@ -442,6 +485,7 @@ export const api = {
             title: item.title,
             content: payload.sanitizedContent || item.sanitizedContent,
             status: 'APPROVED',
+            allowUnmoderatedReplies: payload.allowUnmoderatedReplies ?? false,
             author: {
               userId: item.author.userId,
               anonymousHandle: item.author.anonymousHandle,

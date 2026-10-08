@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
+import { Footer } from './components/Footer';
 import { CarePartnerFeed } from './components/CarePartnerFeed';
 import { PostComposer } from './components/PostComposer';
 import { ClinicianDashboard } from './components/ClinicianDashboard';
@@ -137,7 +138,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-24 md:pb-12">
+      <main className="flex-1 pb-6 md:pb-8">
         {activeTab === 'feed' && (
           <CarePartnerFeed
             currentUser={currentUser}
@@ -180,6 +181,10 @@ export default function App() {
               const res = await api.getCohorts();
               setCohorts(res);
             }}
+            onOpenDiscussion={(postId) => {
+              setTargetDiscussionId(postId);
+              setActiveTab('feed');
+            }}
           />
         )}
 
@@ -211,13 +216,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-xs text-slate-500 dark:text-slate-400 font-sans transition-colors">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-          <span className="text-slate-700 dark:text-slate-300 font-medium">Johns Hopkins Medicine · Frontotemporal Dementia Center</span>
-          <span className="text-slate-400 dark:text-slate-500">Hopkins Care Partner Connect · Clinician Moderated</span>
-        </div>
-      </footer>
+      {/* Official Institutional Footer */}
+      <Footer />
 
       {/* MODALS */}
       <RagAssistantModal

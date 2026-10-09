@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { CLINICAL_50_FAQ, searchClinicalFaq, generateLocalRagResponse, type ClinicalFaqItem } from './src/data/ragEngine.ts';
 
 dotenv.config();
 
@@ -1909,6 +1910,11 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
   res.json({ deflectionMatches });
 });
 
+// 50 Clinical FAQs Endpoint
+app.get('/api/v1/knowledge/faq', (_req, res) => {
+  res.json(CLINICAL_50_FAQ);
+});
+
 // Closed-Loop Clinician RAG Assistant (Section 7.1)
 app.post('/api/v1/knowledge/chat', async (req, res) => {
   const { query, conversationHistory = [] } = req.body;
@@ -1933,6 +1939,11 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
       answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
       isMedicationRefusal: true,
       citedResources: [],
+      suggestedQuestions: [
+        'How do I administer medicine safely when they spit pills out?',
+        'What should I tell Emergency Room doctors about sedatives?',
+        'How do I handle sudden acute agitation without sedatives?'
+      ]
     });
   }
 
@@ -1940,88 +1951,103 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const unverifiedKeywords = ['ivermectin', 'coconut oil', 'lion mane', 'turmeric', 'hydroxychloroquine', 'cure'];
   if (unverifiedKeywords.some((u) => queryLower.includes(u))) {
     return res.json({
-      answer: `I cannot provide guidance on unverified or speculative remedies. Dr. Seema’s repository only includes scientifically verified clinical protocols approved for Johns Hopkins FTD families. Please discuss any dietary supplements directly with your clinical neurology team.`,
+      answer: `I cannot provide guidance on unverified or speculative remedies. Dr. Seema’s repository only includes scientifically verified clinical protocols approved for Johns Hopkins FTD families. Please discuss any dietary supplements directly with your clinical neurology team at (410) 955-5147 (option 2).`,
       isMedicationRefusal: false,
       citedResources: [],
+      suggestedQuestions: [
+        'Why does my loved one crave sweets and carbohydrates?',
+        'How do I manage rapid weight loss or gain?',
+        'What are proven non-drug de-escalation techniques?'
+      ]
     });
   }
 
-  // Compile Approved Clinic Knowledge Context
-  const contextCorpus = clinicalResources
+  // RAG: Step 1 - Retrieve Top-K relevant clinical FAQs from 50 verified physician answers
+  const topFaqMatches = searchClinicalFaq(query, 4);
+  const bestFaq = topFaqMatches[0]?.item;
+
+  // RAG: Step 2 - Compile Curated Clinical Context
+  const faqContext = topFaqMatches
     .map(
-      (r) =>
-        `DOCUMENT TITLE: ${r.title}\nCATEGORY: ${r.category}\nSUMMARY: ${r.summary}\nCLINICAL BODY:\n${r.contentBody}\nKEY PROTOCOLS:\n${r.keyTakeaways.join('\n- ')}`
+      (m, idx) =>
+        `CLINICAL Q&A #${idx + 1}:\nQUESTION: ${m.item.question}\nCATEGORY: ${m.item.categoryLabel}\nPHYSICIAN ANSWER:\n${m.item.physicianAnswer}\nKEY PROTOCOLS:\n${m.item.keyProtocols.map((p) => `- ${p}`).join('\n')}`
     )
     .join('\n\n--------------------------------\n\n');
 
-  // If Gemini API is available on the server, execute Gemini with Strict Prompt & Temperature 0.0
+  const resourceContext = clinicalResources
+    .map(
+      (r) =>
+        `DOCUMENT TITLE: ${r.title}\nCATEGORY: ${r.category}\nSUMMARY: ${r.summary}\nCLINICAL BODY:\n${r.contentBody}\nKEY PROTOCOLS:\n${r.keyTakeaways.map((t) => `- ${t}`).join('\n')}`
+    )
+    .join('\n\n--------------------------------\n\n');
+
+  const fullContextCorpus = `VERIFIED PHYSICIAN ANSWERS FROM DR. SEEMA'S 50-FAQ KNOWLEDGE BASE:\n\n${faqContext}\n\n================================\n\nAPPROVED CLINICAL GUIDES:\n\n${resourceContext}`;
+
+  // If Gemini API is available on the server, execute Gemini with Grounded Context & Temperature 0.0
   if (ai) {
     try {
-      const systemInstruction = `You are the Hopkins Care Partner Connect Clinical Assistant. You provide practical caregiving guidance strictly derived from the provided context materials approved by Dr. Seema Gulyani.
+      const systemInstruction = `You are the Johns Hopkins Care Partner Connect Clinical Assistant, trained directly on Dr. Seema Gulyani's repository of the 50 most asked Frontotemporal Dementia (FTD) caregiving questions and verified clinical protocols.
 
 CRITICAL OPERATIONAL RULES:
 1. Under NO circumstances should you recommend or discuss specific prescription drug dosages, off-label pharmacological treatments, or speculative dementia cures.
 2. If the user query asks about a specific drug (e.g., Seroquel, Haloperidol, Donepezil, Memantine, Trazodone), YOU MUST RESPOND: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For life-threatening emergencies, call 911."
-3. ONLY answer questions using the provided Context documents. If the answer is not present in the context, respond: "I do not have clinic-approved information on this topic yet. Please submit your question to the clinic moderation queue so Dr. Seema can review it."
-4. Maintain an empathetic, trauma-informed, professional tone appropriate for exhausted caregivers.
-5. For acute behavioral crises (threats of violence, sudden delirium, acute danger), direct the user immediately to emergency services (911) and the Clinic Direct Line (410) 955-5147, option 2 or Support Line (410) 502-4163.
+3. GROUNDING: Provide empathetic, highly actionable, step-by-step guidance strictly synthesized from the provided Verified Physician Answers and Clinical Protocols. Quote or closely adapt Dr. Seema's practical recommendations.
+4. Tone: Empathetic, trauma-informed, calm, and practical for overwhelmed family caregivers.
+5. In acute behavioral emergencies (physical danger, sudden overnight delirium), always prioritize immediate physical safety, 911 (CIT crisis intervention), and the Clinic Support Line.
 
-APPROVED CLINIC CONTEXT:
-${contextCorpus}`;
+VERIFIED CLINICAL KNOWLEDGE CORPUS:
+${fullContextCorpus}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-flash-latest',
         contents: query,
         config: {
           systemInstruction,
-          temperature: 0.0,
+          temperature: 0.1,
         },
       });
 
       const answerText = response.text || '';
 
-      // Match citations from approved resources
-      const citedResources = clinicalResources
-        .filter((r) => {
-          const cat = r.category.toLowerCase();
-          const title = r.title.toLowerCase();
-          return answerText.toLowerCase().includes(cat) || queryLower.includes(cat) || queryLower.includes(r.diseaseDomain.toLowerCase()) || answerText.toLowerCase().includes(title.split(' ')[0]);
-        })
+      // Match citations from approved resources & FAQs
+      const citedResources: { id: string; title: string; url?: string }[] = [];
+      if (bestFaq?.relatedGuideId && bestFaq?.relatedGuideTitle) {
+        citedResources.push({
+          id: bestFaq.relatedGuideId,
+          title: bestFaq.relatedGuideTitle,
+        });
+      }
+
+      clinicalResources.forEach((r) => {
+        const cat = r.category.toLowerCase();
+        const title = r.title.toLowerCase();
+        if (
+          (answerText.toLowerCase().includes(cat) || queryLower.includes(cat) || answerText.toLowerCase().includes(title.split(' ')[0])) &&
+          !citedResources.some((c) => c.id === r.id)
+        ) {
+          citedResources.push({ id: r.id, title: r.title, url: r.externalUrl });
+        }
+      });
+
+      const suggestedQuestions = CLINICAL_50_FAQ
+        .filter((f: ClinicalFaqItem) => f.id !== bestFaq?.id)
         .slice(0, 3)
-        .map((r) => ({ id: r.id, title: r.title, url: r.externalUrl }));
+        .map((f: ClinicalFaqItem) => f.question);
 
       return res.json({
         answer: answerText,
-        citedResources,
+        citedResources: citedResources.slice(0, 3),
+        matchedFaq: bestFaq,
+        suggestedQuestions,
       });
     } catch (genAiError) {
-      console.warn('Gemini generation unavailable or quota reached, using clinical repository protocols:', genAiError);
+      console.warn('Gemini generation unavailable or quota reached, using clinical RAG database:', genAiError);
     }
   }
 
-  // Deterministic Clinical Protocol Fallback (Guaranteed to always work, zero external quota dependency)
-  let bestMatch: ClinicalResource | null = null;
-  let maxScore = 0;
-
-  clinicalResources.forEach((resItem) => {
-    let score = 0;
-    const combined = `${resItem.title} ${resItem.summary} ${resItem.contentBody} ${resItem.category}`.toLowerCase();
-    const words = queryLower.split(/\s+/).filter((w) => w.length > 2);
-    words.forEach((w) => {
-      if (combined.includes(w)) score += 1;
-    });
-
-    if (score > maxScore) {
-      maxScore = score;
-      bestMatch = resItem;
-    }
-  });
-
-  const matched = (bestMatch || clinicalResources[0]) as ClinicalResource;
-  return res.json({
-    answer: `Based on Dr. Seema's approved clinical guide for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nIf you need immediate assistance or individualized clinical care, contact the Clinic Direct Line at (410) 955-5147 (option 2) or the Care Partner Support Line at (410) 502-4163. For life-threatening emergencies, call 911.`,
-    citedResources: [{ id: matched.id, title: matched.title, url: matched.externalUrl }],
-  });
+  // High-Precision Deterministic Clinical RAG Fallback
+  const localRag = generateLocalRagResponse(query);
+  return res.json(localRag);
 });
 
 // Private 1-on-1 Messages between Dr. Seema & Caregivers

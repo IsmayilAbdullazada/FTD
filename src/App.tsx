@@ -5,7 +5,7 @@ import { CarePartnerFeed } from './components/CarePartnerFeed';
 import { PostComposer } from './components/PostComposer';
 import { ClinicianDashboard } from './components/ClinicianDashboard';
 import { KnowledgeBaseExplorer } from './components/KnowledgeBaseExplorer';
-import { RagAssistantModal } from './components/RagAssistantModal';
+import { FloatingChatbotAssistant } from './components/FloatingChatbotAssistant';
 import { InvitationModal } from './components/InvitationModal';
 import { AuditLedgerModal } from './components/AuditLedgerModal';
 import { NotificationsModal } from './components/NotificationsModal';
@@ -224,9 +224,10 @@ export default function App() {
       {/* Official Institutional Footer */}
       <Footer />
 
-      {/* MODALS */}
-      <RagAssistantModal
+      {/* PERSISTENT FLOATING CLINICAL CHATBOT (Circle button on every view + floating chat window) */}
+      <FloatingChatbotAssistant
         isOpen={isAssistantOpen}
+        onToggle={() => setIsAssistantOpen((prev) => !prev)}
         onClose={() => setIsAssistantOpen(false)}
         onOpenResource={(resId) => {
           setIsAssistantOpen(false);

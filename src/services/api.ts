@@ -23,6 +23,7 @@ import {
   INITIAL_COMMENTS,
   INITIAL_QUEUE_ITEMS,
 } from '../data/clinicalStore';
+import { CLINICAL_50_FAQ, generateLocalRagResponse, type ClinicalFaqItem } from '../data/ragEngine';
 
 // In-memory local state fallback so app NEVER fails even if dev server returns HTML fallback
 let localUsers = [...INITIAL_USERS];
@@ -928,8 +929,16 @@ export const api = {
     );
   },
 
-  // Closed-loop RAG Assistant
-  chatWithAssistant: async (query: string): Promise<{ answer: string; isMedicationRefusal?: boolean; citedResources?: any[] }> => {
+  // Closed-loop RAG Assistant (Trained on Dr. Seema's 50 Verified Clinical FAQs)
+  chatWithAssistant: async (
+    query: string
+  ): Promise<{
+    answer: string;
+    isMedicationRefusal?: boolean;
+    citedResources?: any[];
+    matchedFaq?: ClinicalFaqItem;
+    suggestedQuestions?: string[];
+  }> => {
     return safeFetchJson(
       '/api/v1/knowledge/chat',
       {
@@ -938,27 +947,14 @@ export const api = {
         body: JSON.stringify({ query }),
       },
       () => {
-        const q = query.toLowerCase();
-        const drugKeywords = ['seroquel', 'haldol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'prescribe'];
-        if (drugKeywords.some((d) => q.includes(d))) {
-          return {
-            answer: "Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.",
-            isMedicationRefusal: true,
-            citedResources: [],
-          };
-        }
-
-        const matched = localResources.find((r) => {
-          const combined = `${r.title} ${r.summary} ${r.contentBody}`.toLowerCase();
-          return q.split(/\s+/).some((w) => w.length > 3 && combined.includes(w));
-        }) || localResources[0];
-
-        return {
-          answer: `Based on Dr. Seema's clinical protocols for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nFor clinical questions, please call the clinic direct line at (410) 955-5147 (option 2) or support line at (410) 502-4163. For life-threatening emergencies, call 911.`,
-          citedResources: [{ id: matched.id, title: matched.title, url: matched.externalUrl }],
-        };
+        return generateLocalRagResponse(query);
       }
     );
+  },
+
+  // 50 Clinical FAQs
+  getClinicalFaqs: async (): Promise<ClinicalFaqItem[]> => {
+    return safeFetchJson('/api/v1/knowledge/faq', undefined, () => [...CLINICAL_50_FAQ]);
   },
 
   // Resources

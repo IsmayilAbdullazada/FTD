@@ -8,6 +8,8 @@ import {
   Phone,
   ChevronDown,
   Check,
+  Stethoscope,
+  CalendarDays,
   Sun,
   Moon,
 } from 'lucide-react';
@@ -123,6 +125,30 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <BookOpen className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                 <span>Guides</span>
+              </button>
+
+              <button 
+                onClick={() => setActiveTab('updates')} 
+                className={`px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+                  activeTab === 'updates'
+                    ? 'bg-slate-100 text-slate-900 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Stethoscope className="w-4 h-4 shrink-0" />
+                <span>Updates</span>
+              </button>
+
+              <button 
+                onClick={() => setActiveTab('calendar')} 
+                className={`px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 ${
+                  activeTab === 'calendar'
+                    ? 'bg-slate-100 text-slate-900 font-semibold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <CalendarDays className="w-4 h-4 shrink-0" />
+                <span>Events</span>
               </button>
 
               <button
@@ -341,9 +367,9 @@ export const Header: React.FC<HeaderProps> = ({
       {/* MOBILE BOTTOM NAVIGATION BAR (Exact previous responsive mobile/tablet layout preserved + dark mode) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 safe-bottom transition-colors">
         <div
-          className={`max-w-md mx-auto grid ${
-            isClinician || isAdmin ? 'grid-cols-4' : 'grid-cols-3'
-          } h-15 items-center text-center`}
+          className={`max-w-lg mx-auto grid ${
+            isClinician || isAdmin ? 'grid-cols-6' : 'grid-cols-5'
+            } h-15 items-center text-center`}
         >
           {(isClinician || isAdmin) && (
             <button
@@ -360,7 +386,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-medium mt-1 truncate max-w-full px-1">Dashboard</span>
+              <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Dashboard</span>
             </button>
           )}
 
@@ -371,7 +397,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <MessageSquare className="w-5 h-5" />
-            <span className="text-[11px] font-medium mt-1 truncate max-w-full px-1">Discussions</span>
+            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Discussions</span>
           </button>
 
           <button
@@ -381,7 +407,27 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <BookOpen className="w-5 h-5" />
-            <span className="text-[11px] font-medium mt-1 truncate max-w-full px-1">Guides</span>
+            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Guides</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('updates')}
+            className={`flex flex-col items-center justify-center py-1.5 transition ${
+              activeTab === 'updates' ? 'text-[#002D72] font-semibold' : 'text-slate-500'
+            }`}
+          >
+            <Stethoscope className="w-5 h-5" />
+            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Updates</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('calendar')}
+            className={`flex flex-col items-center justify-center py-1.5 transition ${
+              activeTab === 'calendar' ? 'text-[#002D72] font-semibold' : 'text-slate-500'
+            }`}
+          >
+            <CalendarDays className="w-5 h-5" />
+            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Events</span>
           </button>
 
           <button

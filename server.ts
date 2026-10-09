@@ -156,6 +156,106 @@ interface DirectMessage {
   read: boolean;
 }
 
+interface ClinicUpdate {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  category: 'CLINICAL_TRIAL' | 'MEDICATION' | 'RESEARCH' | 'ANNOUNCEMENT';
+  condition: 'FTD' | 'AD' | 'BOTH';
+  trialStatus?: 'RECRUITING' | 'CLOSED';
+  externalUrl?: string;
+  authorId: string;
+  createdAt: string;
+}
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  type: 'CARE_PARTNER_CONFERENCE' | 'SUPPORT_GROUP' | 'SOCIAL';
+  startsAt: string;
+  location: string;
+  description?: string;
+  authorId: string;
+}
+
+const UPDATE_CATEGORIES = ['CLINICAL_TRIAL', 'MEDICATION', 'RESEARCH', 'ANNOUNCEMENT'];
+const EVENT_TYPES = ['CARE_PARTNER_CONFERENCE', 'SUPPORT_GROUP', 'SOCIAL'];
+
+const clinicUpdates: ClinicUpdate[] = [
+  {
+    id: 'upd-1',
+    title: 'Welcome to Clinic Updates',
+    summary: 'This is where the clinic will share news for care partners.',
+    body:
+      'This section will be kept up to date by the clinic team.\n\nYou can expect:\n• Clinical trials that are recruiting or recently closed\n• Newly approved medications\n• Scientific discoveries explained in plain language\n• Announcements from the clinic\n\nIf you have questions about anything posted here, please contact the Clinic Support Line at (410) 555-FTDC.',
+    category: 'ANNOUNCEMENT',
+    condition: 'BOTH',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-10-05T09:00:00Z',
+  },
+  {
+    id: 'upd-2',
+    title: 'Sample: Caregiver Wellbeing Study (Recruiting)',
+    summary: 'Placeholder entry showing how a recruiting clinical trial will appear.',
+    body:
+      'SAMPLE ENTRY: replace with a real study.\n\nWho can participate: [eligibility criteria]\nWhat participation involves: [visits, time commitment, location]\nHow to learn more: [contact or registry link]\n\nParticipation is voluntary and does not affect your loved one\'s care at the clinic.',
+    category: 'CLINICAL_TRIAL',
+    condition: 'FTD',
+    trialStatus: 'RECRUITING',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-10-03T09:00:00Z',
+  },
+  {
+    id: 'upd-3',
+    title: 'Sample: Completed Study, Enrollment Closed',
+    summary: 'Placeholder entry showing how a closed clinical trial will appear.',
+    body:
+      'SAMPLE ENTRY: replace with a real study.\n\nThis study is no longer enrolling. Results, when available, will be summarized here.\n\nQuestions can be directed to the Clinic Support Line at (410) 555-FTDC.',
+    category: 'CLINICAL_TRIAL',
+    condition: 'AD',
+    trialStatus: 'CLOSED',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-09-28T09:00:00Z',
+  },
+  {
+    id: 'upd-4',
+    title: 'Sample: Newly Approved Medication Notice',
+    summary: 'Placeholder entry showing how medication news will appear.',
+    body:
+      'SAMPLE ENTRY: replace with verified information.\n\nWhat was approved and for which condition: [details]\nWhat it may mean for families: [plain-language summary]\n\nPlease do not start, stop, or change any medication based on this post. Discuss all medication questions with your clinical team.',
+    category: 'MEDICATION',
+    condition: 'BOTH',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-09-25T09:00:00Z',
+  },
+  {
+    id: 'upd-5',
+    title: 'Sample: Research Findings in Plain Language',
+    summary: 'Placeholder entry showing how a scientific discovery summary will appear.',
+    body:
+      'SAMPLE ENTRY: replace with a real summary.\n\nWhat researchers found: [summary]\nWhy it matters: [context]\nWhat it does not mean: [limits of the findings]\n\nSource: [link to publication or news release]',
+    category: 'RESEARCH',
+    condition: 'FTD',
+    authorId: 'user-clinician-1',
+    createdAt: '2026-09-20T09:00:00Z',
+  },
+];
+
+const calendarEvents: CalendarEvent[] = [
+  { id: 'evt-1', title: 'Caregiver Check-in', type: 'SUPPORT_GROUP', startsAt: '2026-10-14T18:00', location: 'Zoom (link sent by email)', description: 'Informal evening check-in for care partners.', authorId: 'user-clinician-1' },
+  { id: 'evt-2', title: 'Baltimore Metro Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-10-21T18:30', location: 'Johns Hopkins Outpatient Center, Baltimore', description: 'Monthly in-person group for Baltimore-area families.', authorId: 'user-clinician-1' },
+  { id: 'evt-3', title: 'Care Partner Fall Lunch', type: 'SOCIAL', startsAt: '2026-10-25T12:00', location: 'TBD (Baltimore area)', description: 'A relaxed get-together. Loved ones are welcome.', authorId: 'user-clinician-1' },
+  { id: 'evt-4', title: 'Care Partner Conference: Planning Ahead', type: 'CARE_PARTNER_CONFERENCE', startsAt: '2026-11-07T09:30', location: 'Hybrid: in person and Zoom', description: 'A half-day conference on legal, financial, and care planning.', authorId: 'user-clinician-1' },
+  { id: 'evt-5', title: 'Eastern Shore Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-11-12T17:30', location: 'Zoom', description: 'Virtual meeting for Eastern Shore families.', authorId: 'user-clinician-1' },
+  { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
+];
+
+function isStaff(userId?: string): boolean {
+  const u = users.find((x) => x.id === userId);
+  return !!u && (u.role === 'CLINICIAN_MODERATOR' || u.role === 'SYSTEM_ADMIN');
+}
+
 // Pre-seeded database
 const users: User[] = [
   {
@@ -1571,6 +1671,111 @@ app.post('/api/v1/resources', (req, res) => {
   res.status(201).json(newRes);
 });
 
+// Clinic Updates (everyone reads, staff writes)
+app.get('/api/v1/updates', (_req, res) => {
+  const sorted = [...clinicUpdates].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  res.json(sorted);
+});
+
+app.post('/api/v1/updates', (req, res) => {
+  const { title, summary, body, category, condition, trialStatus, externalUrl, authorId } = req.body;
+
+  if (!isStaff(authorId)) {
+    return res.status(403).json({ error: 'Only clinic staff can publish updates.' });
+  }
+  if (!title?.trim() || !body?.trim()) {
+    return res.status(400).json({ error: 'Title and body are required' });
+  }
+
+  const cat = UPDATE_CATEGORIES.includes(category) ? category : 'RESEARCH';
+  const update: ClinicUpdate = {
+    id: `upd-${Date.now()}`,
+    title: title.trim(),
+    summary: (summary || title).trim(),
+    body: body.trim(),
+    category: cat,
+    condition: ['FTD', 'AD', 'BOTH'].includes(condition) ? condition : 'BOTH',
+    trialStatus: cat === 'CLINICAL_TRIAL' ? (trialStatus === 'CLOSED' ? 'CLOSED' : 'RECRUITING') : undefined,
+    externalUrl: externalUrl || undefined,
+    authorId,
+    createdAt: new Date().toISOString(),
+  };
+  clinicUpdates.unshift(update);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: authorId,
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'UPDATE' as any,
+    entityId: update.id,
+    actionTaken: 'PUBLISHED_CLINIC_UPDATE',
+    notes: `Published update: "${update.title}"`,
+    createdAt: update.createdAt,
+  });
+
+  res.status(201).json(update);
+});
+
+app.delete('/api/v1/updates/:id', (req, res) => {
+  if (!isStaff(req.query.userId as string)) {
+    return res.status(403).json({ error: 'Only clinic staff can delete updates.' });
+  }
+  const idx = clinicUpdates.findIndex((u) => u.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Update not found' });
+  clinicUpdates.splice(idx, 1);
+  res.json({ success: true });
+});
+
+// Calendar Events (everyone reads, staff writes)
+app.get('/api/v1/events', (_req, res) => {
+  const sorted = [...calendarEvents].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  res.json(sorted);
+});
+
+app.post('/api/v1/events', (req, res) => {
+  const { title, type, startsAt, location, description, authorId } = req.body;
+
+  if (!isStaff(authorId)) {
+    return res.status(403).json({ error: 'Only clinic staff can add events.' });
+  }
+  if (!title?.trim() || !startsAt) {
+    return res.status(400).json({ error: 'Title and start time are required' });
+  }
+
+  const event: CalendarEvent = {
+    id: `evt-${Date.now()}`,
+    title: title.trim(),
+    type: EVENT_TYPES.includes(type) ? type : 'SUPPORT_GROUP',
+    startsAt,
+    location: location || '',
+    description,
+    authorId,
+  };
+  calendarEvents.push(event);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: authorId,
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'EVENT' as any,
+    entityId: event.id,
+    actionTaken: 'CREATED_EVENT',
+    notes: `Added event: "${event.title}" on ${event.startsAt}`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.status(201).json(event);
+});
+
+app.delete('/api/v1/events/:id', (req, res) => {
+  if (!isStaff(req.query.userId as string)) {
+    return res.status(403).json({ error: 'Only clinic staff can delete events.' });
+  }
+  const idx = calendarEvents.findIndex((e) => e.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Event not found' });
+  calendarEvents.splice(idx, 1);
+  res.json({ success: true });
+});
 
 // Audit Log Events
 app.get('/api/v1/moderation/audit', (_req, res) => {

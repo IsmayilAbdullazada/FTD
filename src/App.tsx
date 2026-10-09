@@ -9,6 +9,8 @@ import { RagAssistantModal } from './components/RagAssistantModal';
 import { InvitationModal } from './components/InvitationModal';
 import { AuditLedgerModal } from './components/AuditLedgerModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { UpdatesPage } from './components/UpdatesPage';
+import { CalendarPage } from './components/CalendarPage';
 import { CurrentUser, PersonaOption, CommunityGroup, DirectMessage, QueueItem } from './types';
 import { api } from './services/api';
 
@@ -195,6 +197,9 @@ export default function App() {
             currentUser={currentUser}
           />
         )}
+
+        {activeTab === 'updates' && <UpdatesPage currentUser={currentUser} />}
+        {activeTab === 'calendar' && <CalendarPage currentUser={currentUser} />}
 
         {activeTab === 'audit' && (
           <div className="max-w-2xl mx-auto px-4 py-6">

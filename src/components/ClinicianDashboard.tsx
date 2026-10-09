@@ -238,30 +238,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  // Redirect to Clinic Support Line
-  const handleClinicRedirect = async () => {
-    if (!activeItem) return;
-
-    try {
-      const res = await api.performModerationAction({
-        entityId: activeItem.id,
-        entityType: 'POST',
-        action: 'CLINICAL_REDIRECT',
-        moderatorNotes: 'Diverted to clinic direct line (410) 955-5147, option 2 or support line (410) 502-4163.',
-      });
-
-      setActionSuccessNotice('Caregiver notified to contact the clinic line.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-
-      onQueueUpdated();
-      await loadQueue();
-    } catch (err) {
-      console.error('Failed clinic redirect:', err);
-      setActionSuccessNotice('Error updating post. Please try again.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    }
-  };
-
   // Helper to escape regex special characters
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -719,16 +695,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   </div>
 
                   {/* Reply Moderation Policy Toggle */}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-750">
                     <div className="flex items-center justify-between">
-                      <div className="space-y-0.5 pr-2">
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                          <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                          <span>Allow everyone to reply without moderation</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                          By default, all replies to posts are moderated. Turn this on to allow care partners to reply immediately without prior moderation.
-                        </p>
+                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 pr-2">
+                        <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>Allow everyone to reply without moderation</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
@@ -740,59 +711,24 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
                       </label>
                     </div>
-                    {allowUnmoderatedReplies ? (
-                      <div className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1">
-                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span>Unmoderated mode active: community replies will post immediately. You can remove inappropriate replies at any time.</span>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>Default: replies will go to the moderation queue for review before publishing.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Private note */}
-                  <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Private note (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={moderatorNotes}
-                      onChange={(e) => setModeratorNotes(e.target.value)}
-                      placeholder="Visible only to clinic staff"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
-                    />
                   </div>
 
                   {/* Buttons */}
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handlePublish}
-                        className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Publish</span>
-                      </button>
-
-                      <button
-                        onClick={() => setShowRejectModal(true)}
-                        className="flex-1 sm:flex-initial px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                    </div>
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                    <button
+                      onClick={handlePublish}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Publish</span>
+                    </button>
 
                     <button
-                      onClick={handleClinicRedirect}
-                      className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      onClick={() => setShowRejectModal(true)}
+                      className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                     >
-                      <Phone className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-                      <span>Call Clinic Line</span>
+                      <X className="w-4 h-4" />
+                      <span>Reject</span>
                     </button>
                   </div>
                 </div>

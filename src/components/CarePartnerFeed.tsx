@@ -90,7 +90,12 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         groupId: groupId === 'all' ? undefined : groupId,
         userId: currentUser.id,
       });
-      setPosts(res.posts || []);
+      let feedPosts = res.posts || [];
+      // Clinician moderators and admins only view published discussions in the discussions tab
+      if (currentUser.role === 'CLINICIAN_MODERATOR' || currentUser.role === 'SYSTEM_ADMIN') {
+        feedPosts = feedPosts.filter((p) => p.status === 'APPROVED');
+      }
+      setPosts(feedPosts);
     } catch (err) {
       console.error('Failed to load feed:', err);
     } finally {
@@ -274,7 +279,10 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
             const isLiked = !!likedPosts[post.id];
             const currentLikes = post.upvotes + (isLiked ? 1 : 0);
             const regionName = getProperGroupName(post.assignedGroups[0]);
-            const isPending = post.status === 'PENDING_MODERATION';
+            const isAuthor =
+              currentUser.role === 'CARE_PARTNER' &&
+              (post.author.userId === currentUser.id || post.author.anonymousHandle === currentUser.anonymousHandle);
+            const isPending = post.status === 'PENDING_MODERATION' && isAuthor;
 
             return (
               <article

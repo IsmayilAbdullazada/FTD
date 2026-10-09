@@ -1046,7 +1046,9 @@ app.get('/api/v1/posts', (req, res) => {
 
   // If Care Partner, show APPROVED posts plus the current user's own submitted posts
   if (role === 'CARE_PARTNER') {
-    filtered = filtered.filter((p) => p.status === 'APPROVED' || (currentUserId && p.authorId === currentUserId));
+    filtered = filtered.filter(
+      (p) => p.status === 'APPROVED' || (currentUserId && p.authorId === currentUserId && p.status === 'PENDING_MODERATION')
+    );
 
     // STRICT REGIONAL BOUNDARY: Care Partners can only see posts in General Forum or their assigned regional cohort
     filtered = filtered.filter(
@@ -1054,6 +1056,9 @@ app.get('/api/v1/posts', (req, res) => {
     );
   } else if (statusFilter) {
     filtered = filtered.filter((p) => p.status === statusFilter);
+  } else {
+    // For Clinician Moderators and Admins viewing discussions feed: only show approved (published) discussions
+    filtered = filtered.filter((p) => p.status === 'APPROVED');
   }
 
   // Filter by Group Visibility if specified

@@ -272,8 +272,13 @@ export const api = {
           filtered = filtered.filter(
             (p) =>
               (p.status === 'APPROVED' && p.assignedGroups.some((g) => allowed.includes(g.id))) ||
-              (options.userId && p.author.userId === options.userId)
+              (options.userId && p.author.userId === options.userId && p.status === 'PENDING_MODERATION')
           );
+        } else if (options.status) {
+          filtered = filtered.filter((p) => p.status === options.status);
+        } else {
+          // Clinicians and Admins in Discussions only see published discussions
+          filtered = filtered.filter((p) => p.status === 'APPROVED');
         }
         if (options.groupId && options.groupId !== 'all') {
           filtered = filtered.filter((p) =>

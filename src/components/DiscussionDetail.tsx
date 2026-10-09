@@ -60,7 +60,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   const isClinician =
     currentUser.role === 'CLINICIAN_MODERATOR' || currentUser.role === 'SYSTEM_ADMIN';
   const isMainPostPending = post.status === 'PENDING_MODERATION';
-  const isMainPostAuthor = post.author.anonymousHandle === currentUser.anonymousHandle;
+  const isMainPostAuthor =
+    !isClinician &&
+    (post.author.userId === currentUser.id || post.author.anonymousHandle === currentUser.anonymousHandle);
 
   const regionName = getProperGroupName(post.assignedGroups[0]);
   const currentLikes = post.upvotes + (isLiked ? 1 : 0);

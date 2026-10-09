@@ -3,7 +3,6 @@ import {
   Shield,
   MessageSquare,
   BookOpen,
-  Sparkles,
   Bell,
   Phone,
   ChevronDown,
@@ -26,7 +25,7 @@ interface HeaderProps {
   pendingTriageCount: number;
   notifications: DirectMessage[];
   onOpenNotifications: () => void;
-  onOpenAssistant: () => void;
+  onOpenAssistant?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -38,7 +37,6 @@ export const Header: React.FC<HeaderProps> = ({
   pendingTriageCount,
   notifications,
   onOpenNotifications,
-  onOpenAssistant,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const isClinician = currentUser.role === 'CLINICIAN_MODERATOR';
@@ -69,9 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
               />
               <div className="leading-tight shrink-0">
                 <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight whitespace-nowrap block">
-                  <span className="sm:hidden">Hopkins Connect</span>
-                  <span className="hidden sm:inline lg:hidden 2xl:inline">Hopkins Care Partner Connect</span>
-                  <span className="hidden lg:inline 2xl:hidden">Care Partner Connect</span>
+                  <span className="xl:hidden">Hopkins Connect</span>
+                  <span className="hidden xl:inline">Hopkins Care Partner Connect</span>
                 </span>
                 <span className="hidden 2xl:block text-[11px] text-slate-500 dark:text-slate-400 font-normal whitespace-nowrap">
                   Johns Hopkins Medicine
@@ -80,15 +77,15 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Subtle Divider between brand and nav on large screens */}
-            <div className="hidden lg:block h-5 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
+            <div className="hidden xl:block h-5 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
 
             {/* Standard Desktop & Tablet Navigation Links */}
-            <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 shrink-0">
+            <nav className="hidden md:flex items-center gap-1 lg:gap-1.5 shrink-0">
               {/* Clinician / CS Admin Dashboard */}
               {(isClinician || isAdmin) && (
                 <button
                   onClick={() => setActiveTab('moderation')}
-                  className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                     activeTab === 'moderation'
                       ? 'bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400 font-semibold'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -106,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => setActiveTab('feed')}
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'feed'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -118,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => setActiveTab('knowledge')}
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'knowledge'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -130,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button 
                 onClick={() => setActiveTab('updates')} 
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'updates'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -142,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button 
                 onClick={() => setActiveTab('calendar')} 
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
                   activeTab === 'calendar'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -151,19 +148,11 @@ export const Header: React.FC<HeaderProps> = ({
                 <CalendarDays className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                 <span>Events</span>
               </button>
-
-              <button
-                onClick={onOpenAssistant}
-                className="px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>Assistant</span>
-              </button>
             </nav>
           </div>
 
           {/* RIGHT: Quick Clinic Contact, Theme Toggle, Notification Center & User Profile */}
-          <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0 z-10 relative">
             {/* Direct Clinic Support Line: shown on extra-wide laptop/desktop */}
             <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shrink-0 whitespace-nowrap">
               <Phone className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />

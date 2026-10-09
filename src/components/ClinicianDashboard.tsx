@@ -18,6 +18,8 @@ import {
   MessageSquare,
   Clock,
   Filter,
+  Lock,
+  LockOpen,
 } from 'lucide-react';
 import {
   QueueItem,
@@ -63,7 +65,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [searchPostsQuery, setSearchPostsQuery] = useState('');
-  const [postsPolicyFilter, setPostsPolicyFilter] = useState<'all' | 'moderated' | 'unmoderated'>('all');
+  const [postsPolicyFilter, setPostsPolicyFilter] = useState<'all' | 'moderated' | 'unmoderated' | 'closed'>('all');
+  const [postToClose, setPostToClose] = useState<Post | null>(null);
+  const [isTogglingClose, setIsTogglingClose] = useState(false);
 
   // Rejection modal
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -205,6 +209,41 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       );
       setActionSuccessNotice('Failed to update reply moderation policy.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
+    }
+  };
+
+  // Toggle discussion close state for a post
+  const handleTogglePostClose = async (post: Post) => {
+    setIsTogglingClose(true);
+    const targetClosed = !post.isClosed;
+    try {
+      const res = await api.closePost(post.id, targetClosed, 'user-clinician-1');
+      setPublishedPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id
+            ? {
+                ...p,
+                isClosed: res.post.isClosed,
+                closedAt: res.post.closedAt,
+                closedBy: res.post.closedBy,
+              }
+            : p
+        )
+      );
+      setActionSuccessNotice(
+        targetClosed
+          ? `Discussion "${post.title.slice(0, 32)}..." closed. New replies are now disabled.`
+          : `Discussion "${post.title.slice(0, 32)}..." reopened. Care partners can reply again.`
+      );
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+      onQueueUpdated();
+      setPostToClose(null);
+    } catch (err) {
+      console.error('Failed to toggle post closed state:', err);
+      setActionSuccessNotice('Failed to update discussion status.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setIsTogglingClose(false);
     }
   };
 
@@ -779,7 +818,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   }`}
                 >
                   <Shield className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                  <span>Moderated ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies).length})</span>
+                  <span>Moderated ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies && !p.isClosed).length})</span>
                 </button>
                 <button
                   type="button"
@@ -791,7 +830,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   }`}
                 >
                   <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>Unmoderated ({publishedPosts.filter((p) => p.allowUnmoderatedReplies).length})</span>
+                  <span>Unmoderated ({publishedPosts.filter((p) => p.allowUnmoderatedReplies && !p.isClosed).length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('closed')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    postsPolicyFilter === 'closed'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                  <span>Closed ({publishedPosts.filter((p) => p.isClosed).length})</span>
                 </button>
               </div>
             </div>
@@ -817,8 +868,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           ) : (
             (() => {
               const filtered = publishedPosts.filter((p) => {
-                if (postsPolicyFilter === 'moderated' && p.allowUnmoderatedReplies) return false;
-                if (postsPolicyFilter === 'unmoderated' && !p.allowUnmoderatedReplies) return false;
+                if (postsPolicyFilter === 'moderated' && (p.allowUnmoderatedReplies || p.isClosed)) return false;
+                if (postsPolicyFilter === 'unmoderated' && (!p.allowUnmoderatedReplies || p.isClosed)) return false;
+                if (postsPolicyFilter === 'closed' && !p.isClosed) return false;
                 if (searchPostsQuery.trim()) {
                   const q = searchPostsQuery.toLowerCase();
                   return (
@@ -875,8 +927,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                           </p>
 
                           {/* Status Badge */}
-                          <div className="pt-1 flex items-center gap-2 text-xs">
-                            {isUnmoderated ? (
+                          <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+                            {post.isClosed ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-200/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+                                <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                                <span>Discussion Closed</span>
+                              </span>
+                            ) : isUnmoderated ? (
                               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
                                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                 <span>Unmoderated</span>
@@ -890,15 +947,21 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                           </div>
                         </div>
 
-                        {/* Actions for this post: Toggle Allow open replies enclosed in a box with curved borders */}
+                        {/* Actions for this post: Toggle Allow open replies and Button below it for closing/reopening */}
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800"
+                          className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 flex flex-col items-stretch sm:items-end gap-2"
                         >
-                          <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all">
+                          <div
+                            className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
+                              post.isClosed ? 'opacity-60' : ''
+                            }`}
+                          >
                             <label
                               onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-2.5 cursor-pointer select-none"
+                              className={`inline-flex items-center gap-2.5 ${
+                                post.isClosed ? 'cursor-not-allowed' : 'cursor-pointer'
+                              } select-none`}
                             >
                               <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                                 Allow open replies
@@ -907,6 +970,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                                 <input
                                   type="checkbox"
                                   checked={isUnmoderated}
+                                  disabled={post.isClosed}
                                   onChange={(e) => {
                                     e.stopPropagation();
                                     handleTogglePostRepliesMode(post);
@@ -917,6 +981,35 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                               </div>
                             </label>
                           </div>
+
+                          {/* Button below Allow open replies: Close Discussion / Reopen Discussion */}
+                          {post.isClosed ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTogglePostClose(post);
+                              }}
+                              className="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                              title="Reopen discussion to allow new replies"
+                            >
+                              <LockOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Reopen Discussion</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPostToClose(post);
+                              }}
+                              className="w-full sm:w-auto px-3.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                              title="Close discussion to prevent new replies while preserving existing comments"
+                            >
+                              <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                              <span>Close Discussion</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -1350,6 +1443,64 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
               >
                 Reject Post
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIRM CLOSE DISCUSSION (From Discussions tab) */}
+      {postToClose && (
+        <div
+          onClick={() => setPostToClose(null)}
+          className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
+                  Close Discussion?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Moderator Action
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+              <p className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                "{postToClose.title}"
+              </p>
+              <p>
+                Closing this discussion will <strong>prevent new replies</strong> from being posted by care partners.
+              </p>
+              <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+                ✓ All {postToClose.commentCount} existing replies will be preserved and remain readable.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPostToClose(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Keep Open
+              </button>
+              <button
+                type="button"
+                disabled={isTogglingClose}
+                onClick={() => handleTogglePostClose(postToClose)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}</span>
               </button>
             </div>
           </div>

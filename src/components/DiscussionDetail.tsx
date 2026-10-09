@@ -13,6 +13,8 @@ import {
   X,
   Shield,
   Sparkles,
+  Lock,
+  LockOpen,
 } from 'lucide-react';
 import { Post, Comment, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';
@@ -38,6 +40,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
   const [replyErrorMessage, setReplyErrorMessage] = useState<string | null>(null);
+
+  // Discussion closing / reopening (Moderator control)
+  const [showConfirmCloseModal, setShowConfirmCloseModal] = useState(false);
+  const [isTogglingClose, setIsTogglingClose] = useState(false);
 
   // Main post editing
   const [isEditingMainPost, setIsEditingMainPost] = useState(false);
@@ -246,6 +252,39 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     }
   };
 
+  // Moderator close / reopen discussion (Preserves existing replies!)
+  const handleToggleCloseDiscussion = async () => {
+    if (!isClinician) return;
+    setIsTogglingClose(true);
+    const newClosed = !post.isClosed;
+
+    try {
+      const res = await api.closePost(post.id, newClosed, currentUser.id);
+      const updatedPost: Post = {
+        ...post,
+        isClosed: newClosed,
+        closedAt: newClosed ? new Date().toISOString() : undefined,
+        closedBy: newClosed ? currentUser.id : undefined,
+      };
+      setPost(updatedPost);
+      if (onPostUpdated) onPostUpdated(updatedPost);
+      setShowConfirmCloseModal(false);
+      setReplySuccessMessage(
+        res.message ||
+          (newClosed
+            ? 'Discussion closed to new replies. All existing replies remain preserved.'
+            : 'Discussion reopened. Care partners can now post replies.')
+      );
+      setTimeout(() => setReplySuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Failed to toggle discussion close status:', err);
+      setReplyErrorMessage('Failed to update discussion status.');
+      setTimeout(() => setReplyErrorMessage(null), 4000);
+    } finally {
+      setIsTogglingClose(false);
+    }
+  };
+
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim() || isSubmitting) return;
@@ -344,14 +383,19 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
         )}
       </div>
 
-      {/* Clinician Moderator Reply Policy Control Banner */}
+      {/* Clinician Moderator Reply Policy & Discussion Close Banner */}
       {isClinician && (
         <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex flex-wrap items-center gap-2.5 min-w-0">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Moderator Reply Policy
+              Moderator Controls
             </span>
-            {post.allowUnmoderatedReplies ? (
+            {post.isClosed ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-200/90 dark:bg-slate-700 px-2.5 py-1 rounded-lg">
+                <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                <span>Discussion Closed</span>
+              </span>
+            ) : post.allowUnmoderatedReplies ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Unmoderated</span>
@@ -364,23 +408,51 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             )}
           </div>
 
-          <div className="shrink-0">
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all">
-              <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  Allow open replies
-                </span>
-                <div className="relative inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={post.allowUnmoderatedReplies}
-                    onChange={handleToggleRepliesModeration}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                </div>
-              </label>
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Allow open replies toggle (when discussion is open) */}
+            {!post.isClosed && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all">
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    Allow open replies
+                  </span>
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={post.allowUnmoderatedReplies}
+                      onChange={handleToggleRepliesModeration}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4.5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                  </div>
+                </label>
+              </div>
+            )}
+
+            {/* Moderator Close / Reopen Discussion Button */}
+            {post.isClosed ? (
+              <button
+                type="button"
+                disabled={isTogglingClose}
+                onClick={handleToggleCloseDiscussion}
+                className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title="Reopen discussion to allow new replies"
+              >
+                <LockOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Reopen Discussion</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={isTogglingClose}
+                onClick={() => setShowConfirmCloseModal(true)}
+                className="px-3.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title="Close discussion to prevent new replies while preserving existing comments"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span>Close Discussion</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -401,6 +473,15 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <>
                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
                 <span className="truncate">{regionName}</span>
+              </>
+            )}
+            {post.isClosed && (
+              <>
+                <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-full">
+                  <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                  <span>Closed</span>
+                </span>
               </>
             )}
           </div>
@@ -669,83 +750,154 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </div>
         )}
 
-        {/* Reply Composer Form with Clear Confirmation */}
-        <form
-          ref={replyFormRef}
-          onSubmit={handleSendReply}
-          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-xs transition-colors"
-        >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Add your reply</span>
-            <span>Replying as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.anonymousHandle}</strong></span>
+        {/* Reply Composer Form OR Closed Discussion Notice (Preserves existing replies!) */}
+        {post.isClosed ? (
+          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-6 sm:p-7 text-center space-y-2.5 transition-colors shadow-2xs">
+            <div className="w-10 h-10 mx-auto rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-serif font-semibold text-slate-900 dark:text-white text-base">
+                This discussion has been closed
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                New replies are disabled because this discussion was closed by Dr. Seema{post.closedAt ? ` on ${new Date(post.closedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}. All {comments.length} existing replies above are preserved for community reference.
+              </p>
+            </div>
           </div>
-
-          {/* Moderation Mode Info Callout */}
-          {post.allowUnmoderatedReplies ? (
-            <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-200">
-              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
-              <span>
-                <strong>Unmoderated replies enabled for this post:</strong> Your reply will be visible immediately to peer care partners without moderation delay.
-              </span>
+        ) : (
+          <form
+            ref={replyFormRef}
+            onSubmit={handleSendReply}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-xs transition-colors"
+          >
+            <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Add your reply</span>
+              <span>Replying as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.anonymousHandle}</strong></span>
             </div>
-          ) : (
-            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-blue-900 dark:text-blue-200">
-              <ShieldCheck className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
-              <span>
-                <strong>Moderated:</strong> New replies to this post are reviewed by Dr. Seema before being published.
-              </span>
-            </div>
-          )}
 
-          {/* Inline Error Notice */}
-          {replyErrorMessage && (
-            <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 p-3.5 rounded-xl flex items-center gap-2.5 text-xs sm:text-sm animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-              <span>{replyErrorMessage}</span>
-            </div>
-          )}
-
-          <textarea
-            rows={3}
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Share helpful advice, words of encouragement, or practical tips..."
-            className="w-full p-3.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans leading-relaxed"
-            required
-          />
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+            {/* Moderation Mode Info Callout */}
             {post.allowUnmoderatedReplies ? (
-              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span>Open discussion: replies appear immediately for everyone.</span>
-              </span>
+              <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-200">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+                <span>
+                  <strong>Unmoderated replies enabled for this post:</strong> Your reply will be visible immediately to peer care partners without moderation delay.
+                </span>
+              </div>
             ) : (
-              <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#002D72] dark:text-blue-400 shrink-0" />
-                <span>Reviewed by Dr. Seema to preserve privacy and clinical safety.</span>
-              </span>
+              <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+                <ShieldCheck className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
+                <span>
+                  <strong>Moderated:</strong> New replies to this post are reviewed by Dr. Seema before being published.
+                </span>
+              </div>
             )}
-            <button
-              type="submit"
-              disabled={!replyText.trim() || isSubmitting}
-              className="px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Submitting...</span>
-                </>
+
+            {/* Inline Error Notice */}
+            {replyErrorMessage && (
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 p-3.5 rounded-xl flex items-center gap-2.5 text-xs sm:text-sm animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>{replyErrorMessage}</span>
+              </div>
+            )}
+
+            <textarea
+              rows={3}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Share helpful advice, words of encouragement, or practical tips..."
+              className="w-full p-3.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans leading-relaxed"
+              required
+            />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+              {post.allowUnmoderatedReplies ? (
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>Open discussion: replies appear immediately for everyone.</span>
+                </span>
               ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Post Reply</span>
-                </>
+                <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#002D72] dark:text-blue-400 shrink-0" />
+                  <span>Reviewed by Dr. Seema to preserve privacy and clinical safety.</span>
+                </span>
               )}
-            </button>
-          </div>
-        </form>
+              <button
+                type="submit"
+                disabled={!replyText.trim() || isSubmitting}
+                className="px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Post Reply</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </section>
+
+      {/* MODAL: CONFIRM CLOSE DISCUSSION (Moderator) */}
+      {showConfirmCloseModal && (
+        <div
+          onClick={() => setShowConfirmCloseModal(false)}
+          className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
+                  Close Discussion?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Moderator Action
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+              <p>
+                Closing this discussion will <strong>prevent new replies</strong> from being posted by care partners.
+              </p>
+              <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+                ✓ All {comments.length} existing replies will be preserved and remain readable.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowConfirmCloseModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Keep Open
+              </button>
+              <button
+                type="button"
+                disabled={isTogglingClose}
+                onClick={handleToggleCloseDiscussion}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: CONFIRM WITHDRAW QUESTION (With backdrop click to exit) */}
       {showWithdrawPostModal && (

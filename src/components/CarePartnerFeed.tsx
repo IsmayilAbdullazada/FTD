@@ -4,11 +4,14 @@ import {
   Heart,
   Plus,
   ChevronRight,
+  ChevronLeft,
   CheckCircle2,
   Clock,
   X,
   Pencil,
   Trash2,
+  Search,
+  Lock,
 } from 'lucide-react';
 import { Post, CommunityGroup, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';
@@ -40,6 +43,10 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGroupTab, setSelectedGroupTab] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const POSTS_PER_PAGE = 5;
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
@@ -230,169 +237,357 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       </div>
 
       {/* INTUITIVE COMPACT GROUP SELECTOR */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium min-w-0">
-          <span className="shrink-0">Viewing:</span>
-          <span className="font-semibold text-slate-900 dark:text-slate-200 truncate">
-            {selectedGroupTab === 'all'
-              ? 'All Clinic Discussions'
-              : getProperGroupName(cohorts.find((c) => c.id === selectedGroupTab))}
-          </span>
+      {/* SEARCH AND FILTERING IN THE SAME LINE */}
+      <div className="space-y-2.5 pb-2 border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+          {/* Search Input Bar */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search discussions by topic, symptoms, or keyword..."
+              className="w-full pl-9.5 pr-8 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Group and Status Filters situated on the same line */}
+          <div className="flex items-center gap-2 shrink-0">
+            <select
+              id="group-filter"
+              value={selectedGroupTab}
+              onChange={(e) => {
+                setSelectedGroupTab(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 sm:px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shrink-0 cursor-pointer shadow-2xs"
+            >
+              <option value="all">All Groups</option>
+              {cohorts.map((cohort) => (
+                <option key={cohort.id} value={cohort.id}>
+                  {getProperGroupName(cohort)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              id="status-filter"
+              value={selectedStatusFilter}
+              onChange={(e) => {
+                setSelectedStatusFilter(e.target.value as 'all' | 'open' | 'closed');
+                setCurrentPage(1);
+              }}
+              className="px-3 sm:px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shrink-0 cursor-pointer shadow-2xs"
+            >
+              <option value="all">All Statuses</option>
+              <option value="open">Open Only</option>
+              <option value="closed">Closed Only</option>
+            </select>
+          </div>
         </div>
 
-        <select
-          id="group-filter"
-          value={selectedGroupTab}
-          onChange={(e) => setSelectedGroupTab(e.target.value)}
-          className="w-auto px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shrink-0 cursor-pointer"
-        >
-          <option value="all">All Groups</option>
-          {cohorts.map((cohort) => (
-            <option key={cohort.id} value={cohort.id}>
-              {getProperGroupName(cohort)}
-            </option>
-          ))}
-        </select>
-      </div>
+        {/* Count & Reset Active Filters */}
+        {(() => {
+          // Filter by status and search query
+          const filteredPosts = posts.filter((post) => {
+            if (selectedStatusFilter === 'open' && post.isClosed) return false;
+            if (selectedStatusFilter === 'closed' && !post.isClosed) return false;
 
-      {/* POSTS LIST (Clean, tap-to-open discussions) */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-base font-sans">
-            Loading discussions...
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400 text-base space-y-3 shadow-xs">
-            <div className="font-serif font-semibold text-lg text-slate-800 dark:text-slate-200">No discussions found in this channel yet.</div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
-              You can start the first conversation or check the Clinical Guides for guidance.
-            </p>
-            <button
-              onClick={onOpenComposer}
-              className="text-[#002D72] dark:text-blue-400 font-semibold hover:underline text-sm inline-block pt-1 cursor-pointer"
-            >
-              Start the first discussion
-            </button>
-          </div>
-        ) : (
-          posts.map((post) => {
-            const isLiked = !!likedPosts[post.id];
-            const currentLikes = post.upvotes + (isLiked ? 1 : 0);
-            const regionName = getProperGroupName(post.assignedGroups[0]);
-            const isAuthor =
-              currentUser.role === 'CARE_PARTNER' &&
-              (post.author.userId === currentUser.id || post.author.anonymousHandle === currentUser.anonymousHandle);
-            const isPending = post.status === 'PENDING_MODERATION' && isAuthor;
+            if (searchQuery.trim()) {
+              const q = searchQuery.toLowerCase().trim();
+              const titleMatch = post.title.toLowerCase().includes(q);
+              const contentMatch = post.content.toLowerCase().includes(q);
+              const authorMatch = post.author.anonymousHandle.toLowerCase().includes(q);
+              const groupMatch = post.assignedGroups.some(
+                (g) =>
+                  g.name.toLowerCase().includes(q) ||
+                  (g.geographicRegion && g.geographicRegion.toLowerCase().includes(q))
+              );
+              if (!titleMatch && !contentMatch && !authorMatch && !groupMatch) {
+                return false;
+              }
+            }
 
-            return (
-              <article
-                key={post.id}
-                onClick={() => setSelectedPost(post)}
-                className={`rounded-2xl border p-5 sm:p-6 space-y-3.5 transition-all cursor-pointer group text-left ${
-                  isPending
-                    ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:border-amber-300 dark:hover:border-amber-700/80 shadow-2xs'
-                    : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
-                }`}
-              >
-                {/* Author Metadata */}
-                <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  <div className="flex items-center gap-2 font-medium min-w-0">
-                    <span className="text-slate-900 dark:text-slate-200 font-semibold truncate">{post.author.anonymousHandle}</span>
-                    {regionName && (
-                      <>
-                        <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
-                        <span className="text-slate-500 dark:text-slate-400 truncate">{regionName}</span>
-                      </>
+            return true;
+          });
+
+          const totalFilteredCount = filteredPosts.length;
+          const totalPages = Math.max(1, Math.ceil(totalFilteredCount / POSTS_PER_PAGE));
+          const validCurrentPage = Math.min(currentPage, totalPages);
+          const startIndex = (validCurrentPage - 1) * POSTS_PER_PAGE;
+          const paginatedPosts = filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+
+          return (
+            <>
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-0.5">
+                <span>
+                  {totalFilteredCount === 0
+                    ? '0 discussions found'
+                    : `Showing ${startIndex + 1}–${Math.min(startIndex + POSTS_PER_PAGE, totalFilteredCount)} of ${totalFilteredCount} discussions`}
+                </span>
+                {(searchQuery || selectedGroupTab !== 'all' || selectedStatusFilter !== 'all') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedGroupTab('all');
+                      setSelectedStatusFilter('all');
+                      setCurrentPage(1);
+                    }}
+                    className="text-[#002D72] dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Reset filters
+                  </button>
+                )}
+              </div>
+
+              {/* POSTS LIST */}
+              <div className="space-y-4 pt-1">
+                {loading ? (
+                  <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-base font-sans">
+                    Loading discussions...
+                  </div>
+                ) : filteredPosts.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400 text-base space-y-3 shadow-xs">
+                    <div className="font-serif font-semibold text-lg text-slate-800 dark:text-slate-200">
+                      {searchQuery
+                        ? `No discussions matching "${searchQuery}"`
+                        : 'No discussions found in this channel.'}
+                    </div>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
+                      {searchQuery
+                        ? 'Try adjusting your search terms or resetting filters.'
+                        : 'You can start the first conversation or check the Clinical Guides for guidance.'}
+                    </p>
+                    {searchQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSelectedStatusFilter('all');
+                          setCurrentPage(1);
+                        }}
+                        className="text-[#002D72] dark:text-blue-400 font-semibold hover:underline text-sm inline-block pt-1 cursor-pointer"
+                      >
+                        Clear search
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onOpenComposer}
+                        className="text-[#002D72] dark:text-blue-400 font-semibold hover:underline text-sm inline-block pt-1 cursor-pointer"
+                      >
+                        Start the first discussion
+                      </button>
                     )}
                   </div>
-                  <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0 pl-2">
-                    {new Date(post.createdAt).toLocaleDateString([], {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
-                </div>
+                ) : (
+                  paginatedPosts.map((post) => {
+                    const isLiked = !!likedPosts[post.id];
+                    const currentLikes = post.upvotes + (isLiked ? 1 : 0);
+                    const regionName = getProperGroupName(post.assignedGroups[0]);
+                    const isAuthor =
+                      currentUser.role === 'CARE_PARTNER' &&
+                      (post.author.userId === currentUser.id || post.author.anonymousHandle === currentUser.anonymousHandle);
+                    const isPending = post.status === 'PENDING_MODERATION' && isAuthor;
 
-                {/* Title */}
-                <h2 className="font-serif text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                  {post.title}
-                </h2>
+                    return (
+                      <article
+                        key={post.id}
+                        onClick={() => setSelectedPost(post)}
+                        className={`rounded-2xl border p-5 sm:p-6 space-y-3.5 transition-all cursor-pointer group text-left ${
+                          isPending
+                            ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:border-amber-300 dark:hover:border-amber-700/80 shadow-2xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
+                        }`}
+                      >
+                        {/* Author Metadata & Closed Badge */}
+                        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center gap-2 font-medium min-w-0">
+                            <span className="text-slate-900 dark:text-slate-200 font-semibold truncate">
+                              {post.author.anonymousHandle}
+                            </span>
+                            {regionName && (
+                              <>
+                                <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                                <span className="text-slate-500 dark:text-slate-400 truncate">{regionName}</span>
+                              </>
+                            )}
+                            {post.isClosed && (
+                              <>
+                                <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-full">
+                                  <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                                  <span>Closed</span>
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0 pl-2">
+                            {new Date(post.createdAt).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
 
-                {/* Body Content Snippet */}
-                <p className="text-[15px] sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-sans line-clamp-3">
-                  {post.content}
-                </p>
+                        {/* Title */}
+                        <h2 className="font-serif text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
+                          {post.title}
+                        </h2>
 
-                {isPending && (
-                  <div className="text-xs text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl p-3 border border-amber-200/80 dark:border-amber-900/60 leading-relaxed font-sans">
-                    Your question was received and is currently under clinical safety review by Dr. Seema before being shared clinic-wide.
-                  </div>
+                        {/* Body Content Snippet */}
+                        <p className="text-[15px] sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-sans line-clamp-3">
+                          {post.content}
+                        </p>
+
+                        {isPending && (
+                          <div className="text-xs text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl p-3 border border-amber-200/80 dark:border-amber-900/60 leading-relaxed font-sans">
+                            Your question was received and is currently under clinical safety review by Dr. Seema before being shared clinic-wide.
+                          </div>
+                        )}
+
+                        {/* Actions Row */}
+                        {isPending ? (
+                          <div
+                            className="pt-3 border-t border-amber-200/70 dark:border-amber-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300 font-medium">
+                              <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+                              <span>Pending review by Dr. Seema</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEdit(post);
+                                }}
+                                className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-amber-100/60 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                                <span>Edit Question</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDeletePost(post);
+                                }}
+                                className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                                <span>Cancel Submission</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
+                              <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
+                              <span>{post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}</span>
+                              {post.isClosed ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                                  <Lock className="w-3 h-3 text-slate-400" />
+                                  Closed
+                                </span>
+                              ) : post.allowUnmoderatedReplies ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-900/40">
+                                  Open Replies
+                                </span>
+                              ) : null}
+                              <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleLike(e, post.id)}
+                              className={`flex items-center gap-1.5 transition py-1.5 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-xs sm:text-sm cursor-pointer ${
+                                isLiked ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                              }`}
+                            >
+                              <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 dark:fill-rose-400' : ''}`} />
+                              <span>{currentLikes} helpful</span>
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })
                 )}
 
-                {/* Actions Row */}
-                {isPending ? (
-                  <div
-                    className="pt-3 border-t border-amber-200/70 dark:border-amber-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300 font-medium">
-                      <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
-                      <span>Pending review by Dr. Seema</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartEdit(post);
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-amber-100/60 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
-                        <span>Edit Question</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDeletePost(post);
-                        }}
-                        className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                        <span>Cancel Submission</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                      <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
-                      <span>{post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}</span>
-                      {post.allowUnmoderatedReplies && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-900/40">
-                          Open Replies
-                        </span>
-                      )}
-                      <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+                {/* PAGINATION CONTROLS */}
+                {!loading && totalPages > 1 && (
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentPage((p) => Math.max(1, p - 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={validCurrentPage === 1}
+                      className="px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Previous</span>
+                    </button>
+
+                    <div className="flex items-center gap-1 sm:gap-1.5">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => {
+                            setCurrentPage(page);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={`min-w-8 h-8 px-2 text-xs sm:text-sm font-semibold rounded-lg transition cursor-pointer flex items-center justify-center ${
+                            validCurrentPage === page
+                              ? 'bg-[#002D72] dark:bg-blue-600 text-white shadow-2xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
                     </div>
 
                     <button
                       type="button"
-                      onClick={(e) => handleToggleLike(e, post.id)}
-                      className={`flex items-center gap-1.5 transition py-1.5 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-xs sm:text-sm cursor-pointer ${
-                        isLiked ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
+                      onClick={() => {
+                        setCurrentPage((p) => Math.min(totalPages, p + 1));
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      disabled={validCurrentPage === totalPages}
+                      className="px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition shadow-2xs cursor-pointer"
                     >
-                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-600 dark:fill-rose-400' : ''}`} />
-                      <span>{currentLikes} helpful</span>
+                      <span>Next</span>
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 )}
-              </article>
-            );
-          })
-        )}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* MODAL: EDIT PENDING QUESTION (With backdrop click to exit) */}

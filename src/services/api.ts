@@ -390,8 +390,12 @@ export const api = {
         body: JSON.stringify({ content, authorId }),
       },
       () => {
-        const author = localUsers.find((u) => u.id === authorId) || localUsers[1];
         const post = localPosts.find((p) => p.id === postId);
+        if (post?.isClosed) {
+          throw new Error('This discussion has been closed by a clinician moderator. New replies are no longer accepted.');
+        }
+
+        const author = localUsers.find((u) => u.id === authorId) || localUsers[1];
         const isClinician = author.role === 'CLINICIAN_MODERATOR' || author.role === 'SYSTEM_ADMIN';
         const isUnmoderated = post?.allowUnmoderatedReplies === true;
         const newStatus = isClinician || isUnmoderated ? 'APPROVED' : 'PENDING_MODERATION';
@@ -414,6 +418,32 @@ export const api = {
         return {
           comment: newComm,
           message: isClinician || isUnmoderated ? 'Reply posted.' : 'Reply submitted for moderation review.',
+        };
+      }
+    );
+  },
+
+  closePost: async (postId: string, isClosed: boolean, moderatorId?: string): Promise<{ post: Post; isClosed: boolean; message: string }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}/close`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isClosed, moderatorId }),
+      },
+      () => {
+        const post = localPosts.find((p) => p.id === postId);
+        if (post) {
+          post.isClosed = isClosed;
+          post.closedAt = isClosed ? new Date().toISOString() : undefined;
+          post.closedBy = isClosed ? moderatorId : undefined;
+        }
+        return {
+          post: post || localPosts[0],
+          isClosed,
+          message: isClosed
+            ? 'Discussion closed to new replies. Existing replies are preserved.'
+            : 'Discussion reopened. Care partners can now post replies again.',
         };
       }
     );

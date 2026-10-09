@@ -88,6 +88,9 @@ export interface Post {
   content: string;
   rawContent?: string;
   status: PostStatus;
+  isClosed?: boolean;
+  closedAt?: string;
+  closedBy?: string;
   author: AuthorProjection;
   assignedGroups: CommunityGroup[];
   isUrgentClinical?: boolean;

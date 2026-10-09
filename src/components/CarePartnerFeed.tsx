@@ -207,14 +207,13 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         </div>
       )}
 
-      {/* "ASK QUESTION" PROMPT */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shadow-xs transition-colors">
+      {/* "ASK QUESTION" PROMPT (Desktop/Tablet only; on mobile, the prominent '+' button is in the center of the bottom navigation tray) */}
+      <div className="hidden md:flex bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-5 items-center justify-between gap-3 sm:gap-4 shadow-xs transition-colors">
         <button
           onClick={onOpenComposer}
           className="flex-1 text-left text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs sm:text-base bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 transition border border-slate-200/60 dark:border-slate-700 font-sans truncate cursor-pointer"
         >
-          <span className="hidden sm:inline">Ask a question or share practical care advice with other caregivers...</span>
-          <span className="sm:hidden">Ask a question or share care advice...</span>
+          <span>Ask a question or share practical care advice with other caregivers...</span>
         </button>
         <button
           onClick={onOpenComposer}

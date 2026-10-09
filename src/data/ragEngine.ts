@@ -128,6 +128,92 @@ export function searchClinicalFaq(query: string, topK: number = 3): RagSearchRes
     .slice(0, topK);
 }
 
+// Helper to translate complex clinical jargon into plain, everyday language
+function simplifyMedicalJargon(text: string): string {
+  return text
+    .replace(/neurodegeneration damages the orbitofrontal cortex and anterior insula[—\- ]+the biological braking system for social conduct/gi, "frontotemporal dementia changes the brain's natural social filter—the built-in braking system that normally stops a thought before words come out")
+    .replace(/orbitofrontal cortex and anterior insula/gi, "the brain's natural social filter")
+    .replace(/orbitofrontal cortex/gi, "the brain's impulse control center")
+    .replace(/atrophy in the anterior cingulate cortex and dorsolateral prefrontal circuits responsible for cognitive initiation/gi, "changes in the brain circuits responsible for starting activities—like an internal starter switch that no longer turns on automatically")
+    .replace(/anterior cingulate cortex and dorsolateral prefrontal circuits/gi, "the brain's internal starter switch")
+    .replace(/striatal-frontal circuit disruption/gi, "changes in the brain circuits that regulate restlessness and physical movement")
+    .replace(/atrophy in the hypothalamus and insular cortex that regulate satiety and taste perception/gi, "changes in the brain areas that signal fullness and taste")
+    .replace(/progressive dysphagia \(impaired swallowing coordination\)/gi, "trouble chewing and swallowing food safely")
+    .replace(/progressive dysphagia/gi, "difficulty swallowing safely")
+    .replace(/dysphagia/gi, "difficulty swallowing")
+    .replace(/food bolting \(rapidly shoveling large quantities without chewing\)/gi, "eating or shoveling food very quickly without chewing")
+    .replace(/food bolting/gi, "eating too quickly")
+    .replace(/anosognosia/gi, "a loss of brain awareness (they genuinely believe nothing is wrong with them)")
+    .replace(/motor stereotypies/gi, "repetitive motions like pacing, tapping, or clapping")
+    .replace(/stereotypies/gi, "repetitive behaviors")
+    .replace(/interoceptive awareness \(inability to perceive body cues\)/gi, "the brain's ability to sense normal body cues (like a full bladder)")
+    .replace(/interoceptive awareness/gi, "awareness of body signals")
+    .replace(/amygdala threat alarms/gi, "the brain's automatic fight-or-flight fear alarm")
+    .replace(/amygdala/gi, "the brain's fear and stress response")
+    .replace(/tactile defensiveness/gi, "sensitivity or fear when being touched")
+    .replace(/sensory bombardment/gi, "feeling overwhelmed by sounds, temperatures, and touch")
+    .replace(/hyperorality/gi, "a strong urge to put food or objects in the mouth")
+    .replace(/pathological inertia/gi, "difficulty getting started with any activity")
+    .replace(/abulia/gi, "loss of ability to start tasks")
+    .replace(/interpersonal disinhibition/gi, "speaking or acting without a social filter")
+    .replace(/disinhibition/gi, "loss of impulse control")
+    .replace(/videofluoroscopy/gi, "a medical swallowing assessment");
+}
+
+export function formatDoctorAnswer(faq: ClinicalFaqItem): string {
+  const rawAnswer = faq.physicianAnswer.trim();
+
+  // Separate the explanation paragraph from the protocol steps
+  const protocolHeaderRegex = /\n\s*(?:[A-Z][a-zA-Z\s'’]+(?:Protocol|Strategy|Strategies|Guidelines|Checklist|Management)):?\s*\n/i;
+  
+  let explanation = '';
+  let stepsText = '';
+
+  const match = rawAnswer.match(protocolHeaderRegex);
+  if (match && match.index !== undefined) {
+    explanation = rawAnswer.slice(0, match.index).trim();
+    stepsText = rawAnswer.slice(match.index + match[0].length).trim();
+  } else {
+    const numMatch = rawAnswer.match(/\n(?:\d+\.|\([0-9]\))\s+/);
+    if (numMatch && numMatch.index !== undefined) {
+      explanation = rawAnswer.slice(0, numMatch.index).trim();
+      stepsText = rawAnswer.slice(numMatch.index).trim();
+    } else {
+      explanation = rawAnswer;
+    }
+  }
+
+  // Simplify jargon in the explanation
+  explanation = simplifyMedicalJargon(explanation);
+
+  // Clean and format steps with bold action titles
+  let formattedSteps = '';
+  if (stepsText) {
+    const stepLines = stepsText.split(/\n(?=\d+\.\s+)/);
+    const cleanedSteps = stepLines.map((step) => {
+      let s = simplifyMedicalJargon(step.trim());
+      s = s.replace(/^(\d+\.)\s*["“]?([^:：\n]+?)["”]?\s*[:：]\s*(.+)$/s, '$1 **$2**: $3');
+      return s;
+    });
+    formattedSteps = cleanedSteps.join('\n\n');
+  }
+
+  let answer = `### Understanding What Is Happening\n${explanation}`;
+
+  if (formattedSteps) {
+    answer += `\n\n### Practical Steps You Can Try\n${formattedSteps}`;
+  }
+
+  if (faq.keyProtocols && faq.keyProtocols.length > 0) {
+    const reminders = faq.keyProtocols
+      .map((p) => `• ${simplifyMedicalJargon(p)}`)
+      .join('\n');
+    answer += `\n\n### What to Keep in Mind\n${reminders}`;
+  }
+
+  return answer;
+}
+
 export function generateLocalRagResponse(query: string): RagResponse {
   const queryLower = query.toLowerCase().trim();
 
@@ -185,7 +271,7 @@ export function generateLocalRagResponse(query: string): RagResponse {
     });
   }
 
-  const answer = `Dr. Seema Gulyani’s Clinical Protocol for: "${bestMatch.question}"\n\n${bestMatch.physicianAnswer}\n\nKey Takeaways:\n${bestMatch.keyProtocols.map((p) => `• ${p}`).join('\n')}\n\nFor clinic coordination, contact the Johns Hopkins Clinic Direct Line at (410) 955-5147 (option 2) or Support Line at (410) 502-4163. For life-threatening emergencies, call 911.`;
+  const answer = formatDoctorAnswer(bestMatch);
 
   return {
     answer,

@@ -11,7 +11,8 @@ import {
   MessageSquare,
   ShieldCheck,
   ChevronRight,
-  Minus,
+  Heart,
+  CheckCircle2,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CLINICAL_50_FAQ, ClinicalFaqItem } from '../data/clinicalRagFaq';
@@ -46,6 +47,165 @@ const FAQ_CATEGORIES = [
   { id: 'CRISIS_EMERGENCY', label: 'Crisis & 911' },
 ];
 
+const renderInlineFormatted = (rawText: string) => {
+  const parts = rawText.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={idx} className="font-semibold text-slate-900 dark:text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <em key={idx} className="italic text-slate-800 dark:text-slate-200">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    return part;
+  });
+};
+
+const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
+  const hasMarkdownSections = text.includes('###');
+
+  if (!hasMarkdownSections) {
+    const paragraphs = text.split(/\n\n+/);
+    return (
+      <div className="space-y-2 select-text font-sans">
+        {paragraphs.map((p, pIdx) => {
+          const lines = p.split(/\n/);
+          return (
+            <p key={pIdx} className="leading-relaxed text-xs sm:text-[13px] text-slate-800 dark:text-slate-200">
+              {lines.map((line, lIdx) => (
+                <React.Fragment key={lIdx}>
+                  {lIdx > 0 && <br />}
+                  {renderInlineFormatted(line)}
+                </React.Fragment>
+              ))}
+            </p>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const rawSections = text.split(/(?=###\s+)/g).filter((s) => s.trim().length > 0);
+
+  return (
+    <div className="space-y-3.5 select-text text-xs sm:text-[13px] leading-relaxed font-sans">
+      {rawSections.map((sec, secIdx) => {
+        const trimmed = sec.trim();
+        const headerMatch = trimmed.match(/^###\s+([^\n]+)/);
+        const headerTitle = headerMatch ? headerMatch[1].trim() : '';
+        const bodyContent = headerMatch ? trimmed.slice(headerMatch[0].length).trim() : trimmed;
+
+        if (headerTitle.toLowerCase().includes('understanding') || headerTitle.toLowerCase().includes('happening')) {
+          const paragraphs = bodyContent.split(/\n\n+/);
+          return (
+            <div key={secIdx} className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-[#002D72] dark:text-sky-400">
+                <Heart className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>{headerTitle}</span>
+              </div>
+              <div className="space-y-1.5 text-slate-700 dark:text-slate-200 pl-0.5">
+                {paragraphs.map((para, pIdx) => (
+                  <p key={pIdx} className="leading-relaxed">
+                    {renderInlineFormatted(para)}
+                  </p>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (headerTitle.toLowerCase().includes('practical') || headerTitle.toLowerCase().includes('steps')) {
+          const stepBlocks = bodyContent.split(/\n(?=\d+\.\s+)/).map((s) => s.trim()).filter(Boolean);
+
+          return (
+            <div key={secIdx} className="space-y-2 pt-0.5">
+              <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-[#002D72] dark:text-sky-400">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{headerTitle}</span>
+              </div>
+              <div className="space-y-2">
+                {stepBlocks.map((step, sIdx) => {
+                  const numMatch = step.match(/^(\d+)\.\s*(.*)$/s);
+                  const stepNumber = numMatch ? numMatch[1] : `${sIdx + 1}`;
+                  const stepText = numMatch ? numMatch[2] : step;
+
+                  return (
+                    <div
+                      key={sIdx}
+                      className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-750/80 shadow-2xs"
+                    >
+                      <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-[#002D72] dark:text-sky-300 font-bold text-[11px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                        {stepNumber}
+                      </span>
+                      <div className="flex-1 text-slate-700 dark:text-slate-200 leading-snug">
+                        {renderInlineFormatted(stepText)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+
+        if (
+          headerTitle.toLowerCase().includes('reminder') ||
+          headerTitle.toLowerCase().includes('mind') ||
+          headerTitle.toLowerCase().includes('takeaway')
+        ) {
+          const bulletLines = bodyContent
+            .split(/\n/)
+            .map((b) => b.trim())
+            .filter((b) => b.length > 0);
+
+          return (
+            <div
+              key={secIdx}
+              className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/40 text-amber-950 dark:text-amber-100 space-y-1.5 shadow-2xs"
+            >
+              <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-amber-900 dark:text-amber-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>{headerTitle}</span>
+              </div>
+              <ul className="space-y-1 text-[12px] text-amber-900/90 dark:text-amber-200/90">
+                {bulletLines.map((bullet, bIdx) => {
+                  const cleanedBullet = bullet.replace(/^[•\-\*]\s*/, '');
+                  return (
+                    <li key={bIdx} className="flex items-start gap-1.5 leading-snug">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 shrink-0 mt-1.5" />
+                      <span>{renderInlineFormatted(cleanedBullet)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        }
+
+        return (
+          <div key={secIdx} className="space-y-1">
+            {headerTitle && (
+              <h4 className="font-semibold text-xs text-[#002D72] dark:text-sky-400">
+                {headerTitle}
+              </h4>
+            )}
+            <div className="text-slate-700 dark:text-slate-200">
+              {renderInlineFormatted(bodyContent)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> = ({
   isOpen,
   onToggle,
@@ -67,7 +227,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     {
       id: 'msg-welcome',
       sender: 'assistant',
-      text: `Hello. I am the Hopkins Care Partner Clinical Assistant, trained directly on Dr. Seema Gulyani's repository of the 50 most asked questions in Frontotemporal Dementia (FTD) and progressive caregiving.\n\nYou can ask about bathing agitation, blunt remarks, driving retirement, sweet cravings, choking, legal planning, or browse all 50 physician protocols below. How can I support you today?`,
+      text: `Hello. I'm Dr. Seema's Clinical Assistant for our Johns Hopkins Care Partner families.\n\nCaring for a loved one with Frontotemporal Dementia (FTD) is often exhausting, and it is completely normal to feel unsure of what to do. You can ask me any daily question—like what to do about bathing resistance, blunt remarks in public, driving safety, sweet cravings, or memory care planning.\n\nHow can I support you and your loved one today?`,
       timestamp: 'Now',
       suggestedQuestions: [
         'Why does my loved one make blunt or rude comments in public?',
@@ -176,7 +336,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       {
         id: `welcome-${Date.now()}`,
         sender: 'assistant',
-        text: `Chat reset. I am ready to answer any caregiving questions from Dr. Seema's 50 clinical protocols.`,
+        text: `Chat reset. I am here to help you with any caregiving questions or practical steps you need. How can I support you today?`,
         timestamp: 'Now',
         suggestedQuestions: [
           'Why does my loved one make blunt or rude comments in public?',
@@ -205,15 +365,15 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   return (
     <>
       {/* ------------------------------------------------------------- */}
-      {/* 1. FLOATING CHATBOT TRIGGER BUTTON (Compact 48-52px circle)   */}
+      {/* 1. FLOATING CHATBOT TRIGGER BUTTON (Always visible just above the mobile tray) */}
       {/* ------------------------------------------------------------- */}
-      <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 pointer-events-auto">
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 right-4 sm:right-6 z-40 pointer-events-auto">
         <button
           ref={triggerRef}
           onClick={onToggle}
           type="button"
           aria-label={isOpen ? 'Close Care Assistant' : 'Open Care Assistant'}
-          title={isOpen ? 'Close Care Assistant' : 'Ask Dr. Seema’s Clinical Assistant (50 FAQs)'}
+          title={isOpen ? 'Close Care Assistant' : 'Ask Dr. Seema’s Clinical Assistant'}
           className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 ${
             isOpen
               ? 'bg-slate-800 dark:bg-slate-700 text-white'
@@ -236,44 +396,45 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. CHATBOT FLOATING WINDOW (Docked bottom-right / Compact)    */}
+      {/* 2. CHATBOT FLOATING WINDOW (Compact card anchored DIRECTLY ABOVE the circle button)  */}
       {/* ------------------------------------------------------------- */}
       {isOpen && (
         <div
           ref={windowRef}
           role="dialog"
           aria-label="Clinical Care Assistant"
-          className="fixed bottom-19 sm:bottom-21 right-3 sm:right-6 w-[calc(100vw-24px)] sm:w-[380px] max-w-[390px] h-[500px] sm:h-[530px] max-h-[calc(100dvh-6.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-40 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200 transition-colors"
+          className="fixed bottom-[calc(8.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-21 right-4 sm:right-6 w-[295px] sm:w-[380px] max-w-[calc(100vw-2rem)] h-[375px] sm:h-[530px] max-h-[52vh] sm:max-h-[calc(100dvh-6.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 transition-colors"
         >
           {/* Header */}
-          <div className="p-3 sm:p-3.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2.5 sm:p-3.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               <div className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-sm shadow-xs">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-xs sm:text-sm shadow-xs">
                   SG
                 </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#002D72] dark:border-slate-900 rounded-full" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="font-serif font-semibold text-sm text-white truncate">
+                  <h2 className="font-serif font-semibold text-xs sm:text-sm text-white truncate">
                     Dr. Seema’s Assistant
                   </h2>
                   <span title="Verified Physician Knowledge" className="inline-flex items-center">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
                   </span>
                 </div>
-                <p className="text-[10.5px] text-blue-200 dark:text-slate-400 truncate">
-                  50 Verified Clinical Protocols · Johns Hopkins
+                <p className="text-[10px] sm:text-[10.5px] text-blue-200 dark:text-slate-400 truncate">
+                  Care Partner Clinical Support · Johns Hopkins
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={handleResetChat}
                 title="Restart chat"
+                aria-label="Restart chat"
                 className="p-1.5 text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -281,15 +442,8 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               <button
                 type="button"
                 onClick={onClose}
-                title="Minimize assistant"
-                className="p-1.5 text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
                 title="Close assistant"
+                aria-label="Close assistant"
                 className="p-1.5 text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
@@ -297,12 +451,12 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             </div>
           </div>
 
-          {/* Quick Sub-header with 50 FAQs Browser Toggle */}
+          {/* Quick Sub-header with Topics Browser Toggle */}
           <div className="px-3 py-1.5 bg-blue-50/80 dark:bg-slate-850 border-b border-blue-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                50 Physician Q&As Loaded
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                Care Partner Clinical Support
               </span>
             </div>
             <button
@@ -391,9 +545,13 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       }`}
                     >
                       {/* Physician Answer Body */}
-                      <div className="whitespace-pre-line select-text text-xs sm:text-[13px] leading-relaxed">
-                        {msg.text}
-                      </div>
+                      {isUser ? (
+                        <div className="whitespace-pre-line select-text text-xs sm:text-[13px] leading-relaxed font-sans">
+                          {msg.text}
+                        </div>
+                      ) : (
+                        <FormattedMessageText text={msg.text} />
+                      )}
 
                       {/* Medication Refusal Emergency Contacts */}
                       {msg.isMedicationRefusal && (

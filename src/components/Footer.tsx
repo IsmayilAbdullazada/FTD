@@ -106,49 +106,49 @@ export const Footer: React.FC<FooterProps> = () => {
 
   return (
     <>
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 py-3 sm:py-3.5 pb-20 md:pb-3.5 text-xs font-sans transition-colors">
+      <footer className="bg-[#001D4A] dark:bg-[#030611] border-t-2 border-[#002D72] dark:border-slate-800 text-slate-300 dark:text-slate-400 py-5 sm:py-4 pb-28 md:pb-5 text-xs font-sans transition-colors shadow-inner">
         <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6 text-center lg:text-left">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-6 text-center lg:text-left">
             {/* Institutional Attribution Group */}
-            <div className="space-y-0.5 min-w-0">
-              <p className="text-[11px] sm:text-xs text-slate-700 dark:text-slate-300 font-normal leading-normal">
+            <div className="space-y-1 min-w-0">
+              <p className="text-[11px] sm:text-xs text-white dark:text-slate-200 font-medium leading-normal">
                 © 2026 The Johns Hopkins University, The Johns Hopkins Hospital, and Johns Hopkins Health System. All rights reserved.
               </p>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+              <p className="text-[10px] sm:text-[11px] text-blue-200/80 dark:text-slate-400 leading-normal">
                 Department of Neurology · Division of Cognitive Neurology · Baltimore, MD
               </p>
             </div>
 
             {/* Legal & Compliance Links Group */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-2.5 sm:gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+            <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-2.5 sm:gap-x-3 gap-y-1 text-[11px] text-slate-300 dark:text-slate-400 shrink-0">
               <button
                 type="button"
                 onClick={() => setActivePolicy('privacy')}
-                className="hover:text-[#002D72] dark:hover:text-sky-400 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
+                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
               >
                 Privacy Policy
               </button>
-              <span className="text-slate-300 dark:text-slate-700 select-none" aria-hidden="true">·</span>
+              <span className="text-blue-300/40 dark:text-slate-700 select-none" aria-hidden="true">·</span>
               <button
                 type="button"
                 onClick={() => setActivePolicy('npp')}
-                className="hover:text-[#002D72] dark:hover:text-sky-400 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
+                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
               >
                 Notice of Privacy Practices
               </button>
-              <span className="text-slate-300 dark:text-slate-700 select-none" aria-hidden="true">·</span>
+              <span className="text-blue-300/40 dark:text-slate-700 select-none" aria-hidden="true">·</span>
               <button
                 type="button"
                 onClick={() => setActivePolicy('nondiscrimination')}
-                className="hover:text-[#002D72] dark:hover:text-sky-400 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
+                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
               >
                 Non-Discrimination Policy
               </button>
-              <span className="text-slate-300 dark:text-slate-700 select-none" aria-hidden="true">·</span>
+              <span className="text-blue-300/40 dark:text-slate-700 select-none" aria-hidden="true">·</span>
               <button
                 type="button"
                 onClick={() => setActivePolicy('rights')}
-                className="hover:text-[#002D72] dark:hover:text-sky-400 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
+                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
               >
                 Patient Rights
               </button>

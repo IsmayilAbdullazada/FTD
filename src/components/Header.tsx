@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Sun,
   Moon,
+  Plus,
 } from 'lucide-react';
 import { CurrentUser, PersonaOption, DirectMessage } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -373,79 +374,90 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </header>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (Exact previous responsive mobile/tablet layout preserved + dark mode) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 safe-bottom transition-colors">
-        <div
-          className={`max-w-lg mx-auto grid ${
-            isClinician || isAdmin ? 'grid-cols-6' : 'grid-cols-5'
-            } h-15 items-center text-center`}
-        >
-          {(isClinician || isAdmin) && (
+      {/* MOBILE BOTTOM NAVIGATION BAR (Raised prominent '+' button centered between Guides and Updates) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.5)] safe-bottom transition-colors">
+        <div className="max-w-md mx-auto flex items-center justify-between h-15 px-1 relative">
+          {/* Left Navigation Group (Discussions & Guides, plus Dashboard if Clinician) */}
+          <div className="flex-1 flex items-center justify-around min-w-0">
+            {(isClinician || isAdmin) && (
+              <button
+                onClick={() => setActiveTab('moderation')}
+                className={`flex flex-col items-center justify-center py-1 transition relative cursor-pointer min-w-0 flex-1 ${
+                  activeTab === 'moderation' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <div className="relative">
+                  <Shield className="w-5 h-5" />
+                  {pendingTriageCount > 0 && (
+                    <span className="absolute -top-1 -right-1.5 px-1 min-w-3.5 h-3.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
+                      {pendingTriageCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Dashboard</span>
+              </button>
+            )}
+
             <button
-              onClick={() => setActiveTab('moderation')}
-              className={`flex flex-col items-center justify-center py-1.5 transition relative cursor-pointer ${
-                activeTab === 'moderation' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+              onClick={() => setActiveTab('feed')}
+              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+                activeTab === 'feed' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
-              <div className="relative">
-                <Shield className="w-5 h-5" />
-                {pendingTriageCount > 0 && (
-                  <span className="absolute -top-1 -right-1.5 px-1 min-w-3.5 h-3.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
-                    {pendingTriageCount}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Dashboard</span>
+              <MessageSquare className="w-5 h-5" />
+              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Discussions</span>
             </button>
-          )}
 
-          <button
-            onClick={() => setActiveTab('feed')}
-            className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer ${
-              activeTab === 'feed' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Discussions</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('knowledge')}
+              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+                activeTab === 'knowledge' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <BookOpen className="w-5 h-5" />
+              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Guides</span>
+            </button>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('knowledge')}
-            className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer ${
-              activeTab === 'knowledge' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            <BookOpen className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Guides</span>
-          </button>
+          {/* Centered Raised '+' Action Button (Larger & Raised Outside Upper Bound of Tray) */}
+          <div className="shrink-0 px-2 flex flex-col items-center justify-center relative">
+            <button
+              type="button"
+              onClick={() => setActiveTab('compose')}
+              aria-label="New Post"
+              title="Create New Post"
+              className={`-mt-7.5 w-15 h-15 rounded-full flex items-center justify-center text-white ring-4 ring-white dark:ring-slate-900 shadow-[0_10px_25px_rgba(0,45,114,0.35)] dark:shadow-[0_10px_25px_rgba(0,0,0,0.7)] active:scale-90 hover:scale-105 transition-all duration-200 cursor-pointer ${
+                activeTab === 'compose'
+                  ? 'bg-blue-600 dark:bg-blue-500 ring-4 ring-blue-300 dark:ring-blue-600 shadow-[0_10px_25px_rgba(37,99,235,0.45)]'
+                  : 'bg-[#002D72] hover:bg-[#001D4A] dark:bg-blue-600 dark:hover:bg-blue-500'
+              }`}
+            >
+              <Plus className="w-8 h-8 stroke-[2.75]" />
+            </button>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('updates')}
-            className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer ${
-              activeTab === 'updates' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            <Stethoscope className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Updates</span>
-          </button>
+          {/* Right Navigation Group (Updates & Events) */}
+          <div className="flex-1 flex items-center justify-around min-w-0">
+            <button
+              onClick={() => setActiveTab('updates')}
+              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+                activeTab === 'updates' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <Stethoscope className="w-5 h-5" />
+              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Updates</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('calendar')}
-            className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer ${
-              activeTab === 'calendar' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
-            }`}
-          >
-            <CalendarDays className="w-5 h-5" />
-            <span className="text-[10px] font-medium mt-1 truncate max-w-full px-1">Events</span>
-          </button>
-
-          <button
-            onClick={onOpenAssistant}
-            className="flex flex-col items-center justify-center py-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer"
-          >
-            <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-[11px] font-medium mt-1 text-indigo-700 dark:text-indigo-400 truncate max-w-full px-1">Assistant</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+                activeTab === 'calendar' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <CalendarDays className="w-5 h-5" />
+              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Events</span>
+            </button>
+          </div>
         </div>
       </nav>
     </>

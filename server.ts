@@ -53,6 +53,8 @@ interface User {
 interface CommunityGroup {
   id: string;
   name: string;
+  fullName?: string;
+  properName?: string;
   slug: string;
   description: string;
   isGeneralBoard: boolean;
@@ -85,6 +87,7 @@ interface Post {
   isUrgentClinical?: boolean;
   assignedGroupIds: string[];
   suggestedCohortId?: string;
+  allowUnmoderatedReplies?: boolean;
   phiAlerts: PhiAlert[];
   createdAt: string;
   updatedAt: string;
@@ -312,6 +315,34 @@ const users: User[] = [
     createdAt: '2026-04-12T16:40:00Z',
   },
   {
+    id: 'user-care-4',
+    email: 'david.chen@example.com',
+    role: 'CARE_PARTNER',
+    firstName: 'David',
+    lastName: 'Chen',
+    phoneNumber: '(240) 555-6712',
+    clinicPatientId: 'JHM-55120-FTD',
+    isActive: true,
+    anonymousHandle: 'CarePartner-512',
+    avatarColor: '#B45309',
+    badgeLabel: 'Care Partner',
+    createdAt: '2026-05-01T10:00:00Z',
+  },
+  {
+    id: 'user-care-5',
+    email: 'patricia.m@example.com',
+    role: 'CARE_PARTNER',
+    firstName: 'Patricia',
+    lastName: 'Morales',
+    phoneNumber: '(703) 555-8901',
+    clinicPatientId: 'JHM-63218-FTD',
+    isActive: true,
+    anonymousHandle: 'CarePartner-633',
+    avatarColor: '#0E7490',
+    badgeLabel: 'Care Partner',
+    createdAt: '2026-05-15T14:30:00Z',
+  },
+  {
     id: 'user-admin-1',
     email: 'cs-admin@cs.jhu.edu',
     role: 'SYSTEM_ADMIN',
@@ -329,6 +360,8 @@ const communityGroups: CommunityGroup[] = [
   {
     id: 'group-general',
     name: 'General Clinic Forum',
+    fullName: 'General Clinic Forum (All Regions)',
+    properName: 'General Clinic Forum',
     slug: 'general-community',
     description: 'Clinic-wide discussion board for all verified FTD care partners across all geographic regions.',
     isGeneralBoard: true,
@@ -338,50 +371,72 @@ const communityGroups: CommunityGroup[] = [
     memberCount: 84,
   },
   {
-    id: 'group-baltimore',
-    name: 'Baltimore Metro Cohort',
-    slug: 'baltimore-metro',
-    description: 'Local peer support for families in Baltimore City, Baltimore County, Towson, and surrounding areas.',
+    id: 'group-central-maryland',
+    name: 'Central Maryland',
+    fullName: 'Central Maryland (Baltimore Metro)',
+    properName: 'Central Maryland',
+    slug: 'central-maryland',
+    description: 'Local peer support for families in Baltimore City, Baltimore County, Towson, Catonsville, Howard County, and central corridor.',
     isGeneralBoard: false,
-    geographicRegion: 'Baltimore Metro (MD)',
+    geographicRegion: 'Central Maryland (Baltimore Metro)',
     radiusMiles: 30,
-    tag: 'GEO_BALTIMORE',
+    tag: 'GEO_CENTRAL_MD',
     isActive: true,
     memberCount: 38,
   },
   {
-    id: 'group-eastern-shore',
-    name: 'Eastern Shore Cohort',
-    slug: 'eastern-shore',
-    description: 'Connecting care partners in Easton, Cambridge, Salisbury, and Maryland Eastern Shore rural corridors.',
+    id: 'group-eastern-maryland',
+    name: 'Eastern Maryland',
+    fullName: 'Eastern Maryland (Eastern Shore)',
+    properName: 'Eastern Maryland',
+    slug: 'eastern-maryland',
+    description: 'Connecting care partners in Easton, Cambridge, Salisbury, Ocean City, and Maryland Eastern Shore rural corridors.',
     isGeneralBoard: false,
-    geographicRegion: 'Eastern Shore (MD/DE)',
+    geographicRegion: 'Eastern Maryland (Eastern Shore)',
     radiusMiles: 60,
-    tag: 'GEO_EASTERN_SHORE',
+    tag: 'GEO_EASTERN_MD',
     isActive: true,
     memberCount: 16,
   },
   {
-    id: 'group-catonsville',
-    name: 'Catonsville / Howard County Cohort',
-    slug: 'catonsville-howard',
-    description: 'Targeted support for Catonsville, Columbia, Ellicott City, and Howard County regional families.',
+    id: 'group-western-maryland',
+    name: 'Western Maryland',
+    fullName: 'Western Maryland (Frederick and surrounding areas)',
+    properName: 'Western Maryland',
+    slug: 'western-maryland',
+    description: 'Targeted support for Frederick, Hagerstown, Cumberland, Washington County, and Western Maryland foothills.',
     isGeneralBoard: false,
-    geographicRegion: 'Catonsville & Howard County',
-    radiusMiles: 25,
-    tag: 'GEO_CATONSVILLE',
+    geographicRegion: 'Western Maryland (Frederick and surrounding areas)',
+    radiusMiles: 45,
+    tag: 'GEO_WESTERN_MD',
     isActive: true,
     memberCount: 22,
   },
   {
-    id: 'group-pennsylvania',
-    name: 'Pennsylvania / York County Cohort',
-    slug: 'pennsylvania-york',
-    description: 'Care partners traveling from Southern PA, York, and Lancaster into Johns Hopkins for specialized neurology.',
+    id: 'group-southern-maryland',
+    name: 'Southern Maryland / DC / Northern Virginia',
+    fullName: 'Southern Maryland / DC / Northern Virginia',
+    properName: 'Southern Maryland / DC / Northern Virginia',
+    slug: 'southern-maryland-dc-nova',
+    description: 'Regional cohort connecting care partners across Montgomery, Prince George’s, Charles, St. Mary’s, DC, and Northern Virginia.',
     isGeneralBoard: false,
-    geographicRegion: 'Pennsylvania / Southern PA',
+    geographicRegion: 'Southern Maryland / DC / Northern Virginia',
+    radiusMiles: 40,
+    tag: 'GEO_SOUTHERN_MD_DC_NOVA',
+    isActive: true,
+    memberCount: 19,
+  },
+  {
+    id: 'group-northern-maryland',
+    name: 'Northern Maryland / Pennsylvania / Delaware',
+    fullName: 'Northern Maryland / Pennsylvania / Delaware',
+    properName: 'Northern Maryland / Pennsylvania / Delaware',
+    slug: 'northern-maryland-pa-de',
+    description: 'Care partners in Harford, Cecil, Southern PA (York, Lancaster), and Delaware traveling to Johns Hopkins.',
+    isGeneralBoard: false,
+    geographicRegion: 'Northern Maryland / Pennsylvania / Delaware',
     radiusMiles: 50,
-    tag: 'GEO_PA',
+    tag: 'GEO_NORTHERN_MD_PA_DE',
     isActive: true,
     memberCount: 14,
   },
@@ -389,22 +444,33 @@ const communityGroups: CommunityGroup[] = [
 
 const groupMemberships: { userId: string; groupId: string }[] = [
   { userId: 'user-care-1', groupId: 'group-general' },
-  { userId: 'user-care-1', groupId: 'group-baltimore' },
+  { userId: 'user-care-1', groupId: 'group-central-maryland' },
   { userId: 'user-care-2', groupId: 'group-general' },
-  { userId: 'user-care-2', groupId: 'group-eastern-shore' },
+  { userId: 'user-care-2', groupId: 'group-eastern-maryland' },
   { userId: 'user-care-3', groupId: 'group-general' },
-  { userId: 'user-care-3', groupId: 'group-pennsylvania' },
+  { userId: 'user-care-3', groupId: 'group-northern-maryland' },
+  { userId: 'user-care-4', groupId: 'group-general' },
+  { userId: 'user-care-4', groupId: 'group-western-maryland' },
+  { userId: 'user-care-5', groupId: 'group-general' },
+  { userId: 'user-care-5', groupId: 'group-southern-maryland' },
 ];
+
+function normalizeGroupId(gId: string): string {
+  if (gId === 'group-baltimore' || gId === 'group-catonsville') return 'group-central-maryland';
+  if (gId === 'group-eastern-shore') return 'group-eastern-maryland';
+  if (gId === 'group-pennsylvania') return 'group-northern-maryland';
+  return gId;
+}
 
 function getUserAllowedGroups(userId: string, role: string): string[] {
   if (role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN') {
     return communityGroups.map((g) => g.id);
   }
-  const userMemberships = groupMemberships.filter((m) => m.userId === userId).map((m) => m.groupId);
+  const userMemberships = groupMemberships.filter((m) => m.userId === userId).map((m) => normalizeGroupId(m.groupId));
   if (userMemberships.length > 0) {
     return Array.from(new Set(['group-general', ...userMemberships]));
   }
-  return ['group-general', 'group-baltimore'];
+  return ['group-general', 'group-central-maryland'];
 }
 
 const clinicalResources: ClinicalResource[] = [
@@ -607,8 +673,8 @@ const posts: Post[] = [
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-20T10:15:00Z',
-    assignedGroupIds: ['group-baltimore'],
-    suggestedCohortId: 'group-baltimore',
+    assignedGroupIds: ['group-central-maryland'],
+    suggestedCohortId: 'group-central-maryland',
     phiAlerts: [],
     createdAt: '2026-09-20T08:30:00Z',
     updatedAt: '2026-09-20T10:15:00Z',
@@ -624,8 +690,8 @@ const posts: Post[] = [
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-22T14:40:00Z',
-    assignedGroupIds: ['group-eastern-shore'],
-    suggestedCohortId: 'group-eastern-shore',
+    assignedGroupIds: ['group-eastern-maryland'],
+    suggestedCohortId: 'group-eastern-maryland',
     phiAlerts: [],
     createdAt: '2026-09-22T12:00:00Z',
     updatedAt: '2026-09-22T14:40:00Z',
@@ -641,8 +707,8 @@ const posts: Post[] = [
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-24T16:20:00Z',
-    assignedGroupIds: ['group-pennsylvania'],
-    suggestedCohortId: 'group-pennsylvania',
+    assignedGroupIds: ['group-northern-maryland'],
+    suggestedCohortId: 'group-northern-maryland',
     phiAlerts: [],
     createdAt: '2026-09-24T15:00:00Z',
     updatedAt: '2026-09-24T16:20:00Z',
@@ -657,8 +723,8 @@ const posts: Post[] = [
     rawContent: 'He was pacing all night from 1 AM to 5 AM and almost fell down the back stairs. The prescription bottle says 25mg but should I increase it to 50mg tonight so he sleeps?',
     status: 'PENDING_MODERATION',
     isUrgentClinical: true,
-    assignedGroupIds: ['group-baltimore'],
-    suggestedCohortId: 'group-baltimore',
+    assignedGroupIds: ['group-central-maryland'],
+    suggestedCohortId: 'group-central-maryland',
     phiAlerts: [],
     createdAt: '2026-09-28T09:45:00Z',
     updatedAt: '2026-09-28T09:45:00Z',
@@ -671,8 +737,8 @@ const posts: Post[] = [
     title: 'Has anyone tried high-dose Lion Mane mushroom extracts for reversing aphasia?',
     rawContent: 'I saw an advertisement claiming Lion Mane mushroom tincture can regenerate frontal lobe neurons and reverse primary progressive aphasia. Should I buy this $180 supply?',
     status: 'PENDING_MODERATION',
-    assignedGroupIds: ['group-eastern-shore'],
-    suggestedCohortId: 'group-eastern-shore',
+    assignedGroupIds: ['group-eastern-maryland'],
+    suggestedCohortId: 'group-eastern-maryland',
     phiAlerts: [],
     createdAt: '2026-09-28T10:10:00Z',
     updatedAt: '2026-09-28T10:10:00Z',
@@ -682,11 +748,11 @@ const posts: Post[] = [
   {
     id: 'post-pending-3',
     authorId: 'user-care-3',
-    title: 'Dispute with neighbor over wandering - need local Catonsville advice',
+    title: 'Dispute with neighbor over wandering - need local Frederick advice',
     rawContent: 'My husband Robert walked over to 412 Elm St and entered their backyard garden yesterday. The neighbor threatened to call the police. My cell is (410) 555-9122 if someone can call me.',
     status: 'PENDING_MODERATION',
-    assignedGroupIds: ['group-catonsville'],
-    suggestedCohortId: 'group-catonsville',
+    assignedGroupIds: ['group-western-maryland'],
+    suggestedCohortId: 'group-western-maryland',
     phiAlerts: [
       {
         type: 'PERSON',
@@ -1014,6 +1080,7 @@ app.get('/api/v1/posts', (req, res) => {
       createdAt: p.createdAt,
       commentCount: comments.filter((c) => c.postId === p.id && c.status === 'APPROVED').length,
       upvotes: p.upvotes,
+      allowUnmoderatedReplies: p.allowUnmoderatedReplies ?? false,
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? p.phiAlerts : undefined,
     };
   });
@@ -1078,6 +1145,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
       createdAt: post.createdAt,
       commentCount: postComments.filter((c) => c.status === 'APPROVED').length,
       upvotes: post.upvotes,
+      allowUnmoderatedReplies: post.allowUnmoderatedReplies ?? false,
     },
     comments: postComments,
   });
@@ -1162,6 +1230,36 @@ app.post('/api/v1/deflection/discussions', (req, res) => {
   res.json({ matches: matches.slice(0, 2) });
 });
 
+// Real-time pool endpoint for instant client-side keyword matching
+app.get('/api/v1/deflection/discussions-pool', (req, res) => {
+  const approvedPosts = posts.filter((p) => p.status === 'APPROVED');
+  const pool = approvedPosts.map((p) => {
+    const postComments = comments.filter((c) => c.postId === p.id && c.status === 'APPROVED');
+    const author = projectAuthor(p.authorId, 'CARE_PARTNER');
+    const assignedGroup = communityGroups.find((g) => p.assignedGroupIds.includes(g.id));
+    return {
+      id: p.id,
+      title: p.title,
+      content: p.sanitizedContent || p.rawContent,
+      authorHandle: author.anonymousHandle,
+      authorBadge: author.badgeLabel,
+      cohortName: assignedGroup?.properName || assignedGroup?.name || 'General Clinic Forum',
+      createdAt: p.createdAt,
+      replies: postComments.map((c) => {
+        const commAuthor = projectAuthor(c.authorId, 'CARE_PARTNER');
+        return {
+          id: c.id,
+          content: c.sanitizedContent || c.rawContent,
+          authorHandle: commAuthor.anonymousHandle,
+          authorBadge: commAuthor.badgeLabel,
+          createdAt: c.createdAt,
+        };
+      }),
+    };
+  });
+  res.json({ pool });
+});
+
 // Draft / Submit Post (Care Partner or Clinician)
 app.post('/api/v1/posts', (req, res) => {
   const { title, content, targetCohortId, authorId = 'user-care-1' } = req.body;
@@ -1215,7 +1313,8 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
   }
 
   const author = users.find((u) => u.id === authorId);
-  const isClinician = author?.role === 'CLINICIAN_MODERATOR';
+  const isClinician = author?.role === 'CLINICIAN_MODERATOR' || author?.role === 'SYSTEM_ADMIN';
+  const isUnmoderated = post.allowUnmoderatedReplies === true;
 
   const newComment: Comment = {
     id: `comm-${Date.now()}`,
@@ -1223,7 +1322,7 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
     authorId,
     rawContent: content,
     sanitizedContent: content,
-    status: isClinician ? 'APPROVED' : 'PENDING_MODERATION',
+    status: isClinician || isUnmoderated ? 'APPROVED' : 'PENDING_MODERATION',
     createdAt: new Date().toISOString(),
   };
 
@@ -1237,7 +1336,39 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
       ...newComment,
       author: projectAuthor(authorId, isClinician ? 'CLINICIAN_MODERATOR' : 'CARE_PARTNER'),
     },
-    message: isClinician ? 'Comment published immediately.' : 'Comment submitted for moderation review.',
+    message: isClinician || isUnmoderated ? 'Comment published immediately.' : 'Comment submitted for moderation review.',
+  });
+});
+
+// Toggle or update post unmoderated replies mode (Clinician Moderator)
+app.put('/api/v1/posts/:id/unmoderated-replies', (req, res) => {
+  const post = posts.find((p) => p.id === req.params.id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  const { allowUnmoderatedReplies } = req.body;
+  post.allowUnmoderatedReplies = Boolean(allowUnmoderatedReplies);
+  post.updatedAt = new Date().toISOString();
+
+  // If opening replies, also auto-approve existing pending comments on this thread
+  if (post.allowUnmoderatedReplies) {
+    comments
+      .filter((c) => c.postId === post.id && c.status === 'PENDING_MODERATION')
+      .forEach((c) => {
+        c.status = 'APPROVED';
+      });
+    post.commentCount = comments.filter((c) => c.postId === post.id && c.status === 'APPROVED').length;
+  }
+
+  res.json({
+    post: {
+      ...post,
+      allowUnmoderatedReplies: post.allowUnmoderatedReplies,
+    },
+    message: post.allowUnmoderatedReplies
+      ? 'Post updated: Anyone can now reply without moderation.'
+      : 'Post updated: All new replies now require clinical moderation.',
   });
 });
 
@@ -1357,7 +1488,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
 
 // Moderation Action (Approve / Reject / Clinical Escalate)
 app.post('/api/v1/moderation/action', (req, res) => {
-  const { entityId, action, assignedGroupIds, sanitizedContent, rejectionCode, rejectionMessage, moderatorNotes } = req.body;
+  const { entityId, action, assignedGroupIds, sanitizedContent, allowUnmoderatedReplies, rejectionCode, rejectionMessage, moderatorNotes } = req.body;
 
   const post = posts.find((p) => p.id === entityId);
   if (!post) {
@@ -1371,6 +1502,10 @@ app.post('/api/v1/moderation/action', (req, res) => {
 
   if (sanitizedContent) {
     post.sanitizedContent = sanitizedContent;
+  }
+
+  if (allowUnmoderatedReplies !== undefined) {
+    post.allowUnmoderatedReplies = Boolean(allowUnmoderatedReplies);
   }
 
   if (action === 'APPROVE') {
@@ -1795,7 +1930,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const mentionsDrug = restrictedDrugs.some((d) => queryLower.includes(d));
   if (mentionsDrug) {
     return res.json({
-      answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic support line at (410) 555-FTDC.`,
+      answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
       isMedicationRefusal: true,
       citedResources: [],
     });
@@ -1819,17 +1954,17 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
     )
     .join('\n\n--------------------------------\n\n');
 
-  // If Gemini API is available on the server, execute Gemini 3.8 Flash with Strict Prompt & Temperature 0.0
+  // If Gemini API is available on the server, execute Gemini with Strict Prompt & Temperature 0.0
   if (ai) {
     try {
-      const systemInstruction = `You are the Johns Hopkins FTD Clinic Support Assistant. You provide practical caregiving guidance strictly derived from the provided context materials approved by Dr. Seema Gulyani.
+      const systemInstruction = `You are the Hopkins Care Partner Connect Clinical Assistant. You provide practical caregiving guidance strictly derived from the provided context materials approved by Dr. Seema Gulyani.
 
 CRITICAL OPERATIONAL RULES:
 1. Under NO circumstances should you recommend or discuss specific prescription drug dosages, off-label pharmacological treatments, or speculative dementia cures.
-2. If the user query asks about a specific drug (e.g., Seroquel, Haloperidol, Donepezil, Memantine, Trazodone), YOU MUST RESPOND: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic support line at (410) 555-FTDC."
+2. If the user query asks about a specific drug (e.g., Seroquel, Haloperidol, Donepezil, Memantine, Trazodone), YOU MUST RESPOND: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For life-threatening emergencies, call 911."
 3. ONLY answer questions using the provided Context documents. If the answer is not present in the context, respond: "I do not have clinic-approved information on this topic yet. Please submit your question to the clinic moderation queue so Dr. Seema can review it."
 4. Maintain an empathetic, trauma-informed, professional tone appropriate for exhausted caregivers.
-5. For acute behavioral crises (threats of violence, sudden delirium, acute danger), direct the user immediately to emergency services and the Clinic Caregiver Support Line (410) 555-FTDC.
+5. For acute behavioral crises (threats of violence, sudden delirium, acute danger), direct the user immediately to emergency services (911) and the Clinic Direct Line (410) 955-5147, option 2 or Support Line (410) 502-4163.
 
 APPROVED CLINIC CONTEXT:
 ${contextCorpus}`;
@@ -1884,7 +2019,7 @@ ${contextCorpus}`;
 
   const matched = (bestMatch || clinicalResources[0]) as ClinicalResource;
   return res.json({
-    answer: `Based on Dr. Seema's approved clinical guide for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nIf you need immediate assistance or individualized care, contact the Clinic Support Line at (410) 555-FTDC.`,
+    answer: `Based on Dr. Seema's approved clinical guide for "${matched.title}":\n\n${matched.summary}\n\nKey Strategies:\n${matched.keyTakeaways.map((t) => `• ${t}`).join('\n')}\n\nIf you need immediate assistance or individualized clinical care, contact the Clinic Direct Line at (410) 955-5147 (option 2) or the Care Partner Support Line at (410) 502-4163. For life-threatening emergencies, call 911.`,
     citedResources: [{ id: matched.id, title: matched.title, url: matched.externalUrl }],
   });
 });
@@ -1960,8 +2095,8 @@ const cohortMembersStore = [
     phone: '(410) 555-8841',
     clinicPatientId: 'JHM-99210-FTD',
     anonymousHandle: 'CarePartner-882',
-    primaryGroupId: 'group-baltimore',
-    primaryGroupName: 'Baltimore Metro Cohort',
+    primaryGroupId: 'group-central-maryland',
+    primaryGroupName: 'Central Maryland (Baltimore Metro)',
     role: 'CARE_PARTNER',
     status: 'ACTIVE',
     joinedAt: '2026-08-15',
@@ -1973,8 +2108,8 @@ const cohortMembersStore = [
     phone: '(443) 555-3921',
     clinicPatientId: 'JHM-77341-FTD',
     anonymousHandle: 'CarePartner-419',
-    primaryGroupId: 'group-eastern-shore',
-    primaryGroupName: 'Eastern Shore Cohort',
+    primaryGroupId: 'group-eastern-maryland',
+    primaryGroupName: 'Eastern Maryland (Eastern Shore)',
     role: 'CARE_PARTNER',
     status: 'ACTIVE',
     joinedAt: '2026-08-20',
@@ -1986,11 +2121,37 @@ const cohortMembersStore = [
     phone: '(717) 555-1299',
     clinicPatientId: 'JHM-44091-FTD',
     anonymousHandle: 'CarePartner-204',
-    primaryGroupId: 'group-pennsylvania',
-    primaryGroupName: 'Pennsylvania / York County Cohort',
+    primaryGroupId: 'group-northern-maryland',
+    primaryGroupName: 'Northern Maryland / Pennsylvania / Delaware',
     role: 'CARE_PARTNER',
     status: 'ACTIVE',
     joinedAt: '2026-09-02',
+  },
+  {
+    userId: 'user-care-4',
+    realName: 'David Chen',
+    email: 'david.chen@example.com',
+    phone: '(240) 555-6712',
+    clinicPatientId: 'JHM-55120-FTD',
+    anonymousHandle: 'CarePartner-512',
+    primaryGroupId: 'group-western-maryland',
+    primaryGroupName: 'Western Maryland (Frederick and surrounding areas)',
+    role: 'CARE_PARTNER',
+    status: 'ACTIVE',
+    joinedAt: '2026-09-10',
+  },
+  {
+    userId: 'user-care-5',
+    realName: 'Patricia Morales',
+    email: 'patricia.m@example.com',
+    phone: '(703) 555-8901',
+    clinicPatientId: 'JHM-63218-FTD',
+    anonymousHandle: 'CarePartner-633',
+    primaryGroupId: 'group-southern-maryland',
+    primaryGroupName: 'Southern Maryland / DC / Northern Virginia',
+    role: 'CARE_PARTNER',
+    status: 'ACTIVE',
+    joinedAt: '2026-09-15',
   },
 ];
 

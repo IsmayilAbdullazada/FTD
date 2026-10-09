@@ -68,7 +68,7 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
         ...prev,
         {
           sender: 'assistant',
-          text: 'Unable to connect to clinical resources right now. For urgent clinical support, please call (410) 555-FTDC.',
+          text: 'Unable to connect to clinical resources right now. For clinical support, please call the clinic directly at (410) 955-5147 (option 2) or the support line at (410) 502-4163. For emergencies, call 911.',
           timestamp: 'Now',
         },
       ]);
@@ -87,25 +87,25 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-3 sm:p-4 cursor-pointer"
+      className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-50 flex items-center justify-center p-3 sm:p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors"
       >
         {/* Clean Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
           <div>
-            <h2 className="font-serif font-semibold text-slate-900 text-base sm:text-lg">
+            <h2 className="font-serif font-semibold text-slate-900 dark:text-white text-base sm:text-lg">
               Care Assistant
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Approved care guides from Dr. Seema Gulyani
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -113,7 +113,7 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
         </div>
 
         {/* Messages Stream */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 bg-slate-50/50 text-sm">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 bg-slate-50/50 dark:bg-slate-950/60 text-sm">
           {messages.map((msg, index) => {
             const isUser = msg.sender === 'user';
             return (
@@ -124,10 +124,10 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
                 <div
                   className={`max-w-[85%] rounded-2xl p-4 leading-relaxed space-y-2.5 font-sans ${
                     isUser
-                      ? 'bg-[#002D72] text-white rounded-br-xs'
+                      ? 'bg-[#002D72] dark:bg-blue-600 text-white rounded-br-xs'
                       : msg.isMedicationRefusal
-                      ? 'bg-rose-50 border border-rose-200 text-rose-950 rounded-bl-xs'
-                      : 'bg-white border border-slate-200/80 text-slate-800 rounded-bl-xs shadow-2xs'
+                      ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-950 dark:text-rose-100 rounded-bl-xs'
+                      : 'bg-white dark:bg-slate-850 border border-slate-200/80 dark:border-slate-750 text-slate-800 dark:text-slate-200 rounded-bl-xs shadow-2xs'
                   }`}
                 >
                   <div className="whitespace-pre-line select-text text-sm sm:text-[15px]">
@@ -135,20 +135,27 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
                   </div>
 
                   {msg.isMedicationRefusal && (
-                    <div className="pt-1">
+                    <div className="pt-1 flex flex-wrap gap-2">
                       <a
-                        href="tel:4105553832"
+                        href="tel:4109555147"
                         className="inline-flex items-center gap-1.5 bg-rose-600 text-white font-medium px-3.5 py-1.5 rounded-lg text-xs hover:bg-rose-700 transition"
                       >
                         <Phone className="w-3.5 h-3.5" />
-                        <span>Call Clinic: (410) 555-FTDC</span>
+                        <span>Call Clinic: (410) 955-5147 (opt. 2)</span>
+                      </a>
+                      <a
+                        href="tel:4105024163"
+                        className="inline-flex items-center gap-1.5 bg-slate-800 dark:bg-slate-700 text-white font-medium px-3.5 py-1.5 rounded-lg text-xs hover:bg-slate-900 dark:hover:bg-slate-600 transition"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Support Line: (410) 502-4163</span>
                       </a>
                     </div>
                   )}
 
                   {msg.citedResources && msg.citedResources.length > 0 && (
-                    <div className="pt-2 border-t border-slate-100 space-y-1">
-                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                         Cited Hopkins Care Protocol:
                       </span>
                       {msg.citedResources.map((res, i) => (
@@ -159,14 +166,14 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
                             onClose();
                             onOpenResource(res.id);
                           }}
-                          className="flex items-center gap-1.5 text-xs text-[#002D72] hover:text-blue-900 font-semibold p-1.5 -mx-1.5 rounded-lg hover:bg-blue-50/80 transition w-full text-left group"
+                          className="flex items-center gap-1.5 text-xs text-[#002D72] dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-semibold p-1.5 -mx-1.5 rounded-lg hover:bg-blue-50/80 dark:hover:bg-blue-950/40 transition w-full text-left group cursor-pointer"
                           title={`Read clinical guide: ${res.title}`}
                         >
-                          <BookOpen className="w-3.5 h-3.5 shrink-0 text-blue-700" />
-                          <span className="truncate flex-1 underline decoration-blue-200 group-hover:decoration-blue-700 font-medium">
+                          <BookOpen className="w-3.5 h-3.5 shrink-0 text-blue-700 dark:text-blue-400" />
+                          <span className="truncate flex-1 underline decoration-blue-200 dark:decoration-blue-800 group-hover:decoration-blue-700 dark:group-hover:decoration-blue-400 font-medium">
                             {res.title}
                           </span>
-                          <span className="text-[11px] text-blue-600 font-normal shrink-0 group-hover:translate-x-0.5 transition-transform">
+                          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-normal shrink-0 group-hover:translate-x-0.5 transition-transform">
                             View guide →
                           </span>
                         </button>
@@ -179,20 +186,20 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
           })}
 
           {loading && (
-            <div className="text-slate-400 text-xs p-2 italic font-sans">
+            <div className="text-slate-400 dark:text-slate-500 text-xs p-2 italic font-sans">
               Checking clinical guidelines...
             </div>
           )}
         </div>
 
         {/* Quick Topics */}
-        <div className="px-3.5 py-2.5 border-t border-slate-100 bg-white overflow-x-auto flex items-center gap-2 no-scrollbar shrink-0">
+        <div className="px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-2 no-scrollbar shrink-0">
           {samplePrompts.map((prompt, i) => (
             <button
               key={i}
               type="button"
               onClick={() => handleSend(prompt)}
-              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium"
+              className="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
             >
               {prompt}
             </button>
@@ -200,7 +207,7 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
         </div>
 
         {/* Input Bar */}
-        <div className="p-3.5 bg-white border-t border-slate-200 shrink-0">
+        <div className="p-3.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -213,12 +220,12 @@ export const RagAssistantModal: React.FC<RagAssistantModalProps> = ({
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               placeholder="Ask a practical care question..."
-              className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] font-sans"
+              className="flex-1 px-4 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 font-sans"
             />
             <button
               type="submit"
               disabled={!inputQuery.trim() || loading}
-              className="p-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-200 text-white rounded-xl transition shrink-0 shadow-xs"
+              className="p-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl transition shrink-0 shadow-xs cursor-pointer"
               aria-label="Send message"
             >
               <Send className="w-4 h-4" />

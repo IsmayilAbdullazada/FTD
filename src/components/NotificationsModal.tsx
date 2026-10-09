@@ -95,23 +95,23 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+      className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors"
       >
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-white">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
           <div className="flex items-center gap-2.5">
-            <Bell className="w-5 h-5 text-slate-700" />
-            <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900">
+            <Bell className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+            <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white">
               Notifications
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -119,9 +119,9 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         {feedbackToast && (
-          <div className="bg-emerald-50 border-b border-emerald-200 text-emerald-900 text-xs sm:text-sm px-4 py-2.5 flex items-center justify-between">
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-4 py-2.5 flex items-center justify-between">
             <span>{feedbackToast}</span>
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
         )}
 
@@ -131,7 +131,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           {isClinician && (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs sm:text-sm">
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
                   Pending Submissions ({pendingQueue.length})
                 </span>
                 {onNavigateToConsole && pendingQueue.length > 0 && (
@@ -140,7 +140,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       onClose();
                       onNavigateToConsole();
                     }}
-                    className="text-xs font-semibold text-[#002D72] hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Open Dashboard</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -149,7 +149,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               </div>
 
               {pendingQueue.length === 0 ? (
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-xs sm:text-sm text-slate-500">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   No submissions currently waiting in the moderation queue.
                 </div>
               ) : (
@@ -157,11 +157,11 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   {pendingQueue.map((item) => (
                     <div
                       key={item.id}
-                      className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs sm:text-sm space-y-2.5"
+                      className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-750 rounded-xl p-4 text-xs sm:text-sm space-y-2.5"
                     >
                       {/* Submitter info */}
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span className="font-medium text-slate-700">
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
                           {item.author.realName} · {item.author.anonymousHandle}
                         </span>
                         <span>
@@ -173,22 +173,22 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       </div>
 
                       {/* Title */}
-                      <div className="font-semibold text-slate-900 text-sm">
+                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
                         {item.title}
                       </div>
 
                       {/* Snippet */}
-                      <p className="text-slate-600 text-xs sm:text-sm line-clamp-2 leading-relaxed font-sans">
+                      <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm line-clamp-2 leading-relaxed font-sans">
                         {item.sanitizedContent || item.rawContent}
                       </p>
 
                       {/* Quick controls */}
-                      <div className="pt-2 border-t border-slate-200 flex items-center gap-2">
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
                         <button
                           type="button"
                           disabled={processingId === item.id}
                           onClick={() => handleQuickApprove(item)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-lg font-medium text-xs flex items-center gap-1.5 transition"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-medium text-xs flex items-center gap-1.5 transition cursor-pointer"
                           title="Quick Approve & Publish"
                         >
                           <Check className="w-3.5 h-3.5" />
@@ -199,7 +199,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           type="button"
                           disabled={processingId === item.id}
                           onClick={() => handleQuickReject(item)}
-                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-medium text-xs flex items-center gap-1.5 transition"
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg font-medium text-xs flex items-center gap-1.5 transition cursor-pointer"
                           title="Quick Reject"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -217,7 +217,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           <div className="space-y-3">
             {notifications.length === 0 ? (
               !isClinician && (
-                <div className="text-center py-8 text-slate-500 text-sm">
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">
                   No notifications in your inbox.
                 </div>
               )
@@ -228,35 +228,35 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                   onClick={() => !msg.read && handleMarkRead(msg.id)}
                   className={`p-4 rounded-xl border text-sm space-y-2 cursor-pointer transition ${
                     msg.read
-                      ? 'bg-white border-slate-200 text-slate-600'
-                      : 'bg-blue-50/40 border-blue-200 text-slate-900'
+                      ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      : 'bg-blue-50/40 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-white'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 font-medium">
                       {msg.type === 'APPROVAL' && (
-                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       )}
                       {msg.type === 'REJECTION' && (
-                        <X className="w-4 h-4 text-slate-500 shrink-0" />
+                        <X className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
                       )}
                       {msg.type !== 'APPROVAL' && msg.type !== 'REJECTION' && (
-                        <Bell className="w-4 h-4 text-[#002D72] shrink-0" />
+                        <Bell className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
                       )}
-                      <span className="text-slate-900 text-sm font-semibold">{msg.title}</span>
+                      <span className="text-slate-900 dark:text-white text-sm font-semibold">{msg.title}</span>
                     </div>
                     {!msg.read && (
-                      <span className="w-2 h-2 rounded-full bg-[#002D72] shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-[#002D72] dark:bg-blue-400 shrink-0" />
                     )}
                   </div>
 
-                  <p className="text-sm leading-relaxed text-slate-700 font-sans">
+                  <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 font-sans">
                     {msg.message}
                   </p>
 
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-slate-400" />
+                      <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                       <span>{new Date(msg.createdAt).toLocaleString()}</span>
                     </div>
 
@@ -272,7 +272,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           onNavigateToFeed();
                         }
                       }}
-                      className="text-xs font-semibold text-[#002D72] hover:underline flex items-center gap-1 shrink-0"
+                      className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
                     >
                       <span>Open Discussions</span>
                       <ArrowRight className="w-3 h-3" />
@@ -285,14 +285,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
-          <span className="text-xs text-slate-500">
-            Johns Hopkins FTD Care Partner Circle
+        <div className="p-3.5 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between text-xs">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Hopkins Care Partner Connect
           </span>
 
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-medium text-xs sm:text-sm transition"
+            className="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white rounded-lg font-medium text-xs sm:text-sm transition cursor-pointer"
           >
             Close
           </button>

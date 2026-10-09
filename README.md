@@ -1,4 +1,4 @@
-# Johns Hopkins FTD Care Partner Community
+# Hopkins Care Partner Connect
 
 Secure, clinician-moderated knowledge exchange and peer support platform for Frontotemporal Dementia (FTD) care partners, featuring real-time clinical guidance, private clinician communication with Dr. Seema Gulyani, and regional support cohorts.
 

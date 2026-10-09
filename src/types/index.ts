@@ -30,6 +30,8 @@ export interface AuthorProjection {
 export interface CommunityGroup {
   id: string;
   name: string;
+  fullName?: string;
+  properName?: string;
   slug: string;
   description: string;
   isGeneralBoard: boolean;
@@ -38,6 +40,38 @@ export interface CommunityGroup {
   tag: string;
   isActive: boolean;
   memberCount: number;
+}
+
+export const REGION_PROPER_NAMES: Record<string, string> = {
+  'group-central-maryland': 'Central Maryland',
+  'group-eastern-maryland': 'Eastern Maryland',
+  'group-western-maryland': 'Western Maryland',
+  'group-southern-maryland': 'Southern Maryland / DC / Northern Virginia',
+  'group-northern-maryland': 'Northern Maryland / Pennsylvania / Delaware',
+  'group-general': 'General Clinic Forum',
+};
+
+export const REGION_FULL_NAMES: Record<string, string> = {
+  'group-central-maryland': 'Central Maryland (Baltimore Metro)',
+  'group-eastern-maryland': 'Eastern Maryland (Eastern Shore)',
+  'group-western-maryland': 'Western Maryland (Frederick and surrounding areas)',
+  'group-southern-maryland': 'Southern Maryland / DC / Northern Virginia',
+  'group-northern-maryland': 'Northern Maryland / Pennsylvania / Delaware',
+  'group-general': 'General Clinic Forum (All Regions)',
+};
+
+export function getProperGroupName(cohort?: CommunityGroup | null): string {
+  if (!cohort) return 'Cohort';
+  if (cohort.properName) return cohort.properName;
+  if (REGION_PROPER_NAMES[cohort.id]) return REGION_PROPER_NAMES[cohort.id];
+  return cohort.name.replace(/\s+Cohort$/i, '').trim();
+}
+
+export function getFullGroupName(cohort?: CommunityGroup | null): string {
+  if (!cohort) return 'Group';
+  if (cohort.fullName) return cohort.fullName;
+  if (REGION_FULL_NAMES[cohort.id]) return REGION_FULL_NAMES[cohort.id];
+  return cohort.geographicRegion || cohort.name;
 }
 
 export interface PhiAlert {
@@ -57,6 +91,7 @@ export interface Post {
   author: AuthorProjection;
   assignedGroups: CommunityGroup[];
   isUrgentClinical?: boolean;
+  allowUnmoderatedReplies?: boolean;
   createdAt: string;
   commentCount: number;
   upvotes: number;
@@ -90,6 +125,7 @@ export interface QueueItem {
   suggestedCohort: CommunityGroup;
   assignedGroupIds: string[];
   isUrgentClinical?: boolean;
+  allowUnmoderatedReplies?: boolean;
   phiAlerts: PhiAlert[];
   createdAt: string;
 }

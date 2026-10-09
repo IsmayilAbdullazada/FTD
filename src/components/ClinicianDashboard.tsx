@@ -15,12 +15,18 @@ import {
   Sparkles,
   UserPlus,
   ArrowRight,
+  MessageSquare,
+  Clock,
+  Filter,
 } from 'lucide-react';
 import {
   QueueItem,
+  Post,
   CommunityGroup,
   RejectionReason,
   GroupMember,
+  getProperGroupName,
+  getFullGroupName,
 } from '../types';
 import { api } from '../services/api';
 
@@ -30,6 +36,7 @@ interface ClinicianDashboardProps {
   onOpenInvite: () => void;
   onOpenAudit: () => void;
   onCohortCreated?: () => void;
+  onOpenDiscussion?: (postId: string) => void;
 }
 
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
@@ -38,8 +45,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onOpenInvite,
   onOpenAudit,
   onCohortCreated,
+  onOpenDiscussion,
 }) => {
-  const [activeTab, setActiveTab] = useState<'queue' | 'cohorts' | 'members'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members'>('queue');
 
   // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
@@ -48,7 +56,15 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
   const [sanitizedDraft, setSanitizedDraft] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [allowUnmoderatedReplies, setAllowUnmoderatedReplies] = useState(false);
   const [moderatorNotes, setModeratorNotes] = useState('');
+
+  // Discussions & Reply Policy State
+  const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [searchPostsQuery, setSearchPostsQuery] = useState('');
+  const [postsPolicyFilter, setPostsPolicyFilter] = useState<'all' | 'moderated' | 'unmoderated'>('all');
+  const [togglingPostId, setTogglingPostId] = useState<string | null>(null);
 
   // Rejection modal
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -102,9 +118,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
+  const loadPublishedPosts = async () => {
+    setLoadingPosts(true);
+    try {
+      const res = await api.getPosts({ role: 'CLINICIAN_MODERATOR' });
+      setPublishedPosts(res.posts || []);
+    } catch (err) {
+      console.error('Failed to load published posts:', err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
   useEffect(() => {
     loadQueue();
     loadMembers();
+    loadPublishedPosts();
   }, []);
 
   const initItemState = (item: QueueItem) => {
@@ -114,6 +143,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         ? item.assignedGroupIds
         : cohorts.slice(0, 1).map((c) => c.id)
     );
+    setAllowUnmoderatedReplies(item.allowUnmoderatedReplies ?? false);
     setModeratorNotes('');
   };
 
@@ -133,6 +163,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         action: 'APPROVE',
         assignedGroupIds: selectedGroupIds,
         sanitizedContent: sanitizedDraft,
+        allowUnmoderatedReplies,
         moderatorNotes,
       });
 
@@ -141,10 +172,36 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       onQueueUpdated();
       await loadQueue();
+      await loadPublishedPosts();
     } catch (err) {
       console.error('Failed to publish:', err);
       setActionSuccessNotice('Error publishing post. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
+    }
+  };
+
+  // Toggle reply moderation policy for a post
+  const handleTogglePostRepliesMode = async (post: Post) => {
+    setTogglingPostId(post.id);
+    const newAllowUnmoderated = !post.allowUnmoderatedReplies;
+    try {
+      await api.togglePostUnmoderatedReplies(post.id, newAllowUnmoderated);
+      setPublishedPosts((prev) =>
+        prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: newAllowUnmoderated } : p))
+      );
+      setActionSuccessNotice(
+        newAllowUnmoderated
+          ? `Replies for "${post.title.slice(0, 32)}..." are now unmoderated (open to all).`
+          : `Replies for "${post.title.slice(0, 32)}..." now require clinical moderation.`
+      );
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+      onQueueUpdated();
+    } catch (err) {
+      console.error('Failed to update reply moderation policy:', err);
+      setActionSuccessNotice('Failed to update reply moderation policy.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setTogglingPostId(null);
     }
   };
 
@@ -187,7 +244,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         entityId: activeItem.id,
         entityType: 'POST',
         action: 'CLINICAL_REDIRECT',
-        moderatorNotes: 'Diverted to clinic phone support (410) 555-FTDC.',
+        moderatorNotes: 'Diverted to clinic direct line (410) 955-5147, option 2 or support line (410) 502-4163.',
       });
 
       setActionSuccessNotice('Caregiver notified to contact the clinic line.');
@@ -202,14 +259,31 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
+  // Helper to escape regex special characters
+  const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
   // Auto clean personal info
   const handleCleanPersonalInfo = () => {
     if (!activeItem) return;
     let cleaned = activeItem.rawContent;
-    activeItem.phiAlerts.forEach((alertItem) => {
-      cleaned = cleaned.replace(new RegExp(alertItem.text, 'gi'), `[${alertItem.type} removed]`);
-    });
+    if (activeItem.phiAlerts && activeItem.phiAlerts.length > 0) {
+      activeItem.phiAlerts.forEach((alertItem) => {
+        if (alertItem.text) {
+          const escaped = escapeRegExp(alertItem.text.trim());
+          cleaned = cleaned.replace(new RegExp(escaped, 'gi'), `[${alertItem.type} removed]`);
+        }
+      });
+    }
+
+    // Comprehensive fallback for phone numbers (e.g. (410) 555-9122, 410-555-9122) and emails
+    const phonePattern = /(?:\+?1[-.\s]*)?(?:\(\d{3}\)|\b\d{3}\b)[-.\s]*\d{3}[-.\s]*\d{4}\b/g;
+    cleaned = cleaned.replace(phonePattern, '[PHONE removed]');
+    const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+    cleaned = cleaned.replace(emailPattern, '[EMAIL removed]');
+
     setSanitizedDraft(cleaned);
+    setActionSuccessNotice('Personal details removed from draft.');
+    setTimeout(() => setActionSuccessNotice(null), 3000);
   };
 
   // Reassign Group
@@ -281,11 +355,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-5">
+    <div className="max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-5 transition-colors">
       {/* TOP HEADER */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
             Dashboard
           </h1>
         </div>
@@ -294,7 +368,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => setShowCreateGroupModal(true)}
-            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap"
+            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>New Group</span>
@@ -302,15 +376,15 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           <button
             onClick={onOpenInvite}
-            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap"
+            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
           >
-            <UserPlus className="w-4 h-4 text-slate-500" />
+            <UserPlus className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             <span>Invite Member</span>
           </button>
 
           <button
             onClick={onOpenAudit}
-            className="px-3.5 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-xs sm:text-sm font-medium transition whitespace-nowrap"
+            className="px-3.5 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer"
           >
             Activity Log
           </button>
@@ -318,85 +392,103 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       </div>
 
       {actionSuccessNotice && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center justify-between">
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="font-medium">{actionSuccessNotice}</span>
           </div>
-          <button onClick={() => setActionSuccessNotice(null)} className="text-emerald-700 hover:text-emerald-900">
+          <button onClick={() => setActionSuccessNotice(null)} className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* 3 STAT CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* 4 STAT CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTab('queue')}
-          className={`p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'queue'
-              ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300'
-              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+              ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-300 dark:ring-amber-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
-            <span className="font-semibold text-slate-700">Pending Posts</span>
-            <Shield className="w-4 h-4 text-amber-600" />
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Pending</span>
+            <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums">{queueItems.length}</span>
-            <span className="text-xs sm:text-sm text-slate-500">
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
               {queueItems.length === 1 ? 'needs review' : 'need review'}
             </span>
           </div>
         </div>
 
         <div
-          onClick={() => setActiveTab('cohorts')}
-          className={`p-5 rounded-2xl border transition cursor-pointer ${
-            activeTab === 'cohorts'
-              ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300'
-              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+          onClick={() => setActiveTab('discussions')}
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+            activeTab === 'discussions'
+              ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-300 dark:ring-indigo-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
-            <span className="font-semibold text-slate-700">Groups</span>
-            <Layers className="w-4 h-4 text-[#002D72]" />
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Discussions</span>
+            <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums">{cohorts.length}</span>
-            <span className="text-xs sm:text-sm text-slate-500">active</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{publishedPosts.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">published</span>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('cohorts')}
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+            activeTab === 'cohorts'
+              ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Groups</span>
+            <Layers className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">active</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('members')}
-          className={`p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
             activeTab === 'members'
-              ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300'
-              : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+              ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-300 dark:ring-emerald-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500">
-            <span className="font-semibold text-slate-700">Members</span>
-            <Users className="w-4 h-4 text-emerald-600" />
+          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Members</span>
+            <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums">{members.length}</span>
-            <span className="text-xs sm:text-sm text-slate-500">caregivers</span>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
+            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">caregivers</span>
           </div>
         </div>
       </div>
 
       {/* TABS */}
-      <div className="border-b border-slate-200">
+      <div className="border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="flex items-center gap-4 sm:gap-6 text-sm font-semibold overflow-x-auto no-scrollbar flex-nowrap">
           <button
             onClick={() => setActiveTab('queue')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'queue'
-                ? 'border-[#002D72] text-[#002D72]'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Pending Posts</span>
@@ -408,29 +500,43 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('discussions')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+              activeTab === 'discussions'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>Discussions</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
+              {publishedPosts.length}
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('cohorts')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'cohorts'
-                ? 'border-[#002D72] text-[#002D72]'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Groups</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold tabular-nums">
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
               {cohorts.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('members')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 ${
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'members'
-                ? 'border-[#002D72] text-[#002D72]'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Members</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold tabular-nums">
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
               {members.length}
             </span>
           </button>
@@ -441,18 +547,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {activeTab === 'queue' && (
         <div className="space-y-4">
           {loadingQueue ? (
-            <div className="py-20 text-center text-slate-400 text-xs">
+            <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-xs">
               Loading posts...
             </div>
           ) : queueItems.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3 transition-colors">
+              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-950/50 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
                 <Check className="w-5 h-5" />
               </div>
-              <h2 className="text-sm font-semibold text-slate-900">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                 No posts waiting
               </h2>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                 All caregiver submissions have been reviewed and published.
               </p>
             </div>
@@ -460,7 +566,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Left Column: Post list */}
               <div className="lg:col-span-4 space-y-2">
-                <div className="text-xs font-semibold text-slate-600 px-1">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-1">
                   Posts to review ({queueItems.length})
                 </div>
 
@@ -474,28 +580,28 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         onClick={() => handleSelectItem(idx)}
                         className={`p-3.5 rounded-xl border text-xs cursor-pointer transition space-y-1.5 ${
                           isSelected
-                            ? 'bg-blue-50/70 border-[#002D72]'
-                            : 'bg-white border-slate-200 hover:border-slate-300'
+                            ? 'bg-blue-50/70 dark:bg-blue-950/40 border-[#002D72] dark:border-blue-500 ring-1 ring-[#002D72] dark:ring-blue-500'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                         }`}
                       >
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-900">
+                          <span className="font-semibold text-slate-900 dark:text-slate-100">
                             {item.author.realName}
                           </span>
                         </div>
 
-                        <div className="font-semibold text-slate-800 line-clamp-1">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
                           {item.title}
                         </div>
 
-                        <p className="text-slate-500 line-clamp-2 text-[11px] leading-relaxed">
+                        <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px] leading-relaxed">
                           {item.rawContent}
                         </p>
 
-                        <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+                        <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 dark:text-slate-500">
                           <span>{item.author.anonymousHandle}</span>
                           {hasPhi && (
-                            <span className="text-amber-700 bg-amber-100 font-medium px-1.5 py-0.5 rounded text-[10px]">
+                            <span className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 font-medium px-1.5 py-0.5 rounded text-[10px]">
                               Personal info found
                             </span>
                           )}
@@ -508,55 +614,61 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
               {/* Right Column: Review details */}
               {activeItem && (
-                <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 sm:p-6 space-y-5">
+                <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 space-y-5 transition-colors">
                   {/* Author Banner */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-750 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
                     <div>
-                      <div className="font-semibold text-slate-900 text-sm">
+                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
                         {activeItem.author.realName}{' '}
-                        <span className="font-normal text-slate-500 text-xs">
+                        <span className="font-normal text-slate-500 dark:text-slate-400 text-xs">
                           (Shown as: {activeItem.author.anonymousHandle})
                         </span>
                       </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5 flex items-center gap-2">
+                      <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 flex items-center gap-2">
                         <span>Phone: {activeItem.author.phone}</span>
                         <span>•</span>
                         <span>Email: {activeItem.author.email}</span>
                       </div>
                     </div>
+                    {activeItem.suggestedCohort && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="font-medium text-slate-700 dark:text-slate-200">{getFullGroupName(activeItem.suggestedCohort)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Original Question */}
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-slate-700">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Original post
                     </label>
-                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
-                      <div className="font-semibold text-slate-900 text-sm">
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5 text-xs">
+                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
                         {activeItem.title}
                       </div>
-                      <p className="text-slate-700 leading-relaxed font-sans whitespace-pre-line">
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-sans whitespace-pre-line">
                         {activeItem.rawContent}
                       </p>
                     </div>
 
                     {/* Personal info alert */}
                     {activeItem.phiAlerts && activeItem.phiAlerts.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                      <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl p-3 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
+                          <span className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                             <span>Personal details detected ({activeItem.phiAlerts.length})</span>
                           </span>
                           <button
                             onClick={handleCleanPersonalInfo}
-                            className="text-xs text-[#002D72] font-semibold hover:underline flex items-center gap-1"
+                            className="text-xs text-[#002D72] dark:text-blue-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <Sparkles className="w-3 h-3" />
                             <span>Remove personal info</span>
                           </button>
                         </div>
-                        <ul className="text-[11px] text-amber-800 space-y-1">
+                        <ul className="text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
                           {activeItem.phiAlerts.map((alertItem, i) => (
                             <li key={i}>
                               • Found "{alertItem.text}" ({alertItem.type}) — {alertItem.explanation}
@@ -570,10 +682,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   {/* Public Text to Publish */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <label className="font-semibold text-slate-700">
+                      <label className="font-semibold text-slate-700 dark:text-slate-300">
                         Public post text
                       </label>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">
                         Community will see this text
                       </span>
                     </div>
@@ -581,31 +693,66 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       rows={4}
                       value={sanitizedDraft}
                       onChange={(e) => setSanitizedDraft(e.target.value)}
-                      className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72] leading-relaxed"
+                      className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 leading-relaxed"
                     />
                   </div>
 
                   {/* Group */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-700">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Group
                     </label>
                     <select
                       value={selectedGroupIds[0] || cohorts[0]?.id}
                       onChange={(e) => setSelectedGroupIds([e.target.value])}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
                     >
                       {cohorts.map((cohort) => (
-                        <option key={cohort.id} value={cohort.id}>
-                          {cohort.name} • {cohort.geographicRegion}
+                        <option key={cohort.id} value={cohort.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {getProperGroupName(cohort)}
                         </option>
                       ))}
                     </select>
                   </div>
 
+                  {/* Reply Moderation Policy Toggle */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 pr-2">
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>Allow everyone to reply without moderation</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          By default, all replies to posts are moderated. Turn this on to allow care partners to reply immediately without prior moderation.
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={allowUnmoderatedReplies}
+                          onChange={(e) => setAllowUnmoderatedReplies(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+                    {allowUnmoderatedReplies ? (
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Unmoderated mode active: community replies will post immediately. You can remove inappropriate replies at any time.</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>Default: replies will go to the moderation queue for review before publishing.</span>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Private note */}
                   <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-slate-700">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Private note (optional)
                     </label>
                     <input
@@ -613,16 +760,16 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       value={moderatorNotes}
                       onChange={(e) => setModeratorNotes(e.target.value)}
                       placeholder="Visible only to clinic staff"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                     />
                   </div>
 
                   {/* Buttons */}
-                  <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handlePublish}
-                        className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                        className="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                       >
                         <Check className="w-4 h-4" />
                         <span>Publish</span>
@@ -630,7 +777,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
                       <button
                         onClick={() => setShowRejectModal(true)}
-                        className="flex-1 sm:flex-initial px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                        className="flex-1 sm:flex-initial px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                         <span>Reject</span>
@@ -639,9 +786,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
                     <button
                       onClick={handleClinicRedirect}
-                      className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                      className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                     >
-                      <Phone className="w-3.5 h-3.5 text-amber-700" />
+                      <Phone className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                       <span>Call Clinic Line</span>
                     </button>
                   </div>
@@ -652,23 +799,223 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* TAB 2: GROUPS */}
+      {/* TAB: DISCUSSIONS & REPLY POLICIES */}
+      {activeTab === 'discussions' && (
+        <div className="space-y-4">
+          {/* Header Controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Discussions & Reply Policies</span>
+                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                  ({publishedPosts.length} published)
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Manage reply moderation mode for discussions one by one. By default, all replies to posts are moderated. Turn on unmoderated mode to allow everyone to reply immediately, with moderator removal controls.
+              </p>
+            </div>
+
+            {/* Filter by Policy */}
+            <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('all')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                    postsPolicyFilter === 'all'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  All ({publishedPosts.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('moderated')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    postsPolicyFilter === 'moderated'
+                      ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Shield className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span>Moderated ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies).length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPostsPolicyFilter('unmoderated')}
+                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                    postsPolicyFilter === 'unmoderated'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Open ({publishedPosts.filter((p) => p.allowUnmoderatedReplies).length})</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchPostsQuery}
+              onChange={(e) => setSearchPostsQuery(e.target.value)}
+              placeholder="Search discussions by title, author handle, or keywords..."
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"
+            />
+          </div>
+
+          {/* List of discussions */}
+          {loadingPosts ? (
+            <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-xs">
+              Loading discussions...
+            </div>
+          ) : (
+            (() => {
+              const filtered = publishedPosts.filter((p) => {
+                if (postsPolicyFilter === 'moderated' && p.allowUnmoderatedReplies) return false;
+                if (postsPolicyFilter === 'unmoderated' && !p.allowUnmoderatedReplies) return false;
+                if (searchPostsQuery.trim()) {
+                  const q = searchPostsQuery.toLowerCase();
+                  return (
+                    p.title.toLowerCase().includes(q) ||
+                    p.content.toLowerCase().includes(q) ||
+                    p.author.anonymousHandle.toLowerCase().includes(q)
+                  );
+                }
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 text-xs space-y-1">
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">No discussions match filter.</p>
+                    <p>Try modifying your search or policy filter above.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {filtered.map((post) => {
+                    const isUnmoderated = post.allowUnmoderatedReplies === true;
+                    const isTogglingThis = togglingPostId === post.id;
+                    const groupName = getProperGroupName(post.assignedGroups[0]);
+
+                    return (
+                      <div
+                        key={post.id}
+                        className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition hover:border-slate-300 dark:hover:border-slate-700"
+                      >
+                        <div className="space-y-2 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-semibold text-slate-900 dark:text-white truncate">
+                              {post.author.anonymousHandle}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate">
+                              {groupName}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-[11px]">
+                              {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
+                            </span>
+                          </div>
+
+                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+                            {post.title}
+                          </h3>
+
+                          <p className="text-slate-500 dark:text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                            {post.content}
+                          </p>
+
+                          {/* Status Badge */}
+                          <div className="pt-1 flex items-center gap-2 text-xs">
+                            {isUnmoderated ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>Unmoderated Replies: Anyone can reply immediately without pre-review</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-lg">
+                                <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>Moderated Replies (Default): Clinician review required</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions for this post */}
+                        <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                          <button
+                            type="button"
+                            disabled={isTogglingThis}
+                            onClick={() => handleTogglePostRepliesMode(post)}
+                            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs ${
+                              isUnmoderated
+                                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700'
+                                : 'bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white'
+                            }`}
+                          >
+                            {isTogglingThis ? (
+                              <span>Updating...</span>
+                            ) : isUnmoderated ? (
+                              <>
+                                <Shield className="w-3.5 h-3.5" />
+                                <span>Require Moderation</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Allow Open Replies</span>
+                              </>
+                            )}
+                          </button>
+
+                          {onOpenDiscussion && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenDiscussion(post.id)}
+                              className="w-full sm:w-auto px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span>View Discussion</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
+        </div>
+      )}
+
+      {/* TAB: GROUPS */}
       {activeTab === 'cohorts' && (
         <div className="space-y-5">
           {/* Header Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                 Community Groups
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Regional and clinic-wide support cohorts. Click any group card to view its enrolled members.
               </p>
             </div>
 
             <button
               onClick={() => setShowCreateGroupModal(true)}
-              className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+              className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Group</span>
@@ -677,9 +1024,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           {/* GROUPS CARDS */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-600 px-1">
-              <span className="font-semibold text-slate-700">All Groups ({cohorts.length})</span>
-              <span className="text-slate-400">Click a card to filter members</span>
+            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">All Groups ({cohorts.length})</span>
+              <span className="text-slate-400 dark:text-slate-500">Click a card to filter members</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -692,32 +1039,32 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       setSelectedCohortFilter(cohort.id);
                       setActiveTab('members');
                     }}
-                    className="bg-white rounded-2xl border border-slate-200/80 p-5 space-y-3.5 flex flex-col justify-between cursor-pointer group hover:border-[#002D72] hover:shadow-xs transition-all text-left"
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-3.5 flex flex-col justify-between cursor-pointer group hover:border-[#002D72] dark:hover:border-blue-500 hover:shadow-xs transition-all text-left"
                     role="button"
                     tabIndex={0}
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-serif font-semibold text-slate-900 text-base group-hover:text-[#002D72] transition">
-                          {cohort.name}
+                        <span className="font-serif font-semibold text-slate-900 dark:text-white text-base group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
+                          {getProperGroupName(cohort)}
                         </span>
-                        <span className="shrink-0 text-xs font-semibold text-slate-600">
+                        <span className="shrink-0 text-xs font-semibold text-slate-600 dark:text-slate-400">
                           {assignedCount} {assignedCount === 1 ? 'member' : 'members'}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500">
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{cohort.geographicRegion}</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{getFullGroupName(cohort)}</span>
                       </div>
 
-                      <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed font-sans">
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">
                         {cohort.description}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm text-slate-500 group-hover:text-[#002D72] transition">
-                      <span className="text-xs text-slate-400">Click to view members</span>
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">Click to view members</span>
                       <span className="font-semibold text-xs flex items-center gap-1">
                         <span>View members</span>
                         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -734,19 +1081,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {/* TAB 3: MEMBERS */}
       {activeTab === 'members' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 transition-colors">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-slate-900">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
                     Caregiver Members ({filteredMembers.length})
                   </h2>
                   {selectedCohortFilter !== 'all' && (
-                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#002D72] text-xs font-medium flex items-center gap-1">
-                      <span>Group: {cohorts.find((c) => c.id === selectedCohortFilter)?.name || selectedCohortFilter}</span>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-100 dark:border-blue-900/60 text-xs font-medium flex items-center gap-1">
+                      <span>Group: {getProperGroupName(cohorts.find((c) => c.id === selectedCohortFilter))}</span>
                       <button
                         onClick={() => setSelectedCohortFilter('all')}
-                        className="hover:text-rose-600 p-0.5 ml-0.5"
+                        className="hover:text-rose-600 dark:hover:text-rose-400 p-0.5 ml-0.5 cursor-pointer"
                         title="Clear group filter"
                       >
                         <X className="w-3 h-3" />
@@ -754,7 +1101,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Verified care partners enrolled across Johns Hopkins cohorts.
                 </p>
               </div>
@@ -768,19 +1115,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     value={searchMemberQuery}
                     onChange={(e) => setSearchMemberQuery(e.target.value)}
                     placeholder="Search by name, handle, or contact..."
-                    className="w-full sm:w-64 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                    className="w-full sm:w-64 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                   />
                 </div>
 
                 <select
                   value={selectedCohortFilter}
                   onChange={(e) => setSelectedCohortFilter(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
                 >
-                  <option value="all">All Groups</option>
+                  <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">All Groups</option>
                   {cohorts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name.replace(/\s+Cohort$/i, '')}
+                    <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                      {getProperGroupName(c)}
                     </option>
                   ))}
                 </select>
@@ -788,16 +1135,16 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             </div>
 
             {loadingMembers ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
+              <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs">
                 Loading members...
               </div>
             ) : filteredMembers.length === 0 ? (
               <div className="py-12 text-center space-y-2">
-                <p className="text-slate-500 text-xs">No members found matching your search or filter.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-xs">No members found matching your search or filter.</p>
                 {selectedCohortFilter !== 'all' && (
                   <button
                     onClick={() => setSelectedCohortFilter('all')}
-                    className="text-xs text-[#002D72] hover:underline font-semibold"
+                    className="text-xs text-[#002D72] dark:text-blue-400 hover:underline font-semibold cursor-pointer"
                   >
                     Clear group filter and show all
                   </button>
@@ -807,7 +1154,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 font-semibold text-xs whitespace-nowrap">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-xs whitespace-nowrap">
                       <th className="py-2.5 px-3">Caregiver</th>
                       <th className="py-2.5 px-3">Contact</th>
                       <th className="py-2.5 px-3">Assigned Group</th>
@@ -815,22 +1162,25 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       <th className="py-2.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                     {filteredMembers.map((m) => (
-                      <tr key={m.userId} className="hover:bg-slate-50/60 transition">
+                      <tr key={m.userId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                         <td className="py-3 px-3 whitespace-nowrap">
-                          <div className="font-semibold text-slate-900">{m.realName}</div>
-                          <div className="text-xs text-slate-400">{m.anonymousHandle}</div>
+                          <div className="font-semibold text-slate-900 dark:text-white">{m.realName}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{m.anonymousHandle}</div>
                         </td>
-                        <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                        <td className="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                           <div>{m.phone}</div>
-                          <div className="text-xs text-slate-400">{m.email}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{m.email}</div>
                         </td>
-                        <td className="py-3 px-3 text-slate-800 font-medium whitespace-nowrap">
-                          {m.primaryGroupName}
+                        <td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{m.primaryGroupName}</span>
+                          </div>
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-100 dark:border-emerald-900/60">
                             Active
                           </span>
                         </td>
@@ -840,7 +1190,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                               setReassigningUser(m);
                               setTargetNewGroupId(m.primaryGroupId);
                             }}
-                            className="px-2.5 py-1 text-xs text-[#002D72] hover:bg-blue-50 border border-slate-200 rounded-lg font-semibold transition"
+                            className="px-2.5 py-1 text-xs text-[#002D72] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-700 rounded-lg font-semibold transition cursor-pointer"
                           >
                             Move group
                           </button>
@@ -859,19 +1209,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {showCreateGroupModal && (
         <div
           onClick={() => setShowCreateGroupModal(false)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden cursor-default transition-colors"
           >
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
-              <h3 className="font-semibold text-sm text-slate-900">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                 Create a Group
               </h3>
               <button
                 onClick={() => setShowCreateGroupModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -879,7 +1229,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
             <form onSubmit={handleCreateGroup} className="p-4 space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Group name
                 </label>
                 <input
@@ -887,13 +1237,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="e.g. Annapolis Area"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Location or County
                 </label>
                 <input
@@ -901,13 +1251,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   value={newGroupRegion}
                   onChange={(e) => setNewGroupRegion(e.target.value)}
                   placeholder="e.g. Anne Arundel County"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Description (optional)
                 </label>
                 <textarea
@@ -915,22 +1265,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   value={newGroupDescription}
                   onChange={(e) => setNewGroupDescription(e.target.value)}
                   placeholder="Local peer support for families in this area."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowCreateGroupModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                  className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingGroup || !newGroupName.trim()}
-                  className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 text-white rounded-lg font-semibold transition"
+                  className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
                 >
                   {isSubmittingGroup ? 'Creating...' : 'Create Group'}
                 </button>
@@ -944,50 +1294,50 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {reassigningUser && (
         <div
           onClick={() => setReassigningUser(null)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-4 space-y-4 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-4 space-y-4 cursor-default transition-colors"
           >
             <div>
-              <h3 className="font-semibold text-sm text-slate-900">
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                 Move Member to Another Group
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Moving <strong>{reassigningUser.realName}</strong>.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Moving <strong className="text-slate-800 dark:text-slate-200">{reassigningUser.realName}</strong>.
               </p>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Select Group
               </label>
               <select
                 value={targetNewGroupId}
                 onChange={(e) => setTargetNewGroupId(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
               >
                 {cohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} • {c.geographicRegion}
+                  <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                    {getProperGroupName(c)}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setReassigningUser(null)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmReassign}
-                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 text-white rounded-lg text-xs font-semibold transition"
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
               >
                 Confirm Move
               </button>
@@ -1000,30 +1350,30 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {showRejectModal && activeItem && (
         <div
           onClick={() => setShowRejectModal(false)}
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-4 sm:p-5 space-y-4 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-4 sm:p-5 space-y-4 cursor-default transition-colors"
           >
             <div>
-              <h3 className="font-semibold text-sm text-slate-900">
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
                 Reject Post
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 The author will receive a private explanation.
               </p>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Reason
                 </label>
                 <select
                   value={rejectionCode}
                   onChange={(e) => setRejectionCode(e.target.value as RejectionReason)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] bg-white font-medium"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                 >
                   <option value="CLINICAL_MEDICATION_QUERY">
                     Prescription or Medication Question
@@ -1044,7 +1394,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Note to Author (optional)
                 </label>
                 <textarea
@@ -1052,23 +1402,23 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   value={customRejectionText}
                   onChange={(e) => setCustomRejectionText(e.target.value)}
                   placeholder="Explain why this post could not be shared publicly..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72]"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowRejectModal(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmReject}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
               >
                 Reject Post
               </button>

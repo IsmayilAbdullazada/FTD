@@ -64,7 +64,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [searchPostsQuery, setSearchPostsQuery] = useState('');
   const [postsPolicyFilter, setPostsPolicyFilter] = useState<'all' | 'moderated' | 'unmoderated'>('all');
-  const [togglingPostId, setTogglingPostId] = useState<string | null>(null);
 
   // Rejection modal
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -182,13 +181,15 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
   // Toggle reply moderation policy for a post
   const handleTogglePostRepliesMode = async (post: Post) => {
-    setTogglingPostId(post.id);
     const newAllowUnmoderated = !post.allowUnmoderatedReplies;
+
+    // Immediate state update so toggle switches immediately without waiting
+    setPublishedPosts((prev) =>
+      prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: newAllowUnmoderated } : p))
+    );
+
     try {
       await api.togglePostUnmoderatedReplies(post.id, newAllowUnmoderated);
-      setPublishedPosts((prev) =>
-        prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: newAllowUnmoderated } : p))
-      );
       setActionSuccessNotice(
         newAllowUnmoderated
           ? `Replies for "${post.title.slice(0, 32)}..." are now unmoderated (open to all).`
@@ -198,10 +199,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       onQueueUpdated();
     } catch (err) {
       console.error('Failed to update reply moderation policy:', err);
+      // Revert if error
+      setPublishedPosts((prev) =>
+        prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: !newAllowUnmoderated } : p))
+      );
       setActionSuccessNotice('Failed to update reply moderation policy.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
-    } finally {
-      setTogglingPostId(null);
     }
   };
 
@@ -265,7 +268,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   // Auto clean personal info
   const handleCleanPersonalInfo = () => {
     if (!activeItem) return;
-    let cleaned = activeItem.rawContent;
+    let cleaned = sanitizedDraft && sanitizedDraft.trim().length > 0 ? sanitizedDraft : activeItem.rawContent;
     if (activeItem.phiAlerts && activeItem.phiAlerts.length > 0) {
       activeItem.phiAlerts.forEach((alertItem) => {
         if (alertItem.text) {
@@ -852,7 +855,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   }`}
                 >
                   <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>Open ({publishedPosts.filter((p) => p.allowUnmoderatedReplies).length})</span>
+                  <span>Unmoderated ({publishedPosts.filter((p) => p.allowUnmoderatedReplies).length})</span>
                 </button>
               </div>
             </div>
@@ -904,13 +907,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <div className="space-y-3">
                   {filtered.map((post) => {
                     const isUnmoderated = post.allowUnmoderatedReplies === true;
-                    const isTogglingThis = togglingPostId === post.id;
                     const groupName = getProperGroupName(post.assignedGroups[0]);
 
                     return (
                       <div
                         key={post.id}
-                        className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition hover:border-slate-300 dark:hover:border-slate-700"
+                        onClick={() => onOpenDiscussion?.(post.id)}
+                        className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-[#002D72]/40 dark:hover:border-blue-500/50 hover:shadow-md cursor-pointer"
                       >
                         <div className="space-y-2 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -927,7 +930,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                             </span>
                           </div>
 
-                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-[#002D72] dark:group-hover:text-blue-400 text-sm leading-snug transition-colors">
                             {post.title}
                           </h3>
 
@@ -940,54 +943,44 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                             {isUnmoderated ? (
                               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
                                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span>Unmoderated Replies: Anyone can reply immediately without pre-review</span>
+                                <span>Unmoderated</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-lg">
                                 <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                                <span>Moderated Replies (Default): Clinician review required</span>
+                                <span>Moderated</span>
                               </span>
                             )}
                           </div>
                         </div>
 
-                        {/* Actions for this post */}
-                        <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                          <button
-                            type="button"
-                            disabled={isTogglingThis}
-                            onClick={() => handleTogglePostRepliesMode(post)}
-                            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs ${
-                              isUnmoderated
-                                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700'
-                                : 'bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white'
-                            }`}
-                          >
-                            {isTogglingThis ? (
-                              <span>Updating...</span>
-                            ) : isUnmoderated ? (
-                              <>
-                                <Shield className="w-3.5 h-3.5" />
-                                <span>Require Moderation</span>
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="w-3.5 h-3.5" />
-                                <span>Allow Open Replies</span>
-                              </>
-                            )}
-                          </button>
-
-                          {onOpenDiscussion && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenDiscussion(post.id)}
-                              className="w-full sm:w-auto px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                        {/* Actions for this post: Toggle Allow open replies enclosed in a box with curved borders */}
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800"
+                        >
+                          <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all">
+                            <label
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-2.5 cursor-pointer select-none"
                             >
-                              <span>View Discussion</span>
-                              <ArrowRight className="w-3 h-3" />
-                            </button>
-                          )}
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                Allow open replies
+                              </span>
+                              <div className="relative inline-flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isUnmoderated}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleTogglePostRepliesMode(post);
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                              </div>
+                            </label>
+                          </div>
                         </div>
                       </div>
                     );

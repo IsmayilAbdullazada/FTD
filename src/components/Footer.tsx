@@ -107,7 +107,7 @@ export const Footer: React.FC<FooterProps> = () => {
   return (
     <>
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 py-3 sm:py-3.5 pb-20 md:pb-3.5 text-xs font-sans transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 lg:gap-6 text-center lg:text-left">
             {/* Institutional Attribution Group */}
             <div className="space-y-0.5 min-w-0">

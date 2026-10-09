@@ -362,6 +362,11 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                     <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-medium group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
                       <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
                       <span>{post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}</span>
+                      {post.allowUnmoderatedReplies && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-900/40">
+                          Open Replies
+                        </span>
+                      )}
                       <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:translate-x-0.5 transition-transform" />
                     </div>
 

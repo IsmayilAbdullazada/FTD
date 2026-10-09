@@ -11,6 +11,8 @@ import {
   Pencil,
   Trash2,
   X,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 import { Post, Comment, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';
@@ -49,6 +51,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
   const [isSavingComment, setIsSavingComment] = useState(false);
+
+  // Moderator reply policy & inappropriate reply removal
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
 
   const replyFormRef = useRef<HTMLFormElement | null>(null);
   const isClinician =
@@ -168,6 +174,76 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     }
   };
 
+  // Toggle allow unmoderated replies (clinician only)
+  const handleToggleRepliesModeration = async () => {
+    if (!isClinician) return;
+    const previousMode = post.allowUnmoderatedReplies;
+    const newAllowUnmoderated = !previousMode;
+
+    const updatedPost: Post = {
+      ...post,
+      allowUnmoderatedReplies: newAllowUnmoderated,
+    };
+    // Optimistic immediate update
+    setPost(updatedPost);
+    if (onPostUpdated) onPostUpdated(updatedPost);
+
+    try {
+      const res = await api.togglePostUnmoderatedReplies(post.id, newAllowUnmoderated);
+      setReplySuccessMessage(
+        res.message ||
+          (newAllowUnmoderated
+            ? 'Open replies enabled: Anyone can now reply without moderation.'
+            : 'Moderated mode enabled: Replies now require clinical verification.')
+      );
+      setTimeout(() => setReplySuccessMessage(null), 3500);
+      await loadComments();
+    } catch (err) {
+      // Revert if error
+      const revertedPost: Post = {
+        ...post,
+        allowUnmoderatedReplies: previousMode,
+      };
+      setPost(revertedPost);
+      if (onPostUpdated) onPostUpdated(revertedPost);
+      console.error('Failed to update reply moderation policy:', err);
+      setReplyErrorMessage('Failed to update reply moderation policy.');
+      setTimeout(() => setReplyErrorMessage(null), 3500);
+    }
+  };
+
+  // Moderator remove inappropriate reply
+  const handleOpenRemoveReplyModal = (comm: Comment) => {
+    setCommentToDelete(comm);
+  };
+
+  const handleConfirmModeratorRemoveReply = async () => {
+    if (!commentToDelete) return;
+    const commId = commentToDelete.id;
+    setDeletingCommentId(commId);
+
+    try {
+      await api.deleteComment(post.id, commId);
+      setComments((prev) => prev.filter((c) => c.id !== commId));
+      const updatedPost = {
+        ...post,
+        commentCount: Math.max(0, post.commentCount - 1),
+      };
+      setPost(updatedPost);
+      if (onPostUpdated) onPostUpdated(updatedPost);
+
+      setCommentToDelete(null);
+      setReplySuccessMessage('Inappropriate reply removed by moderator.');
+      setTimeout(() => setReplySuccessMessage(null), 3500);
+    } catch (err) {
+      console.error('Failed to remove inappropriate reply:', err);
+      setReplyErrorMessage('Failed to remove reply.');
+      setTimeout(() => setReplyErrorMessage(null), 4000);
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
+
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim() || isSubmitting) return;
@@ -176,13 +252,16 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     setIsSubmitting(true);
     setReplyErrorMessage(null);
 
+    const isUnmoderated = post.allowUnmoderatedReplies === true;
+
     try {
       const res = await api.addComment(post.id, submittedContent, currentUser.id);
       setReplyText('');
 
-      const confirmationText = isClinician
-        ? 'Your clinical response has been published.'
-        : 'Your reply was submitted successfully and sent to Dr. Seema for clinical safety review.';
+      const confirmationText =
+        isClinician || isUnmoderated
+          ? 'Your reply has been published.'
+          : 'Your reply was submitted successfully and sent to Dr. Seema for clinical safety review.';
 
       setReplySuccessMessage(confirmationText);
       setTimeout(() => setReplySuccessMessage(null), 6000);
@@ -195,7 +274,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             ...prev,
             {
               ...res.comment,
-              status: isClinician ? 'APPROVED' : 'PENDING_MODERATION',
+              status: isClinician || isUnmoderated ? 'APPROVED' : 'PENDING_MODERATION',
             },
           ];
         });
@@ -262,6 +341,47 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </span>
         )}
       </div>
+
+      {/* Clinician Moderator Reply Policy Control Banner */}
+      {isClinician && (
+        <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Moderator Reply Policy
+            </span>
+            {post.allowUnmoderatedReplies ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Unmoderated</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-lg">
+                <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Moderated</span>
+              </span>
+            )}
+          </div>
+
+          <div className="shrink-0">
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all">
+              <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                  Allow open replies
+                </span>
+                <div className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={post.allowUnmoderatedReplies}
+                    onChange={handleToggleRepliesModeration}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Discussion Post */}
       <article
@@ -489,25 +609,56 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                     </p>
                   )}
 
-                  {/* Actions for pending comment author: Edit and Cancel */}
-                  {isPending && isAuthor && !isEditingThis && (
-                    <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/60 flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleStartEditComment(comm)}
-                        className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-amber-100/50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-medium flex items-center gap-1 transition cursor-pointer"
-                      >
-                        <Pencil className="w-3 h-3 text-slate-500 dark:text-slate-400" />
-                        <span>Edit reply</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteComment(comm.id)}
-                        className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-medium flex items-center gap-1 transition cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3 text-rose-500 dark:text-rose-400" />
-                        <span>Cancel reply</span>
-                      </button>
+                  {/* Actions for comments */}
+                  {((isPending && isAuthor && !isEditingThis) ||
+                    (isClinician && (post.allowUnmoderatedReplies || comm.status === 'APPROVED'))) && (
+                    <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                      <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                        {post.allowUnmoderatedReplies && !isPending && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50">
+                            <Sparkles className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Unmoderated reply</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Author actions on pending reply */}
+                        {isPending && isAuthor && !isEditingThis && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditComment(comm)}
+                              className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-amber-100/50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-medium flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <Pencil className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                              <span>Edit reply</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComment(comm.id)}
+                              className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-medium flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-500 dark:text-rose-400" />
+                              <span>Cancel reply</span>
+                            </button>
+                          </>
+                        )}
+
+                        {/* Clinician Moderator Remove Reply Button */}
+                        {isClinician && (post.allowUnmoderatedReplies || comm.status === 'APPROVED') && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRemoveReplyModal(comm)}
+                            disabled={deletingCommentId === comm.id}
+                            className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                            title="Remove inappropriate reply from discussion"
+                          >
+                            <Trash2 className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                            <span>Remove reply</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -527,6 +678,23 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             <span>Replying as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.anonymousHandle}</strong></span>
           </div>
 
+          {/* Moderation Mode Info Callout */}
+          {post.allowUnmoderatedReplies ? (
+            <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-200">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+              <span>
+                <strong>Unmoderated replies enabled for this post:</strong> Your reply will be visible immediately to peer care partners without moderation delay.
+              </span>
+            </div>
+          ) : (
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+              <ShieldCheck className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
+              <span>
+                <strong>Moderated:</strong> New replies to this post are reviewed by Dr. Seema before being published.
+              </span>
+            </div>
+          )}
+
           {/* Inline Error Notice */}
           {replyErrorMessage && (
             <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 p-3.5 rounded-xl flex items-center gap-2.5 text-xs sm:text-sm animate-in fade-in">
@@ -545,9 +713,17 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           />
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
-            <span className="text-xs text-slate-400 dark:text-slate-500">
-              Reviewed by Dr. Seema to preserve privacy and clinical safety.
-            </span>
+            {post.allowUnmoderatedReplies ? (
+              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span>Open discussion: replies appear immediately for everyone.</span>
+              </span>
+            ) : (
+              <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#002D72] dark:text-blue-400 shrink-0" />
+                <span>Reviewed by Dr. Seema to preserve privacy and clinical safety.</span>
+              </span>
+            )}
             <button
               type="submit"
               disabled={!replyText.trim() || isSubmitting}
@@ -613,6 +789,59 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isWithdrawingPost ? 'Withdrawing...' : 'Yes, Withdraw Question'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIRM REMOVE INAPPROPRIATE REPLY (Moderator) */}
+      {commentToDelete && (
+        <div
+          onClick={() => setCommentToDelete(null)}
+          className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
+                  Remove Inappropriate Reply?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  As clinician moderator, this reply will be removed from the discussion immediately.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-sans space-y-1">
+              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                Author: {commentToDelete.author.anonymousHandle}
+              </div>
+              <p className="line-clamp-3 italic">"{commentToDelete.content}"</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCommentToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Keep Reply
+              </button>
+              <button
+                type="button"
+                disabled={deletingCommentId !== null}
+                onClick={handleConfirmModeratorRemoveReply}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{deletingCommentId ? 'Removing...' : 'Remove Reply'}</span>
               </button>
             </div>
           </div>

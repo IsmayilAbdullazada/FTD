@@ -1,4 +1,4 @@
-import { CLINICAL_50_FAQ, ClinicalFaqItem } from './clinicalRagFaq.ts';
+import { CLINICAL_50_FAQ, type ClinicalFaqItem } from './clinicalRagFaq.ts';
 export { CLINICAL_50_FAQ, type ClinicalFaqItem };
 
 export interface RagSearchResult {

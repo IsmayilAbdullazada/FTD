@@ -5,20 +5,18 @@
 @theme {
   --color-slate-750: #243044;
   --color-slate-850: #131d2e;
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Atkinson Hyperlegible', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Lora', Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --text-xs: 0.875rem;
+  --text-sm: 1rem;
 }
 
 @layer base {
   html {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    -webkit-tap-highlight-color: transparent;
-    scroll-behavior: smooth;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    font-size: 16px;
+    font-family: var(--font-sans);
+    font-size: 112.5%;
+    letter-spacing: 0;
   }
 
   body {
@@ -26,7 +24,7 @@
     color: #1E293B;
     overflow-x: hidden;
     line-height: 1.625;
-    letter-spacing: -0.011em;
+    letter-spacing: 0;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
@@ -48,10 +46,6 @@
 
 .font-serif {
   font-family: 'Lora', Georgia, Cambria, 'Times New Roman', Times, serif;
-}
-
-.font-sans {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .font-mono {

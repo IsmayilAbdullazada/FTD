@@ -17,6 +17,11 @@
     font-family: var(--font-sans);
     font-size: 112.5%;
     letter-spacing: 0;
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
@@ -34,13 +39,13 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.018em;
-    font-weight: 600;
+    letter-spacing: 0;
+    font-weight: 700;
     text-wrap: balance;
   }
 
   p {
-    line-height: 1.68;
+    line-height: 1.7;
   }
 }
 

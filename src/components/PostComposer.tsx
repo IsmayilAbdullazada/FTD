@@ -727,6 +727,35 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             </p>
           </div>
 
+          {/* Urgent messaging clinical warning */}
+          <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-900/60 rounded-xl p-4 text-amber-950 dark:text-amber-200 space-y-3">
+            <div className="flex items-center gap-2 font-semibold text-sm text-amber-950 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+              <span>This platform is not intended for urgent messaging</span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-amber-900/90 dark:text-amber-300/90 leading-relaxed font-sans">
+              For urgent questions or clinical needs, please call the clinic phone number at{' '}
+              <a href="tel:4109555147" className="font-bold text-[#002D72] dark:text-sky-400 underline hover:text-blue-900 dark:hover:text-sky-300">
+                (410) 955-5147, option 2
+              </a>{' '}
+              or the care partner support line at{' '}
+              <a href="tel:4105024163" className="font-bold text-emerald-800 dark:text-emerald-400 underline hover:text-emerald-950 dark:hover:text-emerald-300">
+                (410) 502-4163
+              </a>
+              .
+            </p>
+
+            {/* 911 line: own row, bold but muted */}
+            <p className="pt-3 border-t border-amber-300/70 dark:border-amber-900/60 text-sm font-bold text-red-800 dark:text-red-300">
+              For a life-threatening emergency, call{' '}
+              <a href="tel:911" className="underline underline-offset-2 hover:text-red-900 dark:hover:text-red-200">
+                911
+              </a>{' '}
+              right away!
+            </p>
+          </div>
+
           {/* Question or Topic Input with Real-Time Keystroke Matching */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -815,25 +844,6 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Urgent messaging clinical warning - placed just before submit question, only once */}
-          <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-900/60 rounded-xl p-4 text-amber-950 dark:text-amber-200 space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-sm text-amber-950 dark:text-amber-200">
-              <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-              <span>This platform is not intended for urgent messaging</span>
-            </div>
-            <p className="text-xs sm:text-sm text-amber-900/90 dark:text-amber-300/90 leading-relaxed font-sans">
-              For urgent questions or clinical needs, please call the clinic phone number at{' '}
-              <a href="tel:4109555147" className="font-bold text-[#002D72] dark:text-sky-400 underline hover:text-blue-900 dark:hover:text-sky-300">
-                (410) 955-5147, option 2
-              </a>{' '}
-              or the care partner support line at{' '}
-              <a href="tel:4105024163" className="font-bold text-emerald-800 dark:text-emerald-400 underline hover:text-emerald-950 dark:hover:text-emerald-300">
-                (410) 502-4163
-              </a>
-              . For life-threatening emergencies, call <strong>911</strong>.
-            </p>
           </div>
 
           {/* Clear, well-placed action button */}

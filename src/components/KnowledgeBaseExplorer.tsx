@@ -127,7 +127,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
-              Clinical Guides & Care Sheets
+              Guides & Care Sheets
             </h1>
             <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-md border border-emerald-100 dark:border-emerald-900/60">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />

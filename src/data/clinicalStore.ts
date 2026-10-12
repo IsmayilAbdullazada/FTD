@@ -101,9 +101,9 @@ export const INITIAL_USERS: (CurrentUser & { phoneNumber?: string })[] = [
 export const INITIAL_GROUPS: CommunityGroup[] = [
   {
     id: 'group-general',
-    name: 'General Clinic Forum',
-    fullName: 'General Clinic Forum (All Regions)',
-    properName: 'General Clinic Forum',
+    name: 'General Forum',
+    fullName: 'General Forum (All Regions)',
+    properName: 'General Forum',
     slug: 'general-community',
     description: 'Clinic-wide discussion board for all verified FTD care partners across all geographic regions.',
     isGeneralBoard: true,
@@ -280,7 +280,7 @@ Protocols:
 export const INITIAL_POSTS: Post[] = [
   {
     id: 'post-general-1',
-    title: 'General Clinic Forum: Managing apathy vs depression in frontotemporal dementia',
+    title: 'General Forum: Managing apathy vs depression in frontotemporal dementia',
     content: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     status: 'APPROVED',
     author: {

@@ -507,7 +507,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         content: p.content,
         authorHandle: p.author.anonymousHandle,
         authorBadge: p.author.badgeLabel,
-        cohortName: cohort?.properName || cohort?.name || 'General Clinic Forum',
+        cohortName: cohort?.properName || cohort?.name || 'General Forum',
         createdAt: p.createdAt,
         replies: postComments.map((c) => ({
           id: c.id,
@@ -598,7 +598,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         title: title.trim(),
         cohortName: assignedCohort
           ? getProperGroupName(assignedCohort)
-          : 'General Clinic Forum',
+          : 'General Forum',
       });
     } catch (err) {
       console.error('Failed to submit post:', err);

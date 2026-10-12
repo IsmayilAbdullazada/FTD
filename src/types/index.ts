@@ -48,7 +48,7 @@ export const REGION_PROPER_NAMES: Record<string, string> = {
   'group-western-maryland': 'Western Maryland',
   'group-southern-maryland': 'Southern Maryland / DC / Northern Virginia',
   'group-northern-maryland': 'Northern Maryland / Pennsylvania / Delaware',
-  'group-general': 'General Clinic Forum',
+  'group-general': 'General Forum',
 };
 
 export const REGION_FULL_NAMES: Record<string, string> = {
@@ -57,7 +57,7 @@ export const REGION_FULL_NAMES: Record<string, string> = {
   'group-western-maryland': 'Western Maryland (Frederick and surrounding areas)',
   'group-southern-maryland': 'Southern Maryland / DC / Northern Virginia',
   'group-northern-maryland': 'Northern Maryland / Pennsylvania / Delaware',
-  'group-general': 'General Clinic Forum (All Regions)',
+  'group-general': 'General Forum (All Regions)',
 };
 
 export function getProperGroupName(cohort?: CommunityGroup | null): string {

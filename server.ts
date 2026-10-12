@@ -363,9 +363,9 @@ const users: User[] = [
 const communityGroups: CommunityGroup[] = [
   {
     id: 'group-general',
-    name: 'General Clinic Forum',
-    fullName: 'General Clinic Forum (All Regions)',
-    properName: 'General Clinic Forum',
+    name: 'General Forum',
+    fullName: 'General Forum (All Regions)',
+    properName: 'General Forum',
     slug: 'general-community',
     description: 'Clinic-wide discussion board for all verified FTD care partners across all geographic regions.',
     isGeneralBoard: true,
@@ -654,7 +654,7 @@ const posts: Post[] = [
   {
     id: 'post-general-1',
     authorId: 'user-clinician-1',
-    title: 'General Clinic Forum: Managing apathy vs depression in frontotemporal dementia',
+    title: 'General Forum: Managing apathy vs depression in frontotemporal dementia',
     rawContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     sanitizedContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     status: 'APPROVED',
@@ -1724,7 +1724,7 @@ app.get('/api/v1/deflection/discussions-pool', (req, res) => {
       content: p.sanitizedContent || p.rawContent,
       authorHandle: author.anonymousHandle,
       authorBadge: author.badgeLabel,
-      cohortName: assignedGroup?.properName || assignedGroup?.name || 'General Clinic Forum',
+      cohortName: assignedGroup?.properName || assignedGroup?.name || 'General Forum',
       createdAt: p.createdAt,
       replies: postComments.map((c) => {
         const commAuthor = projectAuthor(c.authorId, 'CARE_PARTNER');

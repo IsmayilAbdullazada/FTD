@@ -1050,6 +1050,18 @@ export const api = {
     );
   },
 
+  deleteResource: async (id: string): Promise<void> => {
+    await safeFetchJson(
+      `/api/v1/resources/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      () => {
+        const index = localResources.findIndex((r) => r.id === id);
+        if (index !== -1) localResources.splice(index, 1);
+        return undefined;
+      }
+    );
+  },
+
   // Clinic Updates
   getUpdates: async (userId: string): Promise<ClinicUpdate[]> => {
     return safeFetchJson(`/api/v1/updates?userId=${userId}`, undefined, () => [...localUpdates]);

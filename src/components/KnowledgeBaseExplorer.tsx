@@ -9,6 +9,7 @@ import {
   Plus,
   X,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { ClinicalResource, CurrentUser, Audience } from '../types';
 import { AudienceBadge } from './AudienceBadge';
@@ -31,6 +32,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [activeResource, setActiveResource] = useState<ClinicalResource | null>(null);
   const [newAudience, setNewAudience] = useState<Audience | ''>('');
+  const [pendingDelete, setPendingDelete] = useState<ClinicalResource | null>(null);
 
   // Add Source Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -155,6 +157,21 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     }
   };
 
+  const handleDeleteGuide = async (resource: ClinicalResource) => {
+    try {
+      await api.deleteResource(resource.id);
+      setResources((prev) => prev.filter((r) => r.id !== resource.id));
+      setActiveResource((prev) => prev?.id === resource.id ? null : prev);
+      setPendingDelete(null);
+      setSuccessToast(`Clinical guide "${resource.title}" deleted.`);
+      setTimeout(() => setSuccessToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to delete guide:', err);
+      setSuccessToast('Could not delete guide. Please try again.');
+      setTimeout(() => setSuccessToast(null), 4000);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* Header Bar */}
@@ -183,6 +200,43 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             <Plus className="w-4 h-4" />
             <span>Add Guide</span>
           </button>
+        )}
+
+        {isClinician && pendingDelete && (
+          <div
+            onClick={() => setPendingDelete(null)}
+            className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            >
+              <div className="space-y-1.5">
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  Delete this guide?
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  "{pendingDelete.title}" will be removed for all care partners. This can't be undone.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(null)}
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteGuide(pendingDelete)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -252,6 +306,20 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   <div className="flex items-center gap-2">
                     {isClinician && <AudienceBadge condition={res.diseaseDomain} />}
                     <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                    {isClinician && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDelete(res);
+                        }}
+                        title="Delete guide"
+                        aria-label={`Delete ${res.title}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
 

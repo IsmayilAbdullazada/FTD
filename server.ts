@@ -2706,6 +2706,31 @@ app.post('/api/v1/resources', (req, res) => {
   res.status(201).json(newRes);
 });
 
+// Clinician can delete a resource 
+app.delete('/api/v1/resources/:id', (req, res) => {
+  const { id } = req.params;
+  const index = clinicalResources.findIndex((resource) => resource.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Clinical resource not found.' });
+  }
+
+  const [deleted] = clinicalResources.splice(index, 1);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: deleted.id,
+    actionTaken: 'DELETED_CLINICAL_RESOURCE',
+    notes: `Deleted resource: "${deleted.title}"`,
+    createdAt: new Date().toISOString(),
+  });
+
+  return res.status(200).json({ message: 'Clinical resource deleted.', id });
+});
+
 // Clinic Updates (everyone reads, staff writes)
 app.get('/api/v1/updates', (req, res) => {
   const requester = getRequester(req);

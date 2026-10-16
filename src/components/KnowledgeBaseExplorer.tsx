@@ -10,7 +10,8 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
-import { ClinicalResource, CurrentUser } from '../types';
+import { ClinicalResource, CurrentUser, Audience } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 
 interface KnowledgeBaseExplorerProps {
@@ -29,6 +30,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [activeResource, setActiveResource] = useState<ClinicalResource | null>(null);
+  const [newAudience, setNewAudience] = useState<Audience | ''>('');
 
   // Add Source Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -45,7 +47,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
   const loadResources = async () => {
     try {
-      const data = await api.getResources();
+      const data = await api.getResources(currentUser?.id ?? '');
       setResources(data);
       if (initialResourceId) {
         const match = data.find((r) => r.id === initialResourceId);
@@ -60,7 +62,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
   useEffect(() => {
     loadResources();
-  }, [initialResourceId]);
+  }, [initialResourceId, currentUser?.id]);
 
   const categories = [
     { key: 'ALL', label: 'All Topics' },
@@ -83,7 +85,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContentBody.trim() || isSubmitting) return;
+    if (!newTitle.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -99,7 +101,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         contentBody: newContentBody.trim(),
         keyTakeaways: takeawaysList.length > 0 ? takeawaysList : [newSummary.trim() || newTitle.trim()],
         externalUrl: newExternalUrl.trim() || undefined,
-        diseaseDomain: 'FTD',
+        diseaseDomain: newAudience,
+        authorId: currentUser?.id ?? '',
       });
 
       setResources((prev) => [created, ...prev]);
@@ -110,6 +113,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       setNewKeyTakeaways('');
       setNewExternalUrl('');
       setSuccessToast(`Clinical guide "${created.title}" successfully published.`);
+      setNewAudience('');
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
       console.error('Failed to create guide:', err);
@@ -256,8 +260,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-white dark:bg-slate-900">
               <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-[#002D72] dark:text-blue-400 uppercase tracking-wider">
+                <span className="font-semibold text-[#002D72] dark:text-blue-400 flex items-center gap-2">
                   {categories.find((c) => c.key === activeResource.category)?.label || activeResource.category}
+                  {isClinician && <AudienceBadge condition={activeResource.diseaseDomain} />}
                 </span>
                 <h2 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight">
                   {activeResource.title}
@@ -441,6 +446,28 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               </div>
 
               <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Which care partners will see this guide?
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {([['FTD', 'FTD'], ['AD', "Alzheimer's"], ['BOTH', 'Both']] as [Audience, string][]).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setNewAudience(value)}
+                    className={`w-full px-3 py-2 border rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      newAudience === value
+                        ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+              <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   External Citation or AFTD Reference URL (Optional)
                 </label>
@@ -463,7 +490,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !newAudience}
                   className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
                 >
                   {isSubmitting ? 'Publishing...' : 'Publish Guide'}

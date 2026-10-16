@@ -13,6 +13,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+type Condition = 'FTD' | 'AD';
+type Audience = Condition | 'BOTH';
+
 app.use(express.json());
 
 // Initialize Gemini SDK on server-side if key is present
@@ -40,6 +43,7 @@ interface User {
   id: string;
   email: string;
   role: 'CARE_PARTNER' | 'CLINICIAN_MODERATOR' | 'SYSTEM_ADMIN';
+  condition?: Condition; // care partners only, moderator sees both
   firstName: string;
   lastName: string;
   phoneNumber?: string;
@@ -81,6 +85,7 @@ interface Post {
   rawContent: string;
   sanitizedContent?: string;
   status: 'DRAFT' | 'PENDING_MODERATION' | 'APPROVED' | 'REJECTED' | 'CLINICAL_REDIRECT';
+  condition?: Audience;
   isClosed?: boolean;
   closedAt?: string;
   closedBy?: string;
@@ -119,7 +124,7 @@ interface ClinicalResource {
   contentBody: string;
   externalUrl?: string;
   fileAttachmentUrl?: string;
-  diseaseDomain: 'FTD' | 'ALZHEIMERS' | 'LBD';
+  diseaseDomain: Audience;
   category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
   keyTakeaways: string[];
   createdAt: string;
@@ -144,8 +149,10 @@ interface Invitation {
   lastName: string;
   clinicPatientId: string;
   primaryCohortSlug: string;
+  condition: Condition;
   token: string;
   expiresAt: string;
+  phoneNumber?: string;
   status: 'DISPATCHED' | 'CLAIMED' | 'REVOKED';
   createdAt: string;
 }
@@ -177,6 +184,7 @@ interface CalendarEvent {
   id: string;
   title: string;
   type: 'CARE_PARTNER_CONFERENCE' | 'SUPPORT_GROUP' | 'SOCIAL';
+  condition?: Audience;
   startsAt: string;
   location: string;
   description?: string;
@@ -253,6 +261,8 @@ const calendarEvents: CalendarEvent[] = [
   { id: 'evt-4', title: 'Care Partner Conference: Planning Ahead', type: 'CARE_PARTNER_CONFERENCE', startsAt: '2026-11-07T09:30', location: 'Hybrid: in person and Zoom', description: 'A half-day conference on legal, financial, and care planning.', authorId: 'user-clinician-1' },
   { id: 'evt-5', title: 'Eastern Shore Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-11-12T17:30', location: 'Zoom', description: 'Virtual meeting for Eastern Shore families.', authorId: 'user-clinician-1' },
   { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
+  { id: 'evt-7', title: "Alzheimer's Care Partner Check-in", type: 'SUPPORT_GROUP', condition: 'AD', startsAt: '2026-10-28T18:00', location: 'Zoom', description: "Evening check-in for Alzheimer's care partners.", authorId: 'user-clinician-1' },
+  { id: 'evt-8', title: 'Caregiver Wellness Workshop', type: 'SOCIAL', condition: 'BOTH', startsAt: '2026-11-04T17:30', location: 'Hybrid: in person and Zoom', description: 'Open to all care partners.', authorId: 'user-clinician-1' },
 ];
 
 function isStaff(userId?: string): boolean {
@@ -284,6 +294,7 @@ const users: User[] = [
     lastName: 'Smith',
     phoneNumber: '(410) 555-8841',
     clinicPatientId: 'JHM-99210-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-882',
     avatarColor: '#1E40AF',
@@ -298,6 +309,7 @@ const users: User[] = [
     lastName: 'Vance',
     phoneNumber: '(443) 555-3921',
     clinicPatientId: 'JHM-77341-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-419',
     avatarColor: '#047857',
@@ -312,6 +324,7 @@ const users: User[] = [
     lastName: 'Rostova',
     phoneNumber: '(717) 555-1299',
     clinicPatientId: 'JHM-44091-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-204',
     avatarColor: '#6D28D9',
@@ -326,6 +339,7 @@ const users: User[] = [
     lastName: 'Chen',
     phoneNumber: '(240) 555-6712',
     clinicPatientId: 'JHM-55120-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-512',
     avatarColor: '#B45309',
@@ -340,11 +354,41 @@ const users: User[] = [
     lastName: 'Morales',
     phoneNumber: '(703) 555-8901',
     clinicPatientId: 'JHM-63218-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-633',
     avatarColor: '#0E7490',
     badgeLabel: 'Care Partner',
     createdAt: '2026-05-15T14:30:00Z',
+  },
+  {
+    id: 'user-care-6',
+    email: 'lindaokafor@example.com',
+    role: 'CARE_PARTNER',
+    condition: 'AD',
+    firstName: 'Linda',
+    lastName: 'Okafor',
+    clinicPatientId: 'JHM-71002-AD',
+    isActive: true,
+    anonymousHandle: 'CarePartner-701',
+    avatarColor: '#0F766E',
+    badgeLabel: 'Care Partner',
+    createdAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: 'user-care-7',
+    email: 'georgeh@example.com',
+    role: 'CARE_PARTNER',
+    condition: 'AD',
+    firstName: 'George',
+    lastName: 'Harrison',
+    clinicPatientId: 'JHM-71003-AD',
+    isActive: true,
+    anonymousHandle: 'CarePartner-702',
+    avatarColor: '#9333EA',
+    badgeLabel: 'Care Partner',
+    createdAt: '2026-10-02T11:00:00Z',
+
   },
   {
     id: 'user-admin-1',
@@ -359,6 +403,23 @@ const users: User[] = [
     createdAt: '2026-01-01T00:00:00Z',
   },
 ];
+
+// Helper: Get the requesting user from the request object
+function getRequester(req: express.Request): User | undefined {
+  const id =
+    (req.query.userId as string) ||
+    (req.body?.userId as string) ||
+    (req.body?.authorId as string) ||
+    '';
+  return users.find((u) => u.id === id);
+}
+
+// The single visibility rule.
+function canSee(user: User | undefined, audience: Audience = 'FTD'): boolean {
+  if (!user) return false;
+  if (user.role !== 'CARE_PARTNER') return true; // Dr. Seema / admins see both
+  return audience === 'BOTH' || audience === user.condition;
+}
 
 const communityGroups: CommunityGroup[] = [
   {
@@ -457,6 +518,10 @@ const groupMemberships: { userId: string; groupId: string }[] = [
   { userId: 'user-care-4', groupId: 'group-western-maryland' },
   { userId: 'user-care-5', groupId: 'group-general' },
   { userId: 'user-care-5', groupId: 'group-southern-maryland' },
+  { userId: 'user-care-6', groupId: 'group-general' },
+  { userId: 'user-care-6', groupId: 'group-central-maryland' },
+  { userId: 'user-care-7', groupId: 'group-general' },
+  { userId: 'user-care-7', groupId: 'group-western-maryland' },
 ];
 
 function normalizeGroupId(gId: string): string {
@@ -921,6 +986,47 @@ const posts: Post[] = [
     commentCount: 2,
     upvotes: 7,
   },
+
+  // AD posts to test AD care partner seperation
+  { 
+    id: 'post-ad-1', 
+    authorId: 'user-care-6',
+    title: 'Sundowning: late afternoon confusion and agitation',
+    rawContent: 'Around 4 PM my mother becomes restless and keeps asking to go home, even though she is home. What routines have helped your family through the late afternoon?',
+    sanitizedContent: 'Around 4 PM my mother becomes restless and keeps asking to go home, even though she is home. What routines have helped your family through the late afternoon?',
+    status: 'APPROVED', 
+    condition: 'AD', 
+    isClosed: false, 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-08T10:00:00Z',
+    assignedGroupIds: ['group-general'], 
+    suggestedCohortId: 'group-general', 
+    phiAlerts: [],
+    createdAt: '2026-10-08T09:00:00Z', 
+    updatedAt: '2026-10-08T10:00:00Z', 
+    commentCount: 1, 
+    upvotes: 4 
+  },
+  { 
+    id: 'post-both-1', 
+    authorId: 'user-clinician-1',
+    title: 'Caregiver self-care and respite: you matter too',
+    rawContent: 'Caring for someone with dementia is demanding. What small routines or respite options have helped you protect your own health?',
+    sanitizedContent: 'Caring for someone with dementia is demanding. What small routines or respite options have helped you protect your own health?',
+    status: 'APPROVED', 
+    condition: 'BOTH', 
+    isClosed: false, 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-09T10:00:00Z',
+    assignedGroupIds: ['group-general'], 
+    suggestedCohortId: 'group-general', 
+    phiAlerts: [],
+    createdAt: '2026-10-09T09:00:00Z', 
+    updatedAt: '2026-10-09T10:00:00Z', 
+    commentCount: 2, 
+    upvotes: 6 
+  },
+
   // Pending items for Clinician Triage testing
   {
     id: 'post-pending-1',
@@ -1331,6 +1437,38 @@ const comments: Comment[] = [
     moderatedAt: '2026-09-28T10:00:00Z',
     createdAt: '2026-09-28T10:00:00Z',
   },
+  { 
+    id: 'comm-ad-1', 
+    postId: 'post-ad-1', 
+    authorId: 'user-care-7',
+    rawContent: 'A short walk after lunch and closing the curtains before dusk helped us a lot.',
+    sanitizedContent: 'A short walk after lunch and closing the curtains before dusk helped us a lot.',
+    status: 'APPROVED', 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-08T11:00:00Z', 
+    createdAt: '2026-10-08T10:30:00Z' 
+  },
+  { id: 'comm-both-1', 
+    postId: 'post-both-1', 
+    authorId: 'user-care-6',
+    rawContent: 'Two afternoons a week of adult day care gave me time to rest. It made a big difference.',
+    sanitizedContent: 'Two afternoons a week of adult day care gave me time to rest. It made a big difference.',
+    status: 'APPROVED', 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-09T11:00:00Z', 
+    createdAt: '2026-10-09T10:30:00Z' 
+  },
+  { 
+    id: 'comm-both-2', 
+    postId: 'post-both-1', 
+    authorId: 'user-care-1',
+    rawContent: 'Our support group meeting is the one hour a month that is just for me.',
+    sanitizedContent: 'Our support group meeting is the one hour a month that is just for me.',
+    status: 'APPROVED', 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-09T12:00:00Z', 
+    createdAt: '2026-10-09T11:30:00Z' 
+  },
 ];
 
 const auditEvents: ModerationAuditEvent[] = [
@@ -1363,6 +1501,7 @@ const invitations: Invitation[] = [
     firstName: 'Carol',
     lastName: 'Jenkins',
     clinicPatientId: 'JHM-88419-FTD',
+    condition: 'FTD',
     primaryCohortSlug: 'baltimore-metro',
     token: 'jh-token-88419-valid',
     expiresAt: '2026-10-02T12:00:00Z',
@@ -1437,6 +1576,7 @@ app.get('/api/v1/users/me', (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       clinicPatientId: user.clinicPatientId,
+      condition: user.condition,
       anonymousHandle: user.anonymousHandle,
       badgeLabel: user.badgeLabel,
       avatarColor: user.avatarColor,
@@ -1447,14 +1587,16 @@ app.get('/api/v1/users/me', (req, res) => {
       role: u.role,
       handle: u.anonymousHandle,
       clinicId: u.clinicPatientId,
+      condition: u.condition,
     })),
   });
 });
 
 // Community Groups / Cohorts
 app.get('/api/v1/cohorts', (req, res) => {
-  const userId = (req.query.userId as string) || '';
-  const role = (req.query.role as string) || 'CARE_PARTNER';
+  const requester = getRequester(req)
+  const role = requester?.role ?? 'CARE_PARTNER';
+  const userId = requester?.id ?? '';
 
   // Dr. Seema (Clinician Moderator / System Admin) has access to discussions across ALL groups
   if (role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN') {
@@ -1504,10 +1646,11 @@ app.post('/api/v1/cohorts', (req, res) => {
 
 // Feed: Browse Posts (Strict Regional Isolation & RBAC)
 app.get('/api/v1/posts', (req, res) => {
-  const role = (req.query.role as string) || 'CARE_PARTNER';
+  const requester = getRequester(req);
+  const role = requester?.role ?? 'CARE_PARTNER';
   const groupId = req.query.groupId as string;
   const statusFilter = req.query.status as string;
-  const currentUserId = (req.query.userId as string) || '';
+  const currentUserId = requester?.id ?? '';
 
   const allowedGroupIds = getUserAllowedGroups(currentUserId, role);
 
@@ -1538,6 +1681,14 @@ app.get('/api/v1/posts', (req, res) => {
     filtered = filtered.filter((p) => p.assignedGroupIds.includes(groupId));
   }
 
+  filtered = filtered.filter((p) => canSee(requester, p.condition));
+  
+  // Optional clinician toggle: ?condition=AD shows AD + BOTH
+  const condFilter = req.query.condition as string;
+  if (condFilter === 'FTD' || condFilter === 'AD') {
+    filtered = filtered.filter((p) => (p.condition ?? 'FTD') === condFilter || p.condition === 'BOTH');
+  }
+
   // Map with RLS projection
   const projectedPosts = filtered.map((p) => {
     const authorProjection = projectAuthor(p.authorId, role);
@@ -1555,6 +1706,7 @@ app.get('/api/v1/posts', (req, res) => {
       author: authorProjection,
       assignedGroups,
       isUrgentClinical: p.isUrgentClinical,
+      condition: p.condition ?? 'FTD',
       createdAt: p.createdAt,
       commentCount: comments.filter((c) => c.postId === p.id && c.status === 'APPROVED').length,
       upvotes: p.upvotes,
@@ -1571,14 +1723,19 @@ app.get('/api/v1/posts', (req, res) => {
 
 // Single Post Details with Comments
 app.get('/api/v1/posts/:id', (req, res) => {
-  const role = (req.query.role as string) || 'CARE_PARTNER';
+  const requester = getRequester(req);
+  const role = requester?.role ?? 'CARE_PARTNER';
   const post = posts.find((p) => p.id === req.params.id);
+  const currentUserId = requester?.id ?? '';
 
   if (!post) {
     return res.status(404).json({ error: 'Post not found' });
   }
 
-  const currentUserId = (req.query.userId as string) || '';
+  if (!canSee(getRequester(req), post.condition)) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
   const allowedGroupIds = getUserAllowedGroups(currentUserId, role);
 
   // Care partners can view approved posts in their allowed groups, or their own submission
@@ -1622,6 +1779,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
       closedBy: post.closedBy,
       author: projectAuthor(post.authorId, role),
       assignedGroups: communityGroups.filter((g) => post.assignedGroupIds.includes(g.id)),
+      condition: post.condition ?? 'FTD',
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? post.phiAlerts : undefined,
       createdAt: post.createdAt,
       commentCount: postComments.filter((c) => c.status === 'APPROVED').length,
@@ -1653,7 +1811,8 @@ app.post('/api/v1/deflection/discussions', (req, res) => {
     return res.json({ matches: [] });
   }
 
-  const approvedPosts = posts.filter((p) => p.status === 'APPROVED');
+  const requester = getRequester(req);
+  const approvedPosts = posts.filter((p) => p.status === 'APPROVED' && canSee(requester, p.condition));
   const matches: {
     postId: string;
     title: string;
@@ -1713,7 +1872,8 @@ app.post('/api/v1/deflection/discussions', (req, res) => {
 
 // Real-time pool endpoint for instant client-side keyword matching
 app.get('/api/v1/deflection/discussions-pool', (req, res) => {
-  const approvedPosts = posts.filter((p) => p.status === 'APPROVED');
+  const requester = getRequester(req);
+  const approvedPosts = posts.filter((p) => p.status === 'APPROVED' && canSee(requester, p.condition));
   const pool = approvedPosts.map((p) => {
     const postComments = comments.filter((c) => c.postId === p.id && c.status === 'APPROVED');
     const author = projectAuthor(p.authorId, 'CARE_PARTNER');
@@ -1744,6 +1904,10 @@ app.get('/api/v1/deflection/discussions-pool', (req, res) => {
 // Draft / Submit Post (Care Partner or Clinician)
 app.post('/api/v1/posts', (req, res) => {
   const { title, content, targetCohortId, authorId = 'user-care-1' } = req.body;
+  const author = users.find((u) => u.id === authorId);
+  const condition: Audience = isStaff(authorId)
+    ? (['FTD', 'AD', 'BOTH'].includes(req.body.condition) ? req.body.condition : 'BOTH')
+    : (author?.condition ?? 'FTD');   // care partners can't choose; it's forced server-side
 
   if (!title || !content) {
     return res.status(400).json({ error: 'Title and content are required' });
@@ -1756,13 +1920,19 @@ app.post('/api/v1/posts', (req, res) => {
   const medicationKeywords = ['seroquel', 'haldol', 'haloperidol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'milligram', 'mg', 'prescribe'];
   const hasMedicationMention = medicationKeywords.some((w) => `${title} ${content}`.toLowerCase().includes(w));
 
+  const staff = isStaff(authorId);
+  const now = new Date().toISOString();
+
   const newPost: Post = {
     id: `post-${Date.now()}`,
     authorId,
     title,
     rawContent: content,
     sanitizedContent: content,
-    status: 'PENDING_MODERATION', // ZERO-TRUST GATE: Always pending!
+    status: staff ? 'APPROVED' : 'PENDING_MODERATION', // ZERO-TRUST GATE: Always pending!
+    condition,
+    moderatedBy: staff ? authorId : undefined,
+    moderatedAt: staff ? now : undefined,
     assignedGroupIds: targetCohortId ? [targetCohortId] : ['group-general'],
     suggestedCohortId: targetCohortId || 'group-general',
     phiAlerts,
@@ -1771,14 +1941,17 @@ app.post('/api/v1/posts', (req, res) => {
     updatedAt: new Date().toISOString(),
     commentCount: 0,
     upvotes: 0,
+    isClosed: false,
   };
 
   posts.unshift(newPost);
 
   res.status(202).json({
     postId: newPost.id,
-    status: 'PENDING_MODERATION',
-    message: 'Your submission has been safely received. Dr. Seema reviews all posts within 24 hours to keep this community safe and accurate.',
+    status: newPost.status,
+    message: staff
+      ? 'Post published.'
+      : 'Your submission has been safely received. Dr. Seema reviews all posts within 24 hours to keep this community safe and accurate.',
     hasPhiAlerts: phiAlerts.length > 0,
     phiAlertsCount: phiAlerts.length,
   });
@@ -1790,6 +1963,10 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
   const post = posts.find((p) => p.id === req.params.id);
 
   if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  if (!canSee(getRequester(req), post.condition)) {
     return res.status(404).json({ error: 'Post not found' });
   }
 
@@ -1994,6 +2171,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
         email: author?.email || '',
         phone: author?.phoneNumber || '',
         clinicPatientId: author?.clinicPatientId || 'UNLINKED',
+        condition: author?.condition,
         anonymousHandle: author?.anonymousHandle || 'CarePartner',
         avatarColor: author?.avatarColor || '#002D72',
       },
@@ -2002,6 +2180,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
       sanitizedContent: p.sanitizedContent || p.rawContent,
       suggestedCohort: suggestedCohort || communityGroups[0],
       assignedGroupIds: p.assignedGroupIds,
+      condition: p.condition ?? 'FTD',
       isUrgentClinical: p.isUrgentClinical,
       phiAlerts: p.phiAlerts || [],
       createdAt: p.createdAt,
@@ -2041,6 +2220,8 @@ app.post('/api/v1/moderation/action', (req, res) => {
     if (assignedGroupIds && assignedGroupIds.length > 0) {
       post.assignedGroupIds = assignedGroupIds;
     }
+
+    if (['FTD', 'AD', 'BOTH'].includes(req.body.condition)) post.condition = req.body.condition;
 
     // Direct message to author
     directMessages.unshift({
@@ -2161,8 +2342,9 @@ app.post('/api/v1/notifications/:id/read', (req, res) => {
 });
 
 // Clinician Curated Resources
-app.get('/api/v1/resources', (_req, res) => {
-  res.json(clinicalResources);
+app.get('/api/v1/resources', (req, res) => {
+  const requester = getRequester(req);
+  res.json(clinicalResources.filter((r) => canSee(requester, r.diseaseDomain)));
 });
 
 app.post('/api/v1/resources', (req, res) => {
@@ -2200,8 +2382,11 @@ app.post('/api/v1/resources', (req, res) => {
 });
 
 // Clinic Updates (everyone reads, staff writes)
-app.get('/api/v1/updates', (_req, res) => {
-  const sorted = [...clinicUpdates].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+app.get('/api/v1/updates', (req, res) => {
+  const requester = getRequester(req);
+  const sorted = clinicUpdates
+    .filter((u) => canSee(requester, u.condition))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json(sorted);
 });
 
@@ -2255,13 +2440,16 @@ app.delete('/api/v1/updates/:id', (req, res) => {
 });
 
 // Calendar Events (everyone reads, staff writes)
-app.get('/api/v1/events', (_req, res) => {
-  const sorted = [...calendarEvents].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+app.get('/api/v1/events', (req, res) => {
+  const requester = getRequester(req);
+  const sorted = calendarEvents
+    .filter((e) => canSee(requester, e.condition ?? 'BOTH'))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   res.json(sorted);
 });
 
 app.post('/api/v1/events', (req, res) => {
-  const { title, type, startsAt, location, description, authorId } = req.body;
+  const { title, type, startsAt, location, description, authorId, condition } = req.body;
 
   if (!isStaff(authorId)) {
     return res.status(403).json({ error: 'Only clinic staff can add events.' });
@@ -2274,6 +2462,7 @@ app.post('/api/v1/events', (req, res) => {
     id: `evt-${Date.now()}`,
     title: title.trim(),
     type: EVENT_TYPES.includes(type) ? type : 'SUPPORT_GROUP',
+    condition: ['FTD', 'AD', 'BOTH'].includes(condition) ? condition : 'BOTH',
     startsAt,
     location: location || '',
     description,
@@ -2312,10 +2501,14 @@ app.get('/api/v1/moderation/audit', (_req, res) => {
 
 // Clinician Invite Care Partner Endpoint (US-1.1)
 app.post('/api/v1/auth/invitations', (req, res) => {
-  const { email, firstName, lastName, clinicPatientId, primaryCohortSlug } = req.body;
+  const { email, firstName, lastName, clinicPatientId, primaryCohortSlug, condition, phoneNumber } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
+  }
+
+  if (condition !== 'FTD' && condition !== 'AD') {
+    return res.status(400).json({ error: 'Condition (FTD or AD) is required' });
   }
 
   const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
@@ -2328,6 +2521,8 @@ app.post('/api/v1/auth/invitations', (req, res) => {
     lastName: lastName || '',
     clinicPatientId: clinicPatientId || '',
     primaryCohortSlug: primaryCohortSlug || 'baltimore-metro',
+    condition,
+    phoneNumber: phoneNumber?.trim() || undefined,
     token,
     expiresAt,
     status: 'DISPATCHED',
@@ -2343,7 +2538,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
     entityType: 'USER',
     entityId: newInvitation.id,
     actionTaken: 'INVITED_CARE_PARTNER',
-    notes: `Issued single-use invite for ${email} to cohort ${primaryCohortSlug}`,
+    notes: `Issued single-use invite for ${email} to cohort ${newInvitation.primaryCohortSlug} (${condition})`,
     createdAt: new Date().toISOString(),
   });
 
@@ -2359,6 +2554,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
 // Real-Time Pre-Submission Deflection (Section 6.3 & US-4.1)
 app.post('/api/v1/knowledge/deflect', (req, res) => {
   const { draftText } = req.body;
+  const requester = getRequester(req);
 
   if (!draftText || typeof draftText !== 'string' || draftText.trim().length < 15) {
     return res.json({ deflectionMatches: [] });
@@ -2368,45 +2564,47 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
 
   // Find matching curated resources
   const resourceMatches: any[] = [];
-  clinicalResources.forEach((resItem) => {
-    let score = 0;
-    const titleLower = resItem.title.toLowerCase();
-    const contentLower = resItem.contentBody.toLowerCase();
-    const categoryLower = resItem.category.toLowerCase();
+  clinicalResources
+    .filter((r) => canSee(requester, r.diseaseDomain))
+    .forEach((resItem) => {
+      let score = 0;
+      const titleLower = resItem.title.toLowerCase();
+      const contentLower = resItem.contentBody.toLowerCase();
+      const categoryLower = resItem.category.toLowerCase();
 
-    // Check key thematic terms
-    const keywords = [
-      'incontinence', 'urine', 'brief', 'diaper', 'toilet', 'voiding',
-      'shower', 'bathing', 'bath', 'sponge', 'wash', 'hygiene', 'agitation',
-      'medicaid', 'lawyer', 'attorney', 'legal', 'spend-down', 'assets', 'power of attorney',
-      'wander', 'wandering', 'car', 'driving', 'elopement', 'keys', 'gps', 'tracker',
-      'lion mane', 'supplement', 'mushroom', 'cure',
-    ];
+      // Check key thematic terms
+      const keywords = [
+        'incontinence', 'urine', 'brief', 'diaper', 'toilet', 'voiding',
+        'shower', 'bathing', 'bath', 'sponge', 'wash', 'hygiene', 'agitation',
+        'medicaid', 'lawyer', 'attorney', 'legal', 'spend-down', 'assets', 'power of attorney',
+        'wander', 'wandering', 'car', 'driving', 'elopement', 'keys', 'gps', 'tracker',
+        'lion mane', 'supplement', 'mushroom', 'cure',
+      ];
 
-    keywords.forEach((kw) => {
-      if (textLower.includes(kw)) {
-        if (titleLower.includes(kw) || categoryLower.includes(kw)) score += 0.35;
-        if (contentLower.includes(kw)) score += 0.2;
-      }
-    });
-
-    if (score > 0.3) {
-      resourceMatches.push({
-        sourceType: 'RESOURCE',
-        id: resItem.id,
-        title: resItem.title,
-        category: resItem.category,
-        snippet: resItem.summary,
-        url: resItem.externalUrl || resItem.fileAttachmentUrl,
-        confidenceScore: Math.min(0.96, Math.max(0.72, parseFloat(score.toFixed(2)))),
+      keywords.forEach((kw) => {
+        if (textLower.includes(kw)) {
+          if (titleLower.includes(kw) || categoryLower.includes(kw)) score += 0.35;
+          if (contentLower.includes(kw)) score += 0.2;
+        }
       });
-    }
+
+      if (score > 0.3) {
+        resourceMatches.push({
+          sourceType: 'RESOURCE',
+          id: resItem.id,
+          title: resItem.title,
+          category: resItem.category,
+          snippet: resItem.summary,
+          url: resItem.externalUrl || resItem.fileAttachmentUrl,
+          confidenceScore: Math.min(0.96, Math.max(0.72, parseFloat(score.toFixed(2)))),
+        });
+      }
   });
 
   // Find matching approved past discussions
   const discussionMatches: any[] = [];
   posts
-    .filter((p) => p.status === 'APPROVED')
+    .filter((p) => p.status === 'APPROVED' && canSee(requester, p.condition))
     .forEach((p) => {
       let score = 0;
       const combined = `${p.title} ${p.sanitizedContent || p.rawContent}`.toLowerCase();
@@ -2438,8 +2636,9 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
 });
 
 // 50 Clinical FAQs Endpoint
-app.get('/api/v1/knowledge/faq', (_req, res) => {
-  res.json(CLINICAL_50_FAQ);
+app.get('/api/v1/knowledge/faq', (req, res) => {
+  const r = getRequester(req);
+  res.json(r?.condition === 'AD' ? [] : CLINICAL_50_FAQ);
 });
 
 // Closed-Loop Clinician RAG Assistant (Section 7.1)
@@ -2459,6 +2658,15 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
     'lorazepam', 'ativan', 'clonazepam', 'klonopin', 'xanax', 'alprazolam',
     'dose', 'dosage', 'milligrams', 'prescribe',
   ];
+
+  const chatRequester = getRequester(req);
+  if (chatRequester?.condition === 'AD') {
+    return res.json({
+      answer: `Our Alzheimer's care partner guidance is still being prepared by Dr. Seema's team. In the meantime, please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
+      citedResources: [],
+      suggestedQuestions: [],
+    });
+  }
 
   const mentionsDrug = restrictedDrugs.some((d) => queryLower.includes(d));
   if (mentionsDrug) {
@@ -2665,6 +2873,7 @@ const cohortMembersStore = [
     email: 'sarah.smith@example.com',
     phone: '(410) 555-8841',
     clinicPatientId: 'JHM-99210-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-882',
     primaryGroupId: 'group-central-maryland',
     primaryGroupName: 'Central Maryland (Baltimore Metro)',
@@ -2678,6 +2887,7 @@ const cohortMembersStore = [
     email: 'marcus.vance@example.com',
     phone: '(443) 555-3921',
     clinicPatientId: 'JHM-77341-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-419',
     primaryGroupId: 'group-eastern-maryland',
     primaryGroupName: 'Eastern Maryland (Eastern Shore)',
@@ -2691,6 +2901,7 @@ const cohortMembersStore = [
     email: 'elena.rostova@example.com',
     phone: '(717) 555-1299',
     clinicPatientId: 'JHM-44091-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-204',
     primaryGroupId: 'group-northern-maryland',
     primaryGroupName: 'Northern Maryland / Pennsylvania / Delaware',
@@ -2704,6 +2915,7 @@ const cohortMembersStore = [
     email: 'david.chen@example.com',
     phone: '(240) 555-6712',
     clinicPatientId: 'JHM-55120-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-512',
     primaryGroupId: 'group-western-maryland',
     primaryGroupName: 'Western Maryland (Frederick and surrounding areas)',
@@ -2717,12 +2929,40 @@ const cohortMembersStore = [
     email: 'patricia.m@example.com',
     phone: '(703) 555-8901',
     clinicPatientId: 'JHM-63218-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-633',
     primaryGroupId: 'group-southern-maryland',
     primaryGroupName: 'Southern Maryland / DC / Northern Virginia',
     role: 'CARE_PARTNER',
     status: 'ACTIVE',
     joinedAt: '2026-09-15',
+  },
+  { 
+    userId: 'user-care-6', 
+    realName: 'Linda Okafor', 
+    email: 'lindaokafor@example.com', 
+    phone: '',
+    clinicPatientId: 'JHM-71002-AD', 
+    condition: 'AD', 
+    anonymousHandle: 'CarePartner-701',
+    primaryGroupId: 'group-central-maryland', 
+    primaryGroupName: 'Central Maryland (Baltimore Metro)',
+    role: 'CARE_PARTNER', 
+    status: 'ACTIVE', 
+    joinedAt: '2026-10-01' 
+  },
+  { userId: 'user-care-7', 
+    realName: 'George Harrison', 
+    email: 'georgeh@example.com', 
+    phone: '',
+    clinicPatientId: 'JHM-71003-AD', 
+    condition: 'AD', 
+    anonymousHandle: 'CarePartner-702',
+    primaryGroupId: 'group-western-maryland', 
+    primaryGroupName: 'Western Maryland (Frederick and surrounding areas)',
+    role: 'CARE_PARTNER', 
+    status: 'ACTIVE', 
+    joinedAt: '2026-10-02' 
   },
 ];
 

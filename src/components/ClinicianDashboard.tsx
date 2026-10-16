@@ -22,6 +22,9 @@ import {
   LockOpen,
 } from 'lucide-react';
 import {
+  CurrentUser,
+  Audience,
+  Condition,
   QueueItem,
   Post,
   CommunityGroup,
@@ -30,9 +33,11 @@ import {
   getProperGroupName,
   getFullGroupName,
 } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 
 interface ClinicianDashboardProps {
+  currentUser: CurrentUser;
   cohorts: CommunityGroup[];
   onQueueUpdated: () => void;
   onOpenInvite: () => void;
@@ -42,6 +47,7 @@ interface ClinicianDashboardProps {
 }
 
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
+  currentUser,
   cohorts,
   onQueueUpdated,
   onOpenInvite,
@@ -50,6 +56,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onOpenDiscussion,
 }) => {
   const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members'>('queue');
+  const [audienceFilter, setAudienceFilter] = useState<'all' | Condition>('all');
+  const [approveAudience, setApproveAudience] = useState<Audience>('FTD');
 
   // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
@@ -92,6 +100,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [newGroupRadius, setNewGroupRadius] = useState('35');
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
+  const [showNewPostModal, setShowNewPostModal] = useState(false);
+  const [npTitle, setNpTitle] = useState('');
+  const [npContent, setNpContent] = useState('');
+  const [npGroupId, setNpGroupId] = useState('');
+  const [npAudience, setNpAudience] = useState<Audience | ''>('');
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
   const loadQueue = async () => {
     setLoadingQueue(true);
@@ -124,7 +138,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const loadPublishedPosts = async () => {
     setLoadingPosts(true);
     try {
-      const res = await api.getPosts({ role: 'CLINICIAN_MODERATOR' });
+      const res = await api.getPosts({
+        role: currentUser.role,
+        userId: currentUser.id,
+        condition: audienceFilter === 'all' ? undefined : audienceFilter,
+      });
       setPublishedPosts(res.posts || []);
     } catch (err) {
       console.error('Failed to load published posts:', err);
@@ -133,13 +151,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  useEffect(() => {
-    loadQueue();
-    loadMembers();
-    loadPublishedPosts();
-  }, []);
+  useEffect(() => { loadQueue(); loadMembers(); }, []);
+  useEffect(() => { loadPublishedPosts(); }, [audienceFilter]);
 
   const initItemState = (item: QueueItem) => {
+    setApproveAudience(item.condition ?? 'FTD'); // default the approved audience to the author's group
     setSanitizedDraft(item.sanitizedContent || item.rawContent);
     setSelectedGroupIds(
       item.assignedGroupIds && item.assignedGroupIds.length > 0
@@ -155,6 +171,34 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     initItemState(queueItems[idx]);
   };
 
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience || isSubmittingPost) return;
+    setIsSubmittingPost(true);
+    try {
+      await api.createPost({
+        title: npTitle.trim(),
+        content: npContent.trim(),
+        targetCohortId: npGroupId,
+        authorId: currentUser.id,
+        condition: npAudience,
+      });
+      setShowNewPostModal(false);
+      setNpTitle(''); setNpContent(''); setNpGroupId(''); setNpAudience('');
+      setAudienceFilter('all');
+      await loadPublishedPosts();
+      setActiveTab('discussions');
+      setActionSuccessNotice('Post published.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+    } catch (err) {
+      console.error('Failed to create post:', err);
+      setActionSuccessNotice('Could not publish post. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setIsSubmittingPost(false);
+    }
+  };
+
   // Publish post
   const handlePublish = async () => {
     if (!activeItem) return;
@@ -165,6 +209,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         entityType: 'POST',
         action: 'APPROVE',
         assignedGroupIds: selectedGroupIds,
+        condition: approveAudience,
         sanitizedContent: sanitizedDraft,
         allowUnmoderatedReplies,
         moderatorNotes,
@@ -217,7 +262,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setIsTogglingClose(true);
     const targetClosed = !post.isClosed;
     try {
-      const res = await api.closePost(post.id, targetClosed, 'user-clinician-1');
+      const res = await api.closePost(post.id, targetClosed, currentUser.id);
       setPublishedPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
@@ -369,7 +414,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       (m.phone || '').toLowerCase().includes(q);
     const matchesGroup =
       selectedCohortFilter === 'all' || m.primaryGroupId === selectedCohortFilter;
-    return matchesSearch && matchesGroup;
+    const matchesCondition = audienceFilter === 'all' || m.condition === audienceFilter;
+    return matchesSearch && matchesGroup && matchesCondition;
   });
 
   return (
@@ -384,6 +430,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={() => setShowNewPostModal(true)}
+            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>New Post</span>
+          </button>
+
           <button
             onClick={() => setShowCreateGroupModal(true)}
             className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
@@ -420,6 +474,27 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           </button>
         </div>
       )}
+
+      { /* Viewing Filter */ }
+      <div className="flex items-center gap-2 text-xs sm:text-sm">
+        <span className="font-semibold text-slate-600 dark:text-slate-400">Viewing:</span>
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg font-semibold">
+          {(['all', 'FTD', 'AD'] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setAudienceFilter(opt)}
+              className={`px-3 py-1 rounded-md transition cursor-pointer ${
+                audienceFilter === opt
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              {opt === 'all' ? 'All' : opt}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 4 STAT CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -617,7 +692,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </p>
 
                         <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 dark:text-slate-500">
-                          <span>{item.author.anonymousHandle}</span>
+                          <span className="flex items-center gap-1.5">
+                            <span>{item.author.anonymousHandle}</span>
+                            <AudienceBadge condition={item.condition} />
+                          </span>
                           {hasPhi && (
                             <span className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 font-medium px-1.5 py-0.5 rounded text-[10px]">
                               Personal info found
@@ -643,9 +721,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </span>
                       </div>
                       <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 flex items-center gap-2">
-                        <span>Phone: {activeItem.author.phone}</span>
+                        <span>Phone: {activeItem.author.phone
+                          ? <a href={`tel:${activeItem.author.phone.replace(/[^\d+]/g, '')}`} className="text-[#002D72] dark:text-blue-400 hover:underline">{activeItem.author.phone}</a>
+                          : 'none'}</span>
                         <span>•</span>
-                        <span>Email: {activeItem.author.email}</span>
+                        <span>Email: <a href={`mailto:${activeItem.author.email}`} className="text-[#002D72] dark:text-blue-400 hover:underline">{activeItem.author.email}</a></span>
                       </div>
                     </div>
                     {activeItem.suggestedCohort && (
@@ -731,6 +811,32 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </option>
                       ))}
                     </select>
+                  </div>
+                  
+                  { /* Approve-As Selector */ }
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Who can see this post</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([['FTD', 'FTD only'], ['AD', 'AD only'], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setApproveAudience(value)}
+                          className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                            approveAudience === value
+                              ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {approveAudience !== (activeItem.condition ?? 'FTD') && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        Changed from the author's group ({activeItem.condition ?? 'FTD'}).
+                      </p>
+                    )}
                   </div>
 
                   {/* Reply Moderation Policy Toggle */}
@@ -913,6 +1019,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                               {groupName}
                             </span>
                             <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <AudienceBadge condition={post.condition} />
                             <span className="text-slate-400 dark:text-slate-500 text-[11px]">
                               {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
                             </span>
@@ -1190,15 +1297,20 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         <td className="py-3 px-3 whitespace-nowrap">
                           <div className="font-semibold text-slate-900 dark:text-white">{m.realName}</div>
                           <div className="text-xs text-slate-400 dark:text-slate-500">{m.anonymousHandle}</div>
+                          <div className="mt-1"><AudienceBadge condition={m.condition} /></div>
                         </td>
-                        <td className="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                          <div>{m.phone}</div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{m.email}</div>
-                        </td>
-                        <td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{m.primaryGroupName}</span>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {m.phone ? (
+                            <a href={`tel:${m.phone.replace(/[^\d+]/g, '')}`} className="text-[#002D72] dark:text-blue-400 hover:underline font-medium">
+                              {m.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">No phone on file</span>
+                          )}
+                          <div>
+                            <a href={`mailto:${m.email}`} className="text-xs text-[#002D72] dark:text-blue-400 hover:underline">
+                              {m.email}
+                            </a>
                           </div>
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
@@ -1503,6 +1615,100 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <span>{isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      { /* MODAL new post details */}
+      {showNewPostModal && (
+        <div
+          onClick={() => setShowNewPostModal(false)}
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full max-h-[90vh] overflow-y-auto cursor-default"
+          >
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">New Post</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Published immediately, no review needed.</p>
+              </div>
+              <button onClick={() => setShowNewPostModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} className="p-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Title</label>
+                <input
+                  value={npTitle}
+                  onChange={(e) => setNpTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Post</label>
+                <textarea
+                  rows={5}
+                  value={npContent}
+                  onChange={(e) => setNpContent(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Region / group</label>
+                <select
+                  value={npGroupId}
+                  onChange={(e) => setNpGroupId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"
+                  required
+                >
+                  <option value="" disabled>Choose a group...</option>
+                  {cohorts.map((c) => (
+                    <option key={c.id} value={c.id}>{getProperGroupName(c)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Disease group</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([['FTD', 'FTD only'], ['AD', "Alzheimer's only"], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setNpAudience(value)}
+                      className={`px-2 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                        npAudience === value
+                          ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onClick={() => setShowNewPostModal(false)} className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPost || !npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
+                >
+                  {isSubmittingPost ? 'Publishing...' : 'Publish Post'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -59,9 +59,15 @@ export default function App() {
       const cohortsRes = await api.getCohorts({ userId: userRes.user.id, role: userRes.user.role });
       setCohorts(cohortsRes);
 
-      const queueRes = await api.getModerationQueue();
-      setPendingTriageCount(queueRes.totalPending || 0);
-      setPendingQueue(queueRes.items || []);
+      const isStaffUser = userRes.user.role !== 'CARE_PARTNER';
+      if (isStaffUser) {
+        const queueRes = await api.getModerationQueue();
+        setPendingTriageCount(queueRes.totalPending || 0);
+        setPendingQueue(queueRes.items || []);
+      } else {
+        setPendingTriageCount(0);
+        setPendingQueue([]);
+      }
 
       const notifRes = await api.getNotifications(userRes.user.id);
       setNotifications(notifRes.messages || []);
@@ -77,6 +83,8 @@ export default function App() {
 
   const handleSwitchPersona = (userId: string) => {
     loadUserAndData(userId);
+    setFeedResetKey((prev) => prev + 1);
+    setTargetDiscussionId(null);
     const targetPersona = allPersonas.find((p) => p.id === userId);
     if (targetPersona?.role === 'CLINICIAN_MODERATOR' || targetPersona?.role === 'SYSTEM_ADMIN') {
       setActiveTab('moderation');
@@ -88,9 +96,15 @@ export default function App() {
 
   const handleQueueUpdated = async () => {
     try {
-      const queueRes = await api.getModerationQueue();
-      setPendingTriageCount(queueRes.totalPending || 0);
-      setPendingQueue(queueRes.items || []);
+      const isStaffUser = currentUser?.role !== 'CARE_PARTNER';
+      if (isStaffUser) {
+        const queueRes = await api.getModerationQueue();
+        setPendingTriageCount(queueRes.totalPending || 0);
+        setPendingQueue(queueRes.items || []);
+      } else {
+        setPendingTriageCount(0);
+        setPendingQueue([]);
+      }
       if (currentUser) {
         const notifRes = await api.getNotifications(currentUser.id);
         setNotifications(notifRes.messages || []);
@@ -175,12 +189,13 @@ export default function App() {
 
         {activeTab === 'moderation' && (
           <ClinicianDashboard
+            currentUser={currentUser}
             cohorts={cohorts}
             onQueueUpdated={handleQueueUpdated}
             onOpenAudit={() => setIsAuditOpen(true)}
             onOpenInvite={() => setIsInviteOpen(true)}
             onCohortCreated={async () => {
-              const res = await api.getCohorts();
+              const res = await api.getCohorts({ userId: currentUser.id, role: currentUser.role });
               setCohorts(res);
             }}
             onOpenDiscussion={(postId) => {
@@ -226,6 +241,7 @@ export default function App() {
 
       {/* PERSISTENT FLOATING CLINICAL CHATBOT (Circle button on every view + floating chat window) */}
       <FloatingChatbotAssistant
+        currentUser={currentUser}
         isOpen={isAssistantOpen}
         onToggle={() => setIsAssistantOpen((prev) => !prev)}
         onClose={() => setIsAssistantOpen(false)}

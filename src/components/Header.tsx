@@ -347,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   ? 'System Administrator'
                                   : p.role === 'CLINICIAN_MODERATOR'
                                   ? 'Clinician Moderator'
-                                  : p.handle}
+                                  : `${p.handle} · ${p.condition ?? ''}`}
                               </div>
                             </div>
                             {isCurrent && <Check className="w-4 h-4 text-[#002D72] dark:text-blue-400" />}

@@ -8,6 +8,10 @@ export type TrialStatus = 'RECRUITING' | 'CLOSED';
 
 export type EventType = 'CARE_PARTNER_CONFERENCE' | 'SUPPORT_GROUP' | 'SOCIAL';
 
+export type Condition = 'FTD' | 'AD';
+
+export type Audience = Condition | 'BOTH';
+
 export type RejectionReason =
   | 'CLINICAL_MEDICATION_QUERY'
   | 'UNVERIFIED_TREATMENT'
@@ -99,6 +103,7 @@ export interface Post {
   commentCount: number;
   upvotes: number;
   phiAlerts?: PhiAlert[];
+  condition?: Audience;
 }
 
 export interface Comment {
@@ -119,6 +124,7 @@ export interface QueueItem {
     email: string;
     phone: string;
     clinicPatientId: string;
+    condition?: Condition;
     anonymousHandle: string;
     avatarColor: string;
   };
@@ -127,6 +133,7 @@ export interface QueueItem {
   sanitizedContent: string;
   suggestedCohort: CommunityGroup;
   assignedGroupIds: string[];
+  condition?: Audience;
   isUrgentClinical?: boolean;
   allowUnmoderatedReplies?: boolean;
   phiAlerts: PhiAlert[];
@@ -140,7 +147,7 @@ export interface ClinicalResource {
   contentBody: string;
   externalUrl?: string;
   fileAttachmentUrl?: string;
-  diseaseDomain: 'FTD' | 'ALZHEIMERS' | 'LBD';
+  diseaseDomain: Audience;
   category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
   keyTakeaways: string[];
   createdAt: string;
@@ -204,6 +211,7 @@ export interface GroupMember {
   role: UserRole;
   status: 'ACTIVE' | 'PENDING' | 'MUTED';
   joinedAt: string;
+  condition?: Condition;
 }
 
 
@@ -217,6 +225,7 @@ export interface CurrentUser {
   anonymousHandle: string;
   badgeLabel: string;
   avatarColor: string;
+  condition?: Condition;
 }
 
 export interface PersonaOption {
@@ -225,6 +234,7 @@ export interface PersonaOption {
   role: UserRole;
   handle: string;
   clinicId?: string;
+  condition?: Condition;
 }
 
 export interface ClinicUpdate {
@@ -233,7 +243,7 @@ export interface ClinicUpdate {
   summary: string;
   body: string;
   category: UpdateCategory;
-  condition: 'FTD' | 'AD' | 'BOTH';
+  condition: Audience;
   trialStatus?: TrialStatus;
   externalUrl?: string;
   authorId: string;
@@ -248,4 +258,5 @@ export interface CalendarEvent {
   location: string;
   description?: string;
   authorId: string;
+  condition?: Audience;
 }

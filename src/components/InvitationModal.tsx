@@ -8,7 +8,7 @@ import {
   Clock,
   X,
 } from 'lucide-react';
-import { CommunityGroup, getProperGroupName } from '../types';
+import { CommunityGroup, Condition, getProperGroupName } from '../types';
 import { api } from '../services/api';
 
 interface InvitationModalProps {
@@ -36,12 +36,14 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
     url: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [condition, setCondition] = useState<Condition | ''>('');
+  const [phone, setPhone] = useState('');
 
   if (!isOpen) return null;
 
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !condition) return;
 
     setIsSubmitting(true);
     setErrorNotice(null);
@@ -50,7 +52,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
         email: email.trim(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        phoneNumber: phone.trim() || undefined,
         primaryCohortSlug,
+        condition,
       });
 
       setGeneratedInvite({
@@ -114,6 +118,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <p className="text-xs sm:text-sm text-emerald-900 dark:text-emerald-300">
                 A single-use invitation link has been generated and logged in the activity ledger.
               </p>
+              <p className="text-xs sm:text-sm text-emerald-900 dark:text-emerald-300">
+                This invitation adds the care partner to the <strong>{condition}</strong> community.
+              </p>
               <div className="flex items-center gap-1.5 text-xs text-emerald-800 dark:text-emerald-400 pt-1">
                 <Clock className="w-3.5 h-3.5" />
                 <span>Expires: {new Date(generatedInvite.expiresAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} (72 Hours)</span>
@@ -148,6 +155,8 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   setEmail('');
                   setFirstName('');
                   setLastName('');
+                  setPhone('');
+                  setCondition('');
                 }}
                 className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer"
               >
@@ -186,18 +195,54 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                  Caregiver Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="first.last@example.com"
+                  className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                  Phone Number <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(123) 456-7890"
+                  className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-                Caregiver Email Address
+                Which community?
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="carol.jenkins@example.com"
-                className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
-                required
-              />
+              <div className="grid grid-cols-2 gap-2">
+                {([['FTD', 'FTD'], ['AD', 'Alzheimer\'s (AD)']] as [Condition, string][]).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCondition(value)}
+                    className={`px-3 py-2.5 rounded-lg text-sm font-semibold border transition cursor-pointer ${
+                      condition === value
+                        ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -229,7 +274,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !condition}
                 className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-bold transition cursor-pointer"
               >
                 {isSubmitting ? 'Generating...' : 'Issue Invitation'}

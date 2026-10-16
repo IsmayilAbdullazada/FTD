@@ -14,6 +14,8 @@ import {
   RejectionReason,
   ClinicUpdate, 
   CalendarEvent,
+  Audience,
+  Condition,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -39,6 +41,8 @@ let localUserCohortAssignments: Record<string, string> = {
   'user-care-3': 'group-northern-maryland',
   'user-care-4': 'group-western-maryland',
   'user-care-5': 'group-southern-maryland',
+  'user-care-6': 'group-central-maryland',
+  'user-care-7': 'group-western-maryland',
 };
 let localDirectMessages: DirectMessage[] = [
   {
@@ -152,15 +156,19 @@ async function safeFetchJson<T>(
   options: RequestInit | undefined,
   fallback: () => T
 ): Promise<T> {
+  let res: Response;
   try {
-    const res = await fetch(url, options);
-    const contentType = res.headers.get('content-type') || '';
-    if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
-      return data;
-    }
-  } catch (err) {
-    // Network error or offline
+    res = await fetch(url, options);
+  } catch {
+    return fallback(); // Network error or offline
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const data = await res.json();
+    if (res.ok) return data;
+    // The server answered with a real error (403/404/etc.). Surface it, don't mask it.
+    throw new Error(data?.error || `Request failed (${res.status})`);
   }
   // Return resilient fallback
   return fallback();
@@ -187,6 +195,7 @@ export const api = {
             anonymousHandle: user.anonymousHandle,
             badgeLabel: user.badgeLabel,
             avatarColor: user.avatarColor,
+            condition: user.condition
           },
           allPersonas: localUsers.map((u) => ({
             id: u.id,
@@ -194,6 +203,7 @@ export const api = {
             role: u.role,
             handle: u.anonymousHandle,
             clinicId: u.clinicPatientId,
+            condition: u.condition
           })),
         };
       }
@@ -251,12 +261,13 @@ export const api = {
   },
 
   // Posts Feed
-  getPosts: async (options: { role: string; groupId?: string; status?: string; userId?: string }): Promise<{ total: number; posts: Post[] }> => {
+  getPosts: async (options: { role: string; groupId?: string; status?: string; userId?: string; condition?: string }): Promise<{ total: number; posts: Post[] }> => {
     const params = new URLSearchParams();
     params.set('role', options.role);
     if (options.groupId) params.set('groupId', options.groupId);
     if (options.status) params.set('status', options.status);
     if (options.userId) params.set('userId', options.userId);
+    if (options.condition) params.set('condition', options.condition);
 
     return safeFetchJson(
       `/api/v1/posts?${params.toString()}`,
@@ -293,7 +304,7 @@ export const api = {
     );
   },
 
-  getPostDetails: async (postId: string, role: string, userId?: string): Promise<{ post: Post; comments: Comment[] }> => {
+  getPostDetails: async (postId: string, role: string, userId: string): Promise<{ post: Post; comments: Comment[] }> => {
     const query = userId ? `?role=${role}&userId=${userId}` : `?role=${role}`;
     return safeFetchJson(
       `/api/v1/posts/${postId}${query}`,
@@ -317,6 +328,7 @@ export const api = {
     content: string;
     targetCohortId?: string;
     authorId: string;
+    condition?: Audience;
   }): Promise<{ postId: string; status: string; message: string; hasPhiAlerts: boolean; phiAlertsCount: number }> => {
     return safeFetchJson(
       '/api/v1/posts',
@@ -568,6 +580,7 @@ export const api = {
     rejectionCode?: RejectionReason;
     rejectionMessage?: string;
     moderatorNotes?: string;
+    condition?: Audience;
   }): Promise<{
     status: string;
     newEntityStatus: string;
@@ -795,13 +808,13 @@ export const api = {
 
 
   // Pre-submission Typeahead Deflection
-  deflectQuery: async (draftText: string): Promise<{ deflectionMatches: DeflectionMatch[] }> => {
+  deflectQuery: async (draftText: string, userId: string): Promise<{ deflectionMatches: DeflectionMatch[] }> => {
     return safeFetchJson(
       '/api/v1/knowledge/deflect',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftText }),
+        body: JSON.stringify({ draftText, userId }),
       },
       () => {
         const text = draftText.toLowerCase();
@@ -830,7 +843,7 @@ export const api = {
   },
 
   // Keyword matching against existing community discussions & answers
-  checkDiscussionMatches: async (payload: { title: string; content: string }): Promise<{
+  checkDiscussionMatches: async (payload: { title: string; content: string; userId: string }): Promise<{
     matches: {
       postId: string;
       title: string;
@@ -916,7 +929,7 @@ export const api = {
   },
 
   // Instant discussion pool for real-time keystroke matching
-  getAllDiscussionsPool: async (): Promise<{
+  getAllDiscussionsPool: async (userId: string): Promise<{
     pool: {
       id: string;
       title: string;
@@ -935,7 +948,7 @@ export const api = {
     }[];
   }> => {
     return safeFetchJson(
-      '/api/v1/deflection/discussions-pool',
+      `/api/v1/deflection/discussions-pool?userId=${userId}`,
       undefined,
       () => {
         const approvedPosts = localPosts.filter((p) => p.status === 'APPROVED');
@@ -966,7 +979,8 @@ export const api = {
 
   // Closed-loop RAG Assistant (Trained on Dr. Seema's 50 Verified Clinical FAQs)
   chatWithAssistant: async (
-    query: string
+    query: string,
+    userId: string
   ): Promise<{
     answer: string;
     isMedicationRefusal?: boolean;
@@ -979,7 +993,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, userId }),
       },
       () => {
         return generateLocalRagResponse(query);
@@ -988,13 +1002,13 @@ export const api = {
   },
 
   // 50 Clinical FAQs
-  getClinicalFaqs: async (): Promise<ClinicalFaqItem[]> => {
-    return safeFetchJson('/api/v1/knowledge/faq', undefined, () => [...CLINICAL_50_FAQ]);
+  getClinicalFaqs: async (userId: string): Promise<ClinicalFaqItem[]> => {
+    return safeFetchJson(`/api/v1/knowledge/faq?userId=${userId}`, undefined, () => [...CLINICAL_50_FAQ]);
   },
 
   // Resources
-  getResources: async (): Promise<ClinicalResource[]> => {
-    return safeFetchJson('/api/v1/resources', undefined, () => [...localResources]);
+  getResources: async (userId: string): Promise<ClinicalResource[]> => {
+    return safeFetchJson(`/api/v1/resources?userId=${userId}`, undefined, () => [...localResources]);
   },
 
   createResource: async (payload: {
@@ -1002,9 +1016,10 @@ export const api = {
     category: ClinicalResource['category'];
     summary: string;
     contentBody: string;
-    diseaseDomain?: 'FTD' | 'ALZHEIMERS' | 'LBD';
+    diseaseDomain?: Audience;
     externalUrl?: string;
     keyTakeaways?: string[];
+    authorId: string;
   }): Promise<ClinicalResource> => {
     return safeFetchJson(
       '/api/v1/resources',
@@ -1032,8 +1047,8 @@ export const api = {
   },
 
   // Clinic Updates
-  getUpdates: async (): Promise<ClinicUpdate[]> => {
-    return safeFetchJson('/api/v1/updates', undefined, () => [...localUpdates]);
+  getUpdates: async (userId: string): Promise<ClinicUpdate[]> => {
+    return safeFetchJson(`/api/v1/updates?userId=${userId}`, undefined, () => [...localUpdates]);
   },
 
   createUpdate: async (payload: Omit<ClinicUpdate, 'id' | 'createdAt'>): Promise<ClinicUpdate> => {
@@ -1065,8 +1080,8 @@ export const api = {
   },
 
   // Calendar Events
-  getEvents: async (): Promise<CalendarEvent[]> => {
-    return safeFetchJson('/api/v1/events', undefined, () => [...localEvents]);
+  getEvents: async (userId: string): Promise<CalendarEvent[]> => {
+    return safeFetchJson(`/api/v1/events?userId=${userId}`, undefined, () => [...localEvents]);
   },
 
   // createEvent: send authorId along with the event
@@ -1133,6 +1148,8 @@ export const api = {
     lastName?: string;
     clinicPatientId?: string;
     primaryCohortSlug: string;
+    condition: Condition;
+    phoneNumber?: string;
   }): Promise<{
     invitationId: string;
     inviteToken: string;

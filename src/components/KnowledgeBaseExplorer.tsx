@@ -40,8 +40,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [newContentBody, setNewContentBody] = useState('');
   const [newKeyTakeaways, setNewKeyTakeaways] = useState('');
   const [newExternalUrl, setNewExternalUrl] = useState('');
+  const [newFileAttachmentUrl, setNewFileAttachmentUrl] = useState('');
+  const [newAdditionalLinks, setNewAdditionalLinks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
 
   const isClinician = currentUser?.role === 'CLINICIAN_MODERATOR' || currentUser?.role === 'SYSTEM_ADMIN';
 
@@ -79,13 +82,19 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     const matchesSearch =
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      res.contentBody.toLowerCase().includes(searchQuery.toLowerCase());
+      (res.contentBody ?? '').toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch;
   });
 
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
+    if (
+      !newTitle.trim() ||
+      !newSummary.trim() ||
+      (!newExternalUrl.trim() && !newFileAttachmentUrl.trim()) ||
+      !newAudience ||
+      isSubmitting
+    ) return;
 
     setIsSubmitting(true);
     try {
@@ -230,14 +239,29 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-[#002D72] dark:text-blue-400 font-semibold">
-                <span className="flex items-center gap-1 group-hover:underline">
-                  <span>Read protocol</span>
-                  <span>→</span>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
+                <div className="flex flex-wrap items-center gap-2">
+                  {res.fileAttachmentUrl && (
+                    <span className="inline-flex items-center gap-1 text-[#002D72] dark:text-blue-400">
+                      <FileText className="w-4 h-4" />
+                      PDF available
+                    </span>
+                  )}
+                  {res.externalUrl && (
+                    <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                      <ExternalLink className="w-4 h-4" />
+                      Website
+                    </span>
+                  )}
+                  {res.additionalLinks?.length ? (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      +{res.additionalLinks.length} more link{res.additionalLinks.length === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </div>
+                <span className="text-[#002D72] dark:text-blue-400 group-hover:underline shrink-0">
+                  View guide →
                 </span>
-                {res.externalUrl && (
-                  <ExternalLink className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
-                )}
               </div>
             </article>
           ))}
@@ -286,6 +310,60 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 <p className="leading-relaxed">{activeResource.summary}</p>
               </div>
 
+              {/* Source Documents */}
+              {(activeResource.fileAttachmentUrl ||
+                activeResource.externalUrl ||
+                activeResource.additionalLinks?.length) && (
+                <div className="space-y-2">
+                  <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
+                    Source Documents
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {activeResource.fileAttachmentUrl && (
+                      <a
+                        href={activeResource.fileAttachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <FileText className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">Open PDF guide</span>
+                        <ExternalLink className="w-4 h-4 ml-auto shrink-0" />
+                      </a>
+                    )}
+
+                    {activeResource.externalUrl && (
+                      <a
+                        href={activeResource.externalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <ExternalLink className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">Visit source website</span>
+                      </a>
+                    )}
+
+                    {activeResource.additionalLinks?.map((link) => (
+                      <a
+                        key={link.url}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <ExternalLink className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">{link.label}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Protocol Content */}
               <div className="space-y-2">
                 <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
@@ -323,11 +401,13 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   rel="noopener noreferrer"
                   className="text-[#002D72] dark:text-blue-400 hover:underline font-semibold flex items-center gap-1.5"
                 >
-                  <span>Official AFTD Source</span>
+                  <span>View original source</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
               ) : (
-                <span className="text-slate-400 dark:text-slate-500">Johns Hopkins Internal Protocol</span>
+                <span className="text-slate-400 dark:text-slate-500">
+                  Resource details
+                </span>
               )}
 
               <button
@@ -469,7 +549,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  External Citation or AFTD Reference URL (Optional)
+                  External Citation (Optional)
                 </label>
                 <input
                   type="url"
@@ -478,6 +558,39 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   placeholder="https://www.theaftd.org/..."
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Additional website links (one per line: Label | URL)
+                </label>
+                <textarea
+                  rows={3}
+                  value={newAdditionalLinks}
+                  onChange={(e) => setNewAdditionalLinks(e.target.value)}
+                  placeholder={'AFTD driving guidance | https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/\nAnother source | https://example.org'}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  PDF Resource (Optional)
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => setNewPdfFile(e.target.files?.[0] ?? null)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                />
+                {newPdfFile && (
+                  <p className="mt-1 text-slate-500 dark:text-slate-400">
+                    Selected: {newPdfFile.name}
+                  </p>
+                )}
+                <p className="mt-1 text-slate-500 dark:text-slate-400">
+                  Upload a PDF, or provide a webpage URL above. At least one source is required.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">

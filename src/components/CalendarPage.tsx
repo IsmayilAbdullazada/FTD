@@ -48,10 +48,23 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
   const [form, setForm] = useState(emptyForm());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
-    api.getEvents(currentUser.id).then(setEvents);
+    let cancelled = false;
+    const loadEvents = async () => {
+      try {
+        const data = await api.getEvents(currentUser.id);
+        if (!cancelled) setEvents(data);
+      } catch (err) {
+        console.error('Failed to load calendar events:', err);
+      }
+    };
+    loadEvents();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser.id]);
 
   const eventsByDay = useMemo(() => {
@@ -93,6 +106,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
 
   const openAdd = (dateKey = '') => {
     setForm(emptyForm(dateKey));
+    setError(null);
     setShowModal(true);
   };
 
@@ -116,10 +130,17 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
       setShowModal(false);
       setToast(`"${created.title}" added to the calendar.`);
       setTimeout(() => setToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to create calendar event:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not add event. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
-  };
+  };  
 
   const handleDelete = async (ev: CalendarEvent) => {
     await api.deleteEvent(ev.id, currentUser.id);
@@ -235,28 +256,6 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Type</label>
-          <select className={inputCls} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>
-            {Object.entries(TYPE_META).map(([key, m]) => (
-              <option key={key} value={key}>{m.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Date & Time</label>
-          <input
-            type="datetime-local"
-            className={inputCls}
-            value={form.startsAt}
-            onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-            required
-          />
-        </div>
-      </div>
-
       {/* Event list */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -349,9 +348,50 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
             </div>
 
             <form onSubmit={handleAdd} className="p-4 overflow-y-auto space-y-3.5 text-xs flex-1">
+              {error && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Event Title</label>
                 <input className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Event Date and Time
+                </label>
+                <input
+                  type="datetime-local"
+                  className={inputCls}
+                  value={form.startsAt}
+                  onChange={(e) => {
+                    setForm({ ...form, startsAt: e.target.value });
+                    setError(null);
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Event Type
+                </label>
+                <select
+                  className={inputCls}
+                  value={form.type}
+                  onChange={(e) =>
+                    setForm({ ...form, type: e.target.value as EventType })
+                  }
+                >
+                  <option value="SUPPORT_GROUP">Support Group</option>
+                  <option value="CARE_PARTNER_CONFERENCE">Care Partner Conference</option>
+                  <option value="SOCIAL">Social Get-Together</option>
+                </select>
               </div>
 
               <div>

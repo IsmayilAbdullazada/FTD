@@ -22,7 +22,7 @@ export const INITIAL_USERS: (CurrentUser & { phoneNumber?: string })[] = [
     lastName: 'Gulyani',
     phoneNumber: '(410) 955-5000',
     clinicPatientId: 'STAFF-MD-409',
-    anonymousHandle: 'Dr. Seema Gulyani',
+    anonymousHandle: 'Seema Gulyani',
     avatarColor: '#002D72',
     badgeLabel: 'Clinician Moderator',
   },
@@ -381,11 +381,11 @@ export const INITIAL_POSTS: Post[] = [
   {
     id: 'post-general-1',
     title: 'General Forum: Managing apathy vs depression in frontotemporal dementia',
-    content: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    content: 'Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -585,7 +585,7 @@ export const INITIAL_POSTS: Post[] = [
   {
     id: 'post-12',
     title: 'Coping with emotional blunting and loss of empathy in your partner',
-    content: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Dr. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
+    content: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
     status: 'APPROVED',
     isClosed: false,
     author: {
@@ -639,11 +639,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-gen-1',
     postId: 'post-general-1',
-    content: 'Dr. Seema Gulyani: Remember to break tasks into concrete 1-step tactile prompts (like folding warm towels or sorting familiar coins) rather than asking open-ended questions like "What do you want to do today?".',
+    content: 'Seema Gulyani: Remember to break tasks into concrete 1-step tactile prompts (like folding warm towels or sorting familiar coins) rather than asking open-ended questions like "What do you want to do today?".',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -652,11 +652,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-1',
     postId: 'post-1',
-    content: 'Dr. Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    content: 'Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -691,11 +691,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-4',
     postId: 'post-2',
-    content: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    content: 'Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -743,11 +743,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-8',
     postId: 'post-4',
-    content: 'Dr. Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
+    content: 'Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -769,11 +769,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-10',
     postId: 'post-5',
-    content: 'Dr. Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
+    content: 'Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -808,11 +808,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-13',
     postId: 'post-6',
-    content: 'Dr. Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
+    content: 'Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -834,11 +834,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-15',
     postId: 'post-7',
-    content: 'Dr. Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
+    content: 'Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -886,11 +886,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-19',
     postId: 'post-9',
-    content: 'Dr. Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
+    content: 'Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -912,11 +912,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-21',
     postId: 'post-10',
-    content: 'Dr. Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
+    content: 'Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -938,11 +938,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-23',
     postId: 'post-11',
-    content: 'Dr. Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
+    content: 'Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -977,11 +977,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-26',
     postId: 'post-12',
-    content: 'Dr. Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
+    content: 'Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -1003,11 +1003,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-28',
     postId: 'post-13',
-    content: 'Dr. Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
+    content: 'Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -1029,11 +1029,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-30',
     postId: 'post-14',
-    content: 'Dr. Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
+    content: 'Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },

@@ -187,7 +187,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins FTD specialists.
+            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins specialists.
           </p>
         </div>
 
@@ -642,7 +642,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  External Citation (Optional)
+                  External Citation
                 </label>
                 <input
                   type="url"

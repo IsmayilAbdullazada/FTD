@@ -141,7 +141,7 @@ export interface ClinicalResource {
   externalUrl?: string;
   fileAttachmentUrl?: string;
   diseaseDomain: 'FTD' | 'ALZHEIMERS' | 'LBD';
-  category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
+  category: string;
   keyTakeaways: string[];
   createdAt: string;
 }
@@ -161,7 +161,7 @@ export interface ModerationAuditEvent {
   id: string;
   moderatorId: string;
   moderatorName: string;
-  entityType: 'POST' | 'COMMENT' | 'USER' | 'COHORT';
+  entityType: 'POST' | 'COMMENT' | 'USER' | 'COHORT' | 'KNOWLEDGE';
   entityId: string;
   actionTaken: string;
   reason?: string;

@@ -15,7 +15,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { api } from '../services/api';
-import { CLINICAL_50_FAQ, ClinicalFaqItem } from '../data/clinicalRagFaq';
+import type { ClinicalFaqItem } from '../data/clinicalRagFaq';
 
 interface FloatingChatbotAssistantProps {
   isOpen: boolean;
@@ -35,17 +35,7 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const FAQ_CATEGORIES = [
-  { id: 'ALL', label: 'All 50 FAQs' },
-  { id: 'BEHAVIORAL_DISINHIBITION', label: 'Disinhibition' },
-  { id: 'HYGIENE_BATHING', label: 'Bathing & Care' },
-  { id: 'WANDERING_SAFETY', label: 'Wandering' },
-  { id: 'DRIVING_SAFETY', label: 'Driving' },
-  { id: 'COMMUNICATION_PPA', label: 'PPA & Speech' },
-  { id: 'NUTRITION_HYPERORALITY', label: 'Diet & Sweets' },
-  { id: 'LEGAL_MEDICAID', label: 'Legal & Medicaid' },
-  { id: 'CRISIS_EMERGENCY', label: 'Crisis & 911' },
-];
+
 
 const renderInlineFormatted = (rawText: string) => {
   const parts = rawText.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -212,6 +202,14 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   onClose,
   onOpenResource,
 }) => {
+  const [liveFaqs, setLiveFaqs] = useState<ClinicalFaqItem[]>([]);
+  const [topics, setTopics] = useState<import('../types/knowledge').KnowledgeTopic[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const load = () => Promise.all([api.getClinicalFaqs(), api.getTopics()]).then(([faqs, topics]) => { if(alive) {setLiveFaqs(faqs);setTopics(topics);} }).catch(() => {if(alive) {setLiveFaqs([]);setTopics([]);}});
+    load(); const timer = setInterval(load, 4000); return () => {alive=false;clearInterval(timer)};
+  }, []);
+  const FAQ_CATEGORIES = [{id:'ALL',label:`All ${liveFaqs.length} questions`}, ...topics.map(t=>({id:t.id,label:t.name}))];
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState('ALL');
@@ -227,16 +225,15 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     {
       id: 'msg-welcome',
       sender: 'assistant',
-      text: `Hello. I'm Dr. Seema's Clinical Assistant for our Johns Hopkins Care Partner families.\n\nCaring for a loved one with Frontotemporal Dementia (FTD) is often exhausting, and it is completely normal to feel unsure of what to do. You can ask me any daily question—like what to do about bathing resistance, blunt remarks in public, driving safety, sweet cravings, or memory care planning.\n\nHow can I support you and your loved one today?`,
+      text: `Hello. I'm Dr. Seema's Clinical Assistant for our Johns Hopkins Care Partner families.\n\nCaring for a loved one with Frontotemporal Dementia (FTD) is often exhausting, and it is completely normal to feel unsure of what to do. I can share guidance from content your clinic has approved. Browse the available questions or ask what is on your mind.\n\nHow can I support you and your loved one today?`,
       timestamp: 'Now',
-      suggestedQuestions: [
-        'Why does my loved one make blunt or rude comments in public?',
-        'How do I handle violent resistance during showers and bathing?',
-        'How do I stop my loved one from driving safely?',
-        'Why are they constantly craving sweets and overeating?',
-      ],
+      suggestedQuestions: [],
     },
   ]);
+
+  useEffect(()=>{
+    setMessages(current=>current.map(m=>m.id==='msg-welcome'||m.id.startsWith('welcome-')?{...m,suggestedQuestions:liveFaqs.slice(0,3).map(f=>f.question)}:m));
+  },[liveFaqs]);
 
   // Click-outside listener & escape key to prevent capturing the screen
   useEffect(() => {
@@ -310,7 +307,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         text: res.answer,
         isMedicationRefusal: res.isMedicationRefusal,
         citedResources: res.citedResources || [],
-        matchedFaq: res.matchedFaq,
+
         suggestedQuestions: res.suggestedQuestions || [],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
@@ -338,19 +335,14 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         sender: 'assistant',
         text: `Chat reset. I am here to help you with any caregiving questions or practical steps you need. How can I support you today?`,
         timestamp: 'Now',
-        suggestedQuestions: [
-          'Why does my loved one make blunt or rude comments in public?',
-          'How do I handle violent resistance during showers and bathing?',
-          'How do I stop my loved one from driving safely?',
-          'What legal documents must be completed immediately?',
-        ],
+        suggestedQuestions: liveFaqs.slice(0,3).map(f=>f.question),
       },
     ]);
     setShowFaqBrowser(false);
   };
 
   // Filtered FAQs for browser
-  const filteredFaqs = CLINICAL_50_FAQ.filter((faq) => {
+  const filteredFaqs = liveFaqs.filter((faq) => {
     const matchesCat = activeCategory === 'ALL' || faq.category === activeCategory;
     if (!matchesCat) return false;
     if (!faqSearchTerm.trim()) return true;
@@ -480,7 +472,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                     type="text"
                     value={faqSearchTerm}
                     onChange={(e) => setFaqSearchTerm(e.target.value)}
-                    placeholder="Search all 50 clinical questions..."
+                    placeholder={`Search all ${liveFaqs.length} questions...`}
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500"
                   />
                 </div>
@@ -608,7 +600,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                             Related Physician Topics:
                           </span>
                           <div className="flex flex-col gap-1">
-                            {msg.suggestedQuestions.map((q, idx) => (
+                            {msg.suggestedQuestions.filter(q=>liveFaqs.some(f=>f.question===q)).map((q, idx) => (
                               <button
                                 key={idx}
                                 type="button"

@@ -173,8 +173,9 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'moderation' && (
+        {activeTab === 'moderation' && currentUser && ['CLINICIAN_MODERATOR','SYSTEM_ADMIN'].includes(currentUser.role) && (
           <ClinicianDashboard
+            currentUser={currentUser}
             cohorts={cohorts}
             onQueueUpdated={handleQueueUpdated}
             onOpenAudit={() => setIsAuditOpen(true)}
@@ -243,6 +244,7 @@ export default function App() {
       />
 
       <AuditLedgerModal
+        userId={currentUser?.id}
         isOpen={isAuditOpen}
         onClose={() => setIsAuditOpen(false)}
       />

@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
                 alt="Hopkins Care Partner Connect"
                 className="w-7 h-7 sm:w-8 sm:h-8 object-contain shrink-0 group-hover:scale-105 transition-transform"
               />
-              <div className="leading-tight shrink-0">
+              <div className="leading-tight shrink-0 md:hidden xl:block">
                 <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight whitespace-nowrap block">
                   <span className="xl:hidden">Hopkins Connect</span>
                   <span className="hidden xl:inline">Hopkins Care Partner Connect</span>
@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="hidden xl:block h-5 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
 
             {/* Standard Desktop & Tablet Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 lg:gap-1.5 shrink-0">
+            <nav className="hidden md:flex items-center gap-1 lg:gap-1.5 min-w-0 overflow-x-auto">
               {/* Clinician / CS Admin Dashboard */}
               {(isClinician || isAdmin) && (
                 <button

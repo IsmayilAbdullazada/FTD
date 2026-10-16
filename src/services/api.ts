@@ -18,17 +18,15 @@ import {
 import {
   INITIAL_USERS,
   INITIAL_GROUPS,
-  INITIAL_RESOURCES,
   INITIAL_POSTS,
   INITIAL_COMMENTS,
   INITIAL_QUEUE_ITEMS,
 } from '../data/clinicalStore';
-import { CLINICAL_50_FAQ, generateLocalRagResponse, type ClinicalFaqItem } from '../data/ragEngine';
+import type { ClinicalFaqItem } from '../data/clinicalRagFaq';
 
 // In-memory local state fallback so app NEVER fails even if dev server returns HTML fallback
 let localUsers = [...INITIAL_USERS];
 let localCohorts = [...INITIAL_GROUPS];
-let localResources = [...INITIAL_RESOURCES];
 let localPosts = [...INITIAL_POSTS];
 let localComments = [...INITIAL_COMMENTS];
 let localQueue = [...INITIAL_QUEUE_ITEMS];
@@ -803,29 +801,7 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ draftText }),
       },
-      () => {
-        const text = draftText.toLowerCase();
-        const matches: DeflectionMatch[] = [];
-
-        localResources.forEach((res) => {
-          const combined = `${res.title} ${res.summary} ${res.contentBody}`.toLowerCase();
-          const words = text.split(/\s+/).filter((w) => w.length > 3);
-          const score = words.filter((w) => combined.includes(w)).length;
-          if (score >= 1) {
-            matches.push({
-              sourceType: 'RESOURCE',
-              id: res.id,
-              title: res.title,
-              category: res.category,
-              snippet: res.summary,
-              url: res.externalUrl,
-              confidenceScore: Math.min(0.95, 0.6 + score * 0.1),
-            });
-          }
-        });
-
-        return { deflectionMatches: matches.slice(0, 3) };
-      }
+      () => ({ deflectionMatches: [] })
     );
   },
 
@@ -964,72 +940,10 @@ export const api = {
     );
   },
 
-  // Closed-loop RAG Assistant (Trained on Dr. Seema's 50 Verified Clinical FAQs)
-  chatWithAssistant: async (
-    query: string
-  ): Promise<{
-    answer: string;
-    isMedicationRefusal?: boolean;
-    citedResources?: any[];
-    matchedFaq?: ClinicalFaqItem;
-    suggestedQuestions?: string[];
-  }> => {
-    return safeFetchJson(
-      '/api/v1/knowledge/chat',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      },
-      () => {
-        return generateLocalRagResponse(query);
-      }
-    );
-  },
-
-  // 50 Clinical FAQs
-  getClinicalFaqs: async (): Promise<ClinicalFaqItem[]> => {
-    return safeFetchJson('/api/v1/knowledge/faq', undefined, () => [...CLINICAL_50_FAQ]);
-  },
-
-  // Resources
-  getResources: async (): Promise<ClinicalResource[]> => {
-    return safeFetchJson('/api/v1/resources', undefined, () => [...localResources]);
-  },
-
-  createResource: async (payload: {
-    title: string;
-    category: ClinicalResource['category'];
-    summary: string;
-    contentBody: string;
-    diseaseDomain?: 'FTD' | 'ALZHEIMERS' | 'LBD';
-    externalUrl?: string;
-    keyTakeaways?: string[];
-  }): Promise<ClinicalResource> => {
-    return safeFetchJson(
-      '/api/v1/resources',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-      () => {
-        const newRes: ClinicalResource = {
-          id: `res-${Date.now()}`,
-          title: payload.title,
-          category: payload.category || 'BEHAVIORAL_AGITATION',
-          summary: payload.summary,
-          contentBody: payload.contentBody,
-          diseaseDomain: payload.diseaseDomain || 'FTD',
-          externalUrl: payload.externalUrl || '',
-          keyTakeaways: payload.keyTakeaways || [],
-          createdAt: new Date().toISOString(),
-        };
-        localResources.unshift(newRes);
-        return newRes;
-      }
-    );
-  },
+  chatWithAssistant: async (query: string) => knowledgeFetch<import('../types/knowledge').KnowledgeAnswer>('/api/v1/knowledge/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({query}) }),
+  getClinicalFaqs: async (): Promise<ClinicalFaqItem[]> => knowledgeFetch('/api/v1/knowledge/faq'),
+  getTopics: async (): Promise<import('../types/knowledge').KnowledgeTopic[]> => knowledgeFetch('/api/v1/knowledge/topics'),
+  getResources: async (): Promise<ClinicalResource[]> => knowledgeFetch('/api/v1/resources'),
 
   // Clinic Updates
   getUpdates: async (): Promise<ClinicUpdate[]> => {
@@ -1095,8 +1009,8 @@ export const api = {
 
 
   // Audit Events
-  getAuditEvents: async (): Promise<ModerationAuditEvent[]> => {
-    return safeFetchJson('/api/v1/moderation/audit', undefined, () => [...localAuditEvents]);
+  getAuditEvents: async (userId?: string): Promise<ModerationAuditEvent[]> => {
+    return safeFetchJson('/api/v1/moderation/audit', {headers: userId ? {'x-user-id': userId} : {}}, () => [...localAuditEvents]);
   },
 
   // Notifications
@@ -1160,3 +1074,9 @@ export const api = {
     );
   },
 };
+
+async function knowledgeFetch<T>(url: string, options?: RequestInit): Promise<T> {
+ const response = await fetch(url, {...options, cache: 'no-store'});
+ if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Unable to reach the clinical knowledge base');
+ return response.json();
+}

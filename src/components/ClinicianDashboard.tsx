@@ -1,3 +1,7 @@
+import { ChatbotKnowledge } from './ChatbotKnowledge';
+import { loadKnowledge } from '../services/knowledgeApi';
+import type { CurrentUser } from '../types';
+import type { KnowledgeOverview } from '../types/knowledge';
 import React, { useState, useEffect } from 'react';
 import {
   Shield,
@@ -33,6 +37,7 @@ import {
 import { api } from '../services/api';
 
 interface ClinicianDashboardProps {
+  currentUser: CurrentUser;
   cohorts: CommunityGroup[];
   onQueueUpdated: () => void;
   onOpenInvite: () => void;
@@ -43,14 +48,17 @@ interface ClinicianDashboardProps {
 
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   cohorts,
+  currentUser,
   onQueueUpdated,
   onOpenInvite,
   onOpenAudit,
   onCohortCreated,
   onOpenDiscussion,
 }) => {
-  const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members' | 'knowledge'>('queue');
 
+  const [knowledgeOverview, setKnowledgeOverview] = useState<KnowledgeOverview>();
+  useEffect(()=>{loadKnowledge(currentUser.id).then(setKnowledgeOverview).catch(()=>{});},[currentUser.id]);
   // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
@@ -422,7 +430,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       )}
 
       {/* 4 STAT CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTab('queue')}
           className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
@@ -496,6 +504,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">caregivers</span>
           </div>
         </div>
+        <button onClick={() => setActiveTab('knowledge')} className="col-span-2 lg:col-span-1 text-left p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 space-y-2">
+          <span className="font-semibold">Chatbot Knowledge</span><strong className="block text-3xl">{knowledgeOverview?.liveCount ?? '…'}</strong><span className="block text-sm">live items</span><span className="flex gap-2 text-sm"><CheckCircle size={18} className="shrink-0"/>{knowledgeOverview?.status || 'Opening your content…'}</span>
+        </button>
       </div>
 
       {/* TABS */}
@@ -558,10 +569,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               {members.length}
             </span>
           </button>
+          <button onClick={() => setActiveTab('knowledge')} className={`min-h-11 pb-3 whitespace-nowrap shrink-0 border-b-2 ${activeTab === 'knowledge' ? 'border-blue-700 dark:border-blue-300 text-blue-800 dark:text-blue-300' : 'border-transparent text-slate-600 dark:text-slate-300'}`}>Chatbot Knowledge</button>
         </div>
       </div>
 
       {/* TAB 1: PENDING POSTS */}
+      <div hidden={activeTab !== 'knowledge'}><ChatbotKnowledge key={currentUser.id} user={currentUser} onOverview={setKnowledgeOverview} /></div>
+
       {activeTab === 'queue' && (
         <div className="space-y-4">
           {loadingQueue ? (

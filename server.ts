@@ -2,8 +2,9 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI } from '@google/genai';
-import { CLINICAL_50_FAQ, searchClinicalFaq, generateLocalRagResponse, type ClinicalFaqItem } from './src/data/ragEngine.ts';
+import { registerKnowledge } from './server/knowledgeRoutes.ts';
+import { getState, guides } from './server/knowledgeStore.ts';
+import { CLINIC, SUPPORT, DISCUSSION_MEDICATION_WORDS, REMEDY_WORDS } from './server/safety.ts';
 
 dotenv.config();
 
@@ -13,24 +14,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
-
-// Initialize Gemini SDK on server-side if key is present
-let ai: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  try {
-    ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  } catch (err) {
-    console.warn('Failed to initialize GoogleGenAI client:', err);
-  }
-}
+app.use((req,res,next)=>{if(req.path.startsWith('/api/v1/staff/knowledge'))return next();return express.json()(req,res,next);});
 
 // -------------------------------------------------------------
 // IN-MEMORY RELATIONAL DATABASE STORE (Matches Schema Section 4.2)
@@ -129,7 +113,7 @@ interface ModerationAuditEvent {
   id: string;
   moderatorId: string;
   moderatorName: string;
-  entityType: 'POST' | 'COMMENT' | 'USER' | 'COHORT';
+  entityType: 'POST' | 'COMMENT' | 'USER' | 'COHORT' | 'KNOWLEDGE';
   entityId: string;
   actionTaken: string;
   reason?: string;
@@ -477,102 +461,7 @@ function getUserAllowedGroups(userId: string, role: string): string[] {
   return ['group-general', 'group-central-maryland'];
 }
 
-const clinicalResources: ClinicalResource[] = [
-  {
-    id: 'res-aftd-incontinence',
-    title: 'AFTD Practical Care Sheet: Managing Incontinence in bvFTD',
-    summary: 'Clinical guidelines on loss of bowel/bladder awareness, toileting schedules, and behavioral strategies without confrontation.',
-    contentBody: `In Behavioral Variant FTD (bvFTD), incontinence often stems not from urological failure, but from frontal lobe disinhibition and loss of interoceptive awareness (inability to perceive body cues).
 
-Key Strategies:
-1. Scheduled Voiding Routine: Escort patient to restroom every 90-120 minutes on a fixed timer rather than asking "Do you need to go?" (asking frequently triggers automatic oppositional refusal).
-2. Adaptive Garments: Tear-away side pull-ons with quiet cloth liners reduce tactile defensiveness compared to noisy plastic briefs.
-3. Visual Cueing: Leave restroom door open with the toilet in direct sightline, illuminated by high-contrast warm lighting. Use contrasting color toilet seats (dark blue on white porcelain).
-4. Fluid Management: Maintain high hydration during morning and early afternoon to prevent UTIs, but taper fluids 2 hours before bedtime.
-5. Escalation Warning: Sudden acute incontinence or delirium may signal a urinary tract infection (UTI). Contact the clinic promptly for urinalysis.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/incontinence/',
-    fileAttachmentUrl: '/resources/aftd-incontinence-guide.pdf',
-    diseaseDomain: 'FTD',
-    category: 'INCONTINENCE',
-    keyTakeaways: [
-      'Scheduled voiding every 90-120 minutes prevents resistance',
-      'Use quiet cloth-backed tear-away briefs rather than crinkly plastic',
-      'High-contrast colored toilet seat assists visual spatial processing',
-      'Rule out UTI if sudden acute incontinence develops',
-    ],
-    createdAt: '2026-01-20T10:00:00Z',
-  },
-  {
-    id: 'res-aftd-bathing',
-    title: 'De-escalating Bathing and Shower Agitation in Frontotemporal Dementia',
-    summary: 'Trauma-informed, non-pharmacological protocols for severe shower resistance, sponge throwing, and tactile hypersensitivity.',
-    contentBody: `Shower aggression in FTD is almost always driven by sensory overload (the sound of rushing water, cold air, naked vulnerability) and loss of cognitive sequence comprehension.
-
-Recommended Clinic Protocols:
-1. Towel Bathing Method: Keep the patient wrapped in large warm bath towels. Uncover only one limb at a time to wash with warm, no-rinse soothing washcloths.
-2. Ambient Preparation: Heat the bathroom to 78°F with a portable radiant heater before undressing begins. Run the water beforehand so the sound is constant rather than a sudden startling blast.
-3. Remove Overhead Showers: Overhead water sprays directly onto the face feel like an assault to a disinhibited frontal lobe. Use a handheld wand directed strictly at the feet and torso.
-4. Sing or Play Familiar Music: Familiar songs from early adulthood occupy the auditory cortex and decrease amygdala threat responses.
-5. NEVER Argue or Restrain: If agitation escalates to physical defense, step back, ensure physical safety, disengage calmly, and re-attempt 45 minutes later with a different caregiver or technique.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/daily-care/',
-    fileAttachmentUrl: '/resources/bathing-agitation-protocol.pdf',
-    diseaseDomain: 'FTD',
-    category: 'BEHAVIORAL_AGITATION',
-    keyTakeaways: [
-      'Pre-warm the bathroom to 78°F before undressing',
-      'Utilize no-rinse warm towel bathing when showers cause terror',
-      'Handheld shower wand directed away from face',
-      'Music and step-by-step calm reassurance reduces fight-or-flight',
-    ],
-    createdAt: '2026-02-05T12:00:00Z',
-  },
-  {
-    id: 'res-medicaid-legal',
-    title: 'Medicaid Long-Term Care & Elder Law Resource Guide (Maryland & PA)',
-    summary: 'Guidance on Medicaid five-year look-back, spousal impoverishment protections, and vetted elder law counsel in MD/PA.',
-    contentBody: `Navigating long-term residential memory care placement requires early legal structuring before cognitive impairment prevents signing Powers of Attorney.
-
-Crucial Facts for Care Partners:
-1. Spousal Impoverishment Protections: In Maryland, the community spouse can retain the primary residence, one automobile, and a substantial Community Spouse Resource Allowance (CSRA) up to statutory limits (~$154,140 in 2026).
-2. Five-Year Lookback Rule: Any gift or transfer of assets for less than fair market value within 60 months prior to Medicaid application triggers penalty periods.
-3. Special Needs / Supplemental Trusts: Enable families to provide quality-of-life enhancements for the diagnosed individual without jeopardizing Medicaid eligibility.
-4. Clinic Vetted Contacts: Maryland Legal Aid Senior Legal Helpline: 1-800-999-8904. National Academy of Elder Law Attorneys (NAELA) directory at naela.org.`,
-    externalUrl: 'https://aging.maryland.gov/Pages/medicaid-long-term-care.aspx',
-    fileAttachmentUrl: '/resources/md-medicaid-elder-law.pdf',
-    diseaseDomain: 'FTD',
-    category: 'LEGAL_MEDICAID',
-    keyTakeaways: [
-      'Community spouse retains primary home and protected asset allowance',
-      'Beware 60-month lookback on uncompensated transfers',
-      'Execute Durable Financial & Medical Powers of Attorney immediately',
-      'Consult vetted NAELA-certified elder law counsel',
-    ],
-    createdAt: '2026-02-18T15:30:00Z',
-  },
-  {
-    id: 'res-safety-wandering',
-    title: 'FTD Wandering, Elopement & Impulsive Driving Risk Management',
-    summary: 'Mitigating acute safety risks from loss of hazard awareness, GPS tracker placement, and driving retirement.',
-    contentBody: `Unlike Alzheimer's wandering where patients are disoriented and looking for childhood homes, bvFTD wandering is frequently purposeful and rapid (e.g., compulsive walks along known routes or fixated shopping trips), but with total disregard for oncoming traffic.
-
-Protocols:
-1. Discrete GPS Tracking: Affix discreet Apple AirTags or AngelSense wearable devices in shoe insoles or jacket linings (wristwatches are often discarded).
-2. Key Camouflage & Disabling: Discontinue driving privileges decisively. Hide car keys, install a battery disconnect switch or fuse-pull rather than debating driving competence.
-3. Door Alarms: Install magnetic chime sensors on exterior doors placed at top of door frame outside normal line of sight.
-4. Safe Return Registry: File a wandering profile with local Baltimore / county police departments including recent photo, favorite walking spots, and de-escalation instructions.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/safety/',
-    fileAttachmentUrl: '/resources/wandering-safety-guide.pdf',
-    diseaseDomain: 'FTD',
-    category: 'SAFETY_WANDERING',
-    keyTakeaways: [
-      'Place GPS trackers in shoe insoles or sewn into jackets',
-      'Physically disable vehicle rather than engaging in logic arguments',
-      'Register with local county Safe Return police program',
-      'High door-frame chimes alert family during night wandering',
-    ],
-    createdAt: '2026-03-05T09:15:00Z',
-  },
-];
 
 // Helper: PII/PHI scrubber
 function scanForPhi(text: string): PhiAlert[] {
@@ -1426,6 +1315,8 @@ function projectAuthor(userId: string, requestingRole: string) {
 // -------------------------------------------------------------
 
 // Switch / Get Active User Persona (For Demo & Testing)
+registerKnowledge(app, users);
+
 app.get('/api/v1/users/me', (req, res) => {
   const userId = (req.query.asUser as string) || 'user-care-1';
   const user = users.find((u) => u.id === userId) || users[1];
@@ -1753,7 +1644,7 @@ app.post('/api/v1/posts', (req, res) => {
   const phiAlerts = scanForPhi(`${title} ${content}`);
 
   // Determine if it looks like an urgent clinical query
-  const medicationKeywords = ['seroquel', 'haldol', 'haloperidol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'milligram', 'mg', 'prescribe'];
+  const medicationKeywords = DISCUSSION_MEDICATION_WORDS;
   const hasMedicationMention = medicationKeywords.some((w) => `${title} ${content}`.toLowerCase().includes(w));
 
   const newPost: Post = {
@@ -2161,45 +2052,6 @@ app.post('/api/v1/notifications/:id/read', (req, res) => {
 });
 
 // Clinician Curated Resources
-app.get('/api/v1/resources', (_req, res) => {
-  res.json(clinicalResources);
-});
-
-app.post('/api/v1/resources', (req, res) => {
-  const { title, category, summary, contentBody, diseaseDomain, externalUrl, keyTakeaways } = req.body;
-  if (!title || !contentBody) {
-    return res.status(400).json({ error: 'Title and contentBody required' });
-  }
-
-  const newRes: ClinicalResource = {
-    id: `res-${Date.now()}`,
-    title,
-    category: category || 'BEHAVIORAL_AGITATION',
-    summary: summary || title,
-    contentBody,
-    diseaseDomain: diseaseDomain || 'FTD',
-    externalUrl: externalUrl || '',
-    keyTakeaways: keyTakeaways || [],
-    createdAt: new Date().toISOString(),
-  };
-
-  clinicalResources.unshift(newRes);
-
-  auditEvents.unshift({
-    id: `audit-${Date.now()}`,
-    moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
-    entityType: 'RESOURCE' as any,
-    entityId: newRes.id,
-    actionTaken: 'CREATED_CLINICAL_RESOURCE',
-    notes: `Added resource: "${title}" (${category})`,
-    createdAt: new Date().toISOString(),
-  });
-
-  res.status(201).json(newRes);
-});
-
-// Clinic Updates (everyone reads, staff writes)
 app.get('/api/v1/updates', (_req, res) => {
   const sorted = [...clinicUpdates].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json(sorted);
@@ -2306,8 +2158,8 @@ app.delete('/api/v1/events/:id', (req, res) => {
 });
 
 // Audit Log Events
-app.get('/api/v1/moderation/audit', (_req, res) => {
-  res.json(auditEvents);
+app.get('/api/v1/moderation/audit', (req, res) => {
+  res.json([...(isStaff(req.header('x-user-id')) ? getState().history : []), ...auditEvents].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)));
 });
 
 // Clinician Invite Care Partner Endpoint (US-1.1)
@@ -2368,7 +2220,7 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
 
   // Find matching curated resources
   const resourceMatches: any[] = [];
-  clinicalResources.forEach((resItem) => {
+  guides().forEach((resItem) => {
     let score = 0;
     const titleLower = resItem.title.toLowerCase();
     const contentLower = resItem.contentBody.toLowerCase();
@@ -2380,7 +2232,7 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
       'shower', 'bathing', 'bath', 'sponge', 'wash', 'hygiene', 'agitation',
       'medicaid', 'lawyer', 'attorney', 'legal', 'spend-down', 'assets', 'power of attorney',
       'wander', 'wandering', 'car', 'driving', 'elopement', 'keys', 'gps', 'tracker',
-      'lion mane', 'supplement', 'mushroom', 'cure',
+      ...REMEDY_WORDS, 'supplement', 'mushroom',
     ];
 
     keywords.forEach((kw) => {
@@ -2435,164 +2287,6 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
     .slice(0, 4);
 
   res.json({ deflectionMatches });
-});
-
-// 50 Clinical FAQs Endpoint
-app.get('/api/v1/knowledge/faq', (_req, res) => {
-  res.json(CLINICAL_50_FAQ);
-});
-
-// Closed-Loop Clinician RAG Assistant (Section 7.1)
-app.post('/api/v1/knowledge/chat', async (req, res) => {
-  const { query, conversationHistory = [] } = req.body;
-
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Query is required' });
-  }
-
-  const queryLower = query.toLowerCase();
-
-  // RULE 1 & 2: Prescription / medication dosage refusal gate
-  const restrictedDrugs = [
-    'seroquel', 'quetiapine', 'haloperidol', 'haldol', 'donepezil', 'aricept',
-    'memantine', 'namenda', 'trazodone', 'risperidone', 'olanzapine', 'zyprexa',
-    'lorazepam', 'ativan', 'clonazepam', 'klonopin', 'xanax', 'alprazolam',
-    'dose', 'dosage', 'milligrams', 'prescribe',
-  ];
-
-  const mentionsDrug = restrictedDrugs.some((d) => queryLower.includes(d));
-  if (mentionsDrug) {
-    return res.json({
-      answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
-      isMedicationRefusal: true,
-      citedResources: [],
-      suggestedQuestions: [
-        'How do I administer medicine safely when they spit pills out?',
-        'What should I tell Emergency Room doctors about sedatives?',
-        'How do I handle sudden acute agitation without sedatives?'
-      ]
-    });
-  }
-
-  // Check unverified supplements
-  const unverifiedKeywords = ['ivermectin', 'coconut oil', 'lion mane', 'turmeric', 'hydroxychloroquine', 'cure'];
-  if (unverifiedKeywords.some((u) => queryLower.includes(u))) {
-    return res.json({
-      answer: `I cannot provide guidance on unverified or speculative remedies. Dr. Seema’s repository only includes scientifically verified clinical protocols approved for Johns Hopkins FTD families. Please discuss any dietary supplements directly with your clinical neurology team at (410) 955-5147 (option 2).`,
-      isMedicationRefusal: false,
-      citedResources: [],
-      suggestedQuestions: [
-        'Why does my loved one crave sweets and carbohydrates?',
-        'How do I manage rapid weight loss or gain?',
-        'What are proven non-drug de-escalation techniques?'
-      ]
-    });
-  }
-
-  // RAG: Step 1 - Retrieve Top-K relevant clinical FAQs from 50 verified physician answers
-  const topFaqMatches = searchClinicalFaq(query, 4);
-  const bestFaq = topFaqMatches[0]?.item;
-
-  // RAG: Step 2 - Compile Curated Clinical Context
-  const faqContext = topFaqMatches
-    .map(
-      (m, idx) =>
-        `CLINICAL Q&A #${idx + 1}:\nQUESTION: ${m.item.question}\nCATEGORY: ${m.item.categoryLabel}\nPHYSICIAN ANSWER:\n${m.item.physicianAnswer}\nKEY PROTOCOLS:\n${m.item.keyProtocols.map((p) => `- ${p}`).join('\n')}`
-    )
-    .join('\n\n--------------------------------\n\n');
-
-  const resourceContext = clinicalResources
-    .map(
-      (r) =>
-        `DOCUMENT TITLE: ${r.title}\nCATEGORY: ${r.category}\nSUMMARY: ${r.summary}\nCLINICAL BODY:\n${r.contentBody}\nKEY PROTOCOLS:\n${r.keyTakeaways.map((t) => `- ${t}`).join('\n')}`
-    )
-    .join('\n\n--------------------------------\n\n');
-
-  const fullContextCorpus = `VERIFIED PHYSICIAN ANSWERS FROM DR. SEEMA'S 50-FAQ KNOWLEDGE BASE:\n\n${faqContext}\n\n================================\n\nAPPROVED CLINICAL GUIDES:\n\n${resourceContext}`;
-
-  // If Gemini API is available on the server, execute Gemini with Grounded Context & Temperature 0.0
-  if (ai) {
-    try {
-      const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic. You are speaking directly with family care partners (spouses, adult children, loved ones) who are often exhausted, overwhelmed, and looking for practical help.
-
-YOUR ROLE & VOICE:
-Speak with the warmth, compassion, and clarity of an experienced physician sitting down with a patient and their family. Speak in plain, human language that anyone can easily understand, regardless of their background or medical knowledge.
-
-CRITICAL COMMUNICATION GUIDELINES:
-1. PLAIN, HUMAN LANGUAGE:
-   - Avoid medical jargon. If you explain what is happening in the brain, use simple, everyday analogies (e.g., "the brain's natural social filter," "the brain's internal starter switch," or "loss of brain awareness that anything is wrong").
-   - Always validate the caregiver's experience: remind them that their loved one is NOT doing this on purpose, being mean, or stubborn—the illness is changing how their brain processes the world.
-
-2. CLEAR, ACTIONABLE STRUCTURE:
-   Structure your answer with clear, easy-to-read sections:
-   - A brief, warm opening sentence acknowledging how challenging this symptom is.
-   - ### Understanding What Is Happening: 1-2 short, plain-language paragraphs explaining why this happens without clinical coldness.
-   - ### Practical Steps You Can Try: 3 to 4 numbered, step-by-step actions. Start each step with a bold action (e.g., "1. **Stay calm and redirect** — ..."). Give concrete, realistic ideas families can try immediately.
-   - ### What to Keep in Mind: 2-3 brief, reassuring bullet points that give the caregiver peace of mind and remind them to be kind to themselves.
-
-3. STRICT CLINICAL RULES:
-   - Under NO circumstances recommend or discuss specific prescription drug dosages or off-label pharmaceuticals.
-   - If the user asks about specific prescription medications (e.g., Seroquel, Haldol, Aricept, Trazodone), politely explain: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911."
-   - In physical danger or acute behavioral emergencies, calmly remind them to prioritize their physical safety and call 911.
-
-4. FORMATTING:
-   - Keep paragraphs short (2-3 sentences max).
-   - Use bolding on key action titles so tired caregivers can quickly scan.
-   - Never use robotic prefixes like "CLINICAL Q&A" or "Dr. Seema's Clinical Protocol for:". Address the user warmly and directly.
-
-VERIFIED CLINICAL KNOWLEDGE CORPUS:
-${fullContextCorpus}`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: query,
-        config: {
-          systemInstruction,
-          temperature: 0.1,
-        },
-      });
-
-      const answerText = response.text || '';
-
-      // Match citations from approved resources & FAQs
-      const citedResources: { id: string; title: string; url?: string }[] = [];
-      if (bestFaq?.relatedGuideId && bestFaq?.relatedGuideTitle) {
-        citedResources.push({
-          id: bestFaq.relatedGuideId,
-          title: bestFaq.relatedGuideTitle,
-        });
-      }
-
-      clinicalResources.forEach((r) => {
-        const cat = r.category.toLowerCase();
-        const title = r.title.toLowerCase();
-        if (
-          (answerText.toLowerCase().includes(cat) || queryLower.includes(cat) || answerText.toLowerCase().includes(title.split(' ')[0])) &&
-          !citedResources.some((c) => c.id === r.id)
-        ) {
-          citedResources.push({ id: r.id, title: r.title, url: r.externalUrl });
-        }
-      });
-
-      const suggestedQuestions = CLINICAL_50_FAQ
-        .filter((f: ClinicalFaqItem) => f.id !== bestFaq?.id)
-        .slice(0, 3)
-        .map((f: ClinicalFaqItem) => f.question);
-
-      return res.json({
-        answer: answerText,
-        citedResources: citedResources.slice(0, 3),
-        matchedFaq: bestFaq,
-        suggestedQuestions,
-      });
-    } catch (genAiError) {
-      console.warn('Gemini generation unavailable or quota reached, using clinical RAG database:', genAiError);
-    }
-  }
-
-  // High-Precision Deterministic Clinical RAG Fallback
-  const localRag = generateLocalRagResponse(query);
-  return res.json(localRag);
 });
 
 // Private 1-on-1 Messages between Dr. Seema & Caregivers

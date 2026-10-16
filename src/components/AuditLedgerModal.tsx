@@ -12,11 +12,13 @@ import { api } from '../services/api';
 
 interface AuditLedgerModalProps {
   isOpen: boolean;
+  userId?: string;
   onClose: () => void;
 }
 
 export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
   isOpen,
+  userId,
   onClose,
 }) => {
   const [events, setEvents] = useState<ModerationAuditEvent[]>([]);
@@ -25,7 +27,7 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
   const loadAudit = async () => {
     setLoading(true);
     try {
-      const data = await api.getAuditEvents();
+      const data = await api.getAuditEvents(userId);
       setEvents(data);
     } catch (err) {
       console.error('Failed to load audit ledger:', err);
@@ -96,10 +98,10 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
                         ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                     }`}>
-                      {evt.actionTaken}
+                      {evt.entityType === 'KNOWLEDGE' ? 'Content update' : evt.actionTaken}
                     </span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
-                      Entity: {evt.entityType} ({evt.entityId})
+                      {evt.entityType === 'KNOWLEDGE' ? evt.notes : `Entity: ${evt.entityType} (${evt.entityId})`}
                     </span>
                   </div>
                   <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1 font-mono">

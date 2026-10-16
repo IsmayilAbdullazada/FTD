@@ -68,6 +68,17 @@ try {
     .getByRole("button", { name: "Chatbot Knowledge", exact: true })
     .click();
   const area = page.locator(".knowledge-area");
+  assert.equal(
+    await page.locator('header a[href^="tel:"]').count(),
+    0,
+    "Moderator navbar has no support numbers",
+  );
+  await area.getByLabel("Find content").waitFor();
+  assert.equal(
+    await area.locator(".knowledge-primary:visible").count(),
+    1,
+    "Content has one primary action",
+  );
   await area
     .getByRole("heading", { name: "Chatbot Knowledge", exact: true })
     .waitFor();
@@ -99,6 +110,16 @@ try {
     }
   console.log("PASS 14 viewport/theme checks");
   await page.setViewportSize({ width: 390, height: 1000 });
+  await area.locator("summary").filter({ hasText: "Filters" }).click();
+  const filterMenu = area.getByLabel("Topic", { exact: true });
+  await filterMenu.waitFor({ state: "visible" });
+  const filterBounds = await filterMenu.boundingBox();
+  assert.ok(
+    filterBounds.x >= 0 && filterBounds.x + filterBounds.width <= 390,
+    "Phone filters stay in the viewport",
+  );
+  await area.locator("summary").filter({ hasText: "Filters" }).click();
+
   await area.getByRole("button", { name: "Try It", exact: true }).click();
   await area
     .getByLabel("Your question")
@@ -191,6 +212,7 @@ try {
   assert.match((await chat()).answer, /purple/);
   await area.getByRole("button", { name: "My Content", exact: true }).click();
   await area.getByLabel("Find content").fill("visitor lantern");
+  await card.locator("summary").click();
   await card.getByRole("button", { name: "Remove", exact: true }).click();
   await confirmChange("Remove");
   await page.waitForTimeout(500);
@@ -200,6 +222,44 @@ try {
   await page.waitForTimeout(500);
   assert.match((await chat()).answer, /purple/);
   console.log("PASS edit, removal, and restore on phone");
+  await area.getByRole("button", { name: "Add Content", exact: true }).click();
+  await area
+    .getByRole("button", { name: "Add a question and answer", exact: true })
+    .click();
+  await area
+    .getByLabel("Question", { exact: true })
+    .fill("Where can I find the teal clinic folder?");
+  await area
+    .getByLabel("Answer", { exact: true })
+    .fill("The teal clinic folder is in the reception cabinet.");
+  assert.equal(
+    await area.getByLabel("Display name", { exact: true }).isVisible(),
+    false,
+    "The doctor does not have to enter a second title",
+  );
+  await page.screenshot({
+    path: `${artifacts}/phone-question-editor.png`,
+    fullPage: true,
+  });
+  await area.getByRole("button", { name: "Reviewed — continue" }).click();
+  await area
+    .getByRole("button", { name: "Publish content", exact: true })
+    .click();
+  await confirmChange("Publish content");
+  await area
+    .getByText("Done. The chatbot is now using this content.", { exact: true })
+    .waitFor();
+  const simpleAnswer = await fetch(base + "/api/v1/knowledge/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: "Where can I find the teal clinic folder?" }),
+  }).then((r) => r.json());
+  assert.match(simpleAnswer.answer, /reception cabinet/);
+  assert.match(await area.innerText(), /All done/);
+  console.log(
+    "PASS single question publishing without duplicate title or configuration",
+  );
+
   await area.getByRole("button", { name: "History", exact: true }).click();
   assert.match(await area.innerText(), /Seema Gulyani/);
   assert.equal(errors.length, 0, errors.join("\n"));
@@ -214,6 +274,23 @@ try {
   await area.getByRole("button", { name: "Advanced", exact: true }).click();
   await area.getByText("Administrator controls", { exact: true }).waitFor();
   console.log("PASS admin-only Advanced visibility");
+  assert.equal(
+    await page.locator('header a[href^="tel:"]').count(),
+    0,
+    "Admin navbar has no support numbers",
+  );
+  await page.getByTitle("Switch persona or appearance").click();
+  await page.getByRole("button", { name: /Sarah Smith/ }).click();
+  await page.waitForTimeout(200);
+  assert.ok(
+    (await page.locator('header a[href^="tel:"]').count()) > 0,
+    "Care partner contact links are retained",
+  );
+  assert.equal(
+    await area.count(),
+    0,
+    "Staff knowledge is absent for care partners",
+  );
   assert.equal(errors.length, 0, errors.join("\n"));
   console.log("Screenshots:", artifacts);
 } finally {

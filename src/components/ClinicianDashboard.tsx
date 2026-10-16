@@ -5,6 +5,7 @@ import type { KnowledgeOverview } from '../types/knowledge';
 import React, { useState, useEffect } from 'react';
 import {
   Shield,
+  BookOpen,
   CheckCircle,
   XCircle,
   Users,
@@ -391,7 +392,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        {activeTab!=='knowledge'&&<div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => setShowCreateGroupModal(true)}
             className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
@@ -414,7 +415,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           >
             Activity Log
           </button>
-        </div>
+        </div>}
       </div>
 
       {actionSuccessNotice && (
@@ -504,8 +505,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">caregivers</span>
           </div>
         </div>
-        <button onClick={() => setActiveTab('knowledge')} className="col-span-2 lg:col-span-1 text-left p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 space-y-2">
-          <span className="font-semibold">Chatbot Knowledge</span><strong className="block text-3xl">{knowledgeOverview?.liveCount ?? '…'}</strong><span className="block text-sm">live items</span><span className="flex gap-2 text-sm"><CheckCircle size={18} className="shrink-0"/>{knowledgeOverview?.status || 'Opening your content…'}</span>
+        <button onClick={() => setActiveTab('knowledge')} className={`col-span-2 lg:col-span-1 p-4 sm:p-5 rounded-2xl border text-left transition cursor-pointer ${activeTab==='knowledge'?'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-800':'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'}`}>
+          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm"><span className="font-semibold text-slate-700 dark:text-slate-300">Chatbot Knowledge</span><BookOpen className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0"/></div>
+          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2"><span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{knowledgeOverview?.liveCount??'…'}</span><span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">live items</span></div>
         </button>
       </div>
 

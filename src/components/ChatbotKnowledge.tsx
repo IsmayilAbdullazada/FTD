@@ -7,12 +7,16 @@ import {
   AlertTriangle,
   Plus,
   Search,
+  MoreHorizontal,
+  ChevronLeft,
+  Pencil,
+  Trash2,
+  Filter,
   ArrowRight,
   RotateCcw,
   BookOpen,
   ShieldCheck,
   Loader2,
-  X,
 } from "lucide-react";
 import type { CurrentUser } from "../types";
 import type {
@@ -52,13 +56,15 @@ const date = (v: string) =>
   });
 export function ChatbotKnowledge({ user, onOverview }: Props) {
   const [data, setData] = useState<KnowledgeOverview>();
-  const [section, setSection] = useState("Add Content");
+  const [section, setSection] = useState("My Content");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [step, setStep] = useState(1);
   const [readOnly, setReadOnly] = useState(false);
+  const [editorOptions, setEditorOptions] = useState(false);
+  const editorRef = useRef<HTMLElement | null>(null);
   const [edit, setEdit] = useState<KnowledgeItem | null>(null);
   const [form, setForm] = useState<KnowledgeText | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -88,12 +94,14 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
   const [topic, setTopic] = useState("");
   const [type, setType] = useState("");
   const [topicName, setTopicName] = useState("");
+  const [addingTopic, setAddingTopic] = useState(false);
   const [privacy, setPrivacy] = useState<string[]>([]);
   const [undo, setUndo] = useState<KnowledgeItem>();
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<KnowledgeAnswer>();
   const [historyPerson, setHistoryPerson] = useState("");
   const [historyDate, setHistoryDate] = useState("");
+  const [allHistory, setAllHistory] = useState(false);
   const [confirm, setConfirm] = useState<{
     message: string;
     label: string;
@@ -220,11 +228,17 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
       if (original) URL.revokeObjectURL(original);
     };
   }, [original]);
-  const open = async (item: KnowledgeItem, mode: "read" | "edit" = "edit") => {
+  const open = async (
+    item: KnowledgeItem,
+    mode: "read" | "edit" | "samples" = "edit",
+  ) => {
     await saveNow();
     const fresh = apply(await loadKnowledge(user.id));
     item = fresh.items.find((i) => i.id === item.id) || item;
+    setNotice("");
+    setUndo(undefined);
     setReadOnly(mode === "read");
+    setEditorOptions(mode === "samples");
     setEdit(item);
     setForm(
       structuredClone(
@@ -255,9 +269,46 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
       }
     }
   };
+  useEffect(() => {
+    if (!edit || !["My Content", "Add Content"].includes(section)) return;
+    const frame = requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "instant",
+      });
+      editorRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [edit?.id, readOnly, section]);
   const update = (field: keyof KnowledgeText, value: unknown) => {
     if (edit) delete reviewedRevisions.current[edit.id];
-    setForm((f) => (f ? { ...f, [field]: value } : f));
+    setForm((f) => {
+      if (!f) return f;
+      const next = { ...f, [field]: value };
+      if (
+        (field === "question" || field === "title") &&
+        typeof value === "string"
+      ) {
+        const old = f.question || f.title;
+        const generated = [
+          old,
+          `Help me with ${old}`,
+          `What should I know about ${old}?`,
+        ];
+        if (field === "question" && (!f.title || f.title === f.question))
+          next.title = value;
+        const base = next.question || next.title;
+        if (f.samples.every((q, i) => q === generated[i]))
+          next.samples = [
+            base,
+            `Help me with ${base}`,
+            `What should I know about ${base}?`,
+          ];
+        if (f.alternatives.length === 1 && f.alternatives[0] === old)
+          next.alternatives = [base];
+      }
+      return next;
+    });
     dirtyRef.current = true;
     setDirty(true);
     setReviewed((r) => r.filter((id) => id !== edit?.id));
@@ -265,6 +316,8 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
   };
   const create = async (kind: "question" | "document", suggestion = "") => {
     await saveNow();
+    setNotice("");
+    setUndo(undefined);
     const before = new Set(data?.items.map((i) => i.id));
     const v = apply(
       await staffRequest<KnowledgeOverview>(user.id, "/drafts", {
@@ -449,7 +502,15 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
       {multiline ? (
         <textarea
           aria-label={label}
-          rows={field === "answer" ? 12 : 3}
+          rows={
+            field === "answer"
+              ? edit?.type === "question"
+                ? 6
+                : 12
+              : field === "question"
+                ? 2
+                : 3
+          }
           value={
             Array.isArray(form?.[field])
               ? (form![field] as string[]).join("\n")
@@ -508,31 +569,87 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
     (c) => c.itemId && batch.includes(c.itemId),
   );
   const safetyPassing = safety.length > 0 && safety.every((c) => c.passed);
+  const visibleHistory = allHistory
+    ? data.history
+    : data.history.filter((h) => {
+        if (h.actionTaken === "UPDATE_FAILED" || h.actionTaken === "ADVANCED")
+          return true;
+        if (h.actionTaken === "CHECK_RUN") return h.notes.startsWith("Ran all");
+        if (h.actionTaken === "ADD") return !h.notes.startsWith("Added draft");
+        return (
+          ["EDIT", "PUBLISH", "REMOVE", "RESTORE", "REPLACE"].includes(
+            h.actionTaken,
+          ) &&
+          h.notes.includes("“") &&
+          !h.notes.startsWith("Edited draft")
+        );
+      });
   return (
     <section
       className="knowledge-area space-y-5 pb-32 md:pb-8"
       aria-label="Chatbot Knowledge"
     >
-      <div className="knowledge-card flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-        <div>
-          <h2 className="font-serif text-2xl flex items-center gap-2">
-            <BookOpen />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">
             Chatbot Knowledge
           </h2>
-          <p className="mt-2">
-            Your clinic’s guidance, ready for care partners.
+          <p
+            className="mt-1 flex gap-1.5 items-start text-xs text-slate-500 dark:text-slate-400"
+            role="status"
+            aria-live="polite"
+          >
+            {updating ? (
+              <Loader2 size={16} className="animate-spin shrink-0 mt-1" />
+            ) : data.status.startsWith("We couldn't") ? (
+              <AlertTriangle
+                size={16}
+                className="shrink-0 mt-1 text-amber-600 dark:text-amber-400"
+              />
+            ) : (
+              <CheckCircle2
+                size={16}
+                className="shrink-0 mt-1 text-emerald-600 dark:text-emerald-400"
+              />
+            )}
+            {updating ? "Updating the chatbot…" : data.status}
           </p>
         </div>
-        <p className="flex gap-2 items-center" role="status" aria-live="polite">
-          {updating ? (
-            <Loader2 className="animate-spin shrink-0" />
-          ) : data.status.startsWith("We couldn't") ? (
-            <AlertTriangle className="shrink-0" />
-          ) : (
-            <CheckCircle2 className="shrink-0 text-emerald-700 dark:text-emerald-300" />
-          )}
-          {updating ? "Updating the chatbot…" : data.status}
-        </p>
+        {section === "Add Content" || edit ? (
+          <button
+            className="knowledge-link self-start sm:self-auto"
+            onClick={() =>
+              work(async () => {
+                await saveNow();
+                setEdit(null);
+                setForm(null);
+                setSection("My Content");
+              })
+            }
+          >
+            <ChevronLeft size={16} />
+            Back to content
+          </button>
+        ) : (
+          <button
+            className={section === "Try It" ? secondary : primary}
+            onClick={() =>
+              work(async () => {
+                await saveNow();
+                setEdit(null);
+                setForm(null);
+                setSection("Add Content");
+                setStep(1);
+                setBatch([]);
+                setReviewed([]);
+                setUploadStatus([]);
+              })
+            }
+          >
+            <Plus size={16} />
+            Add Content
+          </button>
+        )}
       </div>
       {error && (
         <div className="knowledge-alert" role="alert">
@@ -600,7 +717,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
       {notice && (
         <div
           role="status"
-          className="knowledge-card flex flex-wrap gap-3 items-center"
+          className="flex flex-wrap gap-2 items-center rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200"
         >
           <CheckCircle2 />
           {notice}
@@ -620,59 +737,62 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
           )}
         </div>
       )}
-      <nav
-        aria-label="Knowledge sections"
-        className="flex gap-2 overflow-x-auto pb-2"
-      >
-        {[
-          "Add Content",
-          "My Content",
-          "Try It",
-          "History",
-          ...(user.role === "SYSTEM_ADMIN" ? ["Advanced"] : []),
-        ].map((s) => (
-          <button
-            key={s}
-            aria-current={section === s ? "page" : undefined}
-            className={`${secondary} shrink-0 ${section === s ? "knowledge-selected" : ""}`}
-            onClick={() =>
-              work(async () => {
-                await saveNow();
-                setSection(s);
-                if (s === "Add Content" && step === 4) {
-                  setStep(1);
-                  setBatch([]);
-                  setReviewed([]);
-                  setEdit(null);
-                  setForm(null);
-                }
-                if (s === "Advanced") {
-                  const a = await staffRequest<NonNullable<typeof advanced>>(
-                    user.id,
-                    "/advanced",
-                  );
-                  setAdvanced(a);
-                  setAdvancedText(JSON.stringify(a.settings.synonyms, null, 2));
-                }
-              })
-            }
-          >
-            {s}
-          </button>
-        ))}
-      </nav>
+      {!edit && section !== "Add Content" && (
+        <nav
+          aria-label="Knowledge sections"
+          className="flex items-center gap-5 sm:gap-6 overflow-x-auto border-b border-slate-200 dark:border-slate-800 no-scrollbar"
+        >
+          {[
+            "My Content",
+            "Try It",
+            "History",
+            ...(user.role === "SYSTEM_ADMIN" ? ["Advanced"] : []),
+          ].map((s) => (
+            <button
+              key={s}
+              aria-current={section === s ? "page" : undefined}
+              className={`knowledge-tab ${section === s ? "knowledge-selected" : ""}`}
+              onClick={() =>
+                work(async () => {
+                  await saveNow();
+                  setSection(s);
+                  if (s === "Add Content" && step === 4) {
+                    setStep(1);
+                    setBatch([]);
+                    setReviewed([]);
+                    setEdit(null);
+                    setForm(null);
+                  }
+                  if (s === "Advanced") {
+                    const a = await staffRequest<NonNullable<typeof advanced>>(
+                      user.id,
+                      "/advanced",
+                    );
+                    setAdvanced(a);
+                    setAdvancedText(
+                      JSON.stringify(a.settings.synonyms, null, 2),
+                    );
+                  }
+                })
+              }
+            >
+              {s}
+            </button>
+          ))}
+        </nav>
+      )}
       {section === "Add Content" && (
         <>
-          <div className="knowledge-card">
-            <p className="md:hidden font-semibold">
+          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <p className="md:hidden font-medium">
               Step {step} of 4 ·{" "}
               {["Add", "Review", "Publish", "Check"][step - 1]}
             </p>
-            <ol className="hidden md:flex gap-3" aria-label="Progress">
+            <ol className="hidden md:flex gap-6" aria-label="Progress">
               {["Add", "Review", "Publish", "Check"].map((s, i) => (
                 <li
                   key={s}
-                  className={`flex-1 border-t-4 pt-3 ${i < step ? "border-blue-700 dark:border-blue-300" : "border-slate-300 dark:border-slate-700"}`}
+                  className={`flex items-center gap-2 ${i + 1 === step ? "text-[#002D72] dark:text-blue-400 font-semibold" : ""}`}
                   aria-current={step === i + 1 ? "step" : undefined}
                 >
                   {i + 1}. {s}
@@ -694,45 +814,28 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
           )}
           {step === 1 && (
             <div className="knowledge-card space-y-5">
-              <h3 className="font-serif text-2xl">Add your clinic’s content</h3>
-              {data.items.some((i) => i.draft && i.status !== "Removed") && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold">
-                    Drafts · continue where you left off
-                  </h4>
-                  {data.items
-                    .filter((i) => i.draft && i.status !== "Removed")
-                    .map((i) => (
-                      <button
-                        key={i.id}
-                        className={secondary + " mr-2"}
-                        onClick={() =>
-                          work(async () => {
-                            setBatch([i.id]);
-                            setReviewed([]);
-                            setStep(2);
-                            await open(i);
-                          })
-                        }
-                      >
-                        {i.draft!.title || "Untitled draft"}
-                      </button>
-                    ))}
-                </div>
-              )}
+              <div>
+                <h3 className="font-semibold text-base text-slate-900 dark:text-white">
+                  Add a document or questions
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Review everything before it becomes available to care
+                  partners.
+                </p>
+              </div>
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                   e.preventDefault();
                   work(() => upload([...e.dataTransfer.files], replacing));
                 }}
-                className="border-2 border-dashed border-blue-400 dark:border-blue-600 rounded-2xl p-6 sm:p-12 text-center space-y-4"
+                className="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-850 p-6 sm:p-9 text-center space-y-3"
               >
                 <Upload
-                  className="mx-auto text-blue-700 dark:text-blue-300"
-                  size={38}
+                  className="mx-auto text-slate-400 dark:text-slate-500"
+                  size={28}
                 />
-                <p className="text-xl font-semibold">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                   Drop files here or tap to choose
                 </p>
                 <button
@@ -741,57 +844,67 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                 >
                   Choose files
                 </button>
-                <p>
-                  Up to 10 files at a time, 25 MB each. PDFs can have up to 300
-                  pages.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Up to 10 files · 25 MB each · 300 pages per PDF
                 </p>
               </div>
-              <p className="text-sm leading-relaxed">
-                PDF, Word (DOCX, DOC), RTF, ODT, text, Markdown, HTML,
-                PowerPoint (PPTX), Excel (XLSX, XLS), CSV, TSV, and photos (JPG,
-                PNG, TIFF, HEIC).
-              </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
                 <button
-                  className={secondary}
-                  onClick={() => photoInput.current?.click()}
-                >
-                  <FileText size={19} />
-                  Photos
-                </button>
-                <button
-                  className={secondary}
-                  onClick={() => cameraInput.current?.click()}
-                >
-                  <Camera size={19} />
-                  Take photos of pages
-                </button>
-                <button
-                  className={secondary}
+                  className="knowledge-link"
                   onClick={() => work(() => create("document"))}
                 >
-                  Type or paste it instead
+                  Type or paste text
                 </button>
                 <button
-                  className={secondary}
+                  className="knowledge-link"
                   onClick={() => work(() => create("question"))}
                 >
-                  <Plus size={19} />
-                  Add a single question and answer
+                  Add a question and answer
                 </button>
+                <details className="relative">
+                  <summary className="knowledge-link cursor-pointer">
+                    Use photos
+                  </summary>
+                  <div className="knowledge-menu right-0">
+                    <button onClick={() => photoInput.current?.click()}>
+                      <FileText size={16} />
+                      Choose photos
+                    </button>
+                    <button onClick={() => cameraInput.current?.click()}>
+                      <Camera size={16} />
+                      Take a photo
+                    </button>
+                  </div>
+                </details>
               </div>
+              <details className="text-xs text-slate-500 dark:text-slate-400">
+                <summary className="cursor-pointer py-2">
+                  Supported file types
+                </summary>
+                <p className="mt-1">
+                  PDF, Word, PowerPoint, Excel, CSV, TSV, text, Markdown, HTML,
+                  RTF, ODT, JPG, PNG, TIFF and HEIC.
+                </p>
+              </details>
             </div>
           )}
-          {!!uploadStatus.length && (
-            <div className="knowledge-card space-y-3" aria-live="polite">
-              {uploadStatus.map((f, i) => (
-                <div key={i}>
-                  <strong>{f.name}</strong>
-                  <p>{f.message}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          {!!uploadStatus.length &&
+            (step === 1 ||
+              uploadStatus.some((f) => f.message !== "Ready to review")) && (
+              <div
+                className="knowledge-card space-y-3 text-xs"
+                aria-live="polite"
+              >
+                {uploadStatus.map((f, i) => (
+                  <div key={i}>
+                    <span className="font-medium">{f.name}</span>
+                    <p className="text-slate-500 dark:text-slate-400">
+                      {f.message}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           {duplicates.map((d, i) => (
             <div className="knowledge-card flex flex-wrap gap-3" key={i}>
               <p>This file was already added.</p>
@@ -962,7 +1075,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
           )}
           {step === 3 && (
             <div className="knowledge-card space-y-5">
-              <h3 className="font-serif text-2xl">Ready to share?</h3>
+              <h3 className="font-serif text-xl">Ready to share?</h3>
               <p>
                 This will add{" "}
                 {
@@ -1017,146 +1130,204 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
           )}
         </>
       )}
-      {section === "My Content" && (
-        <>
-          <div className="knowledge-card space-y-4 md:sticky md:top-3 z-10">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="font-serif text-2xl">My Content</h3>
-              <button
-                className={primary}
-                onClick={() => work(() => create("question"))}
+      {section === "My Content" && !edit && (
+        <div className="knowledge-card !p-0 overflow-visible">
+          <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-3 border-b border-slate-200 dark:border-slate-800">
+            <label className="relative flex-1 min-w-0">
+              <span className="sr-only">Find content</span>
+              <Search
+                size={16}
+                className="absolute left-3 top-3.5 text-slate-400"
+              />
+              <input
+                className="w-full !pl-9"
+                placeholder="Search content…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
+            <label className="sm:w-36">
+              <span className="sr-only">Status</span>
+              <select
+                className="w-full"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
               >
-                <Plus size={18} />
-                Add a question and answer
-              </button>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <label className="knowledge-label">
-                Find content
-                <input
-                  placeholder="Search by title or words"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </label>
-              <label className="knowledge-label">
-                Status
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
+                <option value="">All statuses</option>
+                {["Live", "Draft", "Removed"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+            <details className="relative self-start sm:self-auto">
+              <summary className={secondary + " cursor-pointer list-none"}>
+                <Filter size={16} />
+                Filters
+                {(topic || type) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#002D72] dark:bg-blue-400" />
+                )}
+              </summary>
+              <div className="knowledge-menu left-0 sm:left-auto sm:right-0 !w-64 space-y-3 !p-4">
+                <label className="knowledge-label">
+                  Topic
+                  <select
+                    aria-label="Topic"
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                  >
+                    <option value="">All topics</option>
+                    {data.topics.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="knowledge-label">
+                  Type
+                  <select
+                    aria-label="Type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                  >
+                    <option value="">All content</option>
+                    <option value="question">Questions</option>
+                    <option value="document">Documents</option>
+                  </select>
+                </label>
+                <button
+                  className="knowledge-link"
+                  onClick={() => {
+                    setTopic("");
+                    setType("");
+                  }}
                 >
-                  <option value="">All statuses</option>
-                  {["Live", "Draft", "Removed"].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="knowledge-label">
-                Topic
-                <select
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                >
-                  <option value="">All topics</option>
-                  {data.topics.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="knowledge-label">
-                Type
-                <select value={type} onChange={(e) => setType(e.target.value)}>
-                  <option value="">All content</option>
-                  <option value="question">Questions</option>
-                  <option value="document">Documents</option>
-                </select>
-              </label>
-            </div>
+                  Clear filters
+                </button>
+              </div>
+            </details>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {filtered.map((i) => {
               const d = i.draft || i.live!;
               return (
-                <article className="knowledge-card space-y-3" key={i.id}>
-                  <p className="text-sm font-semibold">
-                    {i.status}
-                    {i.status === "Live" && i.draft
-                      ? " · Changes waiting in Drafts"
-                      : ""}{" "}
-                    · {data.topics.find((t) => t.id === d.topicId)?.name}
-                  </p>
-                  <h4 className="font-serif text-xl break-words">
-                    {d.title || "Untitled draft"}
-                  </h4>
-                  <p className="text-sm">
-                    {date(i.updatedAt)} · {i.updatedBy}
-                  </p>
-                  {i.checkedAt && (
-                    <p className="flex gap-2 items-center">
-                      <CheckCircle2 size={18} />
-                      Checked ✓ on {date(i.checkedAt)}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      className={secondary}
-                      onClick={() => work(() => open(i, "read"))}
-                    >
-                      Open
-                    </button>
-                    {i.status !== "Removed" && (
-                      <>
-                        <button
-                          className={secondary}
-                          onClick={() => work(() => open(i))}
-                        >
-                          Edit
-                        </button>
-                        {i.type === "document" && (
-                          <button
-                            className={secondary}
-                            onClick={() => {
-                              setReplacing(i.id);
-                              setSection("Add Content");
-                              setStep(1);
-                              setBatch([]);
-                              fileInput.current?.click();
-                            }}
-                          >
-                            Replace with a newer version
-                          </button>
-                        )}
-                        <button
-                          className={secondary}
-                          onClick={() =>
-                            i.status === "Draft"
-                              ? work(() => archive(i))
-                              : askConfirm(
-                                  "The chatbot will stop using this. You can restore it anytime.",
-                                  "Remove",
-                                  () => archive(i),
-                                )
-                          }
-                        >
-                          Remove
-                        </button>
-                      </>
-                    )}
-                    {i.status === "Removed" && (
+                <article
+                  key={i.id}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 sm:p-5 hover:bg-slate-50/60 dark:hover:bg-slate-850/50 transition-colors"
+                >
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="hidden sm:flex w-9 h-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
+                      <FileText size={18} />
+                    </div>
+                    <div className="min-w-0 space-y-1">
                       <button
-                        className={secondary}
+                        className="text-left text-sm font-semibold text-slate-900 dark:text-white hover:text-[#002D72] dark:hover:text-blue-400 focus-visible:underline"
+                        onClick={() => work(() => open(i, "read"))}
+                      >
+                        {d.title || "Untitled draft"}
+                      </button>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                        <span
+                          className={`rounded-md px-2 py-0.5 font-medium ${i.status === "Live" ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : i.status === "Draft" ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}
+                        >
+                          {i.status}
+                        </span>
+                        <span>
+                          {data.topics.find((t) => t.id === d.topicId)?.name}
+                        </span>
+                        {i.checkedAt && (
+                          <span
+                            className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400"
+                            title={`Checked on ${date(i.checkedAt)}`}
+                          >
+                            <CheckCircle2 size={13} />
+                            Checked
+                          </span>
+                        )}
+                        {i.status === "Live" && i.draft && (
+                          <span className="text-amber-700 dark:text-amber-400">
+                            Draft changes
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Updated {date(i.updatedAt)} · {i.updatedBy}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 self-end sm:self-center shrink-0">
+                    {i.status === "Removed" ? (
+                      <button
+                        className="knowledge-link"
                         onClick={() =>
                           askConfirm(
-                            "The chatbot will start using this content again.",
+                            i.live
+                              ? "The chatbot will start using this content again."
+                              : "This draft will return to your content for review.",
                             "Restore",
                             () => archive(i, true),
                           )
                         }
                       >
+                        <RotateCcw size={15} />
                         Restore
                       </button>
+                    ) : (
+                      <>
+                        <button
+                          className="knowledge-link"
+                          onClick={() => work(() => open(i))}
+                        >
+                          <Pencil size={15} />
+                          Edit
+                        </button>
+                        <details name="knowledge-actions" className="relative">
+                          <summary
+                            aria-label={`More actions for ${d.title || "Untitled draft"}`}
+                            className="knowledge-link !px-2 cursor-pointer list-none"
+                          >
+                            <MoreHorizontal size={18} />
+                          </summary>
+                          <div className="knowledge-menu right-0">
+                            {i.type === "document" && (
+                              <button
+                                onClick={(e) => {
+                                  e.currentTarget
+                                    .closest("details")
+                                    ?.removeAttribute("open");
+                                  setReplacing(i.id);
+                                  setSection("Add Content");
+                                  setStep(1);
+                                  setBatch([]);
+                                  setEdit(null);
+                                  setForm(null);
+                                  fileInput.current?.click();
+                                }}
+                              >
+                                <Upload size={15} />
+                                Replace document
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.currentTarget
+                                  .closest("details")
+                                  ?.removeAttribute("open");
+                                i.status === "Draft"
+                                  ? work(() => archive(i))
+                                  : askConfirm(
+                                      "The chatbot will stop using this. You can restore it anytime.",
+                                      "Remove",
+                                      () => archive(i),
+                                    );
+                              }}
+                            >
+                              <Trash2 size={15} />
+                              Remove
+                            </button>
+                          </div>
+                        </details>
+                      </>
                     )}
                   </div>
                 </article>
@@ -1164,26 +1335,38 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
             })}
           </div>
           {!filtered.length && (
-            <div className="knowledge-card">
-              <p>
-                Your clinic’s guidance belongs here. Add your first document or
-                question to get started.
+            <div className="py-12 px-5 text-center">
+              <BookOpen
+                size={28}
+                className="mx-auto text-slate-300 dark:text-slate-600 mb-3"
+              />
+              <p className="font-medium text-slate-700 dark:text-slate-200">
+                {data.items.length
+                  ? "No content matches your search."
+                  : "Add your first document or question."}
               </p>
-              <button
-                className={primary + " mt-4"}
-                onClick={() => {
-                  setSection("Add Content");
-                  setStep(1);
-                }}
-              >
-                Add content
-              </button>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {data.items.length
+                  ? "Try another search or clear the filters."
+                  : "Your drafts stay private until you publish them."}
+              </p>
             </div>
           )}
-        </>
+          {filtered.length > 0 && (
+            <p className="border-t border-slate-200 dark:border-slate-800 px-4 sm:px-5 py-3 text-xs text-slate-500 dark:text-slate-400">
+              {filtered.length} {filtered.length === 1 ? "item" : "items"}
+            </p>
+          )}
+        </div>
       )}
       {edit && form && readOnly && section === "My Content" && (
-        <article className="knowledge-card space-y-4">
+        <article
+          ref={(node) => {
+            editorRef.current = node;
+          }}
+          tabIndex={-1}
+          className="knowledge-card space-y-4 scroll-mt-24 focus:outline-none"
+        >
           <h3 className="font-serif text-2xl">{form.title}</h3>
           <p>
             {edit.live
@@ -1211,17 +1394,29 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
         form &&
         !readOnly &&
         ["Add Content", "My Content"].includes(section) && (
-          <div className="knowledge-card space-y-5" aria-label="Review content">
+          <div
+            ref={(node) => {
+              editorRef.current = node;
+            }}
+            tabIndex={-1}
+            className="knowledge-card space-y-5 scroll-mt-24 focus:outline-none"
+            aria-label="Review content"
+          >
             <div className="flex flex-wrap gap-3 items-center justify-between">
-              <h3 className="font-serif text-2xl">
-                {edit.status === "Live"
-                  ? "Read and edit your content"
-                  : "Review your content"}
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                {edit.status === "Live" ? "Edit content" : "Review content"}
               </h3>
-              <span role="status">{saved}</span>
+              <span
+                className="text-xs text-slate-500 dark:text-slate-400"
+                role="status"
+              >
+                {saved}
+              </span>
             </div>
-            <div className="grid lg:grid-cols-2 gap-6">
-              {edit.fileId && (
+            <div
+              className={`grid gap-6 ${edit.fileId && edit.type === "document" ? "lg:grid-cols-2" : "max-w-3xl"}`}
+            >
+              {edit.fileId && edit.type === "document" && (
                 <div className="space-y-3">
                   <h4 className="font-semibold">Original file</h4>
                   {original ? (
@@ -1253,20 +1448,16 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                 </div>
               )}
               <div className="space-y-4 min-w-0">
-                {input("Title", "title")}
-                {edit.type === "question" &&
-                  input("Question", "question", true)}
+                {edit.type === "question"
+                  ? input("Question", "question", true)
+                  : input("Title", "title")}
                 {input(
                   edit.type === "question" ? "Answer" : "Content",
                   "answer",
                   true,
                 )}
-                {input("Key points — one per line", "keyPoints", true)}
                 <label className="knowledge-label">
                   Topic{" "}
-                  <span className="text-sm">
-                    Suggested — choose another if you prefer
-                  </span>
                   <select
                     value={form.topicId}
                     onChange={(e) => update("topicId", e.target.value)}
@@ -1278,31 +1469,51 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                     ))}
                   </select>
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    aria-label="New topic name"
-                    placeholder="Add a topic"
-                    value={topicName}
-                    onChange={(e) => setTopicName(e.target.value)}
-                  />
+                {addingTopic ? (
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      aria-label="New topic name"
+                      placeholder="Topic name"
+                      value={topicName}
+                      onChange={(e) => setTopicName(e.target.value)}
+                    />
+                    <button
+                      className={secondary}
+                      onClick={() =>
+                        work(async () => {
+                          const v = apply(
+                            await staffRequest<KnowledgeOverview>(
+                              user.id,
+                              "/topics",
+                              { name: topicName },
+                            ),
+                          );
+                          const added = v.topics.find(
+                            (t) => t.name === topicName.trim(),
+                          );
+                          if (added) update("topicId", added.id);
+                          setTopicName("");
+                          setAddingTopic(false);
+                        })
+                      }
+                    >
+                      Add topic
+                    </button>
+                    <button
+                      className="knowledge-link"
+                      onClick={() => setAddingTopic(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    className={secondary}
-                    onClick={() =>
-                      work(async () => {
-                        apply(
-                          await staffRequest<KnowledgeOverview>(
-                            user.id,
-                            "/topics",
-                            { name: topicName },
-                          ),
-                        );
-                        setTopicName("");
-                      })
-                    }
+                    className="knowledge-link !min-h-0 !py-0"
+                    onClick={() => setAddingTopic(true)}
                   >
-                    Add topic
+                    + New topic
                   </button>
-                </div>
+                )}
                 <label className="knowledge-label">
                   Who sees it?
                   <select
@@ -1313,34 +1524,150 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                     <option value="guides">Chatbot and Guides page</option>
                   </select>
                 </label>
-                <details>
-                  <summary className="min-h-11 cursor-pointer">
-                    Suggested wording · optional
-                  </summary>
-                  <p>
-                    You can leave these as they are. The chatbot will still use
-                    your content.
-                  </p>
-                  {input(
-                    "Search wording — one phrase per line",
-                    "searchWords",
-                    true,
-                  )}
-                  {input(
-                    "Alternative phrasings — one per line",
-                    "alternatives",
-                    true,
-                  )}
-                </details>
-                <details open={step === 4}>
-                  <summary className="min-h-11 cursor-pointer">
-                    Sample questions
-                  </summary>
-                  <p>
-                    Keep at least three questions. We use these to check your
-                    content.
-                  </p>
-                  {input("Sample questions — one per line", "samples", true)}
+                <details
+                  className="knowledge-disclosure"
+                  open={editorOptions}
+                  onToggle={(e) => setEditorOptions(e.currentTarget.open)}
+                >
+                  <summary>Additional details · optional</summary>
+                  <div className="space-y-4 pt-3">
+                    {" "}
+                    {edit.type === "question" && input("Display name", "title")}
+                    {input("Key points — one per line", "keyPoints", true)}
+                    <details className="knowledge-disclosure">
+                      <summary>Suggested wording · optional</summary>
+                      <p>
+                        You can leave these as they are. The chatbot will still
+                        use your content.
+                      </p>
+                      {input(
+                        "Search wording — one phrase per line",
+                        "searchWords",
+                        true,
+                      )}
+                      {input(
+                        "Alternative phrasings — one per line",
+                        "alternatives",
+                        true,
+                      )}
+                    </details>
+                    <details className="knowledge-disclosure">
+                      <summary>Sample questions</summary>
+                      <p>
+                        Keep at least three questions. We use these to check
+                        your content.
+                      </p>
+                      {input(
+                        "Sample questions — one per line",
+                        "samples",
+                        true,
+                      )}
+                    </details>
+                    {edit.type === "document" && (
+                      <details className="knowledge-disclosure">
+                        <summary>Organize sections</summary>{" "}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className={secondary}
+                            onClick={() =>
+                              work(async () => {
+                                await saveNow();
+                                const parts = form.answer.split(/\n\s*\n/);
+                                if (parts.length < 2)
+                                  throw Error(
+                                    "Add a blank line where you want to split the section.",
+                                  );
+                                const half = Math.ceil(parts.length / 2);
+                                const next = {
+                                  ...form,
+                                  answer: parts.slice(0, half).join("\n\n"),
+                                };
+                                setForm(next);
+                                formRef.current = next;
+                                dirtyRef.current = true;
+                                setDirty(true);
+                                await saveNow();
+                                /* Save the second section as a separate reviewable draft. */
+                                const v = apply(
+                                  await staffRequest<KnowledgeOverview>(
+                                    user.id,
+                                    "/drafts",
+                                    {
+                                      ...form,
+                                      title: form.title + " — continued",
+                                      answer: parts.slice(half).join("\n\n"),
+                                      type: edit.type,
+                                    },
+                                  ),
+                                );
+                                setBatch((b) => [
+                                  ...new Set([
+                                    ...b,
+                                    edit.id,
+                                    ...v.items
+                                      .filter(
+                                        (i) =>
+                                          !data.items.some(
+                                            (o) => o.id === i.id,
+                                          ),
+                                      )
+                                      .map((i) => i.id),
+                                  ]),
+                                ]);
+                                setNotice(
+                                  "Section split. Review both parts before publishing.",
+                                );
+                              })
+                            }
+                          >
+                            Split into two sections
+                          </button>
+                          <select
+                            aria-label="Merge with another draft"
+                            defaultValue=""
+                            onChange={(e) => {
+                              const other = data.items.find(
+                                (i) => i.id === e.target.value,
+                              );
+                              if (!other?.draft) return;
+                              work(async () => {
+                                update(
+                                  "answer",
+                                  form.answer + "\n\n" + other.draft!.answer,
+                                );
+                                await archive(other);
+                                setEdit(edit);
+                                setForm({
+                                  ...form,
+                                  answer:
+                                    form.answer + "\n\n" + other.draft!.answer,
+                                });
+                                dirtyRef.current = true;
+                                setDirty(true);
+                                setBatch((b) =>
+                                  b.filter((id) => id !== other.id),
+                                );
+                              });
+                            }}
+                          >
+                            <option value="">Merge with another draft…</option>
+                            {data.items
+                              .filter(
+                                (i) =>
+                                  i.id !== edit.id &&
+                                  i.draft &&
+                                  i.status === "Draft",
+                              )
+                              .map((i) => (
+                                <option key={i.id} value={i.id}>
+                                  {i.draft!.title}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </details>
+                    )}
+                  </div>
                 </details>
                 {privacy.length > 0 && (
                   <div className="knowledge-alert flex-col">
@@ -1386,97 +1713,6 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                     </label>
                   </div>
                 )}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className={secondary}
-                    onClick={() =>
-                      work(async () => {
-                        await saveNow();
-                        const parts = form.answer.split(/\n\s*\n/);
-                        if (parts.length < 2)
-                          throw Error(
-                            "Add a blank line where you want to split the section.",
-                          );
-                        const half = Math.ceil(parts.length / 2);
-                        const next = {
-                          ...form,
-                          answer: parts.slice(0, half).join("\n\n"),
-                        };
-                        setForm(next);
-                        formRef.current = next;
-                        dirtyRef.current = true;
-                        setDirty(true);
-                        await saveNow();
-                        /* Save the second section as a separate reviewable draft. */
-                        const v = apply(
-                          await staffRequest<KnowledgeOverview>(
-                            user.id,
-                            "/drafts",
-                            {
-                              ...form,
-                              title: form.title + " — continued",
-                              answer: parts.slice(half).join("\n\n"),
-                              type: edit.type,
-                            },
-                          ),
-                        );
-                        setBatch((b) => [
-                          ...new Set([
-                            ...b,
-                            edit.id,
-                            ...v.items
-                              .filter(
-                                (i) => !data.items.some((o) => o.id === i.id),
-                              )
-                              .map((i) => i.id),
-                          ]),
-                        ]);
-                        setNotice(
-                          "Section split. Review both parts before publishing.",
-                        );
-                      })
-                    }
-                  >
-                    Split into two sections
-                  </button>
-                  <select
-                    aria-label="Merge with another draft"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const other = data.items.find(
-                        (i) => i.id === e.target.value,
-                      );
-                      if (!other?.draft) return;
-                      work(async () => {
-                        update(
-                          "answer",
-                          form.answer + "\n\n" + other.draft!.answer,
-                        );
-                        await archive(other);
-                        setEdit(edit);
-                        setForm({
-                          ...form,
-                          answer: form.answer + "\n\n" + other.draft!.answer,
-                        });
-                        dirtyRef.current = true;
-                        setDirty(true);
-                        setBatch((b) => b.filter((id) => id !== other.id));
-                      });
-                    }}
-                  >
-                    <option value="">Merge with another draft…</option>
-                    {data.items
-                      .filter(
-                        (i) =>
-                          i.id !== edit.id && i.draft && i.status === "Draft",
-                      )
-                      .map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.draft!.title}
-                        </option>
-                      ))}
-                  </select>
-                </div>
               </div>
             </div>
             <div className="knowledge-sticky flex flex-wrap gap-3">
@@ -1520,7 +1756,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                 </button>
               )}
               <button
-                className={secondary}
+                className="knowledge-link"
                 onClick={() =>
                   work(async () => {
                     await saveNow();
@@ -1530,7 +1766,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                   })
                 }
               >
-                Close · keep draft
+                Save for later
               </button>
             </div>
           </div>
@@ -1538,10 +1774,14 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
       {section === "Try It" && (
         <>
           <div className="knowledge-card space-y-4">
-            <h3 className="font-serif text-2xl">
-              Try it as a care partner would
-            </h3>
-            <p>Ask a question to see which clinic content helps.</p>
+            <div>
+              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
+                Try it as a care partner would
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Ask a question and see the content behind the answer.
+              </p>
+            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1566,7 +1806,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
             </form>
             {response && (
               <div className="grid lg:grid-cols-2 gap-5">
-                <div className="knowledge-card whitespace-pre-wrap leading-relaxed">
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-850 p-4 whitespace-pre-wrap leading-relaxed text-sm">
                   {response.answer}
                 </div>
                 <div className="space-y-3">
@@ -1599,111 +1839,132 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                       ))}
                     </>
                   )}
-                  {response.wording === "local" && (
+                  {response.writingUnavailable && (
                     <p className="text-sm">
-                      {response.writingUnavailable
-                        ? "The writing service is unavailable. The chatbot is sharing your approved text directly."
-                        : "The chatbot is sharing your approved text directly. No writing service is needed."}
+                      Sharing your approved text while the writing service is
+                      unavailable.
                     </p>
                   )}
                 </div>
               </div>
             )}
           </div>
-          <div className="knowledge-card space-y-4" aria-live="polite">
-            <h3 className="font-serif text-xl">Check your content</h3>
-            {batch.length > 0 && (
-              <p className="flex gap-2">
-                {batchChecks.length && batchChecks.every((c) => c.passed) ? (
-                  <>
-                    <CheckCircle2 className="shrink-0" />
-                    Care partners who ask about this topic now get answers from
-                    your content. All done.
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="shrink-0" />
-                    One question isn’t finding your content yet. Review the
-                    questions below.
-                  </>
-                )}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {[
-                ...new Set(
-                  checks
-                    .filter(
-                      (c) =>
-                        c.itemId && (!batch.length || batch.includes(c.itemId)),
-                    )
-                    .map((c) => c.itemId!),
-                ),
-              ].map((id) => (
-                <button
-                  key={id}
-                  className={secondary}
-                  onClick={() => {
-                    setSection("My Content");
-                    work(() => open(data.items.find((i) => i.id === id)!));
-                  }}
-                >
-                  Edit sample questions ·{" "}
-                  {data.items.find((i) => i.id === id)?.live?.title}
-                </button>
-              ))}
+          <div className="knowledge-card space-y-3" aria-live="polite">
+            <div className="flex items-center gap-2">
+              <CheckCircle2
+                size={18}
+                className="text-emerald-600 dark:text-emerald-400 shrink-0"
+              />
+              <h3 className="font-semibold text-sm">Content checks</h3>
             </div>
-            {checks
-              .filter(
-                (c) => c.itemId && (!batch.length || batch.includes(c.itemId)),
-              )
-              .map((c, i) => (
-                <div key={i} className="border-b pb-3 space-y-2">
-                  <p>
-                    {c.passed ? "✓" : "⚠"} {c.question}
-                  </p>
-                  {!c.passed && (
-                    <>
-                      <p>Try a clearer question or title in this item.</p>
-                      <div className="flex flex-wrap gap-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {batch.length
+                ? batchChecks.length && batchChecks.every((c) => c.passed)
+                  ? "All done. Care partners can now get answers from your content."
+                  : "Some questions need attention. Open the details below."
+                : "Your content is checked automatically after every update."}
+            </p>
+            <details
+              className="knowledge-disclosure"
+              open={attention.length > 0}
+            >
+              <summary>View sample questions</summary>
+              <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                {[
+                  ...new Set(
+                    checks
+                      .filter(
+                        (c) =>
+                          c.itemId &&
+                          (!batch.length || batch.includes(c.itemId)),
+                      )
+                      .map((c) => c.itemId!),
+                  ),
+                ].map((id) => {
+                  const results = checks.filter((c) => c.itemId === id);
+                  const passed = results.every((c) => c.passed);
+                  return (
+                    <details key={id} className="py-3" open={!passed}>
+                      <summary className="cursor-pointer flex gap-2 items-start font-medium text-xs sm:text-sm">
+                        {passed ? (
+                          <CheckCircle2
+                            size={16}
+                            className="mt-1 text-emerald-600 dark:text-emerald-400 shrink-0"
+                          />
+                        ) : (
+                          <AlertTriangle
+                            size={16}
+                            className="mt-1 text-amber-600 dark:text-amber-400 shrink-0"
+                          />
+                        )}
+                        {data.items.find((i) => i.id === id)?.live?.title}
+                      </summary>
+                      <div className="pl-6 pt-3 space-y-3">
+                        {results.map((c, i) => (
+                          <div key={i} className="text-xs">
+                            <p className="flex gap-2">
+                              <span
+                                aria-label={
+                                  c.passed ? "Passed" : "Needs attention"
+                                }
+                              >
+                                {c.passed ? "✓" : "⚠"}
+                              </span>
+                              {c.question}
+                            </p>
+                            {!c.passed && (
+                              <div className="mt-2 space-y-2">
+                                <p className="text-slate-500 dark:text-slate-400">
+                                  Try a clearer question or title.
+                                </p>
+                                <button
+                                  className={secondary}
+                                  onClick={() =>
+                                    work(async () => {
+                                      apply(
+                                        await staffRequest<KnowledgeOverview>(
+                                          user.id,
+                                          `/items/${id}/fix`,
+                                          {},
+                                        ),
+                                      );
+                                    })
+                                  }
+                                >
+                                  Fix this automatically
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                         <button
-                          className={secondary}
-                          onClick={() =>
-                            work(async () => {
-                              apply(
-                                await staffRequest<KnowledgeOverview>(
-                                  user.id,
-                                  `/items/${c.itemId}/fix`,
-                                  {},
-                                ),
-                              );
-                            })
-                          }
-                        >
-                          Fix this automatically
-                        </button>
-                        <button
-                          className={secondary}
+                          className="knowledge-link !px-0"
                           onClick={() => {
                             setSection("My Content");
                             work(() =>
-                              open(data.items.find((i) => i.id === c.itemId)!),
+                              open(
+                                data.items.find((i) => i.id === id)!,
+                                "samples",
+                              ),
                             );
                           }}
                         >
-                          Edit this content
+                          Edit sample questions
                         </button>
                       </div>
-                    </>
-                  )}
-                </div>
-              ))}
+                    </details>
+                  );
+                })}
+              </div>
+            </details>
           </div>
         </>
       )}
       {section === "History" && (
         <div className="knowledge-card space-y-5">
-          <h3 className="font-serif text-2xl">History</h3>
+          <h3 className="font-semibold text-base text-slate-900 dark:text-white">
+            History
+          </h3>
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="knowledge-label">
               Person
@@ -1728,8 +1989,16 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
               />
             </label>
           </div>
+          <label className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <input
+              type="checkbox"
+              checked={allHistory}
+              onChange={(e) => setAllHistory(e.target.checked)}
+            />
+            Include draft saves and automatic checks
+          </label>
           <ol className="space-y-5">
-            {data.history
+            {visibleHistory
               .filter(
                 (h) =>
                   (!historyPerson || h.moderatorName === historyPerson) &&
@@ -1744,7 +2013,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                 </li>
               ))}
           </ol>
-          {!data.history.length && (
+          {!visibleHistory.length && (
             <p>Your changes and checks will appear here.</p>
           )}
         </div>
@@ -1917,10 +2186,13 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
           <pre className="overflow-auto max-h-96 text-sm">{debug}</pre>
         </div>
       )}
-      <div className="knowledge-card flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-1">
         <p className="flex gap-2 items-center">
           {safetyPassing ? (
-            <ShieldCheck className="shrink-0 text-emerald-700 dark:text-emerald-300" />
+            <ShieldCheck
+              size={16}
+              className="shrink-0 text-emerald-600 dark:text-emerald-400"
+            />
           ) : (
             <AlertTriangle className="shrink-0" />
           )}
@@ -1929,8 +2201,9 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
             : "Safety checks are waiting to run"}
         </p>
         <button
-          className={secondary}
+          className="knowledge-link !text-xs !font-medium !px-1"
           disabled={busy}
+          hidden={section !== "Try It"}
           onClick={() =>
             work(async () => {
               const v = apply(
@@ -2034,7 +2307,10 @@ function Confirmation({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      before?.focus();
+      const target =
+        before?.closest("details")?.querySelector<HTMLElement>("summary") ||
+        before;
+      target?.focus();
     };
   }, []);
   return (
@@ -2046,7 +2322,10 @@ function Confirmation({
         aria-labelledby="knowledge-confirm"
         className="knowledge-card w-full h-full md:h-auto md:max-w-lg flex flex-col justify-center gap-6"
       >
-        <h3 id="knowledge-confirm" className="font-serif text-2xl">
+        <h3
+          id="knowledge-confirm"
+          className="font-semibold text-lg text-slate-900 dark:text-white"
+        >
           {message}
         </h3>
         <button className={primary} disabled={busy} onClick={onConfirm}>

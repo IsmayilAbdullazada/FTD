@@ -149,6 +149,13 @@ try {
   await area
     .getByRole("button", { name: "Review these questions" })
     .waitFor({ timeout: 30000 });
+  assert.equal(
+    await area
+      .getByText(/This looks like it could identify a patient|OK to include/)
+      .count(),
+    0,
+    "Identity approval section is removed",
+  );
   await area.getByRole("button", { name: "Review these questions" }).click();
   for (let n = 0; n < 3; n++) {
     const button = area.getByRole("button", { name: "Reviewed — continue" });

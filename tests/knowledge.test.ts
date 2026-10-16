@@ -104,7 +104,6 @@ const draft = {
     "Help me with respite badge collection",
     "What about the respite badge?",
   ],
-  privacyAccepted: [],
   unclearAccepted: true,
 };
 let id: string;
@@ -144,7 +143,7 @@ test("durable knowledge workflow", async (t) => {
         for (const q of [
           "best pizza in Baltimore",
           "capital of France",
-          "How do I stop my loved one from driving safely?",
+          "Why does my loved one crave sweets constantly?",
         ])
           assert.equal((await chat(q)).noContent, true, q);
         assert.equal(
@@ -169,7 +168,6 @@ test("durable knowledge workflow", async (t) => {
           ["/items/missing/restore", "POST"],
           ["/checks", "POST"],
           ["/items/missing/fix", "POST"],
-          ["/privacy/missing", "GET"],
           ["/try", "POST"],
           ["/uploads", "POST"],
           ["/uploads/missing/questions", "POST"],
@@ -259,36 +257,32 @@ test("durable knowledge workflow", async (t) => {
       },
     );
     await t.test(
-      "privacy warnings block publishing until acknowledged; clinic numbers exempt",
+      "ordinary document headings publish without identity approval prompts",
       async () => {
-        let s = await request("/drafts", {
-          ...draft,
-          title: "Contact questions",
-          question: "Who can I contact?",
-          answer:
-            "Patient name: John Smith\nEmail john@example.com. Call (410) 955-5147 (option 2) or (410) 502-4163.",
-        });
         const previous = id;
-        id = s.items.at(-1)!.id;
-        const p = await request<{ highlights: string[] }>(`/privacy/${id}`);
-        assert.ok(p.highlights.includes("john@example.com"));
-        assert.ok(
-          !p.highlights.some(
-            (x) => x.includes("955-5147") || x.includes("502-4163"),
-          ),
-        );
-        await publish(s, 400);
-        s = await request(
-          `/items/${id}`,
-          {
-            ...item(s).draft,
-            privacyAccepted: p.highlights,
-            revision: item(s).revision,
-          },
-          "user-clinician-1",
-          "PUT",
-        );
-        s = await publish(s);
+        for (const title of [
+          "Client Registration",
+          "Code Analysis",
+          "Registration Document",
+          "Client Profile",
+          "Creation Process",
+          "Knowledge Point",
+        ]) {
+          let s = await request("/drafts", {
+            type: "document",
+            title,
+            answer:
+              "Use the blue desk to collect the approved registration document and complete the listed steps.",
+            visibility: "guides",
+          });
+          id = s.items.at(-1)!.id;
+          const assigned = s.topics.find(
+            (t) => t.id === item(s).draft!.topicId,
+          )!;
+          assert.notEqual(assigned.id, s.topics[0].id);
+          s = await publish(s);
+          assert.equal(item(s).status, "Live");
+        }
         id = previous;
       },
     );

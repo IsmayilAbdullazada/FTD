@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { CLINICAL_50_FAQ } from "../src/data/clinicalRagFaq.ts";
 import { clinicalResources } from "./seedGuides.ts";
 import { SYNONYM_MAP } from "./vocabulary.ts";
+import { tokens, rank, suggestTopic } from "./knowledgeMatching.ts";
 import { NO_GUIDE, safetyReply } from "./safety.ts";
 import type { ClinicalResource } from "../src/types/index.ts";
 import type {
@@ -52,7 +53,6 @@ const text = (
     `Help me with ${title}`,
     `What should I know about ${title}?`,
   ],
-  privacyAccepted: [],
   unclearAccepted: true,
 });
 function seed(): KnowledgeState {
@@ -138,65 +138,8 @@ export function record(
     createdAt: now(),
   });
 }
-const stop = new Set(
-  "a an the is are was were it its of for and or to in on with my me we i our your you he she they their them does do how what why when can should would could about have has this that from loved one help know please get all".split(
-    " ",
-  ),
-);
-const tokens = (t: string) => [
-  ...new Set(
-    (t.toLowerCase().match(/[a-z0-9]+/g) || []).filter(
-      (t) => t.length > 2 && !stop.has(t),
-    ),
-  ),
-];
-function expand(t: string, settings: KnowledgeState["settings"]) {
-  const found = new Set([t]);
-  for (const [k, v] of Object.entries(settings.synonyms))
-    if (k === t || v.includes(t)) {
-      found.add(k);
-      v.forEach((x) => tokens(x).forEach((w) => found.add(w)));
-    }
-  return found;
-}
 export function retrieve(question: string, s = state) {
-  const qt = tokens(question);
-  if (!qt.length) return [];
-  // Minimum 0.60: at least 60% of meaningful question words must occur in the item's title,
-  // question, or approved search wording. Body matches are discounted to 80%, requiring
-  // at least 75% question coverage at the default cutoff, so incidental words cannot select a guide.
-  return s.items
-    .filter(
-      (i) =>
-        i.status === "Live" &&
-        i.live &&
-        s.topics.some((t) => t.id === i.live!.topicId && t.enabled),
-    )
-    .map((item) => {
-      const d = item.live!;
-      const words = new Set(
-        tokens(
-          [d.title, d.question, ...d.alternatives, ...d.searchWords].join(" "),
-        ),
-      );
-      const bodyWords = new Set(tokens(d.answer));
-      const hits = qt.filter((t) =>
-        [...expand(t, s.settings)].some((w) => words.has(w)),
-      ).length;
-      const exact = [d.title, d.question, ...d.alternatives].some(
-        (t) => t.trim().toLowerCase() === question.trim().toLowerCase(),
-      );
-      const bodyHits = qt.filter((t) =>
-        [...expand(t, s.settings)].some((w) => bodyWords.has(w)),
-      ).length;
-      const score = exact
-        ? 1
-        : Math.max(hits / qt.length, (bodyHits / qt.length) * 0.8);
-      return { item, score };
-    })
-    .filter((m) => m.score >= s.settings.minimum)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, s.settings.resultCount);
+  return rank(question, s);
 }
 let live = structuredClone(state);
 export function answer(question: string, s = live): KnowledgeAnswer {
@@ -300,6 +243,13 @@ function commitChange(
   try {
     const next = structuredClone(state);
     mutate(next);
+    next.topics = next.topics.filter(
+      (t) =>
+        !t.automatic ||
+        next.items.some(
+          (i) => i.live?.topicId === t.id || i.draft?.topicId === t.id,
+        ),
+    );
     record(next, actor, action, id, notes);
     if (update) {
       const candidate = structuredClone(next);
@@ -468,30 +418,6 @@ function flushUpdates() {
   }
 }
 
-export function privacy(d: KnowledgeText) {
-  const text = [
-    d.title,
-    d.question,
-    d.answer,
-    ...d.keyPoints,
-    ...d.alternatives,
-    ...d.searchWords,
-    ...d.samples,
-  ].join("\n");
-  const safe = text.replace(
-    /\(410\) 955-5147(?: \(option 2\))?|\(410\) 502-4163|410[- .]955[- .]5147|410[- .]502[- .]4163/g,
-    "",
-  );
-  const patterns = [
-    /\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g,
-    /(?:\+?\d[\d(). -]{7,}\d)/g,
-    /\b(?:MRN|record number|patient name|patient|name)\s*[:#]\s*[^\n,;]+/gi,
-    /\b\d+\s+[A-Z][\w ]+\s(?:Street|St|Road|Rd|Avenue|Ave|Lane|Ln)\b/g,
-    /\b(?:Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g,
-    /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g,
-  ];
-  return [...new Set(patterns.flatMap((p) => safe.match(p) || []))];
-}
 export function normalize(
   input: Partial<KnowledgeText>,
   s: KnowledgeState,
@@ -507,22 +433,18 @@ export function normalize(
       : [];
   const title = clean(input.title);
   const q = clean(input.question);
-  const automaticTopic =
-    [...s.topics]
-      .map((t) => ({
-        t,
-        n: tokens(t.name).filter((w) =>
-          tokens(title + " " + clean(input.answer)).includes(w),
-        ).length,
-      }))
-      .sort((a, b) => b.n - a.n)[0]?.t.id || s.topics[0].id;
+  const topicSuggested =
+    input.topicSuggested === true ||
+    !s.topics.some((t) => t.id === input.topicId);
+  const topicId = topicSuggested
+    ? suggestTopic(title, q, clean(input.answer), s)
+    : input.topicId!;
   return {
     title,
     question: q,
     answer: clean(input.answer),
-    topicId: s.topics.some((t) => t.id === input.topicId)
-      ? input.topicId!
-      : automaticTopic,
+    topicId,
+    topicSuggested,
     visibility: input.visibility === "guides" ? "guides" : "chatbot",
     keyPoints: list(input.keyPoints),
     alternatives: input.alternatives ? list(input.alternatives) : [q || title],
@@ -536,7 +458,6 @@ export function normalize(
           `Help me with ${q || title}`,
           `What should I know about ${q || title}?`,
         ],
-    privacyAccepted: list(input.privacyAccepted),
     unclearAccepted: input.unclearAccepted !== false,
     externalUrl:
       typeof input.externalUrl === "string" &&
@@ -585,7 +506,15 @@ export function guides(): ClinicalResource[] {
       createdAt: i.updatedAt,
     }));
 }
-export const publicTopics = () => live.topics.filter((t) => t.enabled);
+export const publicTopics = () =>
+  live.topics.filter(
+    (t) =>
+      t.enabled &&
+      (!t.automatic ||
+        live.items.some(
+          (i) => i.status === "Live" && i.live?.topicId === t.id,
+        )),
+  );
 export const snapshotState = () => structuredClone(live);
 
 // Validate the complete durable state before exposing it after process startup.

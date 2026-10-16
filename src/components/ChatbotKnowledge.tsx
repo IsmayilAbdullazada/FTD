@@ -95,7 +95,6 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
   const [type, setType] = useState("");
   const [topicName, setTopicName] = useState("");
   const [addingTopic, setAddingTopic] = useState(false);
-  const [privacy, setPrivacy] = useState<string[]>([]);
   const [undo, setUndo] = useState<KnowledgeItem>();
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<KnowledgeAnswer>();
@@ -178,6 +177,11 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
       apply(v);
       revision.current = v.items.find((i) => i.id === id)!.revision;
       if (formRef.current === current) {
+        const savedForm = v.items.find((i) => i.id === id)!.draft;
+        if (savedForm) {
+          formRef.current = savedForm;
+          setForm(savedForm);
+        }
         dirtyRef.current = false;
         setDirty(false);
       }
@@ -213,17 +217,6 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
   useEffect(() => {
-    if (!edit) return;
-    const timer = setTimeout(
-      () =>
-        staffRequest<{ highlights: string[] }>(user.id, `/privacy/${edit.id}`)
-          .then((v) => setPrivacy(v.highlights))
-          .catch(() => {}),
-      1100,
-    );
-    return () => clearTimeout(timer);
-  }, [form, edit?.id]);
-  useEffect(() => {
     return () => {
       if (original) URL.revokeObjectURL(original);
     };
@@ -251,7 +244,6 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
     setDirty(false);
     dirtyRef.current = false;
     setSaved(item.draft ? "Saved draft" : "Live content");
-    setPrivacy([]);
     setOriginal(undefined);
     if (item.fileId) {
       const r = await fetch(`${knowledgeRoot}/files/${item.fileId}`, {
@@ -285,6 +277,7 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
     setForm((f) => {
       if (!f) return f;
       const next = { ...f, [field]: value };
+      if (field === "topicId") next.topicSuggested = !value;
       if (
         (field === "question" || field === "title") &&
         typeof value === "string"
@@ -462,20 +455,12 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
     await saveNow();
     if (!edit) return;
     const latest = await loadKnowledge(user.id);
-    const p = await staffRequest<{ highlights: string[] }>(
-      user.id,
-      `/privacy/${edit.id}`,
-    );
     const item = latest.items.find((i) => i.id === edit.id)!;
     if (item.revision !== revision.current)
       throw Error(
         "Someone else changed this content. Open it again and review the latest text.",
       );
     const d = item.draft || item.live!;
-    if (p.highlights.some((h) => !d.privacyAccepted.includes(h))) {
-      setPrivacy(p.highlights);
-      throw Error("Please remove or mark OK the parts highlighted below.");
-    }
     if (!d.title.trim() || !d.answer.trim())
       throw Error("Add a title and the content before continuing.");
     reviewedRevisions.current[edit.id] = item.revision;
@@ -1459,9 +1444,14 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                 <label className="knowledge-label">
                   Topic{" "}
                   <select
-                    value={form.topicId}
+                    value={form.topicSuggested ? "" : form.topicId}
                     onChange={(e) => update("topicId", e.target.value)}
                   >
+                    <option value="">
+                      Suggested:{" "}
+                      {data.topics.find((t) => t.id === form.topicId)?.name ||
+                        "General guidance"}
+                    </option>
                     {data.topics.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
@@ -1669,33 +1659,6 @@ export function ChatbotKnowledge({ user, onOverview }: Props) {
                     )}
                   </div>
                 </details>
-                {privacy.length > 0 && (
-                  <div className="knowledge-alert flex-col">
-                    <p>
-                      This looks like it could identify a patient. Remove it, or
-                      mark it OK.
-                    </p>
-                    {privacy.map((p) => (
-                      <label key={p} className="flex gap-3 items-start">
-                        <input
-                          type="checkbox"
-                          checked={form.privacyAccepted.includes(p)}
-                          onChange={(e) =>
-                            update(
-                              "privacyAccepted",
-                              e.target.checked
-                                ? [...form.privacyAccepted, p]
-                                : form.privacyAccepted.filter((x) => x !== p),
-                            )
-                          }
-                        />
-                        <span>
-                          <mark>{p}</mark> — OK to include
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
                 {!form.unclearAccepted && (
                   <div className="knowledge-alert flex-col">
                     <p>

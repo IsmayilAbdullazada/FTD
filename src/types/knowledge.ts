@@ -2,6 +2,7 @@ export interface KnowledgeTopic {
   id: string;
   name: string;
   enabled: boolean;
+  automatic?: boolean;
 }
 export interface KnowledgeSheet {
   name: string;
@@ -16,11 +17,11 @@ export interface KnowledgeText {
   question: string;
   keyPoints: string[];
   topicId: string;
+  topicSuggested?: boolean;
   visibility: "chatbot" | "guides";
   alternatives: string[];
   searchWords: string[];
   samples: string[];
-  privacyAccepted: string[];
   unclearAccepted: boolean;
   externalUrl?: string;
 }

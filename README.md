@@ -47,7 +47,8 @@ The application does not download or execute tools during an upload.
 
 File-reading dependencies added: **file-type** (content detection), **adm-zip**
 (inspection of Office/ODT containers), **mammoth** (DOCX), **word-extractor**
-(legacy DOC), and **xlsx** (XLSX/XLS/CSV/TSV); **@types/adm-zip** provides development
+(legacy DOC), **xlsx** (XLSX/XLS/CSV/TSV), **parse5** (HTML), **@xmldom/xmldom**
+(Office XML), and **@iarna/rtf-to-html** (RTF); **@types/adm-zip** provides development
 types. The committed npm lockfile makes installation repeatable. Files with macros,
 encryption, excessive expanded size, or unreadable content are refused. Documents
 can be at most 25 MB; PDFs can contain at most 300 pages. The picker accepts ten
@@ -70,14 +71,20 @@ Seed files are never a client fallback or a substitute for an existing database.
 The Guides page only shows enabled, live content marked for that page. The
 question browser and Guides page share the managed topic list.
 
-Default match strictness is **0.60**. Matching ignores common question words,
-uses related-word groups, and requires coverage of at least 60% of the meaningful
-question words in titles/questions/search wording. Body matches receive an 0.8
-weight, so they require at least 75% coverage at the default setting. Exact own
-questions match completely. Tests calibrate every seeded item's own question or
-title, both off-topic examples (pizza and the capital of France), and a removed
-FAQ's driving question. There is no default-to-first-item behavior. A specific
-question covered by one of the four preserved guides can still use that guide.
+Default match strictness is **0.60**. Matching handles Unicode, accents, common
+word forms, and configured related words. Rare query terms carry more weight;
+body matches use nearby passages and receive an 0.88 weight. Exact titles and
+approved questions match completely. Unrelated queries return no content.
+Topic suggestions use existing category names and relevant published content.
+Unfamiliar document headings become new topics; unfinished or ambiguous questions
+use General guidance. Staff can choose a different topic. Unused automatically
+created draft topics stay out of the public topic list.
+
+Readers preserve headings and inline words, decode Unicode text, retain lists,
+and detect spreadsheet question/answer columns in either order. Commas in prose
+stay document text. PDFs are inspected page by page so a scanned page is still
+read when another page contains typed text. OCR content requires review before
+publication. The patient-identity approval section has been removed.
 
 Update triggers within three seconds are coalesced into one serialized update:
 a complete candidate is validated, written to SQLite, and then made available
@@ -99,17 +106,14 @@ model response so an in-flight request cannot revive removed content.
 
 ### Verification and current limits
 
-`npm test` exercises the content lifecycle, optimistic concurrency, privacy
-acknowledgments, permissions on every staff endpoint, admin-only controls,
+`npm test` exercises the content lifecycle, optimistic concurrency, document-heading regressions, permissions on every staff endpoint, admin-only controls,
 matching, safety, durable restart, archives, upload deduplication, macro refusal,
 file readers, and scan text reading. Browser validation covered 360, 390, 768,
 820, 1024, 1280, and 1440 px in light and dark themes, plus publishing a PDF and
 CSV and editing/removing/restoring on a phone-sized viewport.
 
 The app still uses demo persona identity: a staff ID supplied in `x-user-id` is
-not real authentication. Real login is deliberately outside this change. Privacy
-warnings are conservative heuristics, not a guarantee that all patient information
-has been found; the staff review step remains essential. DOC and HEIC readers
+not real authentication. Real login is deliberately outside this change. DOC and HEIC readers
 are implemented, but those two formats and a live Gemini account have not been
 validated with real-world files/credentials in this environment. Unusual scans,
 complex document layouts, or legacy formatting may need correction during review.

@@ -13,7 +13,6 @@ import {
   updateStatus,
   change,
   normalize,
-  privacy,
   answer,
   retrieve,
   guides,
@@ -189,10 +188,6 @@ export function registerKnowledge(app: Express, users: User[]) {
               );
             if (d.samples.filter((q) => q.trim()).length < 3)
               throw Error("Please keep at least three sample questions.");
-            if (privacy(d).some((p) => !d.privacyAccepted.includes(p)))
-              throw Error(
-                "Please remove or mark OK each part that could identify a patient.",
-              );
             if (
               s.files.find((f) => f.id === i.fileId)?.unclear &&
               !d.unclearAccepted
@@ -314,13 +309,6 @@ export function registerKnowledge(app: Express, users: User[]) {
         true,
       );
       res.json(overview());
-    }),
-  );
-  app.get(
-    root + "/privacy/:id",
-    route(async (req, res) => {
-      const i = getState().items.find((i) => i.id === req.params.id);
-      res.json({ highlights: i ? privacy(i.draft || i.live!) : [] });
     }),
   );
   app.post(

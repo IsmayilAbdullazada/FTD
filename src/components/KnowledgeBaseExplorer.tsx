@@ -82,19 +82,29 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     const matchesSearch =
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (res.contentBody ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesCategory && matchesSearch;
+      (res.contentBody ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesAudience = isClinician ||
+      res.diseaseDomain === 'BOTH' ||
+      res.diseaseDomain === currentUser?.condition;
+
+    return matchesCategory && matchesSearch && matchesAudience;
   });
 
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !newTitle.trim() ||
-      !newSummary.trim() ||
-      (!newExternalUrl.trim() && !newFileAttachmentUrl.trim()) ||
-      !newAudience ||
-      isSubmitting
-    ) return;
+
+    if (!newTitle.trim() || !newSummary.trim() || isSubmitting) return;
+
+    if (!newExternalUrl.trim() && !newPdfFile && !newFileAttachmentUrl.trim()) {
+      setSuccessToast('Please provide an external URL or a PDF resource.');
+      return;
+    }
+
+    if (!newAudience) {
+      setSuccessToast('Please select FTD, Alzheimer’s, or Both.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -103,6 +113,17 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
+      const additionalLinks = newAdditionalLinks
+      .split('\n')
+      .map((line) => {
+        const [label, ...urlParts] = line.split('|');
+        return {
+          label: label.trim(),
+          url: urlParts.join('|').trim(),
+        };
+      })
+      .filter((link) => link.label && link.url);
+
       const created = await api.createResource({
         title: newTitle.trim(),
         category: newCategory,
@@ -110,6 +131,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         contentBody: newContentBody.trim(),
         keyTakeaways: takeawaysList.length > 0 ? takeawaysList : [newSummary.trim() || newTitle.trim()],
         externalUrl: newExternalUrl.trim() || undefined,
+        additionalLinks,
         diseaseDomain: newAudience,
         authorId: currentUser?.id ?? '',
       });
@@ -222,12 +244,15 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               onClick={() => setActiveResource(res)}
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div className="space-y-2">          
+                <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-[#002D72] dark:text-blue-400">
                     {categories.find((c) => c.key === res.category)?.label || res.category}
                   </span>
-                  <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                  <div className="flex items-center gap-2">
+                    {isClinician && <AudienceBadge condition={res.diseaseDomain} />}
+                    <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                  </div>
                 </div>
 
                 <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">

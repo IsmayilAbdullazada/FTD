@@ -212,13 +212,13 @@ export interface GroupMember {
   email: string;
   phone?: string;
   clinicPatientId?: string;
+  condition?: Condition;
   anonymousHandle: string;
   primaryGroupId: string;
   primaryGroupName: string;
   role: UserRole;
   status: 'ACTIVE' | 'PENDING' | 'MUTED';
   joinedAt: string;
-  condition?: Condition;
 }
 
 

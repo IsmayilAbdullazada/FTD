@@ -106,15 +106,30 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [npGroupId, setNpGroupId] = useState('');
   const [npAudience, setNpAudience] = useState<Audience | ''>('');
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
-
+ 
   const loadQueue = async () => {
     setLoadingQueue(true);
     try {
-      const res = await api.getModerationQueue();
-      setQueueItems(res.items || []);
-      if (res.items && res.items.length > 0) {
-        setSelectedIndex(0);
-        initItemState(res.items[0]);
+      const [queueRes, memberRes] = await Promise.all([
+        api.getModerationQueue(),
+        api.getGroupMembers(),
+      ]);
+
+      const items = queueRes.items || [];
+      const filteredItems = audienceFilter === 'all'
+        ? items
+        : items.filter((item) => {
+            const author = memberRes.find(
+              (m) => m.userId === item.author.userId
+            );
+            return author?.condition === audienceFilter;
+          });
+
+      setQueueItems(filteredItems);
+      setSelectedIndex(0);
+
+      if (filteredItems.length > 0) {
+        initItemState(filteredItems[0]);
       }
     } catch (err) {
       console.error(err);
@@ -127,7 +142,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setLoadingMembers(true);
     try {
       const res = await api.getGroupMembers(groupId);
-      setMembers(res);
+      const filtered = audienceFilter === 'all'
+        ? res
+        : res.filter((member) => member.condition === audienceFilter);
+      setMembers(filtered);
     } catch (err) {
       console.error(err);
     } finally {
@@ -151,7 +169,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  useEffect(() => { loadQueue(); loadMembers(); }, []);
+  useEffect(() => { loadQueue(); }, [audienceFilter]);
+  useEffect(() => { loadMembers(); }, [audienceFilter]);
   useEffect(() => { loadPublishedPosts(); }, [audienceFilter]);
 
   const initItemState = (item: QueueItem) => {

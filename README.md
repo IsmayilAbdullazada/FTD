@@ -45,7 +45,7 @@ These tools are present in the prepared cloud environment. On Debian/Ubuntu,
 install them using `apt-get install poppler-utils tesseract-ocr imagemagick`.
 The application does not download or execute tools during an upload.
 
-File-reading dependencies added: **file-type** (content detection), **adm-zip**
+File-reading dependencies added: **file-type** (content detection), **cfb** (legacy Office stream detection), **adm-zip**
 (inspection of Office/ODT containers), **mammoth** (DOCX), **word-extractor**
 (legacy DOC), **xlsx** (XLSX/XLS/CSV/TSV), **parse5** (HTML), **@xmldom/xmldom**
 (Office XML), and **@iarna/rtf-to-html** (RTF); **@types/adm-zip** provides development
@@ -76,13 +76,15 @@ word forms, and configured related words. Rare query terms carry more weight;
 body matches use nearby passages and receive an 0.88 weight. Exact titles and
 approved questions match completely. Unrelated queries return no content.
 Topic suggestions use existing category names and relevant published content.
-Unfamiliar document headings become new topics; unfinished or ambiguous questions
-use General guidance. Staff can choose a different topic. Unused automatically
-created draft topics stay out of the public topic list.
+Sections of an uploaded file share one suggested topic, with the source context
+preserved during edits. Unfamiliar document titles become new topics; unfinished
+or ambiguous questions use General guidance. Staff can choose a different topic.
+Unused automatically created draft topics stay out of the public topic list.
 
 Readers preserve headings and inline words, decode Unicode text, retain lists,
-and detect spreadsheet question/answer columns in either order. Commas in prose
-stay document text. PDFs are inspected page by page so a scanned page is still
+bound sections at 800 words, and detect spreadsheet question/answer columns in
+either order. Generic tables retain labeled columns as document content. Commas
+in prose stay document text. PDFs are inspected page by page so a scanned page is still
 read when another page contains typed text. OCR content requires review before
 publication. The patient-identity approval section has been removed.
 
@@ -97,8 +99,8 @@ information. Medication/remedy terms and clinic numbers live in
 `server/safety.ts` and are never editable in the workspace.
 
 `GEMINI_API_KEY` remains optional. Without it the chatbot quotes approved text.
-With it Gemini receives only the matched source, capped at 12,000 characters,
-and can select an exact passage. Any output that adds or changes source text,
+With it Gemini receives only an approved context passage from the matched source,
+capped at 12,000 characters, and can select an exact passage. Any output that adds or changes source text,
 invalid output, or service failure falls back to approved text. Safety responses
 and no-content responses never go to the model. Try It uses the same answer
 function as care partners. Live knowledge is checked again before returning a
@@ -113,9 +115,10 @@ file readers, and scan text reading. Browser validation covered 360, 390, 768,
 CSV and editing/removing/restoring on a phone-sized viewport.
 
 The app still uses demo persona identity: a staff ID supplied in `x-user-id` is
-not real authentication. Real login is deliberately outside this change. DOC and HEIC readers
-are implemented, but those two formats and a live Gemini account have not been
-validated with real-world files/credentials in this environment. Unusual scans,
+not real authentication. Real login is deliberately outside this change. The
+public-file audit covers 50 originals in seven formats and 27 separately
+labeled conversions across 25 extensions, including DOC and HEIC. A live Gemini
+account was not validated in this audit. Unusual scans,
 complex document layouts, or legacy formatting may need correction during review.
 
 The browser regression test is optional and does not add a runtime dependency:
@@ -131,3 +134,13 @@ seven sizes in both themes, and exercises publish/edit/archive/restore and role
 visibility. Screenshots are saved under `/tmp/ftd-browser-artifacts` (override with
 `BROWSER_ARTIFACT_DIR`). Existing Google Fonts proxy failures are excluded from
 application console errors. Set `BROWSER_TEST_PORT` if port 3420 is occupied.
+
+### Public FTD corpus audit
+
+[Read the 50-file ingestion and RAG audit](docs/ftd-content-audit.md), including
+per-file results, pinned source URLs, format coverage, before/after measurements
+and reproduction commands. The test exposed real import failures and poor natural
+question matching. Import success is not a measure of answer quality: natural
+question probes still reveal irrelevant sources and missed evidence. Medical-site
+network restrictions limited discovery to public GitHub collections; converted
+format fixtures are reported separately from original internet files.

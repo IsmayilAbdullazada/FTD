@@ -162,7 +162,7 @@ export function answer(question: string, s = live): KnowledgeAnswer {
     };
   const best = matches[0].item.live!;
   return {
-    answer: best.answer,
+    answer: matches[0].context,
     citedResources: [
       {
         id: matches[0].item.id,
@@ -436,8 +436,14 @@ export function normalize(
   const topicSuggested =
     input.topicSuggested === true ||
     !s.topics.some((t) => t.id === input.topicId);
+  const topicContext = clean(input.topicContext).slice(0, 200);
   const topicId = topicSuggested
-    ? suggestTopic(title, q, clean(input.answer), s)
+    ? suggestTopic(
+        topicContext || title,
+        topicContext ? "" : q,
+        clean(input.answer),
+        s,
+      )
     : input.topicId!;
   return {
     title,
@@ -445,6 +451,7 @@ export function normalize(
     answer: clean(input.answer),
     topicId,
     topicSuggested,
+    ...(topicContext ? { topicContext } : {}),
     visibility: input.visibility === "guides" ? "guides" : "chatbot",
     keyPoints: list(input.keyPoints),
     alternatives: input.alternatives ? list(input.alternatives) : [q || title],

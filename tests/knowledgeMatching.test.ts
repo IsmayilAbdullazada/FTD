@@ -126,3 +126,47 @@ test("configured multiword synonyms preserve phrase meaning in both directions",
   );
   assert.equal(rank("register", s).length, 0);
 });
+
+test("placeholder headings cannot outrank substantive FTD information", () => {
+  const s = library();
+  s.items[0].live = document(
+    "Symptoms of frontotemporal dementia",
+    "- list symptoms here (gotta do research on that and list the ones that are relevant)",
+  );
+  s.items[1].live = document(
+    "Frontotemporal dementia",
+    "Symptoms of frontotemporal dementia include changes in behavior, personality and language.",
+  );
+  assert.equal(
+    rank("What are the symptoms of frontotemporal dementia?", s)[0]?.item.id,
+    "1",
+  );
+});
+test("matching handles British and American spelling", () => {
+  const s = library();
+  s.items[0].live = document(
+    "Dementia",
+    "Frontotemporal dementia can change behaviour and personality. An EEG pattern alone is not a diagnosis.",
+  );
+  assert.equal(
+    rank(
+      "How does frontotemporal dementia change behavior and personality?",
+      s,
+    )[0]?.item.id,
+    "0",
+  );
+});
+test("document context follows the matching paragraph and keeps protocol steps", () => {
+  const s = library();
+  const preamble =
+    "Other context information about an unrelated study. ".repeat(60);
+  const body =
+    preamble +
+    "\n\nFor respite badge collection:\n\n1. Go to the green desk.\n2. Ask for the respite badge.\n3. Keep the badge with you.";
+  s.items[0].live = document("Clinic reference", body);
+  const hit = rank("respite badge collection", s)[0]!;
+  assert.match(hit.context, /1\. Go to the green desk/);
+  assert.match(hit.context, /3\. Keep the badge with you/);
+  assert.ok(body.includes(hit.context));
+  assert.ok(hit.context.length < body.length / 2);
+});

@@ -1,0 +1,1353 @@
+{
+  "seed": 20261016,
+  "sampling": "Format-stratified seeded sample (20261016) of 50 SHA-256-unique files from 88 FTD-mentioning downloads. All 34 eligible non-Markdown files were retained; 16 substantive Markdown reports were sampled, preferring reports over project landing READMEs. Discovery is constrained to reachable GitHub repositories; this is not a random sample of the web.",
+  "discoveryLimit": "Medical and charity domains remain blocked by the live network policy. These 50 originals span seven extensions and include research/software material, placeholders, and bibliographies. Controlled conversions cover other supported formats separately.",
+  "files": [
+    {
+      "url": "https://raw.githubusercontent.com/FatimaHussain11/AI_Powered-EEG_Dementia-Detection-System/19a03e7343ff59bf8e9c6792f7ba449707c77acc/EEG%20Research%20paper.pdf",
+      "repo": "FatimaHussain11/AI_Powered-EEG_Dementia-Detection-System",
+      "name": "EEG Research paper.pdf",
+      "extension": "pdf",
+      "sha256": "90659e9dd747c74c4a1e8df0f4e96643a71fcecc5d8154cc2cf0c1e0f29f66c3",
+      "bytes": 750069,
+      "referenceWords": 4240,
+      "kind": "internet-original",
+      "id": "ftd-01",
+      "anchors": [
+        {
+          "query": "multiclass disease dementia spectral features boosting",
+          "referenceExcerpt": "Multiclass Classification of Alzheimer's Disease and Frontotemporal Dementia from Resting-State EEG Using Spectral Band-Power Features and Cost-Sensitive Gradient Boosting",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "only illustrating path recall recording output",
+          "referenceExcerpt": "Only 10 out of 23 FTD holdout subjects, illustrating the deployment path from a new subjects were correctly identified (43.5% recall) on the FTD patient recording to a per-class probability output.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "openneuro recordings alzheimer frontotemporal dementia subjects",
+          "referenceExcerpt": "[6] OpenNeuro, \"ds004504: A dataset of EEG recordings from Alzheimer's disease, frontotemporal dementia and healthy subjects,\" 2023.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/FatimaHussain11/AI_Powered-EEG_Dementia-Detection-System/main/EEG%20Research%20paper.pdf",
+      "sourceCommit": "19a03e7343ff59bf8e9c6792f7ba449707c77acc"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aquinf03/Neuro/d275e438472c4f65c147d146bdfad644fcb58240/Frontotemporal/ftd_RESULTS.md.pdf",
+      "repo": "Aquinf03/Neuro",
+      "name": "ftd_RESULTS.md.pdf",
+      "extension": "pdf",
+      "sha256": "1d8719da7689ad16648d854e92f91515ece4d9661531886d5c18d88b80803ed6",
+      "bytes": 235880,
+      "referenceWords": 1099,
+      "kind": "internet-original",
+      "id": "ftd-02",
+      "anchors": [
+        {
+          "query": "under tasks memory ordering conditions specific",
+          "referenceExcerpt": "Under late-layer damage, executive tasks fail before memory, which fits the FTD profile, but the same ordering shows up across conditions, so it is suggestive rather than specific.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "ftd-specific frontal produces memory only supported",
+          "referenceExcerpt": "The FTD-specific prediction, that frontal damage produces an executive-led decline with memory spared, is only partly supported.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "schizophrenia gives but-failing give decline surface",
+          "referenceExcerpt": "So far schizophrenia (attention flattening) gives fluent- but-failing, and Alzheimer's and FTD both give an executive-first decline that looks similar on the surface.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/Aquinf03/Neuro/main/Frontotemporal/ftd_RESULTS.md.pdf",
+      "sourceCommit": "d275e438472c4f65c147d146bdfad644fcb58240"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/Literature_Review_EEG_Dementia.pdf",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "Literature_Review_EEG_Dementia.pdf",
+      "extension": "pdf",
+      "sha256": "ddf6b7a8f089eaa841ab49eca5d7f5ceb6c5dd676f22edac4c08125387b9e820",
+      "bytes": 6830,
+      "referenceWords": 891,
+      "kind": "internet-original",
+      "id": "ftd-03",
+      "anchors": [
+        {
+          "query": "literature eeg-based project alzheimer cognitively controls",
+          "referenceExcerpt": "Literature Review: EEG-Based Classification of Dementia Project focus: Alzheimer's disease (AD), frontotemporal dementia (FTD), and cognitively normal controls (CN).",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "ad-versus-ftd harder either group stacked-model versus",
+          "referenceExcerpt": "Their AD-versus-FTD distinction was harder than separating either dementia group from controls, with a reported stacked-model ROC-AUC of 65.10% for AD versus FTD.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "alzheimer frontotemporal robust method comparison methods",
+          "referenceExcerpt": "Alzheimer's Disease and Frontotemporal Dementia: A Robust Classification Method of EEG Signals and a Comparison of Validation Methods.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/Literature_Review_EEG_Dementia.pdf",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/robinlclark/rlc-papers/f25fef71163ed542b5c770e74de9cbf0120e9b6d/Topoi%202007%20Clark.pdf",
+      "repo": "robinlclark/rlc-papers",
+      "name": "Topoi 2007 Clark.pdf",
+      "extension": "pdf",
+      "sha256": "8473cea67c0d5be79c8fa74cdeb42bdf4194c45d27d227751eb1f756e3865305",
+      "bytes": 316783,
+      "referenceWords": 8369,
+      "kind": "internet-original",
+      "id": "ftd-04",
+      "anchors": [
+        {
+          "query": "frontotemporal comprehension input progressive aphasia involving",
+          "referenceExcerpt": "Frontotemporal dementia (FTD) patients; due to In summary, our model of quantiﬁer comprehension temporal lobe disease some of these patients show uses input from the number processing portions of the semantic dementia, a ﬂuent form of progressive brain to support judgments of the truth or falsity of aphasia with profound naming difﬁculty and an linguistic expressions involving quantiﬁers.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "emphasizes division multi-digit role making compromised",
+          "referenceExcerpt": "This emphasizes like division or handling large, multi-digit numbers are the role of number knowledge in making quantiﬁer compromised in FTD.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "mean rst-order same corticobasal alzheimer processing",
+          "referenceExcerpt": "4 Mean (standard deviation) accuracy for ﬁrst-order and least some quantiﬁers is supported by the same neu- higher-order quantiﬁer comprehension in corticobasal degener- ation (CBD), frontotemporal dementia (FTD), Alzheimer’s roanatomy that supports number processing.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/robinlclark/rlc-papers/master/Topoi%202007%20Clark.pdf",
+      "sourceCommit": "f25fef71163ed542b5c770e74de9cbf0120e9b6d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/amberbiology/scribl/4884094acb8f4b39f2777a1c8dff9b626492d4a2/scribl.pdf",
+      "repo": "amberbiology/scribl",
+      "name": "scribl.pdf",
+      "extension": "pdf",
+      "sha256": "0b6a7e8f50035362d21fb14168db1c28e49440fccc4567ec096494c6f4bc7cee",
+      "bytes": 5556814,
+      "referenceWords": 12859,
+      "kind": "internet-original",
+      "id": "ftd-05",
+      "anchors": [
+        {
+          "query": "other gene separate easily tardbp tdp-",
+          "referenceExcerpt": "In other cases, the gene and its protein may have completely separate names and can be easily distinguished, for example, the gene TARDBP that encodes the protein TDP-43 (or TDP43).",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/amberbiology/scribl/main/scribl.pdf",
+      "sourceCommit": "4884094acb8f4b39f2777a1c8dff9b626492d4a2"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/robinlclark/rlc-papers/f25fef71163ed542b5c770e74de9cbf0120e9b6d/Brain%20and%20Cognition%202006%20McMillan.pdf",
+      "repo": "robinlclark/rlc-papers",
+      "name": "Brain and Cognition 2006 McMillan.pdf",
+      "extension": "pdf",
+      "sha256": "96ca7147118ac4d8e3cf73ac7279c5fd83527c2f15e68379777a57022ffec2c4",
+      "bytes": 312205,
+      "referenceWords": 9437,
+      "kind": "internet-original",
+      "id": "ftd-06",
+      "anchors": [
+        {
+          "query": "quantifier comprehension number knowledge first-order higher-order",
+          "referenceExcerpt": "Our model of quantifier comprehension proposes that number knowledge is required to understand both first-order and higher-order quantifiers.",
+          "kind": "visually checked PDF reference diagnostic"
+        },
+        {
+          "query": "FTD working memory limitations difficulty higher-order quantifiers",
+          "referenceExcerpt": "FTD and AD patients, who have working memory limitations, have greater difficulty understanding higher-order quantifiers relative to first-order quantifiers",
+          "kind": "visually checked PDF reference diagnostic"
+        },
+        {
+          "query": "generalized quantifiers components number knowledge working memory",
+          "referenceExcerpt": "An important implication of these findings is that the meaning of generalized quantifiers appears to involve two dissociable components, number knowledge and working memory, which are supported by distinct brain regions.",
+          "kind": "visually checked PDF reference diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF plus visual inspection of rendered page 1; corrected font-map and column-order errors in anchors",
+      "discoveredUrl": "https://raw.githubusercontent.com/robinlclark/rlc-papers/master/Brain%20and%20Cognition%202006%20McMillan.pdf",
+      "sourceCommit": "f25fef71163ed542b5c770e74de9cbf0120e9b6d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/robinlclark/rlc-papers/f25fef71163ed542b5c770e74de9cbf0120e9b6d/NeuroImage%202016%20Heim.pdf",
+      "repo": "robinlclark/rlc-papers",
+      "name": "NeuroImage 2016 Heim.pdf",
+      "extension": "pdf",
+      "sha256": "4881e8b64091c3e06d83f2fa8e14e6129e987d9f122fb12a23895c2d1f841e78",
+      "bytes": 1530993,
+      "referenceWords": 6926,
+      "kind": "internet-original",
+      "id": "ftd-07",
+      "anchors": [
+        {
+          "query": "department rwth lich translational school linguistics",
+          "referenceExcerpt": "a Department of Psychiatry, Psychotherapy, and Psychosomatics, Medical Faculty, RWTH Aachen, Aachen, Germany; b Research Centre Jülich, Institute of Neuroscience and Medicine (INM-1), Jülich, Germany c JARA — Translational Brain Medicine, Aachen, Germany d University of Pennsylvania Perelman School of Medicine, Department of Neurology and Frontotemporal Degeneration Center, Philadelphia, USA e University of Pennsylvania, Department of Linguistics, USA",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/robinlclark/rlc-papers/master/NeuroImage%202016%20Heim.pdf",
+      "sourceCommit": "f25fef71163ed542b5c770e74de9cbf0120e9b6d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/robinlclark/rlc-papers/f25fef71163ed542b5c770e74de9cbf0120e9b6d/Neuropsychologia%202005%20McMillan.pdf",
+      "repo": "robinlclark/rlc-papers",
+      "name": "Neuropsychologia 2005 McMillan.pdf",
+      "extension": "pdf",
+      "sha256": "65ab69ee732d18b64f5b446d434cc6e56f9e5e0325bf6767c692875836e5cba5",
+      "bytes": 272102,
+      "referenceWords": 7064,
+      "kind": "internet-original",
+      "id": "ftd-08",
+      "anchors": [
+        {
+          "query": "parametric prefrontal cortex frontotemporal dementia degeneration",
+          "referenceExcerpt": "A parametric study of prefrontal cortex involve- frontotemporal dementia, and corticbasal degeneration.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/robinlclark/rlc-papers/master/Neuropsychologia%202005%20McMillan.pdf",
+      "sourceCommit": "f25fef71163ed542b5c770e74de9cbf0120e9b6d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mayar1mousa/tdp43-rnaseq-analysis/d84d08c48c3aae5f005e6cb7664c9eccc36d5957/docs/Chr5_project_report.pdf",
+      "repo": "mayar1mousa/tdp43-rnaseq-analysis",
+      "name": "Chr5_project_report.pdf",
+      "extension": "pdf",
+      "sha256": "59d9746e51b5d2989cd2698a8b7cdec433435c369ebc8aef68cdc51080bc92df",
+      "bytes": 6959515,
+      "referenceWords": 4122,
+      "kind": "internet-original",
+      "id": "ftd-09",
+      "anchors": [
+        {
+          "query": "dna-binding commonly rna-binding aspects including transport",
+          "referenceExcerpt": "TAR DNA-binding protein 43 (TDP-43) is a commonly expressed RNA-binding protein involved in multiple aspects of RNA metabolism, including splicing, stability, and transport.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "ensembl mark processed knockout aligned performance",
+          "referenceExcerpt": "Ensembl release 115 and the GRCh38 genome assembly mark the versions used respective to consistency, we processed raw RNA-seq data from wild-type (WT) and TDP-43 knockout (KO) samples, performed quality control, aligned and quantified reads, and assessed mapping performance.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "together robust mediated chromosome pathways validation",
+          "referenceExcerpt": "Together, these findings establish a robust framework for understanding TDP-43-mediated transcriptional dysregulation on chromosome 5 and provide candidate genes and pathways for further functional validation.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/mayar1mousa/tdp43-rnaseq-analysis/main/docs/Chr5_project_report.pdf",
+      "sourceCommit": "d84d08c48c3aae5f005e6cb7664c9eccc36d5957"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/robinlclark/rlc-papers/f25fef71163ed542b5c770e74de9cbf0120e9b6d/generalizedQuantifiersandNumberSense.pdf",
+      "repo": "robinlclark/rlc-papers",
+      "name": "generalizedQuantifiersandNumberSense.pdf",
+      "extension": "pdf",
+      "sha256": "e974ad505701006e8b40ec1cc5ac4ee458367c894e1f67539f7fa1c265875107",
+      "bytes": 136148,
+      "referenceWords": 5624,
+      "kind": "internet-original",
+      "id": "ftd-10",
+      "anchors": [
+        {
+          "query": "patients includes inferior cortex associated limitations",
+          "referenceExcerpt": "These patients have disease that often includes the dorsolateral and inferior portions of frontal cortex, areas associated with working memory limitations in FTD.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "although number non- since resources memory",
+          "referenceExcerpt": "Although FTD patients show no impairment in number knowledge per se, we predict that they should have trouble with non-ﬁrst-order quantiﬁers, since these make demands on executive resources like working memory.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "non- rst-order patients more than both",
+          "referenceExcerpt": "For non-ﬁrst-order quantiﬁers, CBD patients were more impaired than both AD patients and FTD patients.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/robinlclark/rlc-papers/master/generalizedQuantifiersandNumberSense.pdf",
+      "sourceCommit": "f25fef71163ed542b5c770e74de9cbf0120e9b6d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/technical_report/main.pdf",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "main.pdf",
+      "extension": "pdf",
+      "sha256": "8bcf59a5d811086a9ee1845cf0e234d12810419541622421a70a199b5bb08a71",
+      "bytes": 467314,
+      "referenceWords": 16312,
+      "kind": "internet-original",
+      "id": "ftd-11",
+      "anchors": [
+        {
+          "query": "differential alzheimer disease dementia cognitively controls",
+          "referenceExcerpt": "for Differential Classification of Alzheimer’s Disease, Frontotemporal Dementia, and Cognitively Normal Controls",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "sixty-five windows fail least post-car rule",
+          "referenceExcerpt": "Sixty-five windows fail at least one post-CAR rule: 9 AD, 42 FTD, and 14 CN.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "dataset recordings dis- frontotemporal healthy routine",
+          "referenceExcerpt": "A dataset of scalp eeg recordings of alzheimer’s dis- ease, frontotemporal dementia and healthy subjects from routine eeg.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/technical_report/main.pdf",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/francesshei/BLASN_essay_2023/a329a25aef22a781e4f4e35052b3765d11452aaa/essay.pdf",
+      "repo": "francesshei/BLASN_essay_2023",
+      "name": "essay.pdf",
+      "extension": "pdf",
+      "sha256": "a512a369f75bb66bbe90b46f27aa660148980e8db1f5b69aedfec583b9efe383",
+      "bytes": 756264,
+      "referenceWords": 3351,
+      "kind": "internet-original",
+      "id": "ftd-12",
+      "anchors": [
+        {
+          "query": "multiscale analysis spatially-localised normal frontotemporal activity",
+          "referenceExcerpt": "Multiscale sample entropy analysis of EEG data reveals spatially-localised differences between normal and Alzheimer’s Disease and frontotemporal dementia brain activity",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "francesco jamal sheiban reveals spatially-localised differences",
+          "referenceExcerpt": "Francesco Jamal Sheiban MSE EEG analysis reveals spatially-localised differences in AD and FtD",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "values seen between graphs patients entropy",
+          "referenceExcerpt": "The K-W values are shown together with the distribution of the values: it can be seen that no statistical difference is found between the two pathologies (Group A and F), but in all graphs there a statistical difference between healthy subjects (Group C) and AD/FtD patients, with healthy EEG data having higher entropy.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/francesshei/BLASN_essay_2023/main/essay.pdf",
+      "sourceCommit": "a329a25aef22a781e4f4e35052b3765d11452aaa"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mayar1mousa/tdp43-rnaseq-analysis/d84d08c48c3aae5f005e6cb7664c9eccc36d5957/docs/chr5_presentation.pdf",
+      "repo": "mayar1mousa/tdp43-rnaseq-analysis",
+      "name": "chr5_presentation.pdf",
+      "extension": "pdf",
+      "sha256": "1db0d045742edeea7df4f1781101930cc5afcf1c84a7f32f44d7998101a095f0",
+      "bytes": 2376496,
+      "referenceWords": 313,
+      "kind": "internet-original",
+      "id": "ftd-13",
+      "anchors": [
+        {
+          "query": "introduction results experimental differential bioinformatics objectives",
+          "referenceExcerpt": "Introduction Methodology Data Analysis Results Project scope, TDP-43 Experimental design, Quality control, Differential expression, function, and research bioinformatics pipeline, and quantification, and PCA validation, and objectives.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "project analyze transcriptomic chromosome following knockout",
+          "referenceExcerpt": "Project Objective: To analyze the transcriptomic landscape of Chromosome 5 following TDP-43 knockout.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "biological confirms impact mrna mimicking phenotypes",
+          "referenceExcerpt": "Biological Link: Confirms localized impact on mRNA metabolism, mimicking ALS/FTD cellular phenotypes.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/mayar1mousa/tdp43-rnaseq-analysis/main/docs/chr5_presentation.pdf",
+      "sourceCommit": "d84d08c48c3aae5f005e6cb7664c9eccc36d5957"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/robinlclark/rlc-papers/f25fef71163ed542b5c770e74de9cbf0120e9b6d/Front.%20Hum.%20Neurosci.%202015%20Spotorno.pdf",
+      "repo": "robinlclark/rlc-papers",
+      "name": "Front. Hum. Neurosci. 2015 Spotorno.pdf",
+      "extension": "pdf",
+      "sha256": "804633a00cac6cc3c99b0b1c62688cb73efe711052387275068f26964af84744",
+      "bytes": 530981,
+      "referenceWords": 6611,
+      "kind": "internet-original",
+      "id": "ftd-14",
+      "anchors": [
+        {
+          "query": "processing linguistic decision-making patients variant degeneration",
+          "referenceExcerpt": "Processing ambiguity in a linguistic context: decision-making difﬁculties in non-aphasic patients with behavioral variant frontotemporal degeneration",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "jnnp variant dementia farag bonner avants",
+          "referenceExcerpt": "doi: 10.1136/jnnp.2006.098228 the behavioural variant of frontotemporal dementia: an analysis of the Farag, C., Troiani, V., Bonner, M., Powers, C., Avants, B., Gee, J., et al.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "sensitivity diagnostic conducted commercial variant dementia",
+          "referenceExcerpt": "Sensitivity of revised diagnostic criteria for the behavioural conducted in the absence of any commercial or financial relationships that could variant of frontotemporal dementia.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "PyMuPDF text extraction (sorted)",
+      "discoveredUrl": "https://raw.githubusercontent.com/robinlclark/rlc-papers/master/Front.%20Hum.%20Neurosci.%202015%20Spotorno.pdf",
+      "sourceCommit": "f25fef71163ed542b5c770e74de9cbf0120e9b6d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ashmawiremass-lgtm/KAUST-RNA-Seq-Analysis-of-Chromosome-17-in-a-TDP-43-Knockout-Model/85985e629655eb1b504dda683ed25b138117d015/KAUST_Chr17Report.docx",
+      "repo": "ashmawiremass-lgtm/KAUST-RNA-Seq-Analysis-of-Chromosome-17-in-a-TDP-43-Knockout-Model",
+      "name": "KAUST_Chr17Report.docx",
+      "extension": "docx",
+      "sha256": "d2d6b0e8d644c12cbe230efacdb3c7b6c32cee89c8d5d58445a4ea8539401b64",
+      "bytes": 2714205,
+      "referenceWords": 571,
+      "kind": "internet-original",
+      "id": "ftd-15",
+      "anchors": [
+        {
+          "query": "excel genes such tdp- likely stability",
+          "referenceExcerpt": "The Excel results show a mix of strongly up- and down-regulated genes in the KO condition: genes with positive log2FC values, such as ENSG00000005102 and ENSG00000197081, are upregulated in KO and may normally be suppressed by TDP-43, while genes with negative log2FC values, such as ENSG00000167489 and ENSG00000131788, are downregulated and likely depend on TDP-43 for proper expression or stability.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-docx paragraphs and tables",
+      "discoveredUrl": "https://raw.githubusercontent.com/ashmawiremass-lgtm/KAUST-RNA-Seq-Analysis-of-Chromosome-17-in-a-TDP-43-Knockout-Model/main/KAUST_Chr17Report.docx",
+      "sourceCommit": "85985e629655eb1b504dda683ed25b138117d015"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery/80eb6a037f1d6a43e78dd64b046b3a04224883dd/Neuro_Bridge_Research_Paper_Mohan_Krishna.docx",
+      "repo": "mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery",
+      "name": "Neuro_Bridge_Research_Paper_Mohan_Krishna.docx",
+      "extension": "docx",
+      "sha256": "52fc649839e84e85d6e0df91016f3b7ae5236ff1652300f7a9e67ecb5e8cb9fc",
+      "bytes": 1407523,
+      "referenceWords": 5203,
+      "kind": "internet-original",
+      "id": "ftd-16",
+      "anchors": [
+        {
+          "query": "analyzed human clinical confirmed other parkinson",
+          "referenceExcerpt": "We analyzed 28.3 gigabytes of raw electrophysiological data from 161 human subjects across three clinical groups: Healthy Controls (N=107), confirmed Alzheimer's Disease patients (N=35), and Other Dementia patients including Frontotemporal Dementia and Parkinson's Disease (N=19).",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "universal observation oscillatory rhythm limited entity",
+          "referenceExcerpt": "A Universal Decay Pattern: The observation that multiple dementia subtypes (AD, FTD, PD) all show oscillatory slowing suggests that rhythm decay may be a fundamental biomarker of neurodegeneration, not limited to a single disease entity.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-docx paragraphs and tables",
+      "discoveredUrl": "https://raw.githubusercontent.com/mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery/main/Neuro_Bridge_Research_Paper_Mohan_Krishna.docx",
+      "sourceCommit": "80eb6a037f1d6a43e78dd64b046b3a04224883dd"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/AbdulMalik1287/MiniProject-I/6c8e02c4eeb4a2bff6562a3f4c2eebf9920972da/docs/MiniProject_Results.docx",
+      "repo": "AbdulMalik1287/MiniProject-I",
+      "name": "MiniProject_Results.docx",
+      "extension": "docx",
+      "sha256": "647d65b5a1a9154ab46caaf03673de9802c49421114b483fbaa1f6b15267a3e3",
+      "bytes": 555912,
+      "referenceWords": 3545,
+      "kind": "internet-original",
+      "id": "ftd-17",
+      "anchors": [
+        {
+          "query": "frontotemporal dementia controls same above chance",
+          "referenceExcerpt": "Frontotemporal dementia vs healthy controls (same hospital): AUC 0.79 [0.64, 0.92], above chance.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "positive groups task patients alzheimer dementia",
+          "referenceExcerpt": "'positive' and 'negative' are the two groups of each task: patients vs controls, and for AD vs FTD, Alzheimer's vs frontotemporal dementia.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "miltiadous openneuro thessaloniki eyes closed track",
+          "referenceExcerpt": "ds004504 (Miltiadous 2023) OpenNeuro, CC0, Thessaloniki 36 AD / 23 FTD / 29 controls 19-ch raw, eyes closed AD / FTD track",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-docx paragraphs and tables",
+      "discoveredUrl": "https://raw.githubusercontent.com/AbdulMalik1287/MiniProject-I/master/docs/MiniProject_Results.docx",
+      "sourceCommit": "6c8e02c4eeb4a2bff6562a3f4c2eebf9920972da"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/deepanmpc/Anaavi_Neurodott/1cc1547715756b96ecaada56ce32fd845eae38d2/UPDATED-JOURNEL-IEEE.docx",
+      "repo": "deepanmpc/Anaavi_Neurodott",
+      "name": "UPDATED-JOURNEL-IEEE.docx",
+      "extension": "docx",
+      "sha256": "647409f6e3fed97bafd97f0453bc087e5d78f170aabdafdf4d3d4b38ea8ca514",
+      "bytes": 590988,
+      "referenceWords": 2971,
+      "kind": "internet-original",
+      "id": "ftd-18",
+      "anchors": [
+        {
+          "query": "neurodott safety personalized neurodiverse such injury",
+          "referenceExcerpt": "NeuroDott is an emotion aware AI companion that is engineered to deliver a safety first and offline capable therapeutic system and personalized learning method for two clinical population, Neurodiverse children and individuals with progressive neurological conditions such as frontotemporal dementia, Parkinson disease, brain injury.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-docx paragraphs and tables",
+      "discoveredUrl": "https://raw.githubusercontent.com/deepanmpc/Anaavi_Neurodott/main/UPDATED-JOURNEL-IEEE.docx",
+      "sourceCommit": "1cc1547715756b96ecaada56ce32fd845eae38d2"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides_Focused.pptx",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "NeuroTensor_Status_Presentation_10_Slides_Focused.pptx",
+      "extension": "pptx",
+      "sha256": "43237ffaa4f9d48d96e01788e0e39f21e8fc40e95e2a135c241c8064e402c8b8",
+      "bytes": 2883117,
+      "referenceWords": 610,
+      "kind": "internet-original",
+      "id": "ftd-19",
+      "anchors": [
+        {
+          "query": "problem review status alzheimer frontotemporal controls",
+          "referenceExcerpt": "Problem statement Literature review and project status 01 Can resting EEG help distinguish Alzheimer’s disease, frontotemporal dementia and healthy controls?",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "classifier comparison participants remained observed secondary",
+          "referenceExcerpt": "Classifier results Classifier comparison on the same 88 participants 07 RBF SVM led these families, but FTD remained difficult Observed family results are secondary.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "remaining challenge even recognized only participants",
+          "referenceExcerpt": "Remaining challenge Even the leading SVM recognized only 43.5% of FTD participants.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides_Focused.pptx",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/NeuroTensor_Project_Progress_Illustrated_Final.pptx",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "NeuroTensor_Project_Progress_Illustrated_Final.pptx",
+      "extension": "pptx",
+      "sha256": "481987a206b81a507b59d15b6232f8804c05904dbbbedd3d2024f16a9baeeda9",
+      "bytes": 2938400,
+      "referenceWords": 917,
+      "kind": "internet-original",
+      "id": "ftd-20",
+      "anchors": [
+        {
+          "query": "problem classification disease dementia identify person",
+          "referenceExcerpt": "Problem statement EEG classification of Alzheimer’s disease and frontotemporal dementia 01 Can a resting EEG help identify the diagnosis of a new person?",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "classifier recall identified each lower control",
+          "referenceExcerpt": "Classifier comparison: recall V4, percentage correctly identified within each diagnosis 12 FTD recall remained lower than AD and control recall For SVM: AD 57.4%, FTD 43.5%, CN 78.2%.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "higher working diversity useful individual patterns",
+          "referenceExcerpt": "Why higher accuracy remains difficult Working hypothesis: limited patient diversity plus loss of useful signal 17 Only 23 FTD people Individual differences can dominate the learned patterns.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/NeuroTensor_Project_Progress_Illustrated_Final.pptx",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/NeuroTensor_Project_Progress_Final.pptx",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "NeuroTensor_Project_Progress_Final.pptx",
+      "extension": "pptx",
+      "sha256": "6146396bda9616512b90763a7e645578e99098bea47a3b818ecde8b30a79cfc5",
+      "bytes": 103354,
+      "referenceWords": 926,
+      "kind": "internet-original",
+      "id": "ftd-21",
+      "anchors": [
+        {
+          "query": "problem classification disease dementia identify person",
+          "referenceExcerpt": "Problem statement EEG classification of Alzheimer’s disease and frontotemporal dementia 01 Can a resting EEG help identify the diagnosis of a new person?",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "classifier recall identified each lower control",
+          "referenceExcerpt": "Classifier comparison: recall V4, percentage correctly identified within each diagnosis 12 FTD recall remained lower than AD and control recall For SVM: AD 57.4%, FTD 43.5%, CN 78.2%.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "higher working diversity useful individual patterns",
+          "referenceExcerpt": "Why higher accuracy remains difficult Working hypothesis: limited patient diversity plus loss of useful signal 17 Only 23 FTD people Individual differences can dominate the learned patterns.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/NeuroTensor_Project_Progress_Final.pptx",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides.pptx",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "NeuroTensor_Status_Presentation_10_Slides.pptx",
+      "extension": "pptx",
+      "sha256": "5a0905e6743e65e9fffcc6a6e8f297bb59b7391e1e00b2f630f01cf3e25d34e0",
+      "bytes": 2883259,
+      "referenceWords": 613,
+      "kind": "internet-original",
+      "id": "ftd-22",
+      "anchors": [
+        {
+          "query": "problem review status alzheimer frontotemporal controls",
+          "referenceExcerpt": "Problem statement Literature review and project status 01 Can resting EEG help distinguish Alzheimer’s disease, frontotemporal dementia and healthy controls?",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "classifier same evaluation families observed secondary",
+          "referenceExcerpt": "Classifier results V4: same 88 people and the same outer evaluation splits 07 RBF SVM led these families, but FTD remained difficult Observed family results are secondary.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "working only overlap patterns noise learning",
+          "referenceExcerpt": "Working hypothesis Only 23 FTD people, overlap in EEG patterns and remaining noise may limit learning.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides.pptx",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides_CPD_Tucker.pptx",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "NeuroTensor_Status_Presentation_10_Slides_CPD_Tucker.pptx",
+      "extension": "pptx",
+      "sha256": "e8092284f2e91680eea8e63dca1ca563a96b83d253e8a94150804c201f004bd0",
+      "bytes": 2883600,
+      "referenceWords": 631,
+      "kind": "internet-original",
+      "id": "ftd-23",
+      "anchors": [
+        {
+          "query": "problem review status alzheimer frontotemporal controls",
+          "referenceExcerpt": "Problem statement Literature review and project status 01 Can resting EEG help distinguish Alzheimer’s disease, frontotemporal dementia and healthy controls?",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "classifier same evaluation families observed secondary",
+          "referenceExcerpt": "Classifier results V4: same 88 people and the same outer evaluation splits 07 RBF SVM led these families, but FTD remained difficult Observed family results are secondary.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "working only overlap patterns noise learning",
+          "referenceExcerpt": "Working hypothesis Only 23 FTD people, overlap in EEG patterns and remaining noise may limit learning.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides_CPD_Tucker.pptx",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ashmawiremass-lgtm/KAUST-RNA-Seq-Analysis-of-Chromosome-17-in-a-TDP-43-Knockout-Model/85985e629655eb1b504dda683ed25b138117d015/Chr17_Presentation.pptx",
+      "repo": "ashmawiremass-lgtm/KAUST-RNA-Seq-Analysis-of-Chromosome-17-in-a-TDP-43-Knockout-Model",
+      "name": "Chr17_Presentation.pptx",
+      "extension": "pptx",
+      "sha256": "f5c14e4fa5fa65a97dbf05142d9da9d936270dbef9a669cf58a3d7c70eb7c2ff",
+      "bytes": 6731824,
+      "referenceWords": 449,
+      "kind": "internet-original",
+      "id": "ftd-24",
+      "anchors": [
+        {
+          "query": "objectives analyze data chromosome knockout model",
+          "referenceExcerpt": "Objectives Analyze RNA-seq data from chromosome 17 in a TDP-43 knockout model.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "conclusion neurodegenerative like originate transcriptomic dysregulation",
+          "referenceExcerpt": "Conclusion Neurodegenerative diseases like ALS and FTD originate from genomic and transcriptomic dysregulation.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "skin candidate predicting sclerosis prior onset",
+          "referenceExcerpt": "Skin TDP-43 pathology as a candidate biomarker for predicting amyotrophic lateral sclerosis decades prior to motor symptom onset.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/ashmawiremass-lgtm/KAUST-RNA-Seq-Analysis-of-Chromosome-17-in-a-TDP-43-Knockout-Model/main/Chr17_Presentation.pptx",
+      "sourceCommit": "85985e629655eb1b504dda683ed25b138117d015"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides_EEG_Pipeline.pptx",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "NeuroTensor_Status_Presentation_10_Slides_EEG_Pipeline.pptx",
+      "extension": "pptx",
+      "sha256": "31a549baac9d64dfc6419b728c2a6f7b737e6d8c7c02d81a02c7601e4d7589e8",
+      "bytes": 3946298,
+      "referenceWords": 622,
+      "kind": "internet-original",
+      "id": "ftd-25",
+      "anchors": [
+        {
+          "query": "problem review status alzheimer frontotemporal controls",
+          "referenceExcerpt": "Problem statement Literature review and project status 01 Can resting EEG help distinguish Alzheimer’s disease, frontotemporal dementia and healthy controls?",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "released eyes-closed people controls",
+          "referenceExcerpt": "released eyes-closed EEG from 88 people: 36 AD, 23 FTD and 29 controls.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "classifier comparison participants remained observed secondary",
+          "referenceExcerpt": "Classifier results Classifier comparison on the same 88 participants 08 RBF SVM led these families, but FTD remained difficult Observed family results are secondary.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "python-pptx visible slide text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/output/NeuroTensor_Status_Presentation_10_Slides_EEG_Pipeline.pptx",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/rkbemory/caregiver-village/14d273ce2d75124ed3600c479c845ea6e92b28f6/index.html",
+      "repo": "rkbemory/caregiver-village",
+      "name": "index.html",
+      "extension": "html",
+      "sha256": "fb6986e7bf26ee4ecddd283bfc483314e2a23fd9a0749ae48237a0a83b538b86",
+      "bytes": 540509,
+      "referenceWords": 4935,
+      "kind": "internet-original",
+      "id": "ftd-26",
+      "anchors": [
+        {
+          "query": "frontotemporal personality behavior come first loss",
+          "referenceExcerpt": "Frontotemporal Dementia (FTD): Personality and behavior changes come first — not memory loss.",
+          "kind": "independent visible-text reference diagnostic"
+        },
+        {
+          "query": "damages temporal parts govern judgment language",
+          "referenceExcerpt": "What it is: FTD damages the frontal and temporal lobes — the parts of the brain that govern personality, judgment, empathy, and language.",
+          "kind": "independent visible-text reference diagnostic"
+        },
+        {
+          "query": "connect frontotemporal theaftd support looks alzheimer",
+          "referenceExcerpt": "Connect with the Association for Frontotemporal Degeneration (theaftd.org) — the support community looks different from the Alzheimer's one.",
+          "kind": "independent visible-text reference diagnostic"
+        }
+      ],
+      "referenceMethod": "Python standard-library HTMLParser visible text",
+      "discoveredUrl": "https://raw.githubusercontent.com/rkbemory/caregiver-village/caregiver-village/index.html",
+      "sourceCommit": "14d273ce2d75124ed3600c479c845ea6e92b28f6"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/FatimaHussain11/AI_Powered-EEG_Dementia-Detection-System/19a03e7343ff59bf8e9c6792f7ba449707c77acc/index.html",
+      "repo": "FatimaHussain11/AI_Powered-EEG_Dementia-Detection-System",
+      "name": "index.html",
+      "extension": "html",
+      "sha256": "8f1102a438c9ea36018a60187410054315d5bf95df53b23bffbe2d5a43587fe1",
+      "bytes": 23000,
+      "referenceWords": 479,
+      "kind": "internet-original",
+      "id": "ftd-27",
+      "anchors": [
+        {
+          "query": "detect frontotemporal using learning trained data",
+          "referenceExcerpt": "Detect Alzheimer's Disease and Frontotemporal Dementia using advanced Machine Learning models trained on EEG brain signal data.",
+          "kind": "independent visible-text reference diagnostic"
+        },
+        {
+          "query": "three-class separates disease frontotemporal healthy control",
+          "referenceExcerpt": "Three-class separates Alzheimer's Disease, Frontotemporal Dementia, and Healthy Control.",
+          "kind": "independent visible-text reference diagnostic"
+        },
+        {
+          "query": "system learning assist alzheimer dementia subjects",
+          "referenceExcerpt": "This system applies machine learning techniques to EEG recordings to assist in distinguishing between Alzheimer's Disease (AD), Frontotemporal Dementia (FTD), and Healthy Control (HC) subjects.",
+          "kind": "independent visible-text reference diagnostic"
+        }
+      ],
+      "referenceMethod": "Python standard-library HTMLParser visible text",
+      "discoveredUrl": "https://raw.githubusercontent.com/FatimaHussain11/AI_Powered-EEG_Dementia-Detection-System/main/index.html",
+      "sourceCommit": "19a03e7343ff59bf8e9c6792f7ba449707c77acc"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/AbdulMalik1287/MiniProject-I/6c8e02c4eeb4a2bff6562a3f4c2eebf9920972da/docs/eeg_readout.html",
+      "repo": "AbdulMalik1287/MiniProject-I",
+      "name": "eeg_readout.html",
+      "extension": "html",
+      "sha256": "4f60fe051eb4d417af76919ffbe264ac029d3242be5e5d3fcb1ff6c1b2cb68f9",
+      "bytes": 61342,
+      "referenceWords": 236,
+      "kind": "internet-original",
+      "id": "ftd-28",
+      "anchors": [
+        {
+          "query": "separate alzheimer dementia trained patients controls",
+          "referenceExcerpt": "Separate GNNs for Alzheimer's, frontotemporal dementia and Parkinson's, each trained on one hospital's patients against that hospital's own controls.",
+          "kind": "independent visible-text reference diagnostic"
+        }
+      ],
+      "referenceMethod": "Python standard-library HTMLParser visible text",
+      "discoveredUrl": "https://raw.githubusercontent.com/AbdulMalik1287/MiniProject-I/master/docs/eeg_readout.html",
+      "sourceCommit": "6c8e02c4eeb4a2bff6562a3f4c2eebf9920972da"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/papers_seen_full.csv",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "papers_seen_full.csv",
+      "extension": "csv",
+      "sha256": "7ca397539b091a837506944ff51331dd3f75a2769903c5b5c1705097d4bc569f",
+      "bytes": 316317,
+      "referenceWords": 23721,
+      "kind": "internet-original",
+      "id": "ftd-29",
+      "anchors": [],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/papers_seen_full.csv",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/FaizeAI/bci-digital-twin-validation/468354d5a7ee5cb0730df5b2ea3c05158dd7d64e/supplementary_table_s1.csv",
+      "repo": "FaizeAI/bci-digital-twin-validation",
+      "name": "supplementary_table_s1.csv",
+      "extension": "csv",
+      "sha256": "5ca252af4dd32399a8c4ed81438d6b0bcaf79b8ebf4284e4ae45493deb503d9e",
+      "bytes": 4018,
+      "referenceWords": 280,
+      "kind": "internet-original",
+      "id": "ftd-30",
+      "anchors": [],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/FaizeAI/bci-digital-twin-validation/main/supplementary_table_s1.csv",
+      "sourceCommit": "468354d5a7ee5cb0730df5b2ea3c05158dd7d64e"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/doi_tracking.csv",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "doi_tracking.csv",
+      "extension": "csv",
+      "sha256": "d1ae831a62f6f658b49b13df0db1ba3cea5d63dad47180c7a4931b7bbf87d0c1",
+      "bytes": 24202,
+      "referenceWords": 1613,
+      "kind": "internet-original",
+      "id": "ftd-31",
+      "anchors": [],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/doi_tracking.csv",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/paywalled_papers.csv",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "paywalled_papers.csv",
+      "extension": "csv",
+      "sha256": "27742b0375e452721acec547076eb9a2bbf3d081b10a5f507f2ec0ec868ec453",
+      "bytes": 9909,
+      "referenceWords": 652,
+      "kind": "internet-original",
+      "id": "ftd-32",
+      "anchors": [],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/paywalled_papers.csv",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/alros/AI-Diagnosis/38c9dd0de75d575ea98397646d1aaa06eee82ee7/kb/diagnosis/Dementia.txt",
+      "repo": "alros/AI-Diagnosis",
+      "name": "Dementia.txt",
+      "extension": "txt",
+      "sha256": "1dbb9a126b1b276d55b7b15db820cfda3a2bd8da8866f35c974d44de53783ea6",
+      "bytes": 4669,
+      "referenceWords": 724,
+      "kind": "internet-original",
+      "id": "ftd-33",
+      "anchors": [
+        {
+          "query": "most alzheimer vascular dementia body mixed",
+          "referenceExcerpt": "The most common are Alzheimer’s disease, vascular dementia, Lewy body dementia, frontotemporal dementia and mixed dementia.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "frontotemporal dementia inappropriate social lack inhibitions",
+          "referenceExcerpt": "Frontotemporal dementia can cause inappropriate social behaviour and a lack of inhibitions.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "most types amongst people disease frontotemporal",
+          "referenceExcerpt": "The most common types of dementia amongst younger people are Alzheimer’s disease, vascular dementia and frontotemporal dementia.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/alros/AI-Diagnosis/main/kb/diagnosis/Dementia.txt",
+      "sourceCommit": "38c9dd0de75d575ea98397646d1aaa06eee82ee7"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/alros/AI-Diagnosis/38c9dd0de75d575ea98397646d1aaa06eee82ee7/kb/diagnosis/dementia/Dementia.txt",
+      "repo": "alros/AI-Diagnosis",
+      "name": "Dementia.txt",
+      "extension": "txt",
+      "sha256": "0c671eda2a792c2e9c074a7f62c7f2202d26ec0582f3f841f685156586dfdcf4",
+      "bytes": 4913,
+      "referenceWords": 767,
+      "kind": "internet-original",
+      "id": "ftd-34",
+      "anchors": [
+        {
+          "query": "most alzheimer vascular dementia body mixed",
+          "referenceExcerpt": "The most common are Alzheimer’s disease, vascular dementia, Lewy body dementia, frontotemporal dementia and mixed dementia.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "frontotemporal dementia inappropriate social lack inhibitions",
+          "referenceExcerpt": "Frontotemporal dementia can cause inappropriate social behaviour and a lack of inhibitions.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "most types amongst people disease frontotemporal",
+          "referenceExcerpt": "The most common types of dementia amongst younger people are Alzheimer’s disease, vascular dementia and frontotemporal dementia.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/alros/AI-Diagnosis/main/kb/diagnosis/dementia/Dementia.txt",
+      "sourceCommit": "38c9dd0de75d575ea98397646d1aaa06eee82ee7"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/1184a9b99100c3358bab137728bb7a1c93e2b531/data/experiments/mini_ablation_4x3/summary.md",
+      "repo": "mimikowsky/rag-ablation-dementia",
+      "name": "summary.md",
+      "extension": "md",
+      "sha256": "caa53be2f6799e01cf043d1cd4638a15caaf80e73bd30a8b3c9b285fca957d46",
+      "bytes": 2547,
+      "referenceWords": 391,
+      "kind": "internet-original",
+      "id": "ftd-35",
+      "anchors": [
+        {
+          "query": "mode class diag backend false time",
+          "referenceExcerpt": "- **Mode:** sample - **N cases:** 20 (per class: AD=5, LBD=5, FTD=5, VD=5) - **KB size:** 24 dokumentów (DIFF_DIAG wykluczone wg defaultu) - **Backend:** mock (model=—) • **with-LLM:** False - **Timestamp:** 2026-05-16T17:14:52 - **Wall time:** 966.3s",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/main/data/experiments/mini_ablation_4x3/summary.md",
+      "sourceCommit": "1184a9b99100c3358bab137728bb7a1c93e2b531"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aquinf03/Neuro/d275e438472c4f65c147d146bdfad644fcb58240/reference.md",
+      "repo": "Aquinf03/Neuro",
+      "name": "reference.md",
+      "extension": "md",
+      "sha256": "6c8fab31dfb717cb98a4c298d793e0946371314b59c63f3c2bddfa2ecc079898",
+      "bytes": 17470,
+      "referenceWords": 1678,
+      "kind": "internet-original",
+      "id": "ftd-36",
+      "anchors": [
+        {
+          "query": "literature work relevant degradation neurological model",
+          "referenceExcerpt": "Literature and prior work relevant to LLM cognitive degradation as a neurological disease model.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Aquinf03/Neuro/main/reference.md",
+      "sourceCommit": "d275e438472c4f65c147d146bdfad644fcb58240"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery/80eb6a037f1d6a43e78dd64b046b3a04224883dd/MASTER_RESEARCH_GUIDE.md",
+      "repo": "mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery",
+      "name": "MASTER_RESEARCH_GUIDE.md",
+      "extension": "md",
+      "sha256": "d0de6e129865a7cecab88134ddcf54f48b3901597436bac375194883f716f99c",
+      "bytes": 1034,
+      "referenceWords": 143,
+      "kind": "internet-original",
+      "id": "ftd-37",
+      "anchors": [
+        {
+          "query": "goal definitive biomarker disease large-scale analysis",
+          "referenceExcerpt": "## THE GOAL To establish a definitive, data-driven biomarker for Alzheimer's disease using Large-Scale iEEG analysis.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "shift alzheimer disease physical slowing rhythm",
+          "referenceExcerpt": "**The 8.50Hz Shift:** Alzheimer's disease causes a physical slowing of this rhythm to ~8.50Hz.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "cognitive proved brain correlates moca scores",
+          "referenceExcerpt": "**The Cognitive Link:** We proved that a 1Hz drop in brain rhythm correlates with a significant drop in MoCa memory scores.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery/main/MASTER_RESEARCH_GUIDE.md",
+      "sourceCommit": "80eb6a037f1d6a43e78dd64b046b3a04224883dd"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/paper_structure.md",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "paper_structure.md",
+      "extension": "md",
+      "sha256": "584d5e4d964181134398c9673046e68592224b7b442aa448908c5b5c6762c651",
+      "bytes": 23443,
+      "referenceWords": 3685,
+      "kind": "internet-original",
+      "id": "ftd-38",
+      "anchors": [
+        {
+          "query": "disentangling topology factorial constructions representation diagnosis",
+          "referenceExcerpt": "Disentangling Signal Encoding from Graph Topology in EEG-Based Dementia Classification* - *A Factorial Benchmark of EEG Representations and Brain-Graph Constructions for AD/FTD Classification under a Fixed GCN* - *Isolating Signal Representation from Model Architecture in Graph-Based EEG Dementia Diagnosis*",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "empirical first evidence representation effect sizes",
+          "referenceExcerpt": "**Empirical** — the first systematic evidence on which representation a GNN benefits from for AD/FTD/CN, with effect sizes and CIs.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "limitations test protocol electrode-level point validation",
+          "referenceExcerpt": "### 5.5 Limitations (~300 w) — write this honestly and early 88 subjects; ~18-subject test folds; single site/device/protocol; FTD is the minority class (n=23); unequal recording lengths; electrode-level rather than source-level graphs (F7's point); eyes-closed only; no longitudinal or external clinical validation.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/paper_structure.md",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/final_decision.md",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "final_decision.md",
+      "extension": "md",
+      "sha256": "1922ae92279bc28b46eac18063fc4c7e9472dcf08d4de4009e7996550fb59470",
+      "bytes": 7043,
+      "referenceWords": 1148,
+      "kind": "internet-original",
+      "id": "ftd-39",
+      "anchors": [
+        {
+          "query": "ioannina broken class also layer every",
+          "referenceExcerpt": "of Ioannina) | | **Dataset DOI** | `10.18112/openneuro.ds004504.v1.0.8` ⚠ *not v1.0.9 — that DOI is broken (404)* | | **Dataset paper** | `10.3390/data8060095` | | **Task** | **3-class, subject-level: AD vs FTD vs CN** (binary AD vs CN also reported, for comparability) | | **Model** | **2-layer GCN**, ~3k params, identical in every run.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "data dataset subjects eyes-closed total needed",
+          "referenceExcerpt": "**The data, verified directly from the dataset files (not from the paper):** 88 subjects — **36 AD / 23 FTD / 29 CN** · 19 channels (10–20) · 500 Hz · eyes-closed resting · **19.61 hours** total · **CC0 licence, no application needed**.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/final_decision.md",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/1184a9b99100c3358bab137728bb7a1c93e2b531/data/final/data_validation_report.md",
+      "repo": "mimikowsky/rag-ablation-dementia",
+      "name": "data_validation_report.md",
+      "extension": "md",
+      "sha256": "454c134c8ab4e633fd0d26326aa64590b5c57447ccd6100b1bc1dda00babe130",
+      "bytes": 2183,
+      "referenceWords": 381,
+      "kind": "internet-original",
+      "id": "ftd-40",
+      "anchors": [
+        {
+          "query": "testset pmids non-empty overlap",
+          "referenceExcerpt": "Testset PMIDs (non-empty): **134** / 178 KB PMIDs (non-empty): **178** / 178 Overlap: **0**",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "brak overlapu test czne wzgl pmid",
+          "referenceExcerpt": "> ✅ Brak overlapu — test set i KB są rozłączne pod względem PMID.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/main/data/final/data_validation_report.md",
+      "sourceCommit": "1184a9b99100c3358bab137728bb7a1c93e2b531"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery/80eb6a037f1d6a43e78dd64b046b3a04224883dd/RESEARCH_PAPER.md",
+      "repo": "mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery",
+      "name": "RESEARCH_PAPER.md",
+      "extension": "md",
+      "sha256": "c002c273a08ba89dcac5321c48e402e1fcadd0ce6ea2d5a76748d8557859de9a",
+      "bytes": 19819,
+      "referenceWords": 2792,
+      "kind": "internet-original",
+      "id": "ftd-41",
+      "anchors": [
+        {
+          "query": "unified theory alzheimer detection frequency analysis",
+          "referenceExcerpt": "# The Unified Rhythm-Decay Theory: A Large-Scale EEG Biomarker for Alzheimer's Disease Detection Through Alpha-Theta Frequency Shift Analysis",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "compared baseline showed shift reduction frequency",
+          "referenceExcerpt": "Compared to the healthy alpha baseline of 9.87 Hz, the AD population showed a mean downward shift of **1.37 Hz** — representing a 13.9% reduction in dominant oscillatory frequency.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "data analysis mne-python frontiers neuroscience",
+          "referenceExcerpt": "\"MEG and EEG data analysis with MNE-Python.\" *Frontiers in Neuroscience*, 7, 267.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/mkrishna793/Alzheimer-s-Preclinical-Biomarker-Discovery/main/RESEARCH_PAPER.md",
+      "sourceCommit": "80eb6a037f1d6a43e78dd64b046b3a04224883dd"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/1184a9b99100c3358bab137728bb7a1c93e2b531/data/experiments/mini_ablation_4x3_gemini/summary.md",
+      "repo": "mimikowsky/rag-ablation-dementia",
+      "name": "summary.md",
+      "extension": "md",
+      "sha256": "a4267d78ba106e3d38183bb8f64857f07080bd421b84598dd843905184d550f6",
+      "bytes": 4643,
+      "referenceWords": 772,
+      "kind": "internet-original",
+      "id": "ftd-42",
+      "anchors": [
+        {
+          "query": "mode size wykluczone gemini with-llm time",
+          "referenceExcerpt": "- **Mode:** sample - **N cases:** 20 (per class: AD=5, LBD=5, FTD=5, VD=5) - **KB size:** 24 dokumentów (DIFF_DIAG wykluczone wg defaultu) - **Backend:** gemini (model=gemini-3.1-flash-lite) • **with-LLM:** True - **Timestamp:** 2026-05-17T15:35:00 - **Wall time:** 4602.1s",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/main/data/experiments/mini_ablation_4x3_gemini/summary.md",
+      "sourceCommit": "1184a9b99100c3358bab137728bb7a1c93e2b531"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/presentation_progress/SVM_COMPARISON.md",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "SVM_COMPARISON.md",
+      "extension": "md",
+      "sha256": "f55ca7b13d09f6caa32cbb0964c5af44861026c5d87db028caf8c9266c47554e",
+      "bytes": 2350,
+      "referenceWords": 358,
+      "kind": "internet-original",
+      "id": "ftd-43",
+      "anchors": [
+        {
+          "query": "class recalls",
+          "referenceExcerpt": "The 3-class SVM recalls are 57.4% for AD, 43.5% for FTD, and 78.2% for CN.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/presentation_progress/SVM_COMPARISON.md",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/LITERATURE_REVIEW_REPORT.md",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "LITERATURE_REVIEW_REPORT.md",
+      "extension": "md",
+      "sha256": "0ebbffd0b77c61ec2031499741f0706471b8567d16ca6c5bf93fb9e1e6053149",
+      "bytes": 84513,
+      "referenceWords": 12356,
+      "kind": "internet-original",
+      "id": "ftd-44",
+      "anchors": [
+        {
+          "query": "best alzheimer dementia dementia-subtype score parkinson",
+          "referenceExcerpt": "**Best disease:** Alzheimer's disease **and** frontotemporal dementia, treated jointly as a dementia-subtype problem (score 8.10/10; next best Parkinson's 7.65).",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "explainable machine early diagnosis disease dementia",
+          "referenceExcerpt": "--- **[R4] Explainable EEG-based machine learning for early diagnosis of Alzheimer's disease and frontotemporal dementia** 2.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "recommended ahepa verified data total control",
+          "referenceExcerpt": "RECOMMENDED DATASET: OpenNeuro ds004504 (AHEPA / University of Ioannina) DOI 10.18112/openneuro.ds004504.v1.0.8 [verified; v1.0.9 in the dataset's own metadata does NOT resolve] Dataset paper: 10.3390/data8060095 88 subjects (36 AD / 23 FTD / 29 CN) · 19 ch · 500 Hz · eyes-closed · 19.61 h total · CC0 External validation: OpenNeuro ds004584 (100 PD / 49 control, 63 ch)",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/LITERATURE_REVIEW_REPORT.md",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aquinf03/Neuro/d275e438472c4f65c147d146bdfad644fcb58240/Frontotemporal/SYMPTOMS.md",
+      "repo": "Aquinf03/Neuro",
+      "name": "SYMPTOMS.md",
+      "extension": "md",
+      "sha256": "6d8a20f5ffc353bc8988f510a2b2aa00a62d78e9c8cf4d17fafb6fea3250b538",
+      "bytes": 314,
+      "referenceWords": 54,
+      "kind": "internet-original",
+      "id": "ftd-45",
+      "anchors": [
+        {
+          "query": "list symptoms gotta research relevant stuff",
+          "referenceExcerpt": "- list symptoms here (gotta do research on that and list the ones that are relevant and stuff)",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "list methods used symptoms start working",
+          "referenceExcerpt": "- list methods that can be used based on the symptoms that we can start working on",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Aquinf03/Neuro/main/Frontotemporal/SYMPTOMS.md",
+      "sourceCommit": "d275e438472c4f65c147d146bdfad644fcb58240"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/aa9719beaed0b2e5796368038e346ce89b193cb0/PROJECT_MASTER_REPORT.md",
+      "repo": "abhiram-v1/AIBSI",
+      "name": "PROJECT_MASTER_REPORT.md",
+      "extension": "md",
+      "sha256": "f6e6e91420834e11930e5dc13881f1b9fc1a36c04d8ddf1a131a16f9e2e6b92f",
+      "bytes": 17873,
+      "referenceWords": 2458,
+      "kind": "internet-original",
+      "id": "ftd-46",
+      "anchors": [
+        {
+          "query": "work subject-level disease dementia controls resting",
+          "referenceExcerpt": "The work explores subject-level classification of Alzheimer's disease (AD), frontotemporal dementia (FTD), and cognitively normal controls (CN) from eyes-closed resting EEG.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "removed windows concentrated sub- person retained",
+          "referenceExcerpt": "This removed 65 windows (AD 9, FTD 42, CN 14), concentrated in FTD `sub-086`; that person was retained.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "participants cohort more than duplicating windows",
+          "referenceExcerpt": "New FTD participants and an external cohort are more valuable than duplicating existing FTD windows.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/abhiram-v1/AIBSI/master/PROJECT_MASTER_REPORT.md",
+      "sourceCommit": "aa9719beaed0b2e5796368038e346ce89b193cb0"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aquinf03/Neuro/d275e438472c4f65c147d146bdfad644fcb58240/one-pager.md",
+      "repo": "Aquinf03/Neuro",
+      "name": "one-pager.md",
+      "extension": "md",
+      "sha256": "c4cceb1e3815f99f63fe3edf6426c67692a8ea26ee3e30baafef973eed08be01",
+      "bytes": 7925,
+      "referenceWords": 1161,
+      "kind": "internet-original",
+      "id": "ftd-47",
+      "anchors": [
+        {
+          "query": "alzheimers public available body positive validate",
+          "referenceExcerpt": "- **Alzheimers** (Cognitive and language symptoms, public data widely available) - **Dementia: Frontotemporal and Lewy Body** (Language, behavioral) - **Schizophrenia** (Positive and negative symptoms, might be harder to validate)",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Aquinf03/Neuro/main/one-pager.md",
+      "sourceCommit": "d275e438472c4f65c147d146bdfad644fcb58240"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aquinf03/Neuro/d275e438472c4f65c147d146bdfad644fcb58240/Frontotemporal/results.md",
+      "repo": "Aquinf03/Neuro",
+      "name": "results.md",
+      "extension": "md",
+      "sha256": "c0c6c80890f128eb10e6dd54be685c457dad6d094464be3198363b73d07ee76c",
+      "bytes": 13030,
+      "referenceWords": 1600,
+      "kind": "internet-original",
+      "id": "ftd-48",
+      "anchors": [
+        {
+          "query": "filled sounds clatter luggage chatter travelers",
+          "referenceExcerpt": "The air is filled with the sounds of announcements, the clatter of luggage carts, and the chatter of travelers.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "passengers hurrying station checking making platform",
+          "referenceExcerpt": "Passengers are seen hurrying through the station, checking their schedules and making their way to the right platform.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "amidst bustle selling souvenirs items journey",
+          "referenceExcerpt": "Amidst the hustle bustle are vendors selling food-court offerings, souvenirs and other items that travelers may need on their journey.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Aquinf03/Neuro/main/Frontotemporal/results.md",
+      "sourceCommit": "d275e438472c4f65c147d146bdfad644fcb58240"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/1184a9b99100c3358bab137728bb7a1c93e2b531/experiment_log.md",
+      "repo": "mimikowsky/rag-ablation-dementia",
+      "name": "experiment_log.md",
+      "extension": "md",
+      "sha256": "fb886bce6de107d0fb26e0b0602a281b06e33167983880ff4d8f3b01dc196b89",
+      "bytes": 47227,
+      "referenceWords": 5973,
+      "kind": "internet-original",
+      "id": "ftd-49",
+      "anchors": [
+        {
+          "query": "smoke test pokaza poprawny retrieval case",
+          "referenceExcerpt": "Smoke test pokazał poprawny retrieval: case AD → kb_ad, case LBD → kb_lbd, case FTD → kb_ftd, case VD → kb_vd.",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "live gemini- disable diagnosis tokens format",
+          "referenceExcerpt": "Live verification: gemini-2.5-flash z disable_thinking → `Final diagnosis: FTD` (5.8s, 794 completion tokens, prawidłowy format).",
+          "kind": "reference-keyword diagnostic"
+        },
+        {
+          "query": "mode data gemini wall full completion",
+          "referenceExcerpt": "- Mode=sample, n_cases=20 (AD=5, LBD=5, FTD=5, VD=5), output: `data/experiments/mini_ablation_4x3_gemini/` - Total LLM calls: 240 (parse_err=11, llm_err=0) - Avg wall_time/case = 15.76s; **estymata full run (n=178, 12 configs): ~9.35h** (33667s) - Tokens this run: prompt=716,760, completion=83,067; estymata full = 7,118,460",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/mimikowsky/rag-ablation-dementia/main/experiment_log.md",
+      "sourceCommit": "1184a9b99100c3358bab137728bb7a1c93e2b531"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/f573fa0ea2ad67b3184c97585ea80c77c535807a/paywalled_papers.md",
+      "repo": "Devguru-codes/Major_project_IIITN",
+      "name": "paywalled_papers.md",
+      "extension": "md",
+      "sha256": "9bed3a021ee0700aaf6b7b47291bde8016409c6b1073915e13ea9c168d99ea74",
+      "bytes": 10887,
+      "referenceWords": 1262,
+      "kind": "internet-original",
+      "id": "ftd-50",
+      "anchors": [
+        {
+          "query": "graph analysis using alzheimer disease dementia",
+          "referenceExcerpt": "**R11** `10.1142/s0129065725500480` — *Graph Spectral Analysis Using Electroencephalography in Alzheimer Disease and Frontotemporal Dementia* (Int.",
+          "kind": "reference-keyword diagnostic"
+        }
+      ],
+      "referenceMethod": "Original UTF-8 text",
+      "discoveredUrl": "https://raw.githubusercontent.com/Devguru-codes/Major_project_IIITN/main/paywalled_papers.md",
+      "sourceCommit": "f573fa0ea2ad67b3184c97585ea80c77c535807a"
+    }
+  ]
+}

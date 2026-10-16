@@ -8,7 +8,27 @@ export function htmlText(source: string): string {
     if (node.nodeName === "#text") return node.value;
     const tag = node.tagName || "";
     if (
-      ["script", "style", "head", "nav", "noscript", "template"].includes(tag)
+      [
+        "script",
+        "style",
+        "head",
+        "nav",
+        "noscript",
+        "template",
+        "footer",
+        "button",
+        "input",
+        "select",
+        "textarea",
+      ].includes(tag)
+    )
+      return "";
+    if (
+      node.attrs?.some(
+        (a: any) =>
+          a.name === "hidden" ||
+          (a.name === "aria-hidden" && a.value === "true"),
+      )
     )
       return "";
     if (tag === "br") return "\n";
@@ -40,7 +60,13 @@ export function htmlText(source: string): string {
       return "\n\n" + text + "\n\n";
     return text;
   };
-  return tidy(walk(parse(source)));
+  const document = parse(source);
+  const findMain = (node: any): any =>
+    node.tagName === "main" ||
+    node.attrs?.some((a: any) => a.name === "role" && a.value === "main")
+      ? node
+      : (node.childNodes || []).map(findMain).find(Boolean);
+  return tidy(walk(findMain(document) || document));
 }
 export const tidy = (text: string) =>
   text
@@ -51,6 +77,7 @@ export const tidy = (text: string) =>
     .trim();
 
 export function xmlDocument(source: string) {
+  source = source.replace(/^\uFEFF/, "").trimStart();
   // Some legacy exporters omit namespace declarations. Declare known prefixes before parsing.
   const namespaces: Record<string, string> = {
     a: "http://schemas.openxmlformats.org/drawingml/2006/main",

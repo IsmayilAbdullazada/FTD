@@ -2,6 +2,7 @@ import { fileTypeFromBuffer } from "file-type";
 import AdmZip from "adm-zip";
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
+import CFB from "cfb";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
@@ -17,6 +18,7 @@ import {
 } from "./documentText.ts";
 const exec = promisify(execFile);
 export interface ReadResult {
+  title?: string;
   sections: { title: string; text: string }[];
   unclear: boolean;
   sheets?: {
@@ -27,56 +29,80 @@ export interface ReadResult {
     headerRow: number;
   }[];
 }
+export const fileTitle = (name: string) =>
+  name
+    .replace(/\.[^.]+$/, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
 export function sections(text: string, title: string) {
   const out: { title: string; text: string }[] = [];
-  let heading = title;
+  let heading = title,
+    part = 0,
+    count = 0;
   let paragraphs: string[] = [];
-  let count = 0;
   const flush = () => {
     const body = tidy(paragraphs.join("\n\n"));
-    if (body) out.push({ title: heading, text: body });
+    if (body) {
+      out.push({
+        title: heading + (part ? ` — Part ${part + 1}` : ""),
+        text: body,
+      });
+      part++;
+    }
     paragraphs = [];
     count = 0;
   };
-  // Isolate headings line by line before grouping paragraphs: a heading need not
-  // have a blank line between it and its body. Fenced code is never a heading.
-  const lines = tidy(text).split("\n");
-  let fenced = false;
-  let paragraph: string[] = [];
-  const addParagraph = () => {
+  const addParagraph = (paragraph: string[]) => {
     const p = paragraph.join("\n").trim();
-    if (p) {
-      const words = p.split(/\s+/).length;
-      if (
-        count >= 300 &&
-        count + words > 800 &&
-        !/^\s*(?:\d+[.)]|[-*+])\s/.test(p)
-      ) {
-        flush();
-        heading += " — continued";
+    if (!p) return;
+    const words = p.match(/\S+(?:\s+|$)/g) || [];
+    if (words.length > 800) {
+      flush();
+      // Preserve exact text inside each piece, including line breaks and tables.
+      // A normal numbered list remains intact; even a huge paragraph is bounded.
+      for (let i = 0; i < words.length; i += 750) {
+        paragraphs.push(words.slice(i, i + 750).join(""));
+        count = Math.min(750, words.length - i);
+        if (i + 750 < words.length) flush();
       }
+    } else {
+      if (count && count + words.length > 800) flush();
       paragraphs.push(p);
-      count += words;
+      count += words.length;
     }
-    paragraph = [];
   };
+  const lines = tidy(text).split("\n");
+  let fence = "",
+    paragraph: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    const atx = !fenced && line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+)?$/);
+    const marker = line.match(/^\s*(`{3,}|~{3,})/);
+    if (marker) {
+      if (!fence) fence = marker[1];
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length)
+        fence = "";
+      paragraph.push(line);
+      continue;
+    }
+    const atx = !fence && line.match(/^ {0,3}#{1,6}\s+(.+?)(?:\s+#+)?$/);
     const setext =
-      !fenced &&
+      !fence &&
       line.trim() &&
       /^ {0,3}(?:={3,}|-{3,})\s*$/.test(lines[i + 1] || "");
     if (atx || setext) {
-      addParagraph();
+      addParagraph(paragraph);
+      paragraph = [];
       flush();
       heading = atx ? atx[1].trim() : line.trim();
+      part = 0;
       if (setext) i++;
-    } else if (!line.trim()) addParagraph();
-    else paragraph.push(line);
+    } else if (!line.trim()) {
+      addParagraph(paragraph);
+      paragraph = [];
+    } else paragraph.push(line);
   }
-  addParagraph();
+  addParagraph(paragraph);
   flush();
   return out;
 }
@@ -88,6 +114,7 @@ export async function readUpload(
   const type = await fileTypeFromBuffer(buffer);
   let mime = type?.mime || "text/plain";
   let text = "";
+  let documentTitle = fileTitle(name);
   let unclear = false;
   const temp = await mkdtemp(join(tmpdir(), "clinic-read-"));
   try {
@@ -121,7 +148,7 @@ export async function readUpload(
         );
       if (zip.getEntry("xl/workbook.xml"))
         return {
-          ...sheets(buffer),
+          ...sheets(buffer, name),
           mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         };
       if (zip.getEntry("word/document.xml")) {
@@ -176,6 +203,7 @@ export async function readUpload(
             );
         }
         return {
+          title: documentTitle,
           mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
           unclear: false,
           sections: slides.map((e, i) => {
@@ -228,6 +256,17 @@ export async function readUpload(
         throw Error(
           "This file has a password. Please remove it and upload again.",
         );
+      const metadataTitle = info.stdout.match(/^Title:\s*(.+)$/m)?.[1]?.trim();
+      if (
+        metadataTitle &&
+        metadataTitle.length > 8 &&
+        !/^(?:doi:|https?:|untitled|microsoft|\(unspecified\))/i.test(
+          metadataTitle,
+        )
+      )
+        documentTitle = metadataTitle
+          .replace(/\.(?:pdf|docx?|pptx?|md)$/i, "")
+          .replace(/_/g, " ");
       const pages = Number(info.stdout.match(/Pages:\s+(\d+)/)?.[1]);
       if (!pages || pages > 300)
         throw Error("Please upload a PDF with no more than 300 pages.");
@@ -239,7 +278,12 @@ export async function readUpload(
       for (let page = 1; page <= pages; page++) {
         const typed = extracted[page - 1] || "";
         // Detect sparse/image pages individually, including mixed typed/scanned PDFs.
-        if ((typed.match(/\p{L}/gu) || []).length >= 30) {
+        // Older PDF font maps can turn fi/fl/ff ligatures into W/X/Y while
+        // still producing plenty of apparent text. Recover these pages with OCR.
+        const brokenGlyphs = typed.match(/\b[a-z]+[WXY][a-z]+\b/g) || [];
+        const brokenEncoding =
+          brokenGlyphs.length >= 5 && new Set(brokenGlyphs).size >= 2;
+        if ((typed.match(/\p{L}/gu) || []).length >= 30 && !brokenEncoding) {
           pageTexts.push(typed);
           continue;
         }
@@ -267,7 +311,8 @@ export async function readUpload(
         if (typed.trim() || result.stdout.trim()) unclear = true;
         // OCR includes any sparse typed header too; avoid duplicating it.
         pageTexts.push(
-          result.stdout.trim().length > typed.trim().length
+          (brokenEncoding && result.stdout.trim()) ||
+            result.stdout.trim().length > typed.trim().length
             ? result.stdout
             : typed,
         );
@@ -305,25 +350,35 @@ export async function readUpload(
           ).stdout + "\n\n";
       }
     } else if (type?.ext === "cfb") {
+      // Inspect compound-file directory entries, not arbitrary bytes in document
+      // text or styles (e.g. Book Title must never make a Word file an Excel file).
+      const container = CFB.read(buffer, { type: "buffer" });
+      const names = container.FullPaths.filter((path) =>
+        /^[^/]+\/[^/]+$/.test(path),
+      ).map((path) => path.split("/").at(-1)!);
       if (
-        buffer.includes(Buffer.from("VBA", "utf16le")) ||
-        buffer.includes(Buffer.from("_VBA_PROJECT"))
+        container.FullPaths.some((path) =>
+          /(?:^|\/)(?:VBA|_VBA_PROJECT)(?:\/|$)/i.test(path),
+        )
       )
         throw Error(
           "This file contains macros. Save a copy without macros and upload again.",
         );
       if (
-        buffer.includes(Buffer.from("EncryptedPackage", "utf16le")) ||
-        buffer.includes(Buffer.from("EncryptionInfo", "utf16le"))
+        names.some((entry) =>
+          /^(EncryptedPackage|EncryptionInfo)$/i.test(entry),
+        )
       )
         throw Error(
           "This file has a password. Please remove it and upload again.",
         );
-      if (
-        buffer.includes(Buffer.from("Workbook", "utf16le")) ||
-        buffer.includes(Buffer.from("Book", "utf16le"))
-      )
-        return { ...sheets(buffer), mime: "application/vnd.ms-excel" };
+      if (names.some((entry) => /^(Workbook|Book)$/i.test(entry)))
+        return { ...sheets(buffer, name), mime: "application/vnd.ms-excel" };
+      if (!names.includes("WordDocument"))
+        throw Error(
+          "This kind of file cannot be read. Save it as Word, PDF or plain text and try again.",
+        );
+      mime = "application/msword";
       const { default: WordExtractor } = await import("word-extractor");
       text = (await new WordExtractor().extract(buffer)).getBody();
     } else if (!type || type.ext === "rtf") {
@@ -338,11 +393,13 @@ export async function readUpload(
       ) {
         text = htmlText(text);
         mime = "text/html";
-      } else if (isDelimited(text, name)) {
-        return {
-          ...sheets(text),
-          mime: text.includes("\t") ? "text/tab-separated-values" : "text/csv",
-        };
+      } else {
+        const delimiter = isDelimited(text, name);
+        if (delimiter)
+          return {
+            ...sheets(text, name, delimiter),
+            mime: delimiter === "\t" ? "text/tab-separated-values" : "text/csv",
+          };
       }
     } else
       throw Error(
@@ -352,12 +409,19 @@ export async function readUpload(
       throw Error(
         "We could read very little of this file. Try clearer photos, or type or paste it instead.",
       );
-    const firstLine = text.trim().split("\n")[0].trim();
-    const title =
-      firstLine.length < 120 && firstLine.split(/\s+/).length < 15
-        ? firstLine.replace(/^#{1,6}\s+/, "")
-        : name.replace(/\.[^.]+$/, "");
-    return { mime, unclear, sections: sections(text, title) };
+    const heading = text.match(/^ {0,3}#{1,6}\s+(.+)$/m)?.[1]?.trim();
+    // A publisher or the first author is not a reliable document title.
+    if (
+      heading &&
+      /^(?:Document|Upload|main|index|essay)$/i.test(documentTitle)
+    )
+      documentTitle = heading;
+    return {
+      title: documentTitle,
+      mime,
+      unclear,
+      sections: sections(text, documentTitle),
+    };
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -383,9 +447,9 @@ function isDelimited(text: string, name: string) {
       head ||
       (consistent && (delimiter === "\t" || /\.(csv|tsv)$/i.test(name)))
     )
-      return true;
+      return delimiter;
   }
-  return false;
+  return undefined;
 }
 const isQuestion = (value: unknown) =>
   /^(?:q|question(?:s| text)?|prompt|inquiry|query|user question)$/i.test(
@@ -395,13 +459,18 @@ const isAnswer = (value: unknown) =>
   /^(?:a|answer(?:s| text)?|response|clinical (?:answer|response)|reply|guidance)$/i.test(
     String(value).trim(),
   );
-function sheets(buffer: Buffer | string): ReadResult {
+function sheets(
+  buffer: Buffer | string,
+  name: string,
+  delimiter?: string,
+): ReadResult {
   let book: XLSX.WorkBook;
   try {
     book = XLSX.read(buffer, {
       type: typeof buffer === "string" ? "string" : "buffer",
       cellDates: true,
       bookVBA: true,
+      ...(delimiter ? { FS: delimiter } : {}),
     });
   } catch {
     throw Error(
@@ -415,40 +484,64 @@ function sheets(buffer: Buffer | string): ReadResult {
   const visible = book.SheetNames.filter(
     (name, i) => !book.Workbook?.Sheets?.[i]?.Hidden,
   );
-  return {
+  const result: ReadResult = {
+    title: fileTitle(name),
     sections: [],
+    sheets: [],
     unclear: false,
-    sheets: visible
-      .map((name) => {
-        const rows = XLSX.utils
-          .sheet_to_json<string[]>(book.Sheets[name], {
-            header: 1,
-            defval: "",
-            raw: false,
-          })
-          .map((row) => row.map(String));
-        const headerRow = Math.max(
-          0,
-          rows
-            .slice(0, 20)
-            .findIndex((row) => row.some(isQuestion) && row.some(isAnswer)),
-        );
-        const head = rows[headerRow] || [];
-        const questionColumn = Math.max(0, head.findIndex(isQuestion));
-        const foundAnswer = head.findIndex(isAnswer);
-        return {
-          name,
-          rows,
-          headerRow,
-          questionColumn,
-          answerColumn:
-            foundAnswer >= 0 && foundAnswer !== questionColumn
-              ? foundAnswer
-              : questionColumn === 0
-                ? 1
-                : 0,
-        };
-      })
-      .filter((s) => s.rows.some((r) => r.some((c) => c.trim()))),
   };
+  for (const sheetName of visible) {
+    const rows = XLSX.utils
+      .sheet_to_json<string[]>(book.Sheets[sheetName], {
+        header: 1,
+        defval: "",
+        raw: false,
+      })
+      .map((row) => row.map(String));
+    if (!rows.some((row) => row.some((cell) => cell.trim()))) continue;
+    const headerRow = rows
+      .slice(0, 20)
+      .findIndex((row) => row.some(isQuestion) && row.some(isAnswer));
+    if (headerRow >= 0) {
+      const head = rows[headerRow];
+      result.sheets!.push({
+        name: sheetName,
+        rows,
+        headerRow,
+        questionColumn: head.findIndex(isQuestion),
+        answerColumn: head.findIndex(isAnswer),
+      });
+    } else {
+      // An arbitrary spreadsheet is a table, not a set of answers to column A.
+      // Preserve every column with its header so values retain their meaning.
+      const header = rows[0] || [];
+      const hasHeader = header.every(
+        (cell) =>
+          !cell.trim() ||
+          (cell.length <= 80 &&
+            !/[?.!]$/.test(cell.trim()) &&
+            !/^\d+(?:\.\d+)?$/.test(cell.trim())),
+      );
+      const text = rows
+        .slice(hasHeader ? 1 : 0)
+        .map((row) =>
+          row
+            .map((cell, column) =>
+              cell.trim()
+                ? `${(hasHeader && header[column]?.trim()) || `Column ${column + 1}`}: ${cell}`
+                : "",
+            )
+            .filter(Boolean)
+            .join("; "),
+        )
+        .filter(Boolean)
+        .join("\n\n");
+      const title = /^(?:Sheet|Table)\s*\d+$/i.test(sheetName)
+        ? result.title!
+        : sheetName;
+      result.sections.push(...sections(text || header.join(" | "), title));
+    }
+  }
+  if (!result.sheets!.length) delete result.sheets;
+  return result;
 }

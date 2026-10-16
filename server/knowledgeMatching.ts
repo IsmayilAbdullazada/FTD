@@ -23,6 +23,9 @@ const forms: Record<string, string> = {
   children: "child",
   people: "person",
   diagnoses: "diagnosis",
+  behaviour: "behavior",
+  behaviours: "behavior",
+  behaviors: "behavior",
 };
 function stem(word: string) {
   if (forms[word]) return forms[word];
@@ -63,6 +66,23 @@ const passage = (words: string[]): Passage => ({
   words: new Set(words),
   phrase: " " + words.join(" ") + " ",
 });
+// A matching heading cannot turn a TODO into factual guidance.
+function placeholderOnly(text: string) {
+  const blocks = text
+    .trim()
+    .split(/\n\s*\n/)
+    .map((block) => block.replace(/^\s*[-*]\s*/, "").trim())
+    .filter(Boolean);
+  return (
+    blocks.length > 0 &&
+    blocks.every((block) =>
+      /^(?:todo\b|tbd\b|lorem ipsum\b|(?:please\s+)?(?:insert|add|list)\b.{0,80}\bhere\b)/i.test(
+        block,
+      ),
+    )
+  );
+}
+
 interface Profile {
   item: KnowledgeItem;
   header: Passage;
@@ -101,6 +121,7 @@ function profiles(state: KnowledgeState) {
       (item) =>
         item.status === "Live" &&
         item.live &&
+        !placeholderOnly(item.live.answer) &&
         state.topics.some((t) => t.id === item.live!.topicId && t.enabled),
     )
     .map((item) => {
@@ -148,7 +169,11 @@ export function rank(question: string, state: KnowledgeState) {
       ? rows
           .filter((row) => exactMatch(row.item))
           .slice(0, state.settings.resultCount)
-          .map((row) => ({ item: row.item, score: 1 }))
+          .map((row) => ({
+            item: row.item,
+            score: 1,
+            context: row.item.live!.answer,
+          }))
       : [];
   const queryPhrase = " " + queryTokens.join(" ") + " ";
   const weights = query.map(
@@ -203,7 +228,44 @@ export function rank(question: string, state: KnowledgeState) {
             coverage(header),
             ...body.map((words) => coverage(words) * 0.88),
           );
-      return { item, score };
+      const text = item.live!.answer;
+      let context = text;
+      if (
+        item.type === "document" &&
+        !exact &&
+        text.split(/\s+/).length > 200
+      ) {
+        const blocks = [...text.matchAll(/\S[\s\S]*?(?=\n[ \t]*\n|$)/g)].map(
+          (match) => ({
+            text: match[0],
+            start: match.index!,
+            end: match.index! + match[0].length,
+          }),
+        );
+        const ranked = blocks
+          .map((block, index) => ({
+            index,
+            score: coverage(passage(tokens(block.text))),
+          }))
+          .sort((a, b) => b.score - a.score);
+        if (ranked[0]?.score >= state.settings.minimum) {
+          let first = ranked[0].index,
+            last = first;
+          const list = (value: string) => /^\s*(?:\d+[.)]|[-*])\s/.test(value);
+          // Include a protocol's surrounding numbered steps and its introduction.
+          while (
+            first > 0 &&
+            list(blocks[first].text) &&
+            (list(blocks[first - 1].text) ||
+              /:\s*$/.test(blocks[first - 1].text))
+          )
+            first--;
+          while (last + 1 < blocks.length && list(blocks[last + 1].text))
+            last++;
+          context = text.slice(blocks[first].start, blocks[last].end);
+        }
+      }
+      return { item, score, context };
     })
     .filter((hit) => hit.score >= state.settings.minimum)
     .sort((a, b) => b.score - a.score)

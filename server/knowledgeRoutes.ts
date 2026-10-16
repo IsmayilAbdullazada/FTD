@@ -1,3 +1,4 @@
+import { uploadDrafts } from "./uploadDrafts.ts";
 import express, {
   type Express,
   type Request,
@@ -360,16 +361,7 @@ export function registerKnowledge(app: Express, users: User[]) {
               unclear: result.unclear,
               sheets: result.sheets,
             });
-            for (const section of result.sections) {
-              const d = normalize(
-                {
-                  title: section.title,
-                  answer: section.text,
-                  visibility: "guides",
-                  unclearAccepted: !result.unclear,
-                },
-                s,
-              );
+            for (const d of uploadDrafts(result, name, s)) {
               s.items.push({
                 id: randomUUID(),
                 fileId: id,
@@ -566,7 +558,7 @@ export function registerKnowledge(app: Express, users: User[]) {
             .slice(0, 1)
             .map((m) => ({
               id: m.item.id,
-              approvedText: m.item.live!.answer.slice(0, 12000),
+              approvedText: m.context.slice(0, 12000),
             })),
         },
       });

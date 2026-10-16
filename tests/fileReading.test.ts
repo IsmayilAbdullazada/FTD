@@ -443,3 +443,78 @@ test("Markdown containing HTML examples stays a document with its code intact", 
   assert.equal(result.sections[0].title, "Code Analysis");
   assert.match(result.sections[0].text, /<p>Create the client profile\.<\/p>/);
 });
+
+test("Office XML with a UTF-8 BOM imports real PowerPoint relationships", async () => {
+  const deck = new AdmZip();
+  deck.addFile(
+    "ppt/presentation.xml",
+    Buffer.from(
+      '<?xml version="1.0"?><p:presentation xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldIdLst><p:sldId r:id="slide"/></p:sldIdLst></p:presentation>',
+    ),
+  );
+  deck.addFile(
+    "ppt/_rels/presentation.xml.rels",
+    Buffer.from(
+      '\uFEFF<?xml version="1.0"?><Relationships><Relationship Id="slide" Target="slides/slide1.xml"/></Relationships>',
+    ),
+  );
+  deck.addFile(
+    "ppt/slides/slide1.xml",
+    Buffer.from(
+      "<a:p><a:t>Frontotemporal dementia changes behavior and language.</a:t></a:p>",
+    ),
+  );
+  const parsed = await read(deck.toBuffer());
+  assert.match(parsed.sections[0].text, /changes behavior and language/);
+});
+test("generic tables retain labeled columns instead of inventing question-answer pairs", async () => {
+  const result = await read(
+    Buffer.from(
+      "Diagnosis,Age range,Symptoms\nFTD,45 to 65,Behavior and language changes\nAlzheimer disease,Over 65,Memory changes",
+    ),
+    "ftd.csv",
+  );
+  assert.equal(result.sheets, undefined);
+  assert.match(
+    result.sections[0].text,
+    /Diagnosis: FTD; Age range: 45 to 65; Symptoms: Behavior and language changes/,
+  );
+  const headerless = await read(Buffer.from("45,65\n46,66"), "ages.csv");
+  assert.match(headerless.sections[0].text, /Column 1: 45; Column 2: 65/);
+});
+test("TSV parsing keeps tabs when answers contain commas", async () => {
+  const parsed = await read(
+    Buffer.from(
+      "Question\tAnswer\nWhat changes in FTD?\tBehavior, personality and language can change.\nWhat ages?\tIt is more common at ages 45 to 65.",
+    ),
+    "questions.tsv",
+  );
+  assert.equal(
+    parsed.sheets![0].rows[1][1],
+    "Behavior, personality and language can change.",
+  );
+  assert.equal(parsed.sheets![0].answerColumn, 1);
+});
+test("long paragraphs stay bounded and preserve every word", () => {
+  const words = Array.from({ length: 2400 }, (_, i) => "word" + i);
+  const split = sections("# FTD\n" + words.join(" "), "FTD");
+  assert.ok(split.every((s) => s.text.split(/\s+/).length <= 800));
+  assert.deepEqual(
+    split.flatMap((s) => s.text.split(/\s+/)),
+    words,
+  );
+  assert.ok(split.every((s) => !s.title.includes("continued — continued")));
+});
+test("HTML prefers main content and omits controls, hidden text and footer", async () => {
+  const parsed = await read(
+    Buffer.from(
+      "<html><body><nav>Menu</nav><p>Unrelated landing text.</p><main><h1>FTD</h1><p>Frontotemporal dementia can affect behavior, personality and language.</p><button>Add helper</button><div hidden>Hidden draft</div></main><footer>Donate now</footer></body></html>",
+    ),
+  );
+  const text = parsed.sections.map((s) => s.text).join(" ");
+  assert.match(text, /behavior, personality and language/);
+  assert.doesNotMatch(
+    text,
+    /Add helper|Hidden draft|Donate now|Unrelated landing/,
+  );
+});

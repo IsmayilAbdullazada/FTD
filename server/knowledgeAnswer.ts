@@ -26,7 +26,7 @@ export async function chatbotAnswer(question: string) {
       model: "gemini-flash-latest",
       contents: JSON.stringify({
         question,
-        approvedText: source.answer.slice(0, 12000),
+        approvedText: grounded.answer.slice(0, 12000),
       }),
       config: {
         temperature: 0,
@@ -53,7 +53,7 @@ export async function chatbotAnswer(question: string) {
     if (
       typeof passage === "string" &&
       passage.length >= 40 &&
-      source.answer.includes(passage)
+      grounded.answer.includes(passage)
     )
       return { ...grounded, answer: passage, wording: "assisted" as const };
   } catch {

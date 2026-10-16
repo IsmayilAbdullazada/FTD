@@ -18,6 +18,7 @@ export interface KnowledgeText {
   keyPoints: string[];
   topicId: string;
   topicSuggested?: boolean;
+  topicContext?: string;
   visibility: "chatbot" | "guides";
   alternatives: string[];
   searchWords: string[];

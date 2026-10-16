@@ -287,6 +287,71 @@ test("durable knowledge workflow", async (t) => {
       },
     );
     await t.test(
+      "uploaded sections share one topic, preserve automatic context and allow manual choice",
+      async () => {
+        const added = await upload(
+          Buffer.from(
+            "# Main guidance\nFrontotemporal dementia can affect behavior and language.\n# Daily support\nUse the clinic's reviewed instructions to plan daily support.\n# Further reading\nRead the approved guide and discuss questions with the clinician.",
+          ),
+          "ftd-clinic-guidance.md",
+        );
+        const docs = added.overview.items.filter(
+          (i: KnowledgeItem) => i.fileId === added.fileId,
+        );
+        assert.equal(docs.length, 3);
+        assert.equal(
+          new Set(docs.map((i: KnowledgeItem) => i.draft!.topicId)).size,
+          1,
+        );
+        const first = docs[0];
+        assert.equal(first.draft.topicSuggested, true);
+        let saved = await request(
+          `/items/${first.id}`,
+          {
+            ...first.draft,
+            title: "Updated section heading",
+            revision: first.revision,
+          },
+          "user-clinician-1",
+          "PUT",
+        );
+        let changed = saved.items.find((i) => i.id === first.id)!;
+        assert.equal(changed.draft!.topicId, first.draft.topicId);
+        saved = await request(
+          `/items/${first.id}`,
+          {
+            ...changed.draft,
+            topicId: "APATHY",
+            topicSuggested: false,
+            revision: changed.revision,
+          },
+          "user-clinician-1",
+          "PUT",
+        );
+        changed = saved.items.find((i) => i.id === first.id)!;
+        assert.equal(changed.draft!.topicId, "APATHY");
+        assert.equal(changed.draft!.topicSuggested, false);
+        const table = await upload(
+          Buffer.from(
+            "Diagnosis,Age range,Symptoms\nFTD,45 to 65,Behavior and language changes\nAlzheimer disease,Over 65,Memory changes",
+          ),
+          "diagnosis-table.csv",
+        );
+        assert.equal(table.sheets, undefined);
+        const tableDrafts = table.overview.items.filter(
+          (i: KnowledgeItem) => i.fileId === table.fileId,
+        );
+        assert.ok(tableDrafts.length);
+        assert.ok(
+          tableDrafts.every((i: KnowledgeItem) => i.type === "document"),
+        );
+        assert.match(
+          tableDrafts[0].draft.answer,
+          /Diagnosis: FTD; Age range: 45 to 65/,
+        );
+      },
+    );
+    await t.test(
       "spreadsheet detection, hidden sheets, duplicate files, macro rejection, and originals protected",
       async () => {
         const book = XLSX.utils.book_new();

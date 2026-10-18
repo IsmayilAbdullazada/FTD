@@ -3,10 +3,7 @@ import {
   Send,
   X,
   Phone,
-  BookOpen,
   Sparkles,
-  Search,
-  ChevronDown,
   RotateCcw,
   MessageSquare,
   ShieldCheck,
@@ -15,13 +12,13 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { api } from '../services/api';
-import { CLINICAL_50_FAQ, ClinicalFaqItem } from '../data/clinicalRagFaq';
+import { CurrentUser } from '../types';
 
 interface FloatingChatbotAssistantProps {
+  currentUser?: CurrentUser | null;
   isOpen: boolean;
   onToggle: () => void;
   onClose: () => void;
-  onOpenResource: (resourceId: string) => void;
 }
 
 interface ChatMessage {
@@ -29,23 +26,9 @@ interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   isMedicationRefusal?: boolean;
-  citedResources?: { id: string; title: string; url?: string }[];
-  matchedFaq?: ClinicalFaqItem;
   suggestedQuestions?: string[];
   timestamp: string;
 }
-
-const FAQ_CATEGORIES = [
-  { id: 'ALL', label: 'All 50 FAQs' },
-  { id: 'BEHAVIORAL_DISINHIBITION', label: 'Disinhibition' },
-  { id: 'HYGIENE_BATHING', label: 'Bathing & Care' },
-  { id: 'WANDERING_SAFETY', label: 'Wandering' },
-  { id: 'DRIVING_SAFETY', label: 'Driving' },
-  { id: 'COMMUNICATION_PPA', label: 'PPA & Speech' },
-  { id: 'NUTRITION_HYPERORALITY', label: 'Diet & Sweets' },
-  { id: 'LEGAL_MEDICAID', label: 'Legal & Medicaid' },
-  { id: 'CRISIS_EMERGENCY', label: 'Crisis & 911' },
-];
 
 const renderInlineFormatted = (rawText: string) => {
   const parts = rawText.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -95,7 +78,7 @@ const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
   const rawSections = text.split(/(?=###\s+)/g).filter((s) => s.trim().length > 0);
 
   return (
-    <div className="space-y-3.5 select-text text-xs sm:text-[13px] leading-relaxed font-sans">
+    <div className="space-y-3 select-text text-xs sm:text-[13px] leading-relaxed font-sans">
       {rawSections.map((sec, secIdx) => {
         const trimmed = sec.trim();
         const headerMatch = trimmed.match(/^###\s+([^\n]+)/);
@@ -130,7 +113,7 @@ const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{headerTitle}</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {stepBlocks.map((step, sIdx) => {
                   const numMatch = step.match(/^(\d+)\.\s*(.*)$/s);
                   const stepNumber = numMatch ? numMatch[1] : `${sIdx + 1}`;
@@ -207,16 +190,13 @@ const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
 };
 
 export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> = ({
+  currentUser,
   isOpen,
   onToggle,
   onClose,
-  onOpenResource,
 }) => {
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('ALL');
-  const [showFaqBrowser, setShowFaqBrowser] = useState(false);
-  const [faqSearchTerm, setFaqSearchTerm] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -238,7 +218,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     },
   ]);
 
-  // Click-outside listener & escape key to prevent capturing the screen
+  // Click-outside listener & escape key
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!isOpen) return;
@@ -274,7 +254,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     }
   }, [messages, isOpen]);
 
-  // Focus input when opened on non-mobile devices (avoid mobile soft-keyboard takeover)
+  // Focus input when opened on non-mobile devices
   useEffect(() => {
     if (isOpen) {
       if (typeof window !== 'undefined' && window.innerWidth >= 640) {
@@ -289,8 +269,6 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     const q = queryText || inputQuery;
     if (!q || !q.trim() || loading) return;
 
-    setShowFaqBrowser(false);
-
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
@@ -303,20 +281,18 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     setLoading(true);
 
     try {
-      const res = await api.chatWithAssistant(q.trim());
+      const res = await api.chatWithAssistant(q.trim(), currentUser?.id || 'anonymous');
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         sender: 'assistant',
         text: res.answer,
         isMedicationRefusal: res.isMedicationRefusal,
-        citedResources: res.citedResources || [],
-        matchedFaq: res.matchedFaq,
         suggestedQuestions: res.suggestedQuestions || [],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      console.error('RAG assistant error:', err);
+      console.error('Clinical assistant error:', err);
       setMessages((prev) => [
         ...prev,
         {
@@ -342,30 +318,16 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           'Why does my loved one make blunt or rude comments in public?',
           'How do I handle violent resistance during showers and bathing?',
           'How do I stop my loved one from driving safely?',
-          'What legal documents must be completed immediately?',
+          'Why are they constantly craving sweets and overeating?',
         ],
       },
     ]);
-    setShowFaqBrowser(false);
   };
-
-  // Filtered FAQs for browser
-  const filteredFaqs = CLINICAL_50_FAQ.filter((faq) => {
-    const matchesCat = activeCategory === 'ALL' || faq.category === activeCategory;
-    if (!matchesCat) return false;
-    if (!faqSearchTerm.trim()) return true;
-    const term = faqSearchTerm.toLowerCase();
-    return (
-      faq.question.toLowerCase().includes(term) ||
-      faq.keywords.some((k) => k.toLowerCase().includes(term)) ||
-      faq.physicianAnswer.toLowerCase().includes(term)
-    );
-  });
 
   return (
     <>
       {/* ------------------------------------------------------------- */}
-      {/* 1. FLOATING CHATBOT TRIGGER BUTTON (Always visible just above the mobile tray) */}
+      {/* 1. FLOATING CHATBOT TRIGGER BUTTON */}
       {/* ------------------------------------------------------------- */}
       <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 right-4 sm:right-6 z-40 pointer-events-auto">
         <button
@@ -388,7 +350,6 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                 <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                 <Sparkles className="w-2.5 h-2.5 text-amber-300 absolute -top-1 -right-1" />
               </div>
-              {/* Online pulse badge */}
               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
             </>
           )}
@@ -396,23 +357,23 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. CHATBOT FLOATING WINDOW (Compact card anchored DIRECTLY ABOVE the circle button)  */}
+      {/* 2. CHATBOT FLOATING WINDOW */}
       {/* ------------------------------------------------------------- */}
       {isOpen && (
         <div
           ref={windowRef}
           role="dialog"
           aria-label="Clinical Care Assistant"
-          className="fixed bottom-[calc(8.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-21 right-4 sm:right-6 w-[295px] sm:w-[380px] max-w-[calc(100vw-2rem)] h-[375px] sm:h-[530px] max-h-[52vh] sm:max-h-[calc(100dvh-6.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 transition-colors"
+          className="fixed bottom-[calc(8.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-21 right-4 sm:right-6 w-[305px] sm:w-[385px] max-w-[calc(100vw-1.5rem)] h-[430px] sm:h-[540px] max-h-[70vh] sm:max-h-[calc(100dvh-6.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 transition-colors"
         >
           {/* Header */}
-          <div className="p-2.5 sm:p-3.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
+          <div className="p-2.5 sm:p-3 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
             <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
               <div className="relative shrink-0">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-xs sm:text-sm shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-xs shadow-xs">
                   SG
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#002D72] dark:border-slate-900 rounded-full" />
+                <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-400 border border-[#002D72] dark:border-slate-900 rounded-full" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -420,11 +381,11 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                     Dr. Seema’s Assistant
                   </h2>
                   <span title="Verified Physician Knowledge" className="inline-flex items-center">
-                    <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                    <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
                   </span>
                 </div>
-                <p className="text-[10px] sm:text-[10.5px] text-blue-200 dark:text-slate-400 truncate">
-                  Care Partner Clinical Support · Johns Hopkins
+                <p className="text-[10px] text-blue-200 dark:text-slate-400 truncate">
+                  Care Partner Support · Johns Hopkins
                 </p>
               </div>
             </div>
@@ -451,243 +412,153 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             </div>
           </div>
 
-          {/* Quick Sub-header with Topics Browser Toggle */}
-          <div className="px-3 py-1.5 bg-blue-50/80 dark:bg-slate-850 border-b border-blue-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-700 dark:text-slate-300 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                Care Partner Clinical Support
+          {/* WARNING BANNER: Prominently displayed at the beginning of chat */}
+          <div className="mx-2.5 sm:mx-3 mt-2.5 mb-1 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-900/60 text-amber-950 dark:text-amber-200 text-xs shadow-2xs space-y-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-bold text-[11px] sm:text-[11.5px] leading-tight">
+              <Phone className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+              <span>
+                For a life-threatening emergency, call{' '}
+                <a href="tel:911" className="underline font-black hover:text-rose-800 dark:hover:text-rose-200">
+                  911
+                </a>{' '}
+                right away.
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowFaqBrowser((prev) => !prev)}
-              className="text-[11px] font-semibold text-[#002D72] dark:text-sky-400 hover:text-blue-900 dark:hover:text-sky-300 flex items-center gap-1 cursor-pointer transition"
-            >
-              <span>{showFaqBrowser ? 'Back to Chat' : 'Browse Topics'}</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFaqBrowser ? 'rotate-180' : ''}`} />
-            </button>
+            <div className="text-[10.5px] sm:text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90 font-sans">
+              <strong className="font-semibold block text-amber-950 dark:text-amber-100">
+                This assistant is not for urgent messages
+              </strong>
+              This platform is not intended for urgent messages to your clinician. If you need to reach your clinician,
+              please call your clinic at{' '}
+              <a href="tel:4109555147" className="font-semibold underline">
+                (410) 955-5147, option 2
+              </a>{' '}
+              or send a message through EPIC.
+            </div>
           </div>
 
-          {/* Body: Either 50 FAQ Directory or Chat Stream */}
-          {showFaqBrowser ? (
-            /* 50 FAQ Browser View */
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-50/70 dark:bg-slate-950">
-              <div className="space-y-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
-                  <input
-                    type="text"
-                    value={faqSearchTerm}
-                    onChange={(e) => setFaqSearchTerm(e.target.value)}
-                    placeholder="Search all 50 clinical questions..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-500"
-                  />
-                </div>
+          {/* Chat Message Stream */}
+          <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 text-sm min-h-0 bg-slate-50/70 dark:bg-slate-950">
+            {messages.map((msg) => {
+              const isUser = msg.sender === 'user';
 
-                {/* Categories */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {FAQ_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setActiveCategory(cat.id)}
-                      className={`px-2 py-0.5 text-[10.5px] font-semibold rounded-lg whitespace-nowrap transition cursor-pointer ${
-                        activeCategory === cat.id
-                          ? 'bg-[#002D72] text-white dark:bg-blue-600'
-                          : 'bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-750 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  {filteredFaqs.length} Clinical Protocols Found:
-                </span>
-                {filteredFaqs.map((faq) => (
-                  <button
-                    key={faq.id}
-                    type="button"
-                    onClick={() => handleSend(faq.question)}
-                    className="w-full text-left p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/20 dark:hover:bg-slate-850 shadow-2xs transition group cursor-pointer"
+              return (
+                <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                  <div
+                    className={`max-w-[92%] sm:max-w-[90%] rounded-2xl p-3 leading-relaxed space-y-2 font-sans ${
+                      isUser
+                        ? 'bg-[#002D72] dark:bg-blue-600 text-white rounded-br-xs shadow-xs'
+                        : msg.isMedicationRefusal
+                        ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/80 text-rose-950 dark:text-rose-100 rounded-bl-xs'
+                        : 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs shadow-2xs'
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-1.5">
-                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition-colors leading-snug">
-                        {faq.question}
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-blue-600 dark:group-hover:text-sky-400 shrink-0 mt-0.5" />
-                    </div>
-                    <span className="inline-block mt-1 text-[9.5px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700 px-1.5 py-0.5 rounded">
-                      {faq.categoryLabel}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* Main Chat Stream */
-            <div className="flex-1 overflow-y-auto p-3 sm:p-3.5 space-y-3 bg-slate-50/70 dark:bg-slate-950 text-sm">
-              {messages.map((msg) => {
-                const isUser = msg.sender === 'user';
-                return (
-                  <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-                    <div
-                      className={`max-w-[90%] rounded-2xl p-3 sm:p-3.5 leading-relaxed space-y-2 font-sans ${
-                        isUser
-                          ? 'bg-[#002D72] dark:bg-blue-600 text-white rounded-br-xs shadow-xs'
-                          : msg.isMedicationRefusal
-                          ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/80 text-rose-950 dark:text-rose-100 rounded-bl-xs'
-                          : 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs shadow-2xs'
-                      }`}
-                    >
-                      {/* Physician Answer Body */}
-                      {isUser ? (
-                        <div className="whitespace-pre-line select-text text-xs sm:text-[13px] leading-relaxed font-sans">
-                          {msg.text}
-                        </div>
-                      ) : (
-                        <FormattedMessageText text={msg.text} />
-                      )}
+                    {/* Message Body */}
+                    {isUser ? (
+                      <div className="whitespace-pre-line select-text text-xs sm:text-[13px] leading-relaxed font-sans">
+                        {msg.text}
+                      </div>
+                    ) : (
+                      <FormattedMessageText text={msg.text} />
+                    )}
 
-                      {/* Medication Refusal Emergency Contacts */}
-                      {msg.isMedicationRefusal && (
-                        <div className="pt-1.5 flex flex-col gap-1.5">
-                          <a
-                            href="tel:4109555147"
-                            className="inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium px-2.5 py-1.5 rounded-lg text-xs transition"
-                          >
-                            <Phone className="w-3 h-3" />
-                            <span>Clinic: (410) 955-5147 (opt. 2)</span>
-                          </a>
-                          <a
-                            href="tel:4105024163"
-                            className="inline-flex items-center justify-center gap-1.5 bg-slate-800 dark:bg-slate-800 hover:bg-slate-900 dark:hover:bg-slate-700 text-white font-medium px-2.5 py-1.5 rounded-lg text-xs transition border border-transparent dark:border-slate-700"
-                          >
-                            <Phone className="w-3 h-3" />
-                            <span>Support Line: (410) 502-4163</span>
-                          </a>
-                        </div>
-                      )}
+                    {/* Medication Refusal Emergency Contacts */}
+                    {msg.isMedicationRefusal && (
+                      <div className="pt-1.5 flex flex-col gap-1.5">
+                        <a
+                          href="tel:4109555147"
+                          className="inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium px-2.5 py-1.5 rounded-lg text-xs transition"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Clinic: (410) 955-5147 (opt. 2)</span>
+                        </a>
+                        <a
+                          href="tel:4105024163"
+                          className="inline-flex items-center justify-center gap-1.5 bg-slate-800 dark:bg-slate-800 hover:bg-slate-900 dark:hover:bg-slate-700 text-white font-medium px-2.5 py-1.5 rounded-lg text-xs transition border border-transparent dark:border-slate-700"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Support Line: (410) 502-4163</span>
+                        </a>
+                      </div>
+                    )}
 
-                      {/* Cited Hopkins Care Guides */}
-                      {msg.citedResources && msg.citedResources.length > 0 && (
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                          <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                            Cited Clinical Guide:
-                          </span>
-                          {msg.citedResources.map((res, i) => (
+                    {/* Related Follow-Up Topics */}
+                    {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                        <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                          Related Topics:
+                        </span>
+                        <div className="flex flex-col gap-1">
+                          {msg.suggestedQuestions.map((q, idx) => (
                             <button
-                              key={i}
+                              key={idx}
                               type="button"
-                              onClick={() => {
-                                onClose();
-                                onOpenResource(res.id);
-                              }}
-                              className="flex items-center gap-1.5 text-xs text-[#002D72] dark:text-sky-400 hover:text-blue-900 dark:hover:text-sky-300 font-semibold p-1.5 -mx-1 rounded-lg hover:bg-blue-50/80 dark:hover:bg-slate-800/80 transition w-full text-left group cursor-pointer border border-transparent hover:border-blue-100 dark:hover:border-slate-750"
+                              onClick={() => handleSend(q)}
+                              className="text-left text-xs bg-slate-50 dark:bg-slate-850 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-[#002D72] dark:hover:text-sky-300 text-slate-700 dark:text-slate-200 p-2 rounded-lg border border-slate-200/80 dark:border-slate-750 transition cursor-pointer flex items-center justify-between gap-1.5"
                             >
-                              <BookOpen className="w-3.5 h-3.5 shrink-0 text-blue-700 dark:text-sky-400" />
-                              <span className="truncate flex-1 underline decoration-blue-200 dark:decoration-slate-700 group-hover:decoration-blue-700 dark:group-hover:decoration-sky-400 font-medium">
-                                {res.title}
-                              </span>
-                              <span className="text-[10px] text-blue-600 dark:text-sky-400 font-normal shrink-0">
-                                Open →
-                              </span>
+                              <span className="line-clamp-2 text-[11px] sm:text-[11.5px] leading-snug">{q}</span>
+                              <ChevronRight className="w-3 h-3 shrink-0 text-slate-400 dark:text-slate-500" />
                             </button>
                           ))}
                         </div>
-                      )}
-
-                      {/* Related Follow-Up Questions from the 50 FAQs */}
-                      {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                          <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                            Related Physician Topics:
-                          </span>
-                          <div className="flex flex-col gap-1">
-                            {msg.suggestedQuestions.map((q, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => handleSend(q)}
-                                className="text-left text-xs bg-slate-50 dark:bg-slate-850 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-[#002D72] dark:hover:text-sky-300 text-slate-700 dark:text-slate-200 p-2 rounded-lg border border-slate-200/80 dark:border-slate-750 transition cursor-pointer flex items-center justify-between gap-1.5"
-                              >
-                                <span className="line-clamp-2 text-[11.5px] leading-snug">{q}</span>
-                                <ChevronRight className="w-3 h-3 shrink-0 text-slate-400 dark:text-slate-500" />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div
-                        className={`text-[9.5px] pt-0.5 ${
-                          isUser ? 'text-blue-200 text-right' : 'text-slate-400 dark:text-slate-500'
-                        }`}
-                      >
-                        {msg.timestamp}
                       </div>
+                    )}
+
+                    <div
+                      className={`text-[9.5px] pt-0.5 ${
+                        isUser ? 'text-blue-200 text-right' : 'text-slate-400 dark:text-slate-500'
+                      }`}
+                    >
+                      {msg.timestamp}
                     </div>
                   </div>
-                );
-              })}
-
-              {loading && (
-                <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-[85%] text-xs text-slate-500 dark:text-slate-400 shadow-2xs">
-                  <div className="w-3.5 h-3.5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                  <span>Searching Dr. Seema's clinical protocols...</span>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
+              );
+            })}
 
-          {/* Quick FAQ Starter Pills (when not in browser mode) */}
-          {!showFaqBrowser && (
-            <div className="px-2.5 py-1.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-1 no-scrollbar shrink-0">
-              <button
-                type="button"
-                onClick={() => handleSend('How do I handle bathing and shower resistance?')}
-                className="text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-              >
-                Bathing resistance
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSend('Why does my spouse say rude things with no filter?')}
-                className="text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-              >
-                Blunt remarks
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSend('How do I take away car keys safely without fighting?')}
-                className="text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-              >
-                Driving retirement
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSend('Why are they constantly craving sweets and overeating?')}
-                className="text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-              >
-                Sweet cravings
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSend('My loved one insists they are not sick anosognosia')}
-                className="text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-              >
-                Lack of insight
-              </button>
-            </div>
-          )}
+            {loading && (
+              <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-[85%] text-xs text-slate-500 dark:text-slate-400 shadow-2xs">
+                <div className="w-3.5 h-3.5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>Searching Dr. Seema's clinical protocols...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-          {/* Input Bar */}
-          <div className="p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+          {/* Quick Topic Starter Pills */}
+          <div className="px-2.5 py-1.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-1 no-scrollbar shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSend('How do I handle bathing and shower resistance?')}
+              className="text-[10px] sm:text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Bathing resistance
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('Why does my spouse say rude things with no filter?')}
+              className="text-[10px] sm:text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Blunt remarks
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('How do I take away car keys safely without fighting?')}
+              className="text-[10px] sm:text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Driving retirement
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('Why are they constantly craving sweets and overeating?')}
+              className="text-[10px] sm:text-[10.5px] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-2 py-0.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Sweet cravings
+            </button>
+          </div>
+
+          {/* Chat Input Bar */}
+          <div className="p-2 sm:p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -713,8 +584,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               </button>
             </form>
 
-            {/* Quick emergency footnote */}
-            <div className="flex items-center justify-between text-[9.5px] text-slate-400 dark:text-slate-500 pt-1 px-0.5">
+            <div className="flex items-center justify-between text-[9px] sm:text-[9.5px] text-slate-400 dark:text-slate-500 pt-1 px-0.5">
               <span>Clinic: (410) 955-5147 opt. 2</span>
               <span>Crisis: 911</span>
             </div>
@@ -724,3 +594,4 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     </>
   );
 };
+

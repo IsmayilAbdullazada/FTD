@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, MapPin, Clock, Trash2, CheckCircle2 } from 'lucide-react';
-import { CurrentUser, CalendarEvent, EventType } from '../types';
+import { Audience, CurrentUser, CalendarEvent, EventType } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 
 const TYPE_META: Record<EventType, { label: string; chip: string; dot: string }> = {
@@ -26,13 +27,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const toKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 const emptyForm = (date = ''): {
-  title: string; type: EventType; startsAt: string; location: string; description: string;
+  title: string; type: EventType; startsAt: string; location: string; description: string; condition: Audience;
 } => ({
   title: '',
   type: 'SUPPORT_GROUP',
   startsAt: date ? `${date}T10:00` : '',
   location: '',
   description: '',
+  condition: 'BOTH',
 });
 
 export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUser }) => {
@@ -46,11 +48,24 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
   const [form, setForm] = useState(emptyForm());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
-    api.getEvents().then(setEvents);
-  }, []);
+    let cancelled = false;
+    const loadEvents = async () => {
+      try {
+        const data = await api.getEvents(currentUser.id);
+        if (!cancelled) setEvents(data);
+      } catch (err) {
+        console.error('Failed to load calendar events:', err);
+      }
+    };
+    loadEvents();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.id]);
 
   const eventsByDay = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
@@ -91,6 +106,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
 
   const openAdd = (dateKey = '') => {
     setForm(emptyForm(dateKey));
+    setError(null);
     setShowModal(true);
   };
 
@@ -106,6 +122,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
           startsAt: form.startsAt,
           location: form.location.trim(),
           description: form.description.trim() || undefined,
+          condition: form.condition,
         },
         currentUser.id
       );
@@ -113,10 +130,17 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
       setShowModal(false);
       setToast(`"${created.title}" added to the calendar.`);
       setTimeout(() => setToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to create calendar event:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not add event. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
-  };
+  };  
 
   const handleDelete = async (ev: CalendarEvent) => {
     await api.deleteEvent(ev.id, currentUser.id);
@@ -232,16 +256,6 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
-        {Object.entries(TYPE_META).map(([key, m]) => (
-          <span key={key} className="flex items-center gap-1.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${m.dot}`} />
-            {m.label}
-          </span>
-        ))}
-      </div>
-
       {/* Event list */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -279,7 +293,10 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
                   <div className="text-2xl font-bold text-[#002D72] dark:text-blue-400 leading-none mt-0.5">{d.getDate()}</div>
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${meta.chip}`}>{meta.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${meta.chip}`}>{meta.label}</span>
+                    {canEdit && <AudienceBadge condition={ev.condition ?? 'BOTH'} />}
+                  </div>
                   <h4 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white leading-snug">{ev.title}</h4>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1">
@@ -323,7 +340,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Add Calendar Event</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Visible to all care partners once added.</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Visible to the selected group once added.</p>
               </div>
               <button onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition">
                 <X className="w-4 h-4" />
@@ -331,30 +348,50 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
             </div>
 
             <form onSubmit={handleAdd} className="p-4 overflow-y-auto space-y-3.5 text-xs flex-1">
+              {error && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Event Title</label>
                 <input className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Type</label>
-                  <select className={inputCls} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>
-                    {Object.entries(TYPE_META).map(([key, m]) => (
-                      <option key={key} value={key}>{m.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Date & Time</label>
-                  <input
-                    type="datetime-local"
-                    className={inputCls}
-                    value={form.startsAt}
-                    onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-                    required
-                  />
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Event Date and Time
+                </label>
+                <input
+                  type="datetime-local"
+                  className={inputCls}
+                  value={form.startsAt}
+                  onChange={(e) => {
+                    setForm({ ...form, startsAt: e.target.value });
+                    setError(null);
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Event Type
+                </label>
+                <select
+                  className={inputCls}
+                  value={form.type}
+                  onChange={(e) =>
+                    setForm({ ...form, type: e.target.value as EventType })
+                  }
+                >
+                  <option value="SUPPORT_GROUP">Support Group</option>
+                  <option value="CARE_PARTNER_CONFERENCE">Care Partner Conference</option>
+                  <option value="SOCIAL">Social Get-Together</option>
+                </select>
               </div>
 
               <div>
@@ -366,6 +403,27 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Description (optional)</label>
                 <textarea rows={3} className={inputCls} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
+
+              <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Who can see this event
+              </label>
+
+              <select
+                className={inputCls}
+                value={form.condition}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    condition: e.target.value as Audience,
+                  })
+                }
+              >
+                <option value="BOTH">Both groups</option>
+                <option value="FTD">FTD only</option>
+                <option value="AD">Alzheimer's only</option>
+              </select>
+            </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <button type="button" onClick={() => setShowModal(false)} className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition">

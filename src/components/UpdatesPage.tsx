@@ -58,10 +58,10 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
 
   useEffect(() => {
     api
-      .getUpdates()
+      .getUpdates(currentUser.id)
       .then(setUpdates)
       .finally(() => setLoading(false));
-  }, []);
+  }, [currentUser.id]);
 
   const filtered = updates.filter((u) => {
     const q = searchQuery.toLowerCase();
@@ -170,15 +170,17 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
               <option key={key} value={key}>{m.label}</option>
             ))}
           </select>
-          <select
-            value={conditionFilter}
-            onChange={(e) => setConditionFilter(e.target.value as 'ALL' | 'FTD' | 'AD')}
-            className="px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 shadow-2xs cursor-pointer"
-          >
-            <option value="ALL">All Conditions</option>
-            <option value="FTD">FTD</option>
-            <option value="AD">Alzheimer's</option>
-          </select>
+          {canEdit && (
+            <select
+              value={conditionFilter}
+              onChange={(e) => setConditionFilter(e.target.value as 'ALL' | 'FTD' | 'AD')}
+              className="px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">All Conditions</option>
+              <option value="FTD">FTD</option>
+              <option value="AD">Alzheimer's</option>
+            </select>
+          )}
         </div>
       </div>
 
@@ -291,7 +293,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 ) : (
-                  <span className="text-slate-400 dark:text-slate-500">Johns Hopkins FTD Center</span>
+                  <span className="text-slate-400 dark:text-slate-500">Johns Hopkins Medicine</span>
                 )}
                 {canEdit && (
                   <button
@@ -326,7 +328,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Add Clinical or Scientific Update</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Visible to all care partners once published.</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Visible to the selected group once published.</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition">
                 <X className="w-4 h-4" />

@@ -1,8 +1,10 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { PDFParse } from 'pdf-parse';
 import { CLINICAL_50_FAQ, searchClinicalFaq, generateLocalRagResponse, type ClinicalFaqItem } from './src/data/ragEngine.ts';
 
 dotenv.config();
@@ -13,7 +15,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
+type Condition = 'FTD' | 'AD';
+type Audience = Condition | 'BOTH';
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Initialize Gemini SDK on server-side if key is present
 let ai: GoogleGenAI | null = null;
@@ -40,6 +46,7 @@ interface User {
   id: string;
   email: string;
   role: 'CARE_PARTNER' | 'CLINICIAN_MODERATOR' | 'SYSTEM_ADMIN';
+  condition?: Condition; // care partners only, moderator sees both
   firstName: string;
   lastName: string;
   phoneNumber?: string;
@@ -81,6 +88,7 @@ interface Post {
   rawContent: string;
   sanitizedContent?: string;
   status: 'DRAFT' | 'PENDING_MODERATION' | 'APPROVED' | 'REJECTED' | 'CLINICAL_REDIRECT';
+  condition?: Audience;
   isClosed?: boolean;
   closedAt?: string;
   closedBy?: string;
@@ -119,7 +127,7 @@ interface ClinicalResource {
   contentBody: string;
   externalUrl?: string;
   fileAttachmentUrl?: string;
-  diseaseDomain: 'FTD' | 'ALZHEIMERS' | 'LBD';
+  diseaseDomain: Audience;
   category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
   keyTakeaways: string[];
   createdAt: string;
@@ -144,8 +152,10 @@ interface Invitation {
   lastName: string;
   clinicPatientId: string;
   primaryCohortSlug: string;
+  condition: Condition;
   token: string;
   expiresAt: string;
+  phoneNumber?: string;
   status: 'DISPATCHED' | 'CLAIMED' | 'REVOKED';
   createdAt: string;
 }
@@ -177,6 +187,7 @@ interface CalendarEvent {
   id: string;
   title: string;
   type: 'CARE_PARTNER_CONFERENCE' | 'SUPPORT_GROUP' | 'SOCIAL';
+  condition?: Audience;
   startsAt: string;
   location: string;
   description?: string;
@@ -253,6 +264,8 @@ const calendarEvents: CalendarEvent[] = [
   { id: 'evt-4', title: 'Care Partner Conference: Planning Ahead', type: 'CARE_PARTNER_CONFERENCE', startsAt: '2026-11-07T09:30', location: 'Hybrid: in person and Zoom', description: 'A half-day conference on legal, financial, and care planning.', authorId: 'user-clinician-1' },
   { id: 'evt-5', title: 'Eastern Shore Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-11-12T17:30', location: 'Zoom', description: 'Virtual meeting for Eastern Shore families.', authorId: 'user-clinician-1' },
   { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
+  { id: 'evt-7', title: "Alzheimer's Care Partner Check-in", type: 'SUPPORT_GROUP', condition: 'AD', startsAt: '2026-10-28T18:00', location: 'Zoom', description: "Evening check-in for Alzheimer's care partners.", authorId: 'user-clinician-1' },
+  { id: 'evt-8', title: 'Caregiver Wellness Workshop', type: 'SOCIAL', condition: 'BOTH', startsAt: '2026-11-04T17:30', location: 'Hybrid: in person and Zoom', description: 'Open to all care partners.', authorId: 'user-clinician-1' },
 ];
 
 function isStaff(userId?: string): boolean {
@@ -284,6 +297,7 @@ const users: User[] = [
     lastName: 'Smith',
     phoneNumber: '(410) 555-8841',
     clinicPatientId: 'JHM-99210-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-882',
     avatarColor: '#1E40AF',
@@ -298,6 +312,7 @@ const users: User[] = [
     lastName: 'Vance',
     phoneNumber: '(443) 555-3921',
     clinicPatientId: 'JHM-77341-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-419',
     avatarColor: '#047857',
@@ -312,6 +327,7 @@ const users: User[] = [
     lastName: 'Rostova',
     phoneNumber: '(717) 555-1299',
     clinicPatientId: 'JHM-44091-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-204',
     avatarColor: '#6D28D9',
@@ -326,6 +342,7 @@ const users: User[] = [
     lastName: 'Chen',
     phoneNumber: '(240) 555-6712',
     clinicPatientId: 'JHM-55120-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-512',
     avatarColor: '#B45309',
@@ -340,11 +357,41 @@ const users: User[] = [
     lastName: 'Morales',
     phoneNumber: '(703) 555-8901',
     clinicPatientId: 'JHM-63218-FTD',
+    condition: 'FTD',
     isActive: true,
     anonymousHandle: 'CarePartner-633',
     avatarColor: '#0E7490',
     badgeLabel: 'Care Partner',
     createdAt: '2026-05-15T14:30:00Z',
+  },
+  {
+    id: 'user-care-6',
+    email: 'lindaokafor@example.com',
+    role: 'CARE_PARTNER',
+    condition: 'AD',
+    firstName: 'Linda',
+    lastName: 'Okafor',
+    clinicPatientId: 'JHM-71002-AD',
+    isActive: true,
+    anonymousHandle: 'CarePartner-701',
+    avatarColor: '#0F766E',
+    badgeLabel: 'Care Partner',
+    createdAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: 'user-care-7',
+    email: 'georgeh@example.com',
+    role: 'CARE_PARTNER',
+    condition: 'AD',
+    firstName: 'George',
+    lastName: 'Harrison',
+    clinicPatientId: 'JHM-71003-AD',
+    isActive: true,
+    anonymousHandle: 'CarePartner-702',
+    avatarColor: '#9333EA',
+    badgeLabel: 'Care Partner',
+    createdAt: '2026-10-02T11:00:00Z',
+
   },
   {
     id: 'user-admin-1',
@@ -360,12 +407,29 @@ const users: User[] = [
   },
 ];
 
+// Helper: Get the requesting user from the request object
+function getRequester(req: express.Request): User | undefined {
+  const id =
+    (req.query.userId as string) ||
+    (req.body?.userId as string) ||
+    (req.body?.authorId as string) ||
+    '';
+  return users.find((u) => u.id === id);
+}
+
+// The single visibility rule.
+function canSee(user: User | undefined, audience: Audience = 'FTD'): boolean {
+  if (!user) return false;
+  if (user.role !== 'CARE_PARTNER') return true; // Dr. Seema / admins see both
+  return audience === 'BOTH' || audience === user.condition;
+}
+
 const communityGroups: CommunityGroup[] = [
   {
     id: 'group-general',
-    name: 'General Clinic Forum',
-    fullName: 'General Clinic Forum (All Regions)',
-    properName: 'General Clinic Forum',
+    name: 'General Forum',
+    fullName: 'General Forum (All Regions)',
+    properName: 'General Forum',
     slug: 'general-community',
     description: 'Clinic-wide discussion board for all verified FTD care partners across all geographic regions.',
     isGeneralBoard: true,
@@ -457,6 +521,10 @@ const groupMemberships: { userId: string; groupId: string }[] = [
   { userId: 'user-care-4', groupId: 'group-western-maryland' },
   { userId: 'user-care-5', groupId: 'group-general' },
   { userId: 'user-care-5', groupId: 'group-southern-maryland' },
+  { userId: 'user-care-6', groupId: 'group-general' },
+  { userId: 'user-care-6', groupId: 'group-central-maryland' },
+  { userId: 'user-care-7', groupId: 'group-general' },
+  { userId: 'user-care-7', groupId: 'group-western-maryland' },
 ];
 
 function normalizeGroupId(gId: string): string {
@@ -654,7 +722,7 @@ const posts: Post[] = [
   {
     id: 'post-general-1',
     authorId: 'user-clinician-1',
-    title: 'General Clinic Forum: Managing apathy vs depression in frontotemporal dementia',
+    title: 'General Forum: Managing apathy vs depression in frontotemporal dementia',
     rawContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     sanitizedContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     status: 'APPROVED',
@@ -921,6 +989,47 @@ const posts: Post[] = [
     commentCount: 2,
     upvotes: 7,
   },
+
+  // AD posts to test AD care partner seperation
+  { 
+    id: 'post-ad-1', 
+    authorId: 'user-care-6',
+    title: 'Sundowning: late afternoon confusion and agitation',
+    rawContent: 'Around 4 PM my mother becomes restless and keeps asking to go home, even though she is home. What routines have helped your family through the late afternoon?',
+    sanitizedContent: 'Around 4 PM my mother becomes restless and keeps asking to go home, even though she is home. What routines have helped your family through the late afternoon?',
+    status: 'APPROVED', 
+    condition: 'AD', 
+    isClosed: false, 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-08T10:00:00Z',
+    assignedGroupIds: ['group-general'], 
+    suggestedCohortId: 'group-general', 
+    phiAlerts: [],
+    createdAt: '2026-10-08T09:00:00Z', 
+    updatedAt: '2026-10-08T10:00:00Z', 
+    commentCount: 1, 
+    upvotes: 4 
+  },
+  { 
+    id: 'post-both-1', 
+    authorId: 'user-clinician-1',
+    title: 'Caregiver self-care and respite: you matter too',
+    rawContent: 'Caring for someone with dementia is demanding. What small routines or respite options have helped you protect your own health?',
+    sanitizedContent: 'Caring for someone with dementia is demanding. What small routines or respite options have helped you protect your own health?',
+    status: 'APPROVED', 
+    condition: 'BOTH', 
+    isClosed: false, 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-09T10:00:00Z',
+    assignedGroupIds: ['group-general'], 
+    suggestedCohortId: 'group-general', 
+    phiAlerts: [],
+    createdAt: '2026-10-09T09:00:00Z', 
+    updatedAt: '2026-10-09T10:00:00Z', 
+    commentCount: 2, 
+    upvotes: 6 
+  },
+
   // Pending items for Clinician Triage testing
   {
     id: 'post-pending-1',
@@ -1331,6 +1440,38 @@ const comments: Comment[] = [
     moderatedAt: '2026-09-28T10:00:00Z',
     createdAt: '2026-09-28T10:00:00Z',
   },
+  { 
+    id: 'comm-ad-1', 
+    postId: 'post-ad-1', 
+    authorId: 'user-care-7',
+    rawContent: 'A short walk after lunch and closing the curtains before dusk helped us a lot.',
+    sanitizedContent: 'A short walk after lunch and closing the curtains before dusk helped us a lot.',
+    status: 'APPROVED', 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-08T11:00:00Z', 
+    createdAt: '2026-10-08T10:30:00Z' 
+  },
+  { id: 'comm-both-1', 
+    postId: 'post-both-1', 
+    authorId: 'user-care-6',
+    rawContent: 'Two afternoons a week of adult day care gave me time to rest. It made a big difference.',
+    sanitizedContent: 'Two afternoons a week of adult day care gave me time to rest. It made a big difference.',
+    status: 'APPROVED', 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-09T11:00:00Z', 
+    createdAt: '2026-10-09T10:30:00Z' 
+  },
+  { 
+    id: 'comm-both-2', 
+    postId: 'post-both-1', 
+    authorId: 'user-care-1',
+    rawContent: 'Our support group meeting is the one hour a month that is just for me.',
+    sanitizedContent: 'Our support group meeting is the one hour a month that is just for me.',
+    status: 'APPROVED', 
+    moderatedBy: 'user-clinician-1', 
+    moderatedAt: '2026-10-09T12:00:00Z', 
+    createdAt: '2026-10-09T11:30:00Z' 
+  },
 ];
 
 const auditEvents: ModerationAuditEvent[] = [
@@ -1363,6 +1504,7 @@ const invitations: Invitation[] = [
     firstName: 'Carol',
     lastName: 'Jenkins',
     clinicPatientId: 'JHM-88419-FTD',
+    condition: 'FTD',
     primaryCohortSlug: 'baltimore-metro',
     token: 'jh-token-88419-valid',
     expiresAt: '2026-10-02T12:00:00Z',
@@ -1437,6 +1579,7 @@ app.get('/api/v1/users/me', (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       clinicPatientId: user.clinicPatientId,
+      condition: user.condition,
       anonymousHandle: user.anonymousHandle,
       badgeLabel: user.badgeLabel,
       avatarColor: user.avatarColor,
@@ -1447,14 +1590,16 @@ app.get('/api/v1/users/me', (req, res) => {
       role: u.role,
       handle: u.anonymousHandle,
       clinicId: u.clinicPatientId,
+      condition: u.condition,
     })),
   });
 });
 
 // Community Groups / Cohorts
 app.get('/api/v1/cohorts', (req, res) => {
-  const userId = (req.query.userId as string) || '';
-  const role = (req.query.role as string) || 'CARE_PARTNER';
+  const requester = getRequester(req)
+  const role = requester?.role ?? 'CARE_PARTNER';
+  const userId = requester?.id ?? '';
 
   // Dr. Seema (Clinician Moderator / System Admin) has access to discussions across ALL groups
   if (role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN') {
@@ -1504,10 +1649,11 @@ app.post('/api/v1/cohorts', (req, res) => {
 
 // Feed: Browse Posts (Strict Regional Isolation & RBAC)
 app.get('/api/v1/posts', (req, res) => {
-  const role = (req.query.role as string) || 'CARE_PARTNER';
+  const requester = getRequester(req);
+  const role = requester?.role ?? 'CARE_PARTNER';
   const groupId = req.query.groupId as string;
   const statusFilter = req.query.status as string;
-  const currentUserId = (req.query.userId as string) || '';
+  const currentUserId = requester?.id ?? '';
 
   const allowedGroupIds = getUserAllowedGroups(currentUserId, role);
 
@@ -1538,6 +1684,14 @@ app.get('/api/v1/posts', (req, res) => {
     filtered = filtered.filter((p) => p.assignedGroupIds.includes(groupId));
   }
 
+  filtered = filtered.filter((p) => canSee(requester, p.condition));
+  
+  // Optional clinician toggle: ?condition=AD shows AD + BOTH
+  const condFilter = req.query.condition as string;
+  if (condFilter === 'FTD' || condFilter === 'AD') {
+    filtered = filtered.filter((p) => (p.condition ?? 'FTD') === condFilter || p.condition === 'BOTH');
+  }
+
   // Map with RLS projection
   const projectedPosts = filtered.map((p) => {
     const authorProjection = projectAuthor(p.authorId, role);
@@ -1555,6 +1709,7 @@ app.get('/api/v1/posts', (req, res) => {
       author: authorProjection,
       assignedGroups,
       isUrgentClinical: p.isUrgentClinical,
+      condition: p.condition ?? 'FTD',
       createdAt: p.createdAt,
       commentCount: comments.filter((c) => c.postId === p.id && c.status === 'APPROVED').length,
       upvotes: p.upvotes,
@@ -1571,14 +1726,19 @@ app.get('/api/v1/posts', (req, res) => {
 
 // Single Post Details with Comments
 app.get('/api/v1/posts/:id', (req, res) => {
-  const role = (req.query.role as string) || 'CARE_PARTNER';
+  const requester = getRequester(req);
+  const role = requester?.role ?? 'CARE_PARTNER';
   const post = posts.find((p) => p.id === req.params.id);
+  const currentUserId = requester?.id ?? '';
 
   if (!post) {
     return res.status(404).json({ error: 'Post not found' });
   }
 
-  const currentUserId = (req.query.userId as string) || '';
+  if (!canSee(getRequester(req), post.condition)) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
   const allowedGroupIds = getUserAllowedGroups(currentUserId, role);
 
   // Care partners can view approved posts in their allowed groups, or their own submission
@@ -1622,6 +1782,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
       closedBy: post.closedBy,
       author: projectAuthor(post.authorId, role),
       assignedGroups: communityGroups.filter((g) => post.assignedGroupIds.includes(g.id)),
+      condition: post.condition ?? 'FTD',
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? post.phiAlerts : undefined,
       createdAt: post.createdAt,
       commentCount: postComments.filter((c) => c.status === 'APPROVED').length,
@@ -1653,7 +1814,8 @@ app.post('/api/v1/deflection/discussions', (req, res) => {
     return res.json({ matches: [] });
   }
 
-  const approvedPosts = posts.filter((p) => p.status === 'APPROVED');
+  const requester = getRequester(req);
+  const approvedPosts = posts.filter((p) => p.status === 'APPROVED' && canSee(requester, p.condition));
   const matches: {
     postId: string;
     title: string;
@@ -1713,7 +1875,8 @@ app.post('/api/v1/deflection/discussions', (req, res) => {
 
 // Real-time pool endpoint for instant client-side keyword matching
 app.get('/api/v1/deflection/discussions-pool', (req, res) => {
-  const approvedPosts = posts.filter((p) => p.status === 'APPROVED');
+  const requester = getRequester(req);
+  const approvedPosts = posts.filter((p) => p.status === 'APPROVED' && canSee(requester, p.condition));
   const pool = approvedPosts.map((p) => {
     const postComments = comments.filter((c) => c.postId === p.id && c.status === 'APPROVED');
     const author = projectAuthor(p.authorId, 'CARE_PARTNER');
@@ -1724,7 +1887,7 @@ app.get('/api/v1/deflection/discussions-pool', (req, res) => {
       content: p.sanitizedContent || p.rawContent,
       authorHandle: author.anonymousHandle,
       authorBadge: author.badgeLabel,
-      cohortName: assignedGroup?.properName || assignedGroup?.name || 'General Clinic Forum',
+      cohortName: assignedGroup?.properName || assignedGroup?.name || 'General Forum',
       createdAt: p.createdAt,
       replies: postComments.map((c) => {
         const commAuthor = projectAuthor(c.authorId, 'CARE_PARTNER');
@@ -1744,6 +1907,10 @@ app.get('/api/v1/deflection/discussions-pool', (req, res) => {
 // Draft / Submit Post (Care Partner or Clinician)
 app.post('/api/v1/posts', (req, res) => {
   const { title, content, targetCohortId, authorId = 'user-care-1' } = req.body;
+  const author = users.find((u) => u.id === authorId);
+  const condition: Audience = isStaff(authorId)
+    ? (['FTD', 'AD', 'BOTH'].includes(req.body.condition) ? req.body.condition : 'BOTH')
+    : (author?.condition ?? 'FTD');   // care partners can't choose; it's forced server-side
 
   if (!title || !content) {
     return res.status(400).json({ error: 'Title and content are required' });
@@ -1756,13 +1923,19 @@ app.post('/api/v1/posts', (req, res) => {
   const medicationKeywords = ['seroquel', 'haldol', 'haloperidol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'milligram', 'mg', 'prescribe'];
   const hasMedicationMention = medicationKeywords.some((w) => `${title} ${content}`.toLowerCase().includes(w));
 
+  const staff = isStaff(authorId);
+  const now = new Date().toISOString();
+
   const newPost: Post = {
     id: `post-${Date.now()}`,
     authorId,
     title,
     rawContent: content,
     sanitizedContent: content,
-    status: 'PENDING_MODERATION', // ZERO-TRUST GATE: Always pending!
+    status: staff ? 'APPROVED' : 'PENDING_MODERATION', // ZERO-TRUST GATE: Always pending!
+    condition,
+    moderatedBy: staff ? authorId : undefined,
+    moderatedAt: staff ? now : undefined,
     assignedGroupIds: targetCohortId ? [targetCohortId] : ['group-general'],
     suggestedCohortId: targetCohortId || 'group-general',
     phiAlerts,
@@ -1771,14 +1944,17 @@ app.post('/api/v1/posts', (req, res) => {
     updatedAt: new Date().toISOString(),
     commentCount: 0,
     upvotes: 0,
+    isClosed: false,
   };
 
   posts.unshift(newPost);
 
   res.status(202).json({
     postId: newPost.id,
-    status: 'PENDING_MODERATION',
-    message: 'Your submission has been safely received. Dr. Seema reviews all posts within 24 hours to keep this community safe and accurate.',
+    status: newPost.status,
+    message: staff
+      ? 'Post published.'
+      : 'Your submission has been safely received. Dr. Seema reviews all posts within 24 hours to keep this community safe and accurate.',
     hasPhiAlerts: phiAlerts.length > 0,
     phiAlertsCount: phiAlerts.length,
   });
@@ -1790,6 +1966,10 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
   const post = posts.find((p) => p.id === req.params.id);
 
   if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  if (!canSee(getRequester(req), post.condition)) {
     return res.status(404).json({ error: 'Post not found' });
   }
 
@@ -1994,6 +2174,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
         email: author?.email || '',
         phone: author?.phoneNumber || '',
         clinicPatientId: author?.clinicPatientId || 'UNLINKED',
+        condition: author?.condition,
         anonymousHandle: author?.anonymousHandle || 'CarePartner',
         avatarColor: author?.avatarColor || '#002D72',
       },
@@ -2002,6 +2183,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
       sanitizedContent: p.sanitizedContent || p.rawContent,
       suggestedCohort: suggestedCohort || communityGroups[0],
       assignedGroupIds: p.assignedGroupIds,
+      condition: p.condition ?? 'FTD',
       isUrgentClinical: p.isUrgentClinical,
       phiAlerts: p.phiAlerts || [],
       createdAt: p.createdAt,
@@ -2041,6 +2223,8 @@ app.post('/api/v1/moderation/action', (req, res) => {
     if (assignedGroupIds && assignedGroupIds.length > 0) {
       post.assignedGroupIds = assignedGroupIds;
     }
+
+    if (['FTD', 'AD', 'BOTH'].includes(req.body.condition)) post.condition = req.body.condition;
 
     // Direct message to author
     directMessages.unshift({
@@ -2161,8 +2345,9 @@ app.post('/api/v1/notifications/:id/read', (req, res) => {
 });
 
 // Clinician Curated Resources
-app.get('/api/v1/resources', (_req, res) => {
-  res.json(clinicalResources);
+app.get('/api/v1/resources', (req, res) => {
+  const requester = getRequester(req);
+  res.json(clinicalResources.filter((r) => canSee(requester, r.diseaseDomain)));
 });
 
 app.post('/api/v1/resources', (req, res) => {
@@ -2200,8 +2385,11 @@ app.post('/api/v1/resources', (req, res) => {
 });
 
 // Clinic Updates (everyone reads, staff writes)
-app.get('/api/v1/updates', (_req, res) => {
-  const sorted = [...clinicUpdates].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+app.get('/api/v1/updates', (req, res) => {
+  const requester = getRequester(req);
+  const sorted = clinicUpdates
+    .filter((u) => canSee(requester, u.condition))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json(sorted);
 });
 
@@ -2255,13 +2443,16 @@ app.delete('/api/v1/updates/:id', (req, res) => {
 });
 
 // Calendar Events (everyone reads, staff writes)
-app.get('/api/v1/events', (_req, res) => {
-  const sorted = [...calendarEvents].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+app.get('/api/v1/events', (req, res) => {
+  const requester = getRequester(req);
+  const sorted = calendarEvents
+    .filter((e) => canSee(requester, e.condition ?? 'BOTH'))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   res.json(sorted);
 });
 
 app.post('/api/v1/events', (req, res) => {
-  const { title, type, startsAt, location, description, authorId } = req.body;
+  const { title, type, startsAt, location, description, authorId, condition } = req.body;
 
   if (!isStaff(authorId)) {
     return res.status(403).json({ error: 'Only clinic staff can add events.' });
@@ -2274,6 +2465,7 @@ app.post('/api/v1/events', (req, res) => {
     id: `evt-${Date.now()}`,
     title: title.trim(),
     type: EVENT_TYPES.includes(type) ? type : 'SUPPORT_GROUP',
+    condition: ['FTD', 'AD', 'BOTH'].includes(condition) ? condition : 'BOTH',
     startsAt,
     location: location || '',
     description,
@@ -2312,10 +2504,14 @@ app.get('/api/v1/moderation/audit', (_req, res) => {
 
 // Clinician Invite Care Partner Endpoint (US-1.1)
 app.post('/api/v1/auth/invitations', (req, res) => {
-  const { email, firstName, lastName, clinicPatientId, primaryCohortSlug } = req.body;
+  const { email, firstName, lastName, clinicPatientId, primaryCohortSlug, condition, phoneNumber } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
+  }
+
+  if (condition !== 'FTD' && condition !== 'AD') {
+    return res.status(400).json({ error: 'Condition (FTD or AD) is required' });
   }
 
   const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
@@ -2328,6 +2524,8 @@ app.post('/api/v1/auth/invitations', (req, res) => {
     lastName: lastName || '',
     clinicPatientId: clinicPatientId || '',
     primaryCohortSlug: primaryCohortSlug || 'baltimore-metro',
+    condition,
+    phoneNumber: phoneNumber?.trim() || undefined,
     token,
     expiresAt,
     status: 'DISPATCHED',
@@ -2343,7 +2541,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
     entityType: 'USER',
     entityId: newInvitation.id,
     actionTaken: 'INVITED_CARE_PARTNER',
-    notes: `Issued single-use invite for ${email} to cohort ${primaryCohortSlug}`,
+    notes: `Issued single-use invite for ${email} to cohort ${newInvitation.primaryCohortSlug} (${condition})`,
     createdAt: new Date().toISOString(),
   });
 
@@ -2359,6 +2557,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
 // Real-Time Pre-Submission Deflection (Section 6.3 & US-4.1)
 app.post('/api/v1/knowledge/deflect', (req, res) => {
   const { draftText } = req.body;
+  const requester = getRequester(req);
 
   if (!draftText || typeof draftText !== 'string' || draftText.trim().length < 15) {
     return res.json({ deflectionMatches: [] });
@@ -2368,45 +2567,47 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
 
   // Find matching curated resources
   const resourceMatches: any[] = [];
-  clinicalResources.forEach((resItem) => {
-    let score = 0;
-    const titleLower = resItem.title.toLowerCase();
-    const contentLower = resItem.contentBody.toLowerCase();
-    const categoryLower = resItem.category.toLowerCase();
+  clinicalResources
+    .filter((r) => canSee(requester, r.diseaseDomain))
+    .forEach((resItem) => {
+      let score = 0;
+      const titleLower = resItem.title.toLowerCase();
+      const contentLower = resItem.contentBody.toLowerCase();
+      const categoryLower = resItem.category.toLowerCase();
 
-    // Check key thematic terms
-    const keywords = [
-      'incontinence', 'urine', 'brief', 'diaper', 'toilet', 'voiding',
-      'shower', 'bathing', 'bath', 'sponge', 'wash', 'hygiene', 'agitation',
-      'medicaid', 'lawyer', 'attorney', 'legal', 'spend-down', 'assets', 'power of attorney',
-      'wander', 'wandering', 'car', 'driving', 'elopement', 'keys', 'gps', 'tracker',
-      'lion mane', 'supplement', 'mushroom', 'cure',
-    ];
+      // Check key thematic terms
+      const keywords = [
+        'incontinence', 'urine', 'brief', 'diaper', 'toilet', 'voiding',
+        'shower', 'bathing', 'bath', 'sponge', 'wash', 'hygiene', 'agitation',
+        'medicaid', 'lawyer', 'attorney', 'legal', 'spend-down', 'assets', 'power of attorney',
+        'wander', 'wandering', 'car', 'driving', 'elopement', 'keys', 'gps', 'tracker',
+        'lion mane', 'supplement', 'mushroom', 'cure',
+      ];
 
-    keywords.forEach((kw) => {
-      if (textLower.includes(kw)) {
-        if (titleLower.includes(kw) || categoryLower.includes(kw)) score += 0.35;
-        if (contentLower.includes(kw)) score += 0.2;
-      }
-    });
-
-    if (score > 0.3) {
-      resourceMatches.push({
-        sourceType: 'RESOURCE',
-        id: resItem.id,
-        title: resItem.title,
-        category: resItem.category,
-        snippet: resItem.summary,
-        url: resItem.externalUrl || resItem.fileAttachmentUrl,
-        confidenceScore: Math.min(0.96, Math.max(0.72, parseFloat(score.toFixed(2)))),
+      keywords.forEach((kw) => {
+        if (textLower.includes(kw)) {
+          if (titleLower.includes(kw) || categoryLower.includes(kw)) score += 0.35;
+          if (contentLower.includes(kw)) score += 0.2;
+        }
       });
-    }
+
+      if (score > 0.3) {
+        resourceMatches.push({
+          sourceType: 'RESOURCE',
+          id: resItem.id,
+          title: resItem.title,
+          category: resItem.category,
+          snippet: resItem.summary,
+          url: resItem.externalUrl || resItem.fileAttachmentUrl,
+          confidenceScore: Math.min(0.96, Math.max(0.72, parseFloat(score.toFixed(2)))),
+        });
+      }
   });
 
   // Find matching approved past discussions
   const discussionMatches: any[] = [];
   posts
-    .filter((p) => p.status === 'APPROVED')
+    .filter((p) => p.status === 'APPROVED' && canSee(requester, p.condition))
     .forEach((p) => {
       let score = 0;
       const combined = `${p.title} ${p.sanitizedContent || p.rawContent}`.toLowerCase();
@@ -2438,11 +2639,627 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
 });
 
 // 50 Clinical FAQs Endpoint
-app.get('/api/v1/knowledge/faq', (_req, res) => {
-  res.json(CLINICAL_50_FAQ);
+app.get('/api/v1/knowledge/faq', (req, res) => {
+  const r = getRequester(req);
+  res.json(r?.condition === 'AD' ? [] : CLINICAL_50_FAQ);
 });
 
-// Closed-Loop Clinician RAG Assistant (Section 7.1)
+// -------------------------------------------------------------
+// CHATBOT KNOWLEDGE GUIDE FILES STORE & RAG ENGINE
+// -------------------------------------------------------------
+
+interface ChatbotGuideFile {
+  id: string;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  category: string;
+  description?: string;
+  content: string;
+  sectionCount?: number;
+  wordCount?: number;
+  isActive: boolean;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type ChatbotKnowledgeSourceMode = 'UPLOADED_GUIDES_ONLY' | 'HYBRID' | 'MOCK_FAQS_ONLY';
+
+let chatbotKnowledgeConfig: {
+  sourceMode: ChatbotKnowledgeSourceMode;
+} = {
+  sourceMode: 'UPLOADED_GUIDES_ONLY',
+};
+
+const DB_DIR = path.join(process.cwd(), 'data');
+const GUIDES_DB_FILE = path.join(DB_DIR, 'clinical_guides.json');
+
+const initialChatbotGuidesSeed: ChatbotGuideFile[] = [
+  {
+    id: 'guide-jhm-ftd-2026',
+    title: 'Johns Hopkins Comprehensive bvFTD & PPA Caregiver Protocol (2026)',
+    fileName: 'JH_FTD_Clinical_Caregiver_Protocol_2026.pdf',
+    fileSize: 14280,
+    mimeType: 'application/pdf',
+    category: 'GENERAL_CLINICAL_PROTOCOL',
+    description: 'Official clinical guidelines for daily behavioral, shower safety, and caregiving management in Frontotemporal Dementia.',
+    content: `# Johns Hopkins Comprehensive bvFTD & PPA Clinical Caregiver Protocol (2026)
+
+## De-escalating Bathing and Shower Defensiveness in bvFTD
+In Behavioral Variant Frontotemporal Dementia, resistance to bathing is driven by frontal sensory disinhibition, loss of procedural sequencing, and fear of sudden naked cold vulnerability.
+Key Interventions:
+1. **Pre-warm the Bathroom to 78°F**: Run space radiant heater or hot tap 15 minutes before undressing begins.
+2. **Utilize No-Rinse Warm Towel Bathing**: Wrap the care recipient in large, heated towels. Uncover strictly one limb at a time to cleanse with no-rinse warm cloths.
+3. **Eliminate Overhead Shower Sprays**: Directing water onto the face feels like a physical attack to a disinhibited frontal lobe. Use a handheld wand directed low at the legs.
+4. **Music Auditory Cortical Engagement**: Play familiar upbeat music from their 20s during the routine to occupy amygdala threat alarms.
+
+## Managing Compulsive Eating, Sweet Cravings & Hyperorality
+FTD atrophy in the hypothalamus and orbitofrontal circuits destroys satiety signaling and normal appetite braking, creating intense carbohydrate cravings.
+Key Interventions:
+1. **Environmental Security Over Verbal Confrontation**: Install discreet child-proof magnetic latches (e.g. Tot-Lok) on food pantries and refrigerators rather than arguing.
+2. **Pre-portioned Healthy Substitutions**: Keep sliced berries, chilled grapes, and sugar-free gelatins in clear view, while hiding high-calorie baked goods in opaque, high cabinets.
+3. **Choking Precautions & Pacing**: If rapid shoveling (food bolting) occurs, serve meals cut into bite-sized pieces on smaller 8-inch salad plates with pacing utensils.
+
+## Driving Retirement Transition Protocol
+Discontinue driving privileges decisively once executive reflex loss or traffic signal comprehension deteriorates.
+Key Interventions:
+1. **Physical Disablement Over Logic Debates**: Logic arguments fail due to anosognosia. Disconnect the vehicle battery cable, pull the ignition fuse, or park the car off-site.
+2. **Blame the Physician & Maryland MVA**: Frame driving cessation as an institutional medical and legal mandate from the Johns Hopkins clinic team.
+3. **Substitute Transportation Promptly**: Arrange alternative rides via family accounts or county specialized transit.
+
+## Managing Nocturnal Pacing and Reversed Circadian Rhythm
+Disruption of hypothalamic suprachiasmatic sleep regulation causes night wakefulness and hallway wandering.
+Key Interventions:
+1. **Maximize Morning Bright Light Exposure**: Ensure 45 minutes of bright morning outdoor sunlight or 10,000 lux therapy light box before 10 AM.
+2. **Silent Door Chimes & Motion Sensors**: Install wireless magnetic sensors that alert the caregiver's smartphone silently without sounding blaring audible alarms in the hallway.
+3. **Secure Hallway Environment**: Keep nightlights at baseboard level and remove throw rugs to prevent falls during nighttime pacing.
+
+## Addressing Inappropriate Public Disinhibition and Blunt Remarks
+Loss of ventromedial prefrontal inhibition leads to loud comments about strangers or impulsive touching.
+Key Interventions:
+1. **Caregiver Explanatory Cards**: Carry discrete business-sized cards that state: "My companion has Frontotemporal Dementia (a neurological condition that impairs speech and social filter). Thank you for your patience and understanding." Hand these quietly to cashiers, waitstaff, or bystanders.
+2. **Non-Confrontational Gentle Redirection**: Avoid arguing or saying "That was rude." Calmly pivot attention: "Look at this display over here."`,
+    sectionCount: 5,
+    wordCount: 520,
+    isActive: true,
+    uploadedBy: 'user-clinician-1',
+    uploadedByName: 'Dr. Seema Gulyani',
+    createdAt: '2026-10-10T09:00:00Z',
+    updatedAt: '2026-10-10T09:00:00Z',
+  },
+];
+
+function loadChatbotGuidesFromDb(): ChatbotGuideFile[] {
+  try {
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    if (fs.existsSync(GUIDES_DB_FILE)) {
+      const data = fs.readFileSync(GUIDES_DB_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read guides from file database:', err);
+  }
+  saveChatbotGuidesToDb(initialChatbotGuidesSeed);
+  return [...initialChatbotGuidesSeed];
+}
+
+function saveChatbotGuidesToDb(guides: ChatbotGuideFile[]): void {
+  try {
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    fs.writeFileSync(GUIDES_DB_FILE, JSON.stringify(guides, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to write clinical guides to database file:', err);
+  }
+}
+
+let chatbotGuidesStore: ChatbotGuideFile[] = loadChatbotGuidesFromDb();
+
+interface GuideChunk {
+  guideId: string;
+  guideTitle: string;
+  fileName: string;
+  sectionTitle: string;
+  category: string;
+  content: string;
+}
+
+function parseGuideChunks(guides: ChatbotGuideFile[]): GuideChunk[] {
+  const chunks: GuideChunk[] = [];
+
+  for (const guide of guides) {
+    if (!guide.isActive) continue;
+    const content = guide.content;
+    const headingRegex = /^#{1,3}\s+(.+)$/gm;
+    const sections: { title: string; startIndex: number }[] = [];
+    let m: RegExpExecArray | null;
+
+    while ((m = headingRegex.exec(content)) !== null) {
+      sections.push({ title: m[1].trim(), startIndex: m.index });
+    }
+
+    if (sections.length === 0) {
+      const paras = content.split(/\n\s*\n/).filter((p) => p.trim().length > 30);
+      if (paras.length <= 1) {
+        chunks.push({
+          guideId: guide.id,
+          guideTitle: guide.title,
+          fileName: guide.fileName,
+          sectionTitle: guide.title,
+          category: guide.category,
+          content: content.trim(),
+        });
+      } else {
+        paras.forEach((p, idx) => {
+          chunks.push({
+            guideId: guide.id,
+            guideTitle: guide.title,
+            fileName: guide.fileName,
+            sectionTitle: `${guide.title} (Part ${idx + 1})`,
+            category: guide.category,
+            content: p.trim(),
+          });
+        });
+      }
+    } else {
+      // Check if there is preamble before first heading
+      if (sections[0].startIndex > 60) {
+        const preamble = content.slice(0, sections[0].startIndex).trim();
+        if (preamble.length > 50) {
+          chunks.push({
+            guideId: guide.id,
+            guideTitle: guide.title,
+            fileName: guide.fileName,
+            sectionTitle: `${guide.title} - Overview`,
+            category: guide.category,
+            content: preamble,
+          });
+        }
+      }
+
+      for (let i = 0; i < sections.length; i++) {
+        const cur = sections[i];
+        const nextStart = i + 1 < sections.length ? sections[i + 1].startIndex : content.length;
+        const body = content.slice(cur.startIndex, nextStart).trim();
+        chunks.push({
+          guideId: guide.id,
+          guideTitle: guide.title,
+          fileName: guide.fileName,
+          sectionTitle: cur.title,
+          category: guide.category,
+          content: body,
+        });
+      }
+    }
+  }
+
+  return chunks;
+}
+
+const GUIDE_SEARCH_STOP_WORDS = new Set([
+  'what', 'is', 'the', 'best', 'way', 'to', 'my', 'in', 'on', 'at', 'by', 'for', 'with', 'a', 'an', 'and', 'or', 'do',
+  'how', 'can', 'i', 'we', 'you', 'they', 'them', 'of', 'this', 'that', 'these', 'those', 'be', 'are', 'was', 'were',
+  'been', 'being', 'have', 'has', 'had', 'it', 'its', 'so', 'as', 'if', 'about', 'from', 'help', 'need', 'please',
+  'tell', 'me', 'our', 'your', 'his', 'her', 'their', 'there', 'here', 'when', 'where', 'why', 'who', 'does', 'did',
+]);
+
+function searchGuideChunks(query: string, chunks: GuideChunk[], topK: number = 3): { chunk: GuideChunk; score: number }[] {
+  const queryLower = query.toLowerCase();
+  const rawWords = queryLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const tokens = rawWords.filter((w) => w.length >= 3 && !GUIDE_SEARCH_STOP_WORDS.has(w));
+
+  const synonyms: Record<string, string[]> = {
+    shower: ['bath', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'towel', 'wand', 'clean', 'refusal'],
+    bath: ['shower', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'clean', 'towel', 'refusal', 'bathing'],
+    sweet: ['sweets', 'candy', 'eating', 'food', 'sugar', 'binge', 'cravings', 'pastries', 'ice cream', 'cookies', 'hyperorality'],
+    eat: ['eating', 'sweet', 'food', 'choking', 'bolting', 'cravings', 'chewing', 'swallow', 'carbohydrate', 'appetite', 'plate', 'hunger', 'hyperorality'],
+    sugar: ['sweet', 'sweets', 'candy', 'cookies', 'hyperorality', 'binge', 'pastry', 'carbohydrate'],
+    drive: ['car', 'driving', 'license', 'keys', 'vehicle', 'mva', 'dmv', 'ignition', 'battery', 'transportation'],
+    wander: ['night', 'pacing', 'walk', 'walking', 'sensor', 'door', 'lost', 'elopement', 'chime', 'hallway'],
+    sleep: ['night', 'pacing', 'insomnia', 'awake', 'circadian', 'hallway', 'wakefulness', 'sundowning'],
+    yell: ['agitation', 'outburst', 'aggression', 'sponge', 'hit', 'anger', 'screaming', 'violence', 'fighting', 'lashing'],
+    rude: ['blunt', 'filter', 'public', 'cards', 'disinhibition', 'stranger', 'embarrassing', 'inappropriate', 'impulsive', 'insulting'],
+    toilet: ['incontinence', 'voiding', 'briefs', 'diapers', 'bathroom', 'urinary', 'urine'],
+    aphasia: ['ppa', 'speech', 'words', 'talking', 'language', 'nonverbal'],
+    legal: ['lawyer', 'poa', 'power of attorney', 'directive', 'guardianship', 'will', 'medicaid'],
+    pill: ['medication', 'medicine', 'swallow', 'spit', 'dose', 'crush', 'refuse'],
+    agitation: ['aggression', 'anger', 'hit', 'scream', 'violence', 'combative', 'yell', 'fighting'],
+  };
+
+  const scored = chunks.map((chunk) => {
+    let score = 0;
+    const titleLower = chunk.sectionTitle.toLowerCase();
+    const contentLower = chunk.content.toLowerCase();
+    const titleWords = new Set(titleLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
+    const contentWords = new Set(contentLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
+
+    // Multi-word exact phrase match (if meaningful length)
+    if (tokens.length >= 2 && queryLower.length >= 6) {
+      if (contentLower.includes(queryLower)) score += 40;
+      if (titleLower.includes(queryLower)) score += 30;
+    }
+
+    // Direct token matches using word set
+    for (const token of tokens) {
+      if (titleWords.has(token)) score += 15;
+      if (contentWords.has(token)) score += 5;
+
+      // Synonym expansion
+      const synList = synonyms[token];
+      if (synList) {
+        for (const s of synList) {
+          if (titleWords.has(s)) score += 12;
+          if (contentWords.has(s)) score += 4;
+        }
+      }
+    }
+
+    return { chunk, score };
+  });
+
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+function formatUploadedGuideAnswer(chunk: GuideChunk): string {
+  const lines = chunk.content.split('\n');
+  const contentLines = lines.filter((l) => !l.startsWith('# '));
+  const rawText = contentLines.join('\n').trim();
+
+  const stepIndex = rawText.search(/\n(?:\d+\.|\*|\-)\s+/);
+  let explanation = rawText;
+  let steps = '';
+  if (stepIndex > 0) {
+    explanation = rawText.slice(0, stepIndex).trim();
+    steps = rawText.slice(stepIndex).trim();
+  }
+
+  let answer = `### Understanding What Is Happening\n${explanation || 'In Frontotemporal Dementia, this symptom stems from neurodegeneration affecting frontal brain circuits, not willful opposition.'}`;
+
+  if (steps) {
+    answer += `\n\n### Practical Steps\n${steps}`;
+  }
+
+  return answer;
+}
+
+// -------------------------------------------------------------
+// CHATBOT KNOWLEDGE MANAGEMENT ROUTES (MODERATOR DASHBOARD)
+// -------------------------------------------------------------
+
+app.get('/api/v1/chatbot/guides', (_req, res) => {
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const active = chatbotGuidesStore.filter((g) => g.isActive);
+  const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+  res.json({
+    guides: chatbotGuidesStore,
+    config: {
+      ...chatbotKnowledgeConfig,
+      totalActiveGuides: active.length,
+      totalWords,
+    },
+  });
+});
+
+app.post('/api/v1/chatbot/guides', (req, res) => {
+  const { title, fileName, fileSize, mimeType, category, description, content, uploadedBy, uploadedByName } = req.body;
+
+  if (!title?.trim() || !content?.trim()) {
+    return res.status(400).json({ error: 'Title and guide content are required.' });
+  }
+
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const sections = content.split(/(?=^##\s+)/m).filter(Boolean).length || 1;
+
+  const newGuide: ChatbotGuideFile = {
+    id: `guide-${Date.now()}`,
+    title: title.trim(),
+    fileName: fileName?.trim() || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.md`,
+    fileSize: fileSize || content.length,
+    mimeType: mimeType || 'text/markdown',
+    category: category || 'GENERAL_CLINICAL_PROTOCOL',
+    description: description?.trim() || '',
+    content: content.trim(),
+    sectionCount: sections,
+    wordCount: words,
+    isActive: true,
+    uploadedBy: uploadedBy || 'user-clinician-1',
+    uploadedByName: uploadedByName || 'Dr. Seema Gulyani',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  chatbotGuidesStore.unshift(newGuide);
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: uploadedBy || 'user-clinician-1',
+    moderatorName: uploadedByName || 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: newGuide.id,
+    actionTaken: 'UPLOADED_CHATBOT_GUIDE',
+    notes: `Uploaded clinical guide "${newGuide.title}" (${words} words) for chatbot knowledge`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.status(201).json(newGuide);
+});
+
+app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
+  const idx = chatbotGuidesStore.findIndex((g) => g.id === req.params.id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Guide file not found.' });
+  }
+
+  const deleted = chatbotGuidesStore.splice(idx, 1)[0];
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: deleted.id,
+    actionTaken: 'DELETED_CHATBOT_GUIDE',
+    notes: `Removed chatbot guide file "${deleted.title}"`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ success: true, id: req.params.id });
+});
+
+app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
+  const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
+  if (!guide) {
+    return res.status(404).json({ error: 'Guide file not found.' });
+  }
+
+  guide.isActive = !guide.isActive;
+  guide.updatedAt = new Date().toISOString();
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: guide.id,
+    actionTaken: guide.isActive ? 'ACTIVATED_CHATBOT_GUIDE' : 'DEACTIVATED_CHATBOT_GUIDE',
+    notes: `${guide.isActive ? 'Enabled' : 'Disabled'} guide "${guide.title}" for chatbot retrieval`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ guide, success: true });
+});
+
+// PDF Extraction Endpoint using PDFParse with Gemini OCR fallback
+app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
+  const { fileName = 'clinical_guide.pdf', fileBase64 } = req.body;
+
+  if (!fileBase64 || typeof fileBase64 !== 'string') {
+    return res.status(400).json({ error: 'Valid fileBase64 payload is required.' });
+  }
+
+  try {
+    const cleanBase64 = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    let extractedText = '';
+    let pageCount = 1;
+
+    try {
+      const parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const textResult = await parser.getText();
+      pageCount = textResult?.total || textResult?.pages?.length || 1;
+
+      if (textResult?.pages && textResult.pages.length > 0) {
+        extractedText = textResult.pages
+          .map((p) => p.text || '')
+          .filter(Boolean)
+          .join('\n\n');
+      } else if (textResult?.text) {
+        extractedText = textResult.text;
+      }
+
+      try {
+        await parser.destroy();
+      } catch {}
+    } catch (parseErr) {
+      console.warn('PDFParse primary extraction notice:', parseErr);
+    }
+
+    // Clean any binary/control characters and normalize text
+    extractedText = extractedText
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
+      .replace(/\r\n/g, '\n')
+      .replace(/(\w+)-\n(\w+)/g, '$1$2')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // If text is very short (e.g. scanned image PDF) and Gemini AI is available, use multimodal PDF understanding
+    if (extractedText.length < 80 && ai) {
+      try {
+        const geminiResp = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [
+            {
+              inlineData: {
+                mimeType: 'application/pdf',
+                data: cleanBase64,
+              },
+            },
+            {
+              text: 'You are an expert clinical document transcription engine. Extract and transcribe the full text and clinical guidelines from this PDF document. Format with clean markdown headers (## Section Title) and numbered practical steps. Return only the clean markdown text.',
+            },
+          ],
+        });
+        if (geminiResp.text && geminiResp.text.trim().length > 30) {
+          extractedText = geminiResp.text.trim();
+        }
+      } catch (geminiPdfErr) {
+        console.warn('Gemini multimodal PDF transcription notice:', geminiPdfErr);
+      }
+    }
+
+    if (!extractedText) {
+      extractedText = `# ${fileName.replace(/\.pdf$/i, '')}\n\nClinical guidelines extracted from uploaded PDF document.`;
+    }
+
+    // Derive suggested title
+    const lines = extractedText.split('\n').map((l) => l.trim()).filter(Boolean);
+    let suggestedTitle = fileName.replace(/\.pdf$/i, '').replace(/[_-]/g, ' ');
+    suggestedTitle = suggestedTitle.replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+    for (const l of lines.slice(0, 5)) {
+      const cleanLine = l.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
+      if (cleanLine.length >= 8 && cleanLine.length <= 100 && !/^(page|\d+|confidential)/i.test(cleanLine)) {
+        suggestedTitle = cleanLine;
+        break;
+      }
+    }
+
+    // Suggest category
+    const textLower = extractedText.toLowerCase();
+    let suggestedCategory = 'GENERAL_CLINICAL_PROTOCOL';
+    if (textLower.includes('shower') || textLower.includes('bath') || textLower.includes('hygiene') || textLower.includes('wash')) {
+      suggestedCategory = 'HYGIENE_BATHING';
+    } else if (textLower.includes('sweet') || textLower.includes('eating') || textLower.includes('sugar') || textLower.includes('food') || textLower.includes('binge')) {
+      suggestedCategory = 'NUTRITION_HYPERORALITY';
+    } else if (textLower.includes('disinhibit') || textLower.includes('social filter') || textLower.includes('blunt') || textLower.includes('rude')) {
+      suggestedCategory = 'BEHAVIORAL_DISINHIBITION';
+    } else if (textLower.includes('driv') || textLower.includes('vehicle') || textLower.includes('car') || textLower.includes('license')) {
+      suggestedCategory = 'DRIVING_SAFETY';
+    } else if (textLower.includes('sleep') || textLower.includes('night') || textLower.includes('wander') || textLower.includes('pacing')) {
+      suggestedCategory = 'SLEEP_WANDERING';
+    } else if (textLower.includes('aphasia') || textLower.includes('speech') || textLower.includes('ppa') || textLower.includes('language')) {
+      suggestedCategory = 'COMMUNICATION_PPA';
+    } else if (textLower.includes('poa') || textLower.includes('attorney') || textLower.includes('medicaid') || textLower.includes('legal')) {
+      suggestedCategory = 'LEGAL_MEDICAID';
+    } else if (textLower.includes('crisis') || textLower.includes('emergency') || textLower.includes('agitation') || textLower.includes('aggression')) {
+      suggestedCategory = 'CRISIS_DE_ESCALATION';
+    }
+
+    const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+
+    res.json({
+      text: extractedText,
+      wordCount,
+      pageCount,
+      fileName,
+      suggestedTitle,
+      suggestedCategory,
+    });
+  } catch (err: any) {
+    console.error('Failed to extract PDF:', err);
+    res.status(500).json({ error: 'Could not extract PDF text: ' + (err.message || 'Unknown error') });
+  }
+});
+
+app.post('/api/v1/chatbot/guides/settings', (_req, res) => {
+  chatbotKnowledgeConfig.sourceMode = 'UPLOADED_GUIDES_ONLY';
+  const active = chatbotGuidesStore.filter((g) => g.isActive);
+  const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+  res.json({
+    ...chatbotKnowledgeConfig,
+    totalActiveGuides: active.length,
+    totalWords,
+  });
+});
+
+app.post('/api/v1/chatbot/guides/test', async (req, res) => {
+  const { query } = req.body;
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Query is required for testing.' });
+  }
+
+  const activeGuides = chatbotGuidesStore.filter((g) => g.isActive);
+  const chunks = parseGuideChunks(activeGuides);
+  const matches = searchGuideChunks(query, chunks, 3);
+
+  if (matches.length === 0) {
+    return res.json({
+      query,
+      answer: 'No relevant section found in your uploaded guide files. Please ensure your uploaded clinical guides cover this caregiving topic.',
+      usedMockFaq: false,
+      allMatchedSections: [],
+    });
+  }
+
+  const best = matches[0].chunk;
+  let testAnswer = formatUploadedGuideAnswer(best);
+
+  if (ai) {
+    try {
+      const guideContext = matches
+        .map((m, idx) => `GUIDE SECTION #${idx + 1}: ${m.chunk.guideTitle} - ${m.chunk.sectionTitle}\n${m.chunk.content}`)
+        .join('\n\n');
+
+      const testPrompt = `You are Dr. Seema Gulyani's Clinical Assistant for Johns Hopkins FTD families.
+Answer this care partner inquiry strictly using the verified uploaded clinical guide sections below:
+Inquiry: "${query}"
+
+Uploaded Clinical Guide Context:
+${guideContext}
+
+Format requirements:
+- Warm opening sentence
+- ### Understanding What Is Happening
+- ### Practical Steps from Uploaded Guide (numbered with bold titles)
+- Under NO circumstances recommend prescription drug dosages.
+- Explicitly reference the source guide: "${best.fileName}".`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: testPrompt,
+        config: { temperature: 0.1 },
+      });
+
+      if (response.text?.trim()) {
+        testAnswer = response.text.trim();
+      }
+    } catch (e) {
+      console.warn('Gemini test query generation notice:', e);
+    }
+  }
+
+  res.json({
+    query,
+    answer: testAnswer,
+    usedMockFaq: false,
+    matchedGuide: {
+      id: best.guideId,
+      title: best.guideTitle,
+      fileName: best.fileName,
+      sectionTitle: best.sectionTitle,
+      matchScore: matches[0].score,
+      snippet: best.content.slice(0, 220),
+    },
+    allMatchedSections: matches.map((m) => ({
+      guideTitle: m.chunk.guideTitle,
+      sectionTitle: m.chunk.sectionTitle,
+      matchScore: m.score,
+      snippet: m.chunk.content.slice(0, 220),
+    })),
+  });
+});
+
+// -------------------------------------------------------------
+// CHATBOT ASSISTANT RAG ENDPOINT (Strictly Grounded in Uploaded Guides)
+// -------------------------------------------------------------
+
 app.post('/api/v1/knowledge/chat', async (req, res) => {
   const { query, conversationHistory = [] } = req.body;
 
@@ -2452,13 +3269,22 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
 
   const queryLower = query.toLowerCase();
 
-  // RULE 1 & 2: Prescription / medication dosage refusal gate
+  // RULE 1: Prescription / medication dosage refusal gate
   const restrictedDrugs = [
     'seroquel', 'quetiapine', 'haloperidol', 'haldol', 'donepezil', 'aricept',
     'memantine', 'namenda', 'trazodone', 'risperidone', 'olanzapine', 'zyprexa',
     'lorazepam', 'ativan', 'clonazepam', 'klonopin', 'xanax', 'alprazolam',
     'dose', 'dosage', 'milligrams', 'prescribe',
   ];
+
+  const chatRequester = getRequester(req);
+  if (chatRequester?.condition === 'AD') {
+    return res.json({
+      answer: `Our Alzheimer's care partner guidance is still being prepared by Dr. Seema's team. In the meantime, please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
+      citedResources: [],
+      suggestedQuestions: [],
+    });
+  }
 
   const mentionsDrug = restrictedDrugs.some((d) => queryLower.includes(d));
   if (mentionsDrug) {
@@ -2489,62 +3315,94 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
     });
   }
 
-  // RAG: Step 1 - Retrieve Top-K relevant clinical FAQs from 50 verified physician answers
-  const topFaqMatches = searchClinicalFaq(query, 4);
-  const bestFaq = topFaqMatches[0]?.item;
+  // Active uploaded guide files retrieval (Exclusive source, persisted in JSON DB)
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const activeGuides = chatbotGuidesStore.filter((g) => g.isActive);
 
-  // RAG: Step 2 - Compile Curated Clinical Context
-  const faqContext = topFaqMatches
+  if (activeGuides.length === 0) {
+    return res.json({
+      answer: `Dr. Seema's Assistant operates strictly using verified institutional clinical guide documents. No active clinical guide files are currently uploaded. Please upload a clinical PDF guide in the Moderator Dashboard to enable guidance answers.`,
+      citedResources: [],
+      suggestedQuestions: [],
+      isUploadedGuideSourced: false,
+      sourceMode: 'UPLOADED_GUIDES_ONLY',
+    });
+  }
+
+  const chunks = parseGuideChunks(activeGuides);
+  const matches = searchGuideChunks(query, chunks, 3);
+  const bestMatchChunk = matches[0]?.chunk || chunks[0];
+  const topScore = matches[0]?.score || 0;
+  const hasStrongContext = matches.length > 0 && topScore >= 12;
+
+  // If query has no relevant match in uploaded guides, answer supportively with clinical contact info
+  if (!hasStrongContext) {
+    return res.json({
+      answer: `I could not find specific recommendations in our clinical care notes for this situation.\n\nBecause every care partner's journey with Frontotemporal Dementia involves unique nuances, please consult your Johns Hopkins neurology team for personalized guidance. You can reach our clinic during business hours at (410) 955-5147 (option 2) or send a non-urgent message via MyChart/EPIC. For any life-threatening emergency, please call 911 immediately.`,
+      citedResources: [],
+      matchedGuide: null,
+      suggestedQuestions: [
+        'How do I handle violent resistance during showers and bathing?',
+        'How do I stop my loved one from driving safely?',
+        'Why are they constantly craving sweets and overeating?',
+      ],
+      isUploadedGuideSourced: false,
+      sourceMode: 'UPLOADED_GUIDES_ONLY',
+      canAnswer: false,
+    });
+  }
+
+  // Build context corpus strictly from uploaded guide documents
+  const uploadedGuidesContext = matches
     .map(
       (m, idx) =>
-        `CLINICAL Q&A #${idx + 1}:\nQUESTION: ${m.item.question}\nCATEGORY: ${m.item.categoryLabel}\nPHYSICIAN ANSWER:\n${m.item.physicianAnswer}\nKEY PROTOCOLS:\n${m.item.keyProtocols.map((p) => `- ${p}`).join('\n')}`
+        `VERIFIED INSTITUTIONAL GUIDE #${idx + 1}:\nDOCUMENT TITLE: ${m.chunk.guideTitle} [File: ${m.chunk.fileName}]\nSECTION: ${m.chunk.sectionTitle}\nCATEGORY: ${m.chunk.category}\nCLINICAL BODY:\n${m.chunk.content}`
     )
-    .join('\n\n--------------------------------\n\n');
+    .join('\n\n================================\n\n');
 
-  const resourceContext = clinicalResources
-    .map(
-      (r) =>
-        `DOCUMENT TITLE: ${r.title}\nCATEGORY: ${r.category}\nSUMMARY: ${r.summary}\nCLINICAL BODY:\n${r.contentBody}\nKEY PROTOCOLS:\n${r.keyTakeaways.map((t) => `- ${t}`).join('\n')}`
-    )
-    .join('\n\n--------------------------------\n\n');
+  const fullContextCorpus = `VERIFIED CLINICAL GUIDELINES FROM UPLOADED INSTITUTIONAL DOCUMENTS:\n\n${uploadedGuidesContext}`;
 
-  const fullContextCorpus = `VERIFIED PHYSICIAN ANSWERS FROM DR. SEEMA'S 50-FAQ KNOWLEDGE BASE:\n\n${faqContext}\n\n================================\n\nAPPROVED CLINICAL GUIDES:\n\n${resourceContext}`;
+  const dynamicSuggestedQuestions = chunks
+    .filter((c) => c.sectionTitle !== bestMatchChunk.sectionTitle)
+    .slice(0, 3)
+    .map((c) => {
+      const cleanTitle = c.sectionTitle.replace(/^[\d.]+\s*/, '').trim();
+      return `What is the protocol for ${cleanTitle}?`;
+    });
+  const suggestedQuestionsList =
+    dynamicSuggestedQuestions.length > 0
+      ? dynamicSuggestedQuestions
+      : [
+          'How do I handle violent resistance during showers?',
+          'How do I stop my loved one from driving safely?',
+          'Why are they constantly craving sweets and overeating?',
+        ];
 
-  // If Gemini API is available on the server, execute Gemini with Grounded Context & Temperature 0.0
   if (ai) {
     try {
-      const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic. You are speaking directly with family care partners (spouses, adult children, loved ones) who are often exhausted, overwhelmed, and looking for practical help.
+      const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic. You are speaking directly with family care partners.
 
-YOUR ROLE & VOICE:
-Speak with the warmth, compassion, and clarity of an experienced physician sitting down with a patient and their family. Speak in plain, human language that anyone can easily understand, regardless of their background or medical knowledge.
+CRITICAL GROUNDING REQUIREMENT:
+All clinical advice, explanations, and action steps MUST be grounded STRICTLY in the uploaded verified clinical guide documents provided below. Do NOT use generic medical assumptions, hallucinations, or outside data.
 
-CRITICAL COMMUNICATION GUIDELINES:
-1. PLAIN, HUMAN LANGUAGE:
-   - Avoid medical jargon. If you explain what is happening in the brain, use simple, everyday analogies (e.g., "the brain's natural social filter," "the brain's internal starter switch," or "loss of brain awareness that anything is wrong").
-   - Always validate the caregiver's experience: remind them that their loved one is NOT doing this on purpose, being mean, or stubborn—the illness is changing how their brain processes the world.
+RELEVANCY & ACCURACY CHECK:
+- If the uploaded clinical documents below DO NOT directly contain information to address the user's specific clinical scenario safely, you MUST NOT guess or invent medical advice.
+- Instead, kindly and clearly state that our current clinical notes do not have specific instructions for this scenario, and remind the caregiver that they can reach the Johns Hopkins clinic at (410) 955-5147 (option 2) or message via EPIC/MyChart for non-urgent clinical guidance. For life-threatening emergencies, always call 911.
 
-2. CLEAR, ACTIONABLE STRUCTURE:
-   Structure your answer with clear, easy-to-read sections:
-   - A brief, warm opening sentence acknowledging how challenging this symptom is.
-   - ### Understanding What Is Happening: 1-2 short, plain-language paragraphs explaining why this happens without clinical coldness.
-   - ### Practical Steps You Can Try: 3 to 4 numbered, step-by-step actions. Start each step with a bold action (e.g., "1. **Stay calm and redirect** — ..."). Give concrete, realistic ideas families can try immediately.
-   - ### What to Keep in Mind: 2-3 brief, reassuring bullet points that give the caregiver peace of mind and remind them to be kind to themselves.
+STRUCTURE & VOICE:
+- Speak warmly and empathetically in plain, everyday language suitable for stressed care partners.
+- If the guide DOES cover the topic, structure your answer clearly:
+  - Warm opening validation.
+  - ### Understanding What Is Happening
+  - ### Practical Steps (numbered steps with bold action titles)
+  - ### What to Keep in Mind
+- Under NO circumstances recommend or discuss specific prescription drug dosages.
 
-3. STRICT CLINICAL RULES:
-   - Under NO circumstances recommend or discuss specific prescription drug dosages or off-label pharmaceuticals.
-   - If the user asks about specific prescription medications (e.g., Seroquel, Haldol, Aricept, Trazodone), politely explain: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911."
-   - In physical danger or acute behavioral emergencies, calmly remind them to prioritize their physical safety and call 911.
-
-4. FORMATTING:
-   - Keep paragraphs short (2-3 sentences max).
-   - Use bolding on key action titles so tired caregivers can quickly scan.
-   - Never use robotic prefixes like "CLINICAL Q&A" or "Dr. Seema's Clinical Protocol for:". Address the user warmly and directly.
-
-VERIFIED CLINICAL KNOWLEDGE CORPUS:
+VERIFIED CLINICAL KNOWLEDGE CORPUS (FROM UPLOADED GUIDE FILES):
 ${fullContextCorpus}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-2.5-flash',
         contents: query,
         config: {
           systemInstruction,
@@ -2552,47 +3410,27 @@ ${fullContextCorpus}`;
         },
       });
 
-      const answerText = response.text || '';
-
-      // Match citations from approved resources & FAQs
-      const citedResources: { id: string; title: string; url?: string }[] = [];
-      if (bestFaq?.relatedGuideId && bestFaq?.relatedGuideTitle) {
-        citedResources.push({
-          id: bestFaq.relatedGuideId,
-          title: bestFaq.relatedGuideTitle,
-        });
-      }
-
-      clinicalResources.forEach((r) => {
-        const cat = r.category.toLowerCase();
-        const title = r.title.toLowerCase();
-        if (
-          (answerText.toLowerCase().includes(cat) || queryLower.includes(cat) || answerText.toLowerCase().includes(title.split(' ')[0])) &&
-          !citedResources.some((c) => c.id === r.id)
-        ) {
-          citedResources.push({ id: r.id, title: r.title, url: r.externalUrl });
-        }
-      });
-
-      const suggestedQuestions = CLINICAL_50_FAQ
-        .filter((f: ClinicalFaqItem) => f.id !== bestFaq?.id)
-        .slice(0, 3)
-        .map((f: ClinicalFaqItem) => f.question);
+      const answerText = (response.text || '').trim();
 
       return res.json({
         answer: answerText,
-        citedResources: citedResources.slice(0, 3),
-        matchedFaq: bestFaq,
-        suggestedQuestions,
+        suggestedQuestions: suggestedQuestionsList,
+        isUploadedGuideSourced: true,
+        sourceMode: 'UPLOADED_GUIDES_ONLY',
       });
     } catch (genAiError) {
-      console.warn('Gemini generation unavailable or quota reached, using clinical RAG database:', genAiError);
+      console.warn('Gemini generation error, falling back to deterministic uploaded guide response:', genAiError);
     }
   }
 
-  // High-Precision Deterministic Clinical RAG Fallback
-  const localRag = generateLocalRagResponse(query);
-  return res.json(localRag);
+  // Deterministic fallback formatted directly from top matching uploaded guide section
+  const fallbackAnswer = formatUploadedGuideAnswer(bestMatchChunk);
+  return res.json({
+    answer: fallbackAnswer,
+    suggestedQuestions: suggestedQuestionsList,
+    isUploadedGuideSourced: true,
+    sourceMode: 'UPLOADED_GUIDES_ONLY',
+  });
 });
 
 // Private 1-on-1 Messages between Dr. Seema & Caregivers
@@ -2665,6 +3503,7 @@ const cohortMembersStore = [
     email: 'sarah.smith@example.com',
     phone: '(410) 555-8841',
     clinicPatientId: 'JHM-99210-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-882',
     primaryGroupId: 'group-central-maryland',
     primaryGroupName: 'Central Maryland (Baltimore Metro)',
@@ -2678,6 +3517,7 @@ const cohortMembersStore = [
     email: 'marcus.vance@example.com',
     phone: '(443) 555-3921',
     clinicPatientId: 'JHM-77341-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-419',
     primaryGroupId: 'group-eastern-maryland',
     primaryGroupName: 'Eastern Maryland (Eastern Shore)',
@@ -2691,6 +3531,7 @@ const cohortMembersStore = [
     email: 'elena.rostova@example.com',
     phone: '(717) 555-1299',
     clinicPatientId: 'JHM-44091-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-204',
     primaryGroupId: 'group-northern-maryland',
     primaryGroupName: 'Northern Maryland / Pennsylvania / Delaware',
@@ -2704,6 +3545,7 @@ const cohortMembersStore = [
     email: 'david.chen@example.com',
     phone: '(240) 555-6712',
     clinicPatientId: 'JHM-55120-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-512',
     primaryGroupId: 'group-western-maryland',
     primaryGroupName: 'Western Maryland (Frederick and surrounding areas)',
@@ -2717,12 +3559,40 @@ const cohortMembersStore = [
     email: 'patricia.m@example.com',
     phone: '(703) 555-8901',
     clinicPatientId: 'JHM-63218-FTD',
+    condition: 'FTD',
     anonymousHandle: 'CarePartner-633',
     primaryGroupId: 'group-southern-maryland',
     primaryGroupName: 'Southern Maryland / DC / Northern Virginia',
     role: 'CARE_PARTNER',
     status: 'ACTIVE',
     joinedAt: '2026-09-15',
+  },
+  { 
+    userId: 'user-care-6', 
+    realName: 'Linda Okafor', 
+    email: 'lindaokafor@example.com', 
+    phone: '',
+    clinicPatientId: 'JHM-71002-AD', 
+    condition: 'AD', 
+    anonymousHandle: 'CarePartner-701',
+    primaryGroupId: 'group-central-maryland', 
+    primaryGroupName: 'Central Maryland (Baltimore Metro)',
+    role: 'CARE_PARTNER', 
+    status: 'ACTIVE', 
+    joinedAt: '2026-10-01' 
+  },
+  { userId: 'user-care-7', 
+    realName: 'George Harrison', 
+    email: 'georgeh@example.com', 
+    phone: '',
+    clinicPatientId: 'JHM-71003-AD', 
+    condition: 'AD', 
+    anonymousHandle: 'CarePartner-702',
+    primaryGroupId: 'group-western-maryland', 
+    primaryGroupName: 'Western Maryland (Frederick and surrounding areas)',
+    role: 'CARE_PARTNER', 
+    status: 'ACTIVE', 
+    joinedAt: '2026-10-02' 
   },
 ];
 

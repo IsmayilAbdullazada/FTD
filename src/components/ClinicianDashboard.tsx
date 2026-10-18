@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield,
   CheckCircle,
@@ -20,8 +20,24 @@ import {
   Filter,
   Lock,
   LockOpen,
+  Bot,
+  BrainCircuit,
+  FileText,
+  UploadCloud,
+  FileCode,
+  Trash2,
+  Eye,
+  FileCheck,
+  Copy,
+  ToggleLeft,
+  ToggleRight,
+  Play,
+  RotateCcw,
 } from 'lucide-react';
 import {
+  CurrentUser,
+  Audience,
+  Condition,
   QueueItem,
   Post,
   CommunityGroup,
@@ -29,10 +45,16 @@ import {
   GroupMember,
   getProperGroupName,
   getFullGroupName,
+  ChatbotGuideFile,
+  ChatbotKnowledgeConfig,
+  ChatbotKnowledgeSourceMode,
+  ChatbotGuideTestResult,
 } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 
 interface ClinicianDashboardProps {
+  currentUser: CurrentUser;
   cohorts: CommunityGroup[];
   onQueueUpdated: () => void;
   onOpenInvite: () => void;
@@ -42,6 +64,7 @@ interface ClinicianDashboardProps {
 }
 
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
+  currentUser,
   cohorts,
   onQueueUpdated,
   onOpenInvite,
@@ -49,7 +72,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onCohortCreated,
   onOpenDiscussion,
 }) => {
-  const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'discussions' | 'cohorts' | 'members' | 'chatbot-knowledge'>('queue');
+  const [audienceFilter, setAudienceFilter] = useState<'all' | Condition>('all');
+  const [approveAudience, setApproveAudience] = useState<Audience>('FTD');
 
   // Review Queue State
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
@@ -92,6 +117,61 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [newGroupRadius, setNewGroupRadius] = useState('35');
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
+  const [showNewPostModal, setShowNewPostModal] = useState(false);
+  const [npTitle, setNpTitle] = useState('');
+  const [npContent, setNpContent] = useState('');
+  const [npGroupId, setNpGroupId] = useState('');
+  const [npAudience, setNpAudience] = useState<Audience | ''>('');
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+
+  // Chatbot Knowledge Management State
+  const [chatbotGuides, setChatbotGuides] = useState<ChatbotGuideFile[]>([]);
+  const [chatbotConfig, setChatbotConfig] = useState<ChatbotKnowledgeConfig>({
+    sourceMode: 'UPLOADED_GUIDES_ONLY',
+    totalActiveGuides: 1,
+    totalWords: 520,
+  });
+  const [loadingGuides, setLoadingGuides] = useState(false);
+  const [guideSearchFilter, setGuideSearchFilter] = useState('');
+  const [showUploadGuideModal, setShowUploadGuideModal] = useState(false);
+  const [inspectGuideModal, setInspectGuideModal] = useState<ChatbotGuideFile | null>(null);
+
+  // Upload Guide Form State
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadFileName, setUploadFileName] = useState('');
+  const [uploadCategory, setUploadCategory] = useState('GENERAL_CLINICAL_PROTOCOL');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadContent, setUploadContent] = useState('');
+  const [isUploadingGuide, setIsUploadingGuide] = useState(false);
+  const [isExtractingPdf, setIsExtractingPdf] = useState(false);
+  const [extractedPdfStats, setExtractedPdfStats] = useState<{ pages: number; words: number } | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Live Chatbot Test Simulator State
+  const [testQuery, setTestQuery] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ChatbotGuideTestResult | null>(null);
+  const [copiedInspect, setCopiedInspect] = useState(false);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleProcessFile(e.dataTransfer.files[0]);
+    }
+  };
 
   const loadQueue = async () => {
     setLoadingQueue(true);
@@ -124,7 +204,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const loadPublishedPosts = async () => {
     setLoadingPosts(true);
     try {
-      const res = await api.getPosts({ role: 'CLINICIAN_MODERATOR' });
+      const res = await api.getPosts({
+        role: currentUser.role,
+        userId: currentUser.id,
+        condition: audienceFilter === 'all' ? undefined : audienceFilter,
+      });
       setPublishedPosts(res.posts || []);
     } catch (err) {
       console.error('Failed to load published posts:', err);
@@ -133,13 +217,186 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
+  const loadChatbotGuides = async () => {
+    setLoadingGuides(true);
+    try {
+      const res = await api.getChatbotGuides();
+      setChatbotGuides(res.guides || []);
+      setChatbotConfig(res.config);
+    } catch (err) {
+      console.error('Failed to load chatbot guides:', err);
+    } finally {
+      setLoadingGuides(false);
+    }
+  };
+
   useEffect(() => {
     loadQueue();
     loadMembers();
-    loadPublishedPosts();
+    loadChatbotGuides();
   }, []);
 
+  useEffect(() => {
+    loadPublishedPosts();
+  }, [audienceFilter]);
+
+  const handleToggleGuide = async (guide: ChatbotGuideFile) => {
+    try {
+      const res = await api.toggleChatbotGuide(guide.id);
+      setChatbotGuides((prev) =>
+        prev.map((g) => (g.id === guide.id ? { ...g, isActive: res.guide.isActive } : g))
+      );
+      setActionSuccessNotice(
+        res.guide.isActive
+          ? `Guide "${guide.title}" activated. Assistant will now use this document.`
+          : `Guide "${guide.title}" paused. Assistant will not use this document.`
+      );
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+      loadChatbotGuides();
+    } catch (err) {
+      console.error('Failed to toggle guide:', err);
+      setActionSuccessNotice('Could not update guide status.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+    }
+  };
+
+  const handleDeleteGuide = async (guide: ChatbotGuideFile) => {
+    if (!window.confirm(`Are you sure you want to delete "${guide.title}" from chatbot knowledge?`)) return;
+    try {
+      await api.deleteChatbotGuide(guide.id);
+      setChatbotGuides((prev) => prev.filter((g) => g.id !== guide.id));
+      setActionSuccessNotice(`Guide "${guide.title}" removed.`);
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+      loadChatbotGuides();
+    } catch (err) {
+      console.error('Failed to delete guide:', err);
+      setActionSuccessNotice('Could not delete guide.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+    }
+  };
+
+  const handleProcessFile = (file: File) => {
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+    setUploadFileName(file.name);
+
+    const cleanDefaultTitle = file.name
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[_-]/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    if (!uploadTitle.trim()) {
+      setUploadTitle(cleanDefaultTitle);
+    }
+
+    if (isPdf) {
+      setIsExtractingPdf(true);
+      setExtractedPdfStats(null);
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = '';
+          const len = bytes.byteLength;
+          const chunkSize = 8192;
+          for (let i = 0; i < len; i += chunkSize) {
+            const sub = bytes.subarray(i, Math.min(i + chunkSize, len));
+            binary += String.fromCharCode.apply(null, sub as unknown as number[]);
+          }
+          const base64 = btoa(binary);
+
+          const result = await api.extractPdfText({
+            fileName: file.name,
+            fileBase64: base64,
+          });
+
+          setUploadContent(result.text);
+          if (result.suggestedTitle && !uploadTitle.trim()) {
+            setUploadTitle(result.suggestedTitle);
+          }
+          if (result.suggestedCategory) {
+            setUploadCategory(result.suggestedCategory);
+          }
+          setExtractedPdfStats({ pages: result.pageCount, words: result.wordCount });
+          setActionSuccessNotice(`Processed ${result.wordCount.toLocaleString()} words from "${file.name}".`);
+          setTimeout(() => setActionSuccessNotice(null), 3500);
+        } catch (err) {
+          console.error('PDF extraction failed:', err);
+          setActionSuccessNotice('Failed to extract PDF text. Please check the file.');
+          setTimeout(() => setActionSuccessNotice(null), 3500);
+        } finally {
+          setIsExtractingPdf(false);
+        }
+      };
+      reader.onerror = () => {
+        setIsExtractingPdf(false);
+        setActionSuccessNotice('Could not read PDF file.');
+        setTimeout(() => setActionSuccessNotice(null), 3500);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      setIsExtractingPdf(false);
+      setExtractedPdfStats(null);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = (e.target?.result as string) || '';
+        setUploadContent(text);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleSubmitUploadGuide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadTitle.trim() || !uploadContent.trim() || isUploadingGuide) return;
+    setIsUploadingGuide(true);
+    try {
+      const res = await api.uploadChatbotGuide({
+        title: uploadTitle.trim(),
+        fileName: uploadFileName.trim() || `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
+        category: uploadCategory,
+        description: uploadDescription.trim(),
+        content: uploadContent.trim(),
+        mimeType: uploadFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain',
+        uploadedBy: currentUser.id,
+        uploadedByName: `${currentUser.firstName} ${currentUser.lastName}`,
+      });
+      setShowUploadGuideModal(false);
+      setUploadTitle('');
+      setUploadFileName('');
+      setUploadDescription('');
+      setUploadContent('');
+      setActionSuccessNotice(`Clinical guide "${res.title}" uploaded! Dr. Seema's Assistant is now using this file.`);
+      setTimeout(() => setActionSuccessNotice(null), 4500);
+      loadChatbotGuides();
+    } catch (err) {
+      console.error('Failed to upload guide:', err);
+      setActionSuccessNotice('Could not upload guide document. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setIsUploadingGuide(false);
+    }
+  };
+
+  const handleRunTestQuery = async (queryToRun?: string) => {
+    const q = (queryToRun ?? testQuery).trim();
+    if (!q || isTesting) return;
+    setTestQuery(q);
+    setIsTesting(true);
+    try {
+      const res = await api.testChatbotGuideRetrieval(q);
+      setTestResult(res);
+    } catch (err) {
+      console.error('Test query failed:', err);
+      setActionSuccessNotice('Test query failed.');
+      setTimeout(() => setActionSuccessNotice(null), 3000);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const initItemState = (item: QueueItem) => {
+    setApproveAudience(item.condition ?? 'FTD'); // default the approved audience to the author's group
     setSanitizedDraft(item.sanitizedContent || item.rawContent);
     setSelectedGroupIds(
       item.assignedGroupIds && item.assignedGroupIds.length > 0
@@ -155,6 +412,34 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     initItemState(queueItems[idx]);
   };
 
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience || isSubmittingPost) return;
+    setIsSubmittingPost(true);
+    try {
+      await api.createPost({
+        title: npTitle.trim(),
+        content: npContent.trim(),
+        targetCohortId: npGroupId,
+        authorId: currentUser.id,
+        condition: npAudience,
+      });
+      setShowNewPostModal(false);
+      setNpTitle(''); setNpContent(''); setNpGroupId(''); setNpAudience('');
+      setAudienceFilter('all');
+      await loadPublishedPosts();
+      setActiveTab('discussions');
+      setActionSuccessNotice('Post published.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+    } catch (err) {
+      console.error('Failed to create post:', err);
+      setActionSuccessNotice('Could not publish post. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setIsSubmittingPost(false);
+    }
+  };
+
   // Publish post
   const handlePublish = async () => {
     if (!activeItem) return;
@@ -165,6 +450,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         entityType: 'POST',
         action: 'APPROVE',
         assignedGroupIds: selectedGroupIds,
+        condition: approveAudience,
         sanitizedContent: sanitizedDraft,
         allowUnmoderatedReplies,
         moderatorNotes,
@@ -217,7 +503,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setIsTogglingClose(true);
     const targetClosed = !post.isClosed;
     try {
-      const res = await api.closePost(post.id, targetClosed, 'user-clinician-1');
+      const res = await api.closePost(post.id, targetClosed, currentUser.id);
       setPublishedPosts((prev) =>
         prev.map((p) =>
           p.id === post.id
@@ -369,7 +655,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       (m.phone || '').toLowerCase().includes(q);
     const matchesGroup =
       selectedCohortFilter === 'all' || m.primaryGroupId === selectedCohortFilter;
-    return matchesSearch && matchesGroup;
+    const matchesCondition = audienceFilter === 'all' || m.condition === audienceFilter;
+    return matchesSearch && matchesGroup && matchesCondition;
   });
 
   return (
@@ -384,6 +671,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={() => setShowNewPostModal(true)}
+            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>New Post</span>
+          </button>
+
           <button
             onClick={() => setShowCreateGroupModal(true)}
             className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
@@ -421,79 +716,124 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* 4 STAT CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      { /* Viewing Filter */ }
+      <div className="flex items-center gap-2 text-xs sm:text-sm">
+        <span className="font-semibold text-slate-600 dark:text-slate-400">Viewing:</span>
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg font-semibold">
+          {(['all', 'FTD', 'AD'] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setAudienceFilter(opt)}
+              className={`px-3 py-1 rounded-md transition cursor-pointer ${
+                audienceFilter === opt
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              {opt === 'all' ? 'All' : opt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 5 STAT CARDS */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTab('queue')}
-          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
             activeTab === 'queue'
               ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-300 dark:ring-amber-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Pending</span>
             <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
-            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
-            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-              {queueItems.length === 1 ? 'needs review' : 'need review'}
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              {queueItems.length === 1 ? 'review' : 'review'}
             </span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('discussions')}
-          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
             activeTab === 'discussions'
               ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-300 dark:ring-indigo-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Discussions</span>
             <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
-            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{publishedPosts.length}</span>
-            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">published</span>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{publishedPosts.length}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">posts</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('cohorts')}
-          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
             activeTab === 'cohorts'
               ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Groups</span>
             <Layers className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
-            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
-            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">active</span>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">regions</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('members')}
-          className={`p-4 sm:p-5 rounded-2xl border transition cursor-pointer ${
+          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
             activeTab === 'members'
               ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-300 dark:ring-emerald-800'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-750 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Members</span>
             <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2">
-            <span className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
-            <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">caregivers</span>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">caregivers</span>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('chatbot-knowledge')}
+          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
+            activeTab === 'chatbot-knowledge'
+              ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-300 dark:ring-purple-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1">
+              <span>Clinical Guides</span>
+            </span>
+            <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-xl sm:text-2xl font-bold text-purple-900 dark:text-purple-100 tabular-nums">
+              {chatbotGuides.filter((g) => g.isActive).length}
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
+              active
+            </span>
           </div>
         </div>
       </div>
@@ -558,6 +898,21 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               {members.length}
             </span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('chatbot-knowledge')}
+            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+              activeTab === 'chatbot-knowledge'
+                ? 'border-purple-600 dark:border-purple-400 text-purple-800 dark:text-purple-300 font-bold'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span>Clinical Guides</span>
+            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs font-bold tabular-nums">
+              {chatbotGuides.length}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -617,7 +972,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </p>
 
                         <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 dark:text-slate-500">
-                          <span>{item.author.anonymousHandle}</span>
+                          <span className="flex items-center gap-1.5">
+                            <span>{item.author.anonymousHandle}</span>
+                            <AudienceBadge condition={item.condition} />
+                          </span>
                           {hasPhi && (
                             <span className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 font-medium px-1.5 py-0.5 rounded text-[10px]">
                               Personal info found
@@ -643,9 +1001,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </span>
                       </div>
                       <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 flex items-center gap-2">
-                        <span>Phone: {activeItem.author.phone}</span>
+                        <span>Phone: {activeItem.author.phone
+                          ? <a href={`tel:${activeItem.author.phone.replace(/[^\d+]/g, '')}`} className="text-[#002D72] dark:text-blue-400 hover:underline">{activeItem.author.phone}</a>
+                          : 'none'}</span>
                         <span>•</span>
-                        <span>Email: {activeItem.author.email}</span>
+                        <span>Email: <a href={`mailto:${activeItem.author.email}`} className="text-[#002D72] dark:text-blue-400 hover:underline">{activeItem.author.email}</a></span>
                       </div>
                     </div>
                     {activeItem.suggestedCohort && (
@@ -731,6 +1091,32 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </option>
                       ))}
                     </select>
+                  </div>
+                  
+                  { /* Approve-As Selector */ }
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Who can see this post</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([['FTD', 'FTD only'], ['AD', 'AD only'], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setApproveAudience(value)}
+                          className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                            approveAudience === value
+                              ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {approveAudience !== (activeItem.condition ?? 'FTD') && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        Changed from the author's group ({activeItem.condition ?? 'FTD'}).
+                      </p>
+                    )}
                   </div>
 
                   {/* Reply Moderation Policy Toggle */}
@@ -913,6 +1299,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                               {groupName}
                             </span>
                             <span className="text-slate-300 dark:text-slate-700">·</span>
+                            <AudienceBadge condition={post.condition} />
                             <span className="text-slate-400 dark:text-slate-500 text-[11px]">
                               {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
                             </span>
@@ -1190,15 +1577,20 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         <td className="py-3 px-3 whitespace-nowrap">
                           <div className="font-semibold text-slate-900 dark:text-white">{m.realName}</div>
                           <div className="text-xs text-slate-400 dark:text-slate-500">{m.anonymousHandle}</div>
+                          <div className="mt-1"><AudienceBadge condition={m.condition} /></div>
                         </td>
-                        <td className="py-3 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                          <div>{m.phone}</div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{m.email}</div>
-                        </td>
-                        <td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-medium whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{m.primaryGroupName}</span>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {m.phone ? (
+                            <a href={`tel:${m.phone.replace(/[^\d+]/g, '')}`} className="text-[#002D72] dark:text-blue-400 hover:underline font-medium">
+                              {m.phone}
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500">No phone on file</span>
+                          )}
+                          <div>
+                            <a href={`mailto:${m.email}`} className="text-xs text-[#002D72] dark:text-blue-400 hover:underline">
+                              {m.email}
+                            </a>
                           </div>
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
@@ -1221,6 +1613,237 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: CHATBOT KNOWLEDGE MANAGEMENT */}
+      {activeTab === 'chatbot-knowledge' && (
+        <div className="space-y-6">
+          {/* Top Banner */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#002D72]/10 dark:bg-blue-900/30 text-[#002D72] dark:text-sky-300 flex items-center justify-center font-bold">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                  Clinical Care Guides
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Upload institutional care protocols and guidelines (PDF). Dr. Seema's Assistant uses these verified documents to formulate grounded guidance for family care partners.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowUploadGuideModal(true)}
+              className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition shadow-xs cursor-pointer shrink-0"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Upload Care Guide</span>
+            </button>
+          </div>
+
+          {/* Guide Files Management Table / List */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">
+                  Uploaded Clinical Guides ({chatbotGuides.length})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {chatbotGuides.filter((g) => g.isActive).length} active · {chatbotGuides.reduce((a, b) => a + (b.wordCount || 0), 0).toLocaleString()} words
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-60">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={guideSearchFilter}
+                    onChange={(e) => setGuideSearchFilter(e.target.value)}
+                    placeholder="Search guide documents..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {loadingGuides ? (
+              <div className="py-16 text-center text-slate-400 text-xs">
+                Loading clinical guide documents...
+              </div>
+            ) : chatbotGuides.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-500">
+                  <UploadCloud className="w-6 h-6" />
+                </div>
+                <h4 className="font-semibold text-slate-900 dark:text-white text-sm">
+                  No Guide Documents Uploaded
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  Upload your clinical PDF guidelines so the assistant can use verified institutional instructions to answer family care partner questions.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowUploadGuideModal(true)}
+                  className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition"
+                >
+                  Upload Care Guide
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {chatbotGuides
+                  .filter((g) => {
+                    const q = guideSearchFilter.toLowerCase();
+                    return !q || g.title.toLowerCase().includes(q) || g.fileName.toLowerCase().includes(q) || g.content.toLowerCase().includes(q);
+                  })
+                  .map((guide) => (
+                    <div
+                      key={guide.id}
+                      className="p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition"
+                    >
+                      <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                        <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 shrink-0 mt-0.5">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">
+                            {guide.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {guide.fileName} · {guide.category.replace(/_/g, ' ')} · {guide.wordCount?.toLocaleString() || '—'} words · Uploaded {new Date(guide.createdAt).toLocaleDateString()}
+                          </p>
+
+                          {guide.description && (
+                            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">
+                              {guide.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleGuide(guide)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                            guide.isActive
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                          title={guide.isActive ? 'Active for assistant guidance' : 'Paused'}
+                        >
+                          {guide.isActive ? (
+                            <>
+                              <ToggleRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                              <span>Active</span>
+                            </>
+                          ) : (
+                            <>
+                              <ToggleLeft className="w-4 h-4 text-slate-400" />
+                              <span>Paused</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setInspectGuideModal(guide)}
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                          title="View Guide Content"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGuide(guide)}
+                          className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                          title="Delete Guide"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Test Assistant Guidance */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-4">
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base flex items-center gap-2">
+                <Play className="w-4 h-4 text-[#002D72] dark:text-sky-400 fill-current" />
+                <span>Test Assistant Guidance</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Type any caregiver inquiry to test how Dr. Seema's Assistant uses your uploaded clinical guides to generate answers.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={testQuery}
+                onChange={(e) => setTestQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRunTestQuery();
+                }}
+                placeholder="e.g. Dad refuses to shower and becomes combative..."
+                className="flex-1 px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => handleRunTestQuery()}
+                disabled={isTesting || !testQuery.trim()}
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer"
+              >
+                {isTesting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Searching...</span>
+                  </>
+                ) : (
+                  <>
+                    <Bot className="w-4 h-4" />
+                    <span>Test Guidance</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Test Query Output */}
+            {testResult && (
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3 animate-in fade-in">
+                {testResult.matchedGuide && (
+                  <div className="text-xs text-slate-700 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                      <span className="font-semibold text-slate-900 dark:text-white">Grounded in: </span>
+                      <span>{testResult.matchedGuide.title} ({testResult.matchedGuide.fileName})</span>
+                    </div>
+                    <div className="text-slate-500 dark:text-slate-400">
+                      Section: {testResult.matchedGuide.sectionTitle}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Assistant Response:
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed select-text font-sans">
+                    {testResult.answer}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1501,6 +2124,494 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>{isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      { /* MODAL new post details */}
+      {showNewPostModal && (
+        <div
+          onClick={() => setShowNewPostModal(false)}
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full max-h-[90vh] overflow-y-auto cursor-default"
+          >
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">New Post</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Published immediately, no review needed.</p>
+              </div>
+              <button onClick={() => setShowNewPostModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} className="p-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Title</label>
+                <input
+                  value={npTitle}
+                  onChange={(e) => setNpTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Post</label>
+                <textarea
+                  rows={5}
+                  value={npContent}
+                  onChange={(e) => setNpContent(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Region / group</label>
+                <select
+                  value={npGroupId}
+                  onChange={(e) => setNpGroupId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"
+                  required
+                >
+                  <option value="" disabled>Choose a group...</option>
+                  {cohorts.map((c) => (
+                    <option key={c.id} value={c.id}>{getProperGroupName(c)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Disease group</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([['FTD', 'FTD only'], ['AD', "Alzheimer's only"], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setNpAudience(value)}
+                      className={`px-2 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                        npAudience === value
+                          ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onClick={() => setShowNewPostModal(false)} className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPost || !npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
+                >
+                  {isSubmittingPost ? 'Publishing...' : 'Publish Post'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: UPLOAD CHATBOT GUIDE FILE */}
+      {showUploadGuideModal && (
+        <div
+          onClick={() => setShowUploadGuideModal(false)}
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden cursor-default transition-colors my-auto"
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-200/50 dark:border-rose-900/50">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white">
+                    Upload Clinical Care Guide
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Upload institutional guidelines for Dr. Seema's Assistant to guide family care partners
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUploadGuideModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleSubmitUploadGuide} className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+              {/* Drag and Drop Upload Zone */}
+              <div
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-5 rounded-2xl border-2 border-dashed transition text-center cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                  dragActive
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 ring-4 ring-blue-400/20'
+                    : uploadFileName
+                    ? 'border-emerald-400 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/20'
+                    : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 bg-slate-50/60 dark:bg-slate-850/60'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.md"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleProcessFile(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                {isExtractingPdf ? (
+                  <div className="py-4 flex flex-col items-center justify-center gap-2">
+                    <div className="w-6 h-6 border-2 border-[#002D72] dark:border-sky-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Extracting text from PDF without formatting errors...
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Parsing clinical sections and normalizing document content
+                    </span>
+                  </div>
+                ) : uploadFileName ? (
+                  <div className="flex items-center gap-3 w-full justify-between px-3 py-1">
+                    <div className="flex items-center gap-2.5 text-left min-w-0">
+                      <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 shrink-0">
+                        <FileCheck className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm truncate block">
+                          {uploadFileName}
+                        </span>
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                          {extractedPdfStats?.pages ? `${extractedPdfStats.pages} pages · ` : ''}
+                          {uploadContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 transition shrink-0 cursor-pointer"
+                    >
+                      Change File
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
+                        Drag and drop your clinical PDF guide here, or{' '}
+                        <span className="text-[#002D72] dark:text-sky-400 underline">browse files</span>
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Accepts PDF documents (.pdf), Clinical Guidelines, Protocols (.txt, .md)
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Document Title (Full Width, File Name removed) */}
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                  Document Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                  placeholder="e.g. Johns Hopkins Shower & Hygiene Safety Protocol"
+                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              {/* Category & Description Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                    Clinical Category
+                  </label>
+                  <select
+                    value={uploadCategory}
+                    onChange={(e) => setUploadCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="GENERAL_CLINICAL_PROTOCOL">General Clinical Protocol</option>
+                    <option value="HYGIENE_BATHING">Hygiene, Bathing & Shower Safety</option>
+                    <option value="NUTRITION_HYPERORALITY">Eating, Sweets & Hyperorality</option>
+                    <option value="BEHAVIORAL_DISINHIBITION">Behavioral Disinhibition & Social Filter</option>
+                    <option value="DRIVING_SAFETY">Driving Retirement & Safety</option>
+                    <option value="SLEEP_WANDERING">Sleep, Sundowning & Wandering</option>
+                    <option value="COMMUNICATION_PPA">Primary Progressive Aphasia (PPA)</option>
+                    <option value="LEGAL_MEDICAID">Legal, Financial & Medicaid Planning</option>
+                    <option value="CRISIS_DE_ESCALATION">Crisis De-escalation & Emergency</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                    Summary / Description (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadDescription}
+                    onChange={(e) => setUploadDescription(e.target.value)}
+                    placeholder="Brief description of this protocol manual..."
+                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Guide Content Area */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 text-xs">
+                    Extracted Guide Text <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Use <code className="font-mono text-blue-600 dark:text-blue-400">## Section Name</code> for individual protocol sections
+                  </span>
+                </div>
+                <textarea
+                  rows={8}
+                  value={uploadContent}
+                  onChange={(e) => setUploadContent(e.target.value)}
+                  placeholder="Extracted text from your clinical PDF will appear here for review..."
+                  className="w-full px-3.5 py-2.5 font-mono text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                  required
+                />
+
+                {/* Content Analysis Bar */}
+                <div className="mt-1.5 flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                  <div className="flex items-center gap-3">
+                    <span>
+                      <strong>{uploadContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
+                    </span>
+                    <span>•</span>
+                    <span>
+                      <strong>{uploadContent.split(/(?=^##\s+)/m).filter(Boolean).length || (uploadContent.trim() ? 1 : 0)}</strong> sections detected
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadGuideModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploadingGuide || isExtractingPdf || !uploadTitle.trim() || !uploadContent.trim()}
+                  className="px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 shadow-xs cursor-pointer"
+                >
+                  {isUploadingGuide ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Saving Guide...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-4 h-4" />
+                      <span>Save Clinical Guide</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: INSPECT / VIEW GUIDE FILE */}
+      {inspectGuideModal && (
+        <div
+          onClick={() => setInspectGuideModal(null)}
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden cursor-default transition-colors my-auto"
+          >
+            {/* Inspect Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 shrink-0">
+                  <FileCode className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate">
+                      {inspectGuideModal.title}
+                    </h3>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        inspectGuideModal.isActive
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}
+                    >
+                      {inspectGuideModal.isActive ? 'Active' : 'Paused'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    {inspectGuideModal.fileName} · {inspectGuideModal.category.replace(/_/g, ' ')}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setInspectGuideModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Metadata Bar */}
+            <div className="px-5 py-3 bg-purple-50/40 dark:bg-purple-950/20 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-300">
+                <span>
+                  <strong>{inspectGuideModal.wordCount?.toLocaleString() || inspectGuideModal.content.split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
+                </span>
+                <span>•</span>
+                <span>
+                  <strong>{inspectGuideModal.sectionCount || 1}</strong> sections
+                </span>
+                <span>•</span>
+                <span>Uploaded by {inspectGuideModal.uploadedByName || 'Dr. Seema Gulyani'}</span>
+                <span>•</span>
+                <span>{new Date(inspectGuideModal.createdAt).toLocaleDateString()}</span>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(inspectGuideModal.content);
+                    setCopiedInspect(true);
+                    setTimeout(() => setCopiedInspect(false), 2500);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  {copiedInspect ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-600">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Copy Text</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleToggleGuide(inspectGuideModal);
+                    setInspectGuideModal((prev) => (prev ? { ...prev, isActive: !prev.isActive } : null));
+                  }}
+                  className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                    inspectGuideModal.isActive
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                      : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                  }`}
+                >
+                  {inspectGuideModal.isActive ? (
+                    <>
+                      <ToggleRight className="w-3.5 h-3.5" />
+                      <span>Pause Guide</span>
+                    </>
+                  ) : (
+                    <>
+                      <ToggleLeft className="w-3.5 h-3.5" />
+                      <span>Activate Guide</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const guideToDelete = inspectGuideModal;
+                    setInspectGuideModal(null);
+                    await handleDeleteGuide(guideToDelete);
+                  }}
+                  className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition cursor-pointer"
+                  title="Delete Guide"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Body Viewer */}
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {inspectGuideModal.description && (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">Summary: </span>
+                  {inspectGuideModal.description}
+                </div>
+              )}
+
+              <div className="p-4 rounded-xl bg-slate-900 text-slate-100 dark:bg-slate-950 border border-slate-800 font-mono text-xs whitespace-pre-wrap leading-relaxed select-text overflow-x-auto">
+                {inspectGuideModal.content}
+              </div>
+            </div>
+
+            {/* Inspect Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {inspectGuideModal.isActive
+                  ? '✓ Dr. Seema\'s Assistant is currently using this document for caregiver queries'
+                  : '⚠ This document is paused and not currently used by the chatbot'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setInspectGuideModal(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

@@ -14,6 +14,12 @@ import {
   RejectionReason,
   ClinicUpdate, 
   CalendarEvent,
+  Audience,
+  Condition,
+  ChatbotGuideFile,
+  ChatbotKnowledgeConfig,
+  ChatbotKnowledgeSourceMode,
+  ChatbotGuideTestResult,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -39,6 +45,8 @@ let localUserCohortAssignments: Record<string, string> = {
   'user-care-3': 'group-northern-maryland',
   'user-care-4': 'group-western-maryland',
   'user-care-5': 'group-southern-maryland',
+  'user-care-6': 'group-central-maryland',
+  'user-care-7': 'group-western-maryland',
 };
 let localDirectMessages: DirectMessage[] = [
   {
@@ -77,6 +85,98 @@ let localPrivateChats: PrivateConversationMessage[] = [
     read: true,
   },
 ];
+
+let localChatbotConfig: ChatbotKnowledgeConfig = {
+  sourceMode: 'UPLOADED_GUIDES_ONLY',
+  totalActiveGuides: 1,
+  totalWords: 780,
+};
+
+const GUIDES_STORAGE_KEY = 'hopkins_clinical_guides_db_v2';
+
+const initialLocalChatbotGuides: ChatbotGuideFile[] = [
+  {
+    id: 'guide-jhm-ftd-2026',
+    title: 'Johns Hopkins Comprehensive bvFTD & PPA Caregiver Protocol (2026)',
+    fileName: 'JH_FTD_Clinical_Caregiver_Protocol_2026.pdf',
+    fileSize: 14280,
+    mimeType: 'application/pdf',
+    category: 'GENERAL_CLINICAL_PROTOCOL',
+    description: 'Official clinical guidelines for daily behavioral, shower safety, and caregiving management in Frontotemporal Dementia.',
+    content: `# Johns Hopkins Comprehensive bvFTD & PPA Clinical Caregiver Protocol (2026)
+
+## De-escalating Bathing and Shower Defensiveness in bvFTD
+In Behavioral Variant Frontotemporal Dementia, resistance to bathing is driven by frontal sensory disinhibition, loss of procedural sequencing, and fear of sudden naked cold vulnerability.
+Key Interventions:
+1. **Pre-warm the Bathroom to 78°F**: Run space radiant heater or hot tap 15 minutes before undressing begins.
+2. **Utilize No-Rinse Warm Towel Bathing**: Wrap the care recipient in large, heated towels. Uncover strictly one limb at a time to cleanse with no-rinse warm cloths.
+3. **Eliminate Overhead Shower Sprays**: Directing water onto the face feels like a physical attack to a disinhibited frontal lobe. Use a handheld wand directed low at the legs.
+4. **Music Auditory Cortical Engagement**: Play familiar upbeat music from their 20s during the routine to occupy amygdala threat alarms.
+
+## Managing Compulsive Eating, Sweet Cravings & Hyperorality
+FTD atrophy in the hypothalamus and orbitofrontal circuits destroys satiety signaling and normal appetite braking, creating intense carbohydrate cravings.
+Key Interventions:
+1. **Environmental Security Over Verbal Confrontation**: Install discreet child-proof magnetic latches (e.g. Tot-Lok) on food pantries and refrigerators rather than arguing.
+2. **Pre-portioned Healthy Substitutions**: Keep sliced berries, chilled grapes, and sugar-free gelatins in clear view, while hiding high-calorie baked goods in opaque, high cabinets.
+3. **Choking Precautions & Pacing**: If rapid shoveling (food bolting) occurs, serve meals cut into bite-sized pieces on smaller 8-inch salad plates with pacing utensils.
+
+## Driving Retirement Transition Protocol
+Discontinue driving privileges decisively once executive reflex loss or traffic signal comprehension deteriorates.
+Key Interventions:
+1. **Physical Disablement Over Logic Debates**: Logic arguments fail due to anosognosia. Disconnect the vehicle battery cable, pull the ignition fuse, or park the car off-site.
+2. **Blame the Physician & Maryland MVA**: Frame driving cessation as an institutional medical and legal mandate from the Johns Hopkins clinic team.
+3. **Substitute Transportation Promptly**: Arrange alternative rides via family accounts or county specialized transit.
+
+## Managing Nocturnal Pacing and Reversed Circadian Rhythm
+Disruption of hypothalamic suprachiasmatic sleep regulation causes night wakefulness and hallway wandering.
+Key Interventions:
+1. **Maximize Morning Bright Light Exposure**: Ensure 45 minutes of bright morning outdoor sunlight or 10,000 lux therapy light box before 10 AM.
+2. **Silent Door Chimes & Motion Sensors**: Install wireless magnetic sensors that alert the caregiver's smartphone silently without sounding blaring audible alarms in the hallway.
+3. **Secure Hallway Environment**: Keep nightlights at baseboard level and remove throw rugs to prevent falls during nighttime pacing.
+
+## Addressing Inappropriate Public Disinhibition and Blunt Remarks
+Loss of ventromedial prefrontal inhibition leads to loud comments about strangers or impulsive touching.
+Key Interventions:
+1. **Caregiver Explanatory Cards**: Carry discrete business-sized cards that state: "My companion has Frontotemporal Dementia (a neurological condition that impairs speech and social filter). Thank you for your patience and understanding." Hand these quietly to cashiers, waitstaff, or bystanders.
+2. **Non-Confrontational Gentle Redirection**: Avoid arguing or saying "That was rude." Calmly pivot attention: "Look at this display over here."`,
+    sectionCount: 5,
+    wordCount: 520,
+    isActive: true,
+    uploadedBy: 'user-clinician-1',
+    uploadedByName: 'Dr. Seema Gulyani',
+    createdAt: '2026-10-10T09:00:00Z',
+    updatedAt: '2026-10-10T09:00:00Z',
+  },
+];
+
+function loadStoredGuides(): ChatbotGuideFile[] {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem(GUIDES_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read guides from localStorage:', e);
+  }
+  return initialLocalChatbotGuides;
+}
+
+function persistGuides(guides: ChatbotGuideFile[]) {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(GUIDES_STORAGE_KEY, JSON.stringify(guides));
+    }
+  } catch (e) {
+    console.warn('Could not save guides to localStorage:', e);
+  }
+}
+
+let localChatbotGuides: ChatbotGuideFile[] = loadStoredGuides();
 
 let localUpdates: ClinicUpdate[] = [
   {
@@ -152,15 +252,19 @@ async function safeFetchJson<T>(
   options: RequestInit | undefined,
   fallback: () => T
 ): Promise<T> {
+  let res: Response;
   try {
-    const res = await fetch(url, options);
-    const contentType = res.headers.get('content-type') || '';
-    if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
-      return data;
-    }
-  } catch (err) {
-    // Network error or offline
+    res = await fetch(url, options);
+  } catch {
+    return fallback(); // Network error or offline
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const data = await res.json();
+    if (res.ok) return data;
+    // The server answered with a real error (403/404/etc.). Surface it, don't mask it.
+    throw new Error(data?.error || `Request failed (${res.status})`);
   }
   // Return resilient fallback
   return fallback();
@@ -187,6 +291,7 @@ export const api = {
             anonymousHandle: user.anonymousHandle,
             badgeLabel: user.badgeLabel,
             avatarColor: user.avatarColor,
+            condition: user.condition
           },
           allPersonas: localUsers.map((u) => ({
             id: u.id,
@@ -194,6 +299,7 @@ export const api = {
             role: u.role,
             handle: u.anonymousHandle,
             clinicId: u.clinicPatientId,
+            condition: u.condition
           })),
         };
       }
@@ -251,12 +357,13 @@ export const api = {
   },
 
   // Posts Feed
-  getPosts: async (options: { role: string; groupId?: string; status?: string; userId?: string }): Promise<{ total: number; posts: Post[] }> => {
+  getPosts: async (options: { role: string; groupId?: string; status?: string; userId?: string; condition?: string }): Promise<{ total: number; posts: Post[] }> => {
     const params = new URLSearchParams();
     params.set('role', options.role);
     if (options.groupId) params.set('groupId', options.groupId);
     if (options.status) params.set('status', options.status);
     if (options.userId) params.set('userId', options.userId);
+    if (options.condition) params.set('condition', options.condition);
 
     return safeFetchJson(
       `/api/v1/posts?${params.toString()}`,
@@ -293,7 +400,7 @@ export const api = {
     );
   },
 
-  getPostDetails: async (postId: string, role: string, userId?: string): Promise<{ post: Post; comments: Comment[] }> => {
+  getPostDetails: async (postId: string, role: string, userId: string): Promise<{ post: Post; comments: Comment[] }> => {
     const query = userId ? `?role=${role}&userId=${userId}` : `?role=${role}`;
     return safeFetchJson(
       `/api/v1/posts/${postId}${query}`,
@@ -317,6 +424,7 @@ export const api = {
     content: string;
     targetCohortId?: string;
     authorId: string;
+    condition?: Audience;
   }): Promise<{ postId: string; status: string; message: string; hasPhiAlerts: boolean; phiAlertsCount: number }> => {
     return safeFetchJson(
       '/api/v1/posts',
@@ -568,6 +676,7 @@ export const api = {
     rejectionCode?: RejectionReason;
     rejectionMessage?: string;
     moderatorNotes?: string;
+    condition?: Audience;
   }): Promise<{
     status: string;
     newEntityStatus: string;
@@ -795,13 +904,13 @@ export const api = {
 
 
   // Pre-submission Typeahead Deflection
-  deflectQuery: async (draftText: string): Promise<{ deflectionMatches: DeflectionMatch[] }> => {
+  deflectQuery: async (draftText: string, userId: string): Promise<{ deflectionMatches: DeflectionMatch[] }> => {
     return safeFetchJson(
       '/api/v1/knowledge/deflect',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftText }),
+        body: JSON.stringify({ draftText, userId }),
       },
       () => {
         const text = draftText.toLowerCase();
@@ -830,7 +939,7 @@ export const api = {
   },
 
   // Keyword matching against existing community discussions & answers
-  checkDiscussionMatches: async (payload: { title: string; content: string }): Promise<{
+  checkDiscussionMatches: async (payload: { title: string; content: string; userId: string }): Promise<{
     matches: {
       postId: string;
       title: string;
@@ -916,7 +1025,7 @@ export const api = {
   },
 
   // Instant discussion pool for real-time keystroke matching
-  getAllDiscussionsPool: async (): Promise<{
+  getAllDiscussionsPool: async (userId: string): Promise<{
     pool: {
       id: string;
       title: string;
@@ -935,7 +1044,7 @@ export const api = {
     }[];
   }> => {
     return safeFetchJson(
-      '/api/v1/deflection/discussions-pool',
+      `/api/v1/deflection/discussions-pool?userId=${userId}`,
       undefined,
       () => {
         const approvedPosts = localPosts.filter((p) => p.status === 'APPROVED');
@@ -948,7 +1057,7 @@ export const api = {
             content: p.content,
             authorHandle: p.author.anonymousHandle,
             authorBadge: p.author.badgeLabel,
-            cohortName: cohort?.properName || cohort?.name || 'General Clinic Forum',
+            cohortName: cohort?.properName || cohort?.name || 'General Forum',
             createdAt: p.createdAt,
             replies: postComments.map((c) => ({
               id: c.id,
@@ -964,37 +1073,165 @@ export const api = {
     );
   },
 
-  // Closed-loop RAG Assistant (Trained on Dr. Seema's 50 Verified Clinical FAQs)
+  // Closed-loop RAG Assistant (Grounded in Verified Uploaded Guide Files or Clinical FAQs)
   chatWithAssistant: async (
-    query: string
+    query: string,
+    userId: string = 'anonymous'
   ): Promise<{
     answer: string;
     isMedicationRefusal?: boolean;
     citedResources?: any[];
     matchedFaq?: ClinicalFaqItem;
     suggestedQuestions?: string[];
+    isUploadedGuideSourced?: boolean;
+    matchedGuide?: {
+      id: string;
+      title: string;
+      fileName: string;
+      sectionTitle?: string;
+    };
+    sourceMode?: string;
   }> => {
     return safeFetchJson(
       '/api/v1/knowledge/chat',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, userId }),
       },
       () => {
-        return generateLocalRagResponse(query);
+        const activeGuides = localChatbotGuides.filter((g) => g.isActive);
+        if (activeGuides.length > 0 && localChatbotConfig.sourceMode !== 'MOCK_FAQS_ONLY') {
+          const queryLower = query.toLowerCase();
+          const tokens = queryLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 2);
+
+          // Flatten sections from all active guides
+          interface FallbackSection {
+            guide: ChatbotGuideFile;
+            sectionTitle: string;
+            body: string;
+            score: number;
+          }
+
+          const allSections: FallbackSection[] = [];
+          for (const guide of activeGuides) {
+            const rawSections = guide.content.split(/(?=^#{1,3}\s+)/m).filter(Boolean);
+            if (rawSections.length === 0) {
+              allSections.push({
+                guide,
+                sectionTitle: guide.title,
+                body: guide.content,
+                score: 0,
+              });
+            } else {
+              for (const sec of rawSections) {
+                const headerMatch = sec.match(/^#{1,3}\s+([^\n]+)/);
+                const title = headerMatch ? headerMatch[1].trim() : guide.title;
+                const body = headerMatch ? sec.slice(headerMatch[0].length).trim() : sec.trim();
+                allSections.push({
+                  guide,
+                  sectionTitle: title,
+                  body,
+                  score: 0,
+                });
+              }
+            }
+          }
+
+          // Clinical synonyms for keyword match
+          const synMap: Record<string, string[]> = {
+            shower: ['bath', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'clean'],
+            bath: ['shower', 'wash', 'hygiene', 'water', 'sponge', 'clean'],
+            sweet: ['sugar', 'candy', 'eat', 'eating', 'food', 'cravings', 'pastry'],
+            eat: ['sweet', 'food', 'choking', 'bolting', 'cravings', 'hyperorality', 'swallowing'],
+            drive: ['car', 'driving', 'keys', 'license', 'vehicle', 'mva', 'dmv'],
+            sleep: ['night', 'pacing', 'wander', 'wakefulness', 'circadian', 'sundowning'],
+            wander: ['pacing', 'night', 'door', 'chime', 'sensor', 'walk'],
+            rude: ['blunt', 'filter', 'public', 'cards', 'disinhibition', 'stranger'],
+          };
+
+          for (const s of allSections) {
+            const tLower = s.sectionTitle.toLowerCase();
+            const bLower = s.body.toLowerCase();
+            if (bLower.includes(queryLower)) s.score += 40;
+            if (tLower.includes(queryLower)) s.score += 30;
+            for (const t of tokens) {
+              if (tLower.includes(t)) s.score += 15;
+              if (bLower.includes(t)) s.score += 4;
+              const syns = synMap[t];
+              if (syns) {
+                for (const syn of syns) {
+                  if (tLower.includes(syn)) s.score += 8;
+                  if (bLower.includes(syn)) s.score += 3;
+                }
+              }
+            }
+          }
+
+          allSections.sort((a, b) => b.score - a.score);
+          const best = allSections[0];
+
+          if (!best || best.score < 8) {
+            return {
+              answer: `I could not find specific recommendations in our clinical care notes for this situation.\n\nBecause every care partner's journey with Frontotemporal Dementia involves unique nuances, please consult your Johns Hopkins neurology team for personalized guidance. You can reach our clinic during business hours at (410) 955-5147 (option 2) or send a non-urgent message via MyChart/EPIC. For any life-threatening emergency, please call 911 immediately.`,
+              citedResources: [],
+              suggestedQuestions: [
+                'How do I handle violent resistance during showers and bathing?',
+                'How do I stop my loved one from driving safely?',
+                'Why are they constantly craving sweets and overeating?',
+              ],
+              isUploadedGuideSourced: false,
+            };
+          }
+
+          const sectionContent = best.body;
+          const stepIdx = sectionContent.search(/\n(?:\d+\.|\*|\-)\s+/);
+          let explanation = sectionContent;
+          let steps = '';
+          if (stepIdx > 0) {
+            explanation = sectionContent.slice(0, stepIdx).trim();
+            steps = sectionContent.slice(stepIdx).trim();
+          }
+
+          let formatted = `### Understanding What Is Happening\n${explanation || 'In Frontotemporal Dementia, this symptom stems from neurodegeneration affecting frontal brain circuits, not willful opposition.'}`;
+          if (steps) {
+            formatted += `\n\n### Practical Steps\n${steps}`;
+          }
+
+          return {
+            answer: formatted,
+            isUploadedGuideSourced: true,
+            sourceMode: localChatbotConfig.sourceMode,
+            suggestedQuestions: [
+              'How do I handle violent resistance during showers?',
+              'How do we handle driving retirement without fighting?',
+              'Why are they constantly craving sweets and overeating?',
+            ],
+          };
+        }
+
+        return {
+          answer: `I could not find specific recommendations in our clinical care notes for this situation.\n\nBecause every care partner's journey with Frontotemporal Dementia involves unique nuances, please consult your Johns Hopkins neurology team for personalized guidance. You can reach our clinic during business hours at (410) 955-5147 (option 2) or send a non-urgent message via MyChart/EPIC. For any life-threatening emergency, please call 911 immediately.`,
+          citedResources: [],
+          suggestedQuestions: [
+            'How do I handle violent resistance during showers and bathing?',
+            'How do I stop my loved one from driving safely?',
+            'Why are they constantly craving sweets and overeating?',
+          ],
+          isUploadedGuideSourced: false,
+        };
       }
     );
   },
 
   // 50 Clinical FAQs
-  getClinicalFaqs: async (): Promise<ClinicalFaqItem[]> => {
-    return safeFetchJson('/api/v1/knowledge/faq', undefined, () => [...CLINICAL_50_FAQ]);
+  getClinicalFaqs: async (userId: string): Promise<ClinicalFaqItem[]> => {
+    return safeFetchJson(`/api/v1/knowledge/faq?userId=${userId}`, undefined, () => [...CLINICAL_50_FAQ]);
   },
 
   // Resources
-  getResources: async (): Promise<ClinicalResource[]> => {
-    return safeFetchJson('/api/v1/resources', undefined, () => [...localResources]);
+  getResources: async (userId: string): Promise<ClinicalResource[]> => {
+    return safeFetchJson(`/api/v1/resources?userId=${userId}`, undefined, () => [...localResources]);
   },
 
   createResource: async (payload: {
@@ -1002,9 +1239,10 @@ export const api = {
     category: ClinicalResource['category'];
     summary: string;
     contentBody: string;
-    diseaseDomain?: 'FTD' | 'ALZHEIMERS' | 'LBD';
+    diseaseDomain?: Audience;
     externalUrl?: string;
     keyTakeaways?: string[];
+    authorId: string;
   }): Promise<ClinicalResource> => {
     return safeFetchJson(
       '/api/v1/resources',
@@ -1032,8 +1270,8 @@ export const api = {
   },
 
   // Clinic Updates
-  getUpdates: async (): Promise<ClinicUpdate[]> => {
-    return safeFetchJson('/api/v1/updates', undefined, () => [...localUpdates]);
+  getUpdates: async (userId: string): Promise<ClinicUpdate[]> => {
+    return safeFetchJson(`/api/v1/updates?userId=${userId}`, undefined, () => [...localUpdates]);
   },
 
   createUpdate: async (payload: Omit<ClinicUpdate, 'id' | 'createdAt'>): Promise<ClinicUpdate> => {
@@ -1065,8 +1303,8 @@ export const api = {
   },
 
   // Calendar Events
-  getEvents: async (): Promise<CalendarEvent[]> => {
-    return safeFetchJson('/api/v1/events', undefined, () => [...localEvents]);
+  getEvents: async (userId: string): Promise<CalendarEvent[]> => {
+    return safeFetchJson(`/api/v1/events?userId=${userId}`, undefined, () => [...localEvents]);
   },
 
   // createEvent: send authorId along with the event
@@ -1133,6 +1371,8 @@ export const api = {
     lastName?: string;
     clinicPatientId?: string;
     primaryCohortSlug: string;
+    condition: Condition;
+    phoneNumber?: string;
   }): Promise<{
     invitationId: string;
     inviteToken: string;
@@ -1159,4 +1399,216 @@ export const api = {
       }
     );
   },
+
+  // Chatbot Guide Files & Knowledge Management
+  getChatbotGuides: async (): Promise<{ guides: ChatbotGuideFile[]; config: ChatbotKnowledgeConfig }> => {
+    return safeFetchJson('/api/v1/chatbot/guides', undefined, () => {
+      localChatbotGuides = loadStoredGuides();
+      const active = localChatbotGuides.filter((g) => g.isActive);
+      const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+      return {
+        guides: [...localChatbotGuides],
+        config: {
+          ...localChatbotConfig,
+          totalActiveGuides: active.length,
+          totalWords,
+        },
+      };
+    }).then((res) => {
+      if (res && res.guides && Array.isArray(res.guides)) {
+        localChatbotGuides = res.guides;
+        persistGuides(res.guides);
+      }
+      return res;
+    });
+  },
+
+  uploadChatbotGuide: async (payload: {
+    title: string;
+    fileName: string;
+    fileSize?: number;
+    mimeType?: string;
+    category: string;
+    description?: string;
+    content: string;
+    uploadedBy: string;
+    uploadedByName: string;
+  }): Promise<ChatbotGuideFile> => {
+    return safeFetchJson(
+      '/api/v1/chatbot/guides',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const words = payload.content.trim().split(/\s+/).filter(Boolean).length;
+        const sections = payload.content.split(/(?=^##\s+)/m).filter(Boolean).length || 1;
+        const newGuide: ChatbotGuideFile = {
+          id: `guide-${Date.now()}`,
+          title: payload.title,
+          fileName: payload.fileName,
+          fileSize: payload.fileSize || payload.content.length,
+          mimeType: payload.mimeType || 'text/markdown',
+          category: payload.category || 'GENERAL_CLINICAL_PROTOCOL',
+          description: payload.description || '',
+          content: payload.content,
+          wordCount: words,
+          sectionCount: sections,
+          isActive: true,
+          uploadedBy: payload.uploadedBy,
+          uploadedByName: payload.uploadedByName,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        localChatbotGuides.unshift(newGuide);
+        persistGuides(localChatbotGuides);
+        return newGuide;
+      }
+    ).then((guide) => {
+      if (guide && !localChatbotGuides.some((g) => g.id === guide.id)) {
+        localChatbotGuides.unshift(guide);
+        persistGuides(localChatbotGuides);
+      }
+      return guide;
+    });
+  },
+
+  extractPdfText: async (payload: {
+    fileName: string;
+    fileBase64: string;
+  }): Promise<{
+    text: string;
+    wordCount: number;
+    pageCount: number;
+    fileName: string;
+    suggestedTitle: string;
+    suggestedCategory?: string;
+  }> => {
+    return safeFetchJson(
+      '/api/v1/chatbot/extract-pdf',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        return {
+          text: `# ${payload.fileName.replace(/\.pdf$/i, '')}\n\nClinical guidelines extracted from uploaded PDF document.`,
+          wordCount: 15,
+          pageCount: 1,
+          fileName: payload.fileName,
+          suggestedTitle: payload.fileName.replace(/\.pdf$/i, '').replace(/[_-]/g, ' '),
+          suggestedCategory: 'GENERAL_CLINICAL_PROTOCOL',
+        };
+      }
+    );
+  },
+
+  deleteChatbotGuide: async (id: string): Promise<{ success: boolean }> => {
+    return safeFetchJson(
+      `/api/v1/chatbot/guides/${id}`,
+      { method: 'DELETE' },
+      () => {
+        localChatbotGuides = localChatbotGuides.filter((g) => g.id !== id);
+        persistGuides(localChatbotGuides);
+        return { success: true };
+      }
+    ).then((res) => {
+      localChatbotGuides = localChatbotGuides.filter((g) => g.id !== id);
+      persistGuides(localChatbotGuides);
+      return res;
+    });
+  },
+
+  toggleChatbotGuide: async (id: string): Promise<{ guide: ChatbotGuideFile; success: boolean }> => {
+    return safeFetchJson(
+      `/api/v1/chatbot/guides/${id}/toggle`,
+      { method: 'PATCH' },
+      () => {
+        const guide = localChatbotGuides.find((g) => g.id === id);
+        if (guide) {
+          guide.isActive = !guide.isActive;
+          guide.updatedAt = new Date().toISOString();
+          persistGuides(localChatbotGuides);
+        }
+        return { guide: guide || localChatbotGuides[0], success: true };
+      }
+    ).then((res) => {
+      if (res?.guide) {
+        localChatbotGuides = localChatbotGuides.map((g) => (g.id === res.guide.id ? res.guide : g));
+        persistGuides(localChatbotGuides);
+      }
+      return res;
+    });
+  },
+
+  updateChatbotKnowledgeConfig: async (payload: { sourceMode: ChatbotKnowledgeSourceMode }): Promise<ChatbotKnowledgeConfig> => {
+    return safeFetchJson(
+      '/api/v1/chatbot/guides/settings',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        localChatbotConfig.sourceMode = payload.sourceMode;
+        const active = localChatbotGuides.filter((g) => g.isActive);
+        const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+        return {
+          ...localChatbotConfig,
+          totalActiveGuides: active.length,
+          totalWords,
+        };
+      }
+    );
+  },
+
+  testChatbotGuideRetrieval: async (query: string): Promise<ChatbotGuideTestResult> => {
+    return safeFetchJson(
+      '/api/v1/chatbot/guides/test',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      },
+      () => {
+        const active = localChatbotGuides.filter((g) => g.isActive);
+        if (active.length === 0) {
+          const res = generateLocalRagResponse(query);
+          return {
+            query,
+            answer: res.answer,
+            sourceMode: 'MOCK_FAQS_ONLY',
+            usedMockFaq: true,
+            allMatchedSections: [],
+          };
+        }
+        const guide = active[0];
+        return {
+          query,
+          answer: `### Understanding What Is Happening\nBased on the uploaded protocol "${guide.title}", symptoms are addressed through structured environmental modification and proactive de-escalation.\n\n### Practical Steps from Uploaded Guide\n1. **Maintain calm routine** — Avoid confronting behavioral manifestations.\n2. **Use pre-warmed comfort** — Prevent sensory startle response.\n3. **Engage familiar rhythm** — Divert attention using favorite music.\n\n### Guidance Source\nVerified Uploaded Document: ${guide.fileName}`,
+          sourceMode: localChatbotConfig.sourceMode,
+          usedMockFaq: false,
+          matchedGuide: {
+            id: guide.id,
+            title: guide.title,
+            fileName: guide.fileName,
+            sectionTitle: 'Clinical Interventions Protocol',
+            matchScore: 94,
+            snippet: guide.content.slice(0, 200),
+          },
+          allMatchedSections: [
+            {
+              guideTitle: guide.title,
+              sectionTitle: 'Clinical Interventions Protocol',
+              matchScore: 94,
+              snippet: guide.content.slice(0, 200),
+            },
+          ],
+        };
+      }
+    );
+  },
 };
+

@@ -17,6 +17,7 @@ import {
   LockOpen,
 } from 'lucide-react';
 import { Post, Comment, CurrentUser, getProperGroupName } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 
 interface DiscussionDetailProps {
@@ -475,6 +476,12 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 <span className="truncate">{regionName}</span>
               </>
             )}
+            {(isClinician || post.condition === 'BOTH') && (
+              <>
+                <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                <AudienceBadge condition={post.condition} />
+              </>
+            )}
             {post.isClosed && (
               <>
                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
@@ -775,6 +782,12 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <span className="font-semibold text-slate-700 dark:text-slate-300">Add your reply</span>
               <span>Replying as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.anonymousHandle}</strong></span>
             </div>
+
+            {post.condition === 'BOTH' && (
+              <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                This discussion is shared with both FTD and Alzheimer's care partners. Your reply will be visible to both groups.
+              </div>
+            )}
 
             {/* Moderation Mode Info Callout */}
             {post.allowUnmoderatedReplies ? (

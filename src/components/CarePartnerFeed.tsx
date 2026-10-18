@@ -21,6 +21,7 @@ import {
 import { Post, CommunityGroup, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';
 import { DiscussionDetail } from './DiscussionDetail';
+import { AudienceBadge } from './AudienceBadge';
 
 interface CarePartnerFeedProps {
   currentUser: CurrentUser;
@@ -31,7 +32,6 @@ interface CarePartnerFeedProps {
   recentNotice?: string | null;
   onDismissNotice?: () => void;
   onOpenComposer: () => void;
-  onOpenAssistant: () => void;
 }
 
 export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
@@ -43,7 +43,6 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   recentNotice,
   onDismissNotice,
   onOpenComposer,
-  onOpenAssistant,
 }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +53,10 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   const POSTS_PER_PAGE = 5;
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  // Check user role
+  const isStaff = currentUser.role !== 'CARE_PARTNER';
+  const [selectedCondition, setSelectedCondition] = useState<'all' | 'FTD' | 'AD'>('all');
 
   // Filter Popover Menu State
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
@@ -120,6 +123,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         role: currentUser.role,
         groupId: groupId === 'all' ? undefined : groupId,
         userId: currentUser.id,
+        condition: isStaff && selectedCondition !== 'all' ? selectedCondition : undefined,
       });
       let feedPosts = res.posts || [];
       // Clinician moderators and admins only view published discussions in the discussions tab
@@ -136,7 +140,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
 
   useEffect(() => {
     loadFeed(selectedGroupTab);
-  }, [selectedGroupTab, currentUser.role, currentUser.id]);
+  }, [selectedGroupTab, selectedCondition, currentUser.role, currentUser.id]);
 
   const handleToggleLike = (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
@@ -359,8 +363,31 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                     ))}
                   </select>
                 </div>
+                
+                {/* Filter 2: Condition (Staff Only) */}
+                {isStaff && (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">Condition</label>
+                    <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                      {(['all', 'FTD', 'AD'] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => { setSelectedCondition(opt); setCurrentPage(1); }}
+                          className={`py-1.5 px-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                            selectedCondition === opt
+                              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {opt === 'all' ? 'All' : opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                {/* Filter 2: Discussion Status */}
+                {/* Filter 3: Discussion Status */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Discussion Status
@@ -636,6 +663,12 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                               <>
                                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
                                 <span className="text-slate-500 dark:text-slate-400 truncate">{regionName}</span>
+                              </>
+                            )}
+                            {(isStaff || post.condition === 'BOTH') && (
+                              <>
+                                <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                                <AudienceBadge condition={post.condition} />
                               </>
                             )}
                             {post.isClosed && (

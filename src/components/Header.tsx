@@ -25,7 +25,6 @@ interface HeaderProps {
   pendingTriageCount: number;
   notifications: DirectMessage[];
   onOpenNotifications: () => void;
-  onOpenAssistant?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -153,38 +152,42 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* RIGHT: Quick Clinic Contact, Theme Toggle, Notification Center & User Profile */}
           <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0 z-10 relative">
-            {/* Direct Clinic Support Line: shown on extra-wide laptop/desktop */}
-            <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shrink-0 whitespace-nowrap">
-              <Phone className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
-              <div className="flex items-center gap-1.5">
+            {/* Direct Clinic Support Line: shown for Care Partners on extra-wide laptop/desktop (hidden on moderator side) */}
+            {!isClinician && !isAdmin && (
+              <>
+                <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shrink-0 whitespace-nowrap">
+                  <Phone className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href="tel:4109555147"
+                      className="hover:text-[#002D72] dark:hover:text-sky-400 transition"
+                      title="Hopkins Clinic: (410) 955-5147, option 2"
+                    >
+                      <span className="text-slate-500 dark:text-slate-400">Clinic: </span>
+                      <span className="text-[#002D72] dark:text-sky-400 font-semibold">(410) 955-5147</span>
+                    </a>
+                    <span className="text-slate-300 dark:text-slate-600">|</span>
+                    <a
+                      href="tel:4105024163"
+                      className="hover:text-emerald-700 dark:hover:text-emerald-400 transition"
+                      title="Care Partner Support Line: (410) 502-4163"
+                    >
+                      <span className="text-slate-500 dark:text-slate-400">Support: </span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold">(410) 502-4163</span>
+                    </a>
+                  </div>
+                </div>
+
                 <a
                   href="tel:4109555147"
-                  className="hover:text-[#002D72] dark:hover:text-sky-400 transition"
-                  title="Hopkins Clinic: (410) 955-5147, option 2"
+                  className="hidden xl:flex 2xl:hidden items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[#002D72] dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
+                  title="Hopkins Clinic: (410) 955-5147"
                 >
-                  <span className="text-slate-500 dark:text-slate-400">Clinic: </span>
-                  <span className="text-[#002D72] dark:text-sky-400 font-semibold">(410) 955-5147</span>
+                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                  <span className="font-medium">(410) 955-5147</span>
                 </a>
-                <span className="text-slate-300 dark:text-slate-600">|</span>
-                <a
-                  href="tel:4105024163"
-                  className="hover:text-emerald-700 dark:hover:text-emerald-400 transition"
-                  title="Care Partner Support Line: (410) 502-4163"
-                >
-                  <span className="text-slate-500 dark:text-slate-400">Support: </span>
-                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">(410) 502-4163</span>
-                </a>
-              </div>
-            </div>
-
-            <a
-              href="tel:4109555147"
-              className="hidden xl:flex 2xl:hidden items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[#002D72] dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
-              title="Hopkins Clinic: (410) 955-5147"
-            >
-              <Phone className="w-3.5 h-3.5 shrink-0" />
-              <span className="font-medium">(410) 955-5147</span>
-            </a>
+              </>
+            )}
 
             {/* DARK / LIGHT MODE TOGGLE BUTTON */}
             <button
@@ -347,7 +350,7 @@ export const Header: React.FC<HeaderProps> = ({
                                   ? 'System Administrator'
                                   : p.role === 'CLINICIAN_MODERATOR'
                                   ? 'Clinician Moderator'
-                                  : p.handle}
+                                  : `${p.handle} · ${p.condition ?? ''}`}
                               </div>
                             </div>
                             {isCurrent && <Check className="w-4 h-4 text-[#002D72] dark:text-blue-400" />}

@@ -12,17 +12,20 @@ import {
   MessageSquare,
   AlertTriangle,
   Search,
+  Phone,
   X,
   Eye,
   Check,
 } from 'lucide-react';
-import { CurrentUser, CommunityGroup, DeflectionMatch, getProperGroupName } from '../types';
+import { CurrentUser, CommunityGroup, DeflectionMatch, Audience, getProperGroupName } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 import { INITIAL_POSTS, INITIAL_COMMENTS } from '../data/clinicalStore';
 
 interface PostComposerProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
+  initialTitle?: string;
   onPostSubmitted: () => void;
   onCancel: () => void;
   onOpenResource: (resourceId: string) => void;
@@ -477,12 +480,13 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
 export const PostComposer: React.FC<PostComposerProps> = ({
   currentUser,
   cohorts,
+  initialTitle,
   onPostSubmitted,
   onCancel,
   onOpenResource,
   onOpenDiscussion,
 }) => {
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle || '');
   const [content, setContent] = useState('');
   const [selectedCohortId, setSelectedCohortId] = useState(
     cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || ''
@@ -494,9 +498,18 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     cohortName: string;
   } | null>(null);
 
+  useEffect(() => {
+    if (initialTitle) {
+      setTitle(initialTitle);
+    }
+  }, [initialTitle]);
+
+  const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
+    user.role !== 'CARE_PARTNER' || audience === 'BOTH' || audience === user.condition;
+  
   // Pool of all old discussions (seeded immediately from in-memory clinical store for 0ms startup)
   const [discussionsPool, setDiscussionsPool] = useState<DiscussionSearchItem[]>(() => {
-    return INITIAL_POSTS.filter((p) => p.status === 'APPROVED').map((p) => {
+    return INITIAL_POSTS.filter((p) => p.status === 'APPROVED' && canSeeClient(currentUser, p.condition ?? 'FTD')).map((p) => {
       const postComments = INITIAL_COMMENTS.filter(
         (c) => c.postId === p.id && (c.status === 'APPROVED' || !c.status)
       );
@@ -507,7 +520,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         content: p.content,
         authorHandle: p.author.anonymousHandle,
         authorBadge: p.author.badgeLabel,
-        cohortName: cohort?.properName || cohort?.name || 'General Clinic Forum',
+        cohortName: cohort?.properName || cohort?.name || 'General Forum',
         createdAt: p.createdAt,
         replies: postComments.map((c) => ({
           id: c.id,
@@ -523,19 +536,13 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   // Load latest pool from backend to ensure any new posts/comments in session are included
   useEffect(() => {
     let isMounted = true;
-    api.getAllDiscussionsPool()
-      .then((res) => {
-        if (isMounted && res.pool && res.pool.length > 0) {
-          setDiscussionsPool(res.pool);
-        }
-      })
-      .catch((err) => {
-        console.warn('Could not fetch external discussions pool, using in-memory store:', err);
-      });
+    api.getAllDiscussionsPool(currentUser.id)
+    .then((res) => { if (isMounted) setDiscussionsPool(res.pool ?? []); })
+    .catch((err) => console.warn('Could not fetch discussions pool:', err));
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentUser.id]);
 
   // Real-time keyword matching: computed synchronously on every keystroke
   const titleMatches = useMemo(() => {
@@ -551,6 +558,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   const [contentDismissed, setContentDismissed] = useState(false);
   const [previewPostId, setPreviewPostId] = useState<string | null>(null);
   const [solvedByDeflection, setSolvedByDeflection] = useState(false);
+
+  // audience state
+  const isStaff = currentUser.role !== 'CARE_PARTNER';
+  const [audience, setAudience] = useState<Audience>('BOTH');
 
   // Keyboard shortcut listener to dismiss suggestions on Escape
   useEffect(() => {
@@ -592,13 +603,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         content: content.trim(),
         targetCohortId: selectedCohortId,
         authorId: currentUser.id,
+        ...(isStaff ? { condition: audience } : {}),
       });
 
       setSubmittedPostData({
         title: title.trim(),
         cohortName: assignedCohort
           ? getProperGroupName(assignedCohort)
-          : 'General Clinic Forum',
+          : 'General Forum',
       });
     } catch (err) {
       console.error('Failed to submit post:', err);
@@ -727,6 +739,43 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             </p>
           </div>
 
+          {/* Safety notice */}
+          <div className="space-y-3">
+            {/* 911: first and most prominent */}
+            <div
+              role="alert"
+              className="rounded-xl border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-4 flex items-start gap-3"
+            >
+              <Phone className="w-5 h-5 text-red-700 dark:text-red-400 shrink-0 mt-0.5" />
+              <p className="text-base sm:text-lg font-bold text-red-900 dark:text-red-200 leading-snug">
+                For a life-threatening emergency, call{' '}
+                <a href="tel:911" className="underline underline-offset-2 hover:text-red-950 dark:hover:text-red-100">
+                  911
+                </a>{' '}
+                right away.
+              </p>
+            </div>
+
+            <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-900/60 rounded-xl p-4 space-y-2 text-amber-950 dark:text-amber-200">
+              <div className="flex items-center gap-2 font-semibold text-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+                <span>This platform is not for urgent messages</span>
+              </div>
+              <p className="text-xs sm:text-sm leading-relaxed font-sans">
+                This platform is not intended for urgent messages to your clinician. If you need to reach your
+                clinician, please call your clinic at{' '}
+                <a href="tel:4109555147" className="font-bold text-[#002D72] dark:text-sky-400 underline">
+                  (410) 955-5147, option 2
+                </a>{' '}
+                or send a message through EPIC.
+              </p>
+              <p className="text-xs sm:text-sm leading-relaxed font-sans">
+                Please do not share any confidential information through the portal. Submitted posts are
+                reviewed once every 24 hours.
+              </p>
+            </div>
+          </div>
+
           {/* Question or Topic Input with Real-Time Keystroke Matching */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -817,24 +866,35 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             </select>
           </div>
 
-          {/* Urgent messaging clinical warning - placed just before submit question, only once */}
-          <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-900/60 rounded-xl p-4 text-amber-950 dark:text-amber-200 space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-sm text-amber-950 dark:text-amber-200">
-              <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-              <span>This platform is not intended for urgent messaging</span>
+          {isStaff ? (
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Who can see this post
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {([['FTD', 'FTD only'], ['AD', 'AD only'], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setAudience(value)}
+                    className={`px-3 py-2.5 rounded-xl text-sm font-semibold border transition cursor-pointer ${
+                      audience === value
+                        ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="text-xs sm:text-sm text-amber-900/90 dark:text-amber-300/90 leading-relaxed font-sans">
-              For urgent questions or clinical needs, please call the clinic phone number at{' '}
-              <a href="tel:4109555147" className="font-bold text-[#002D72] dark:text-sky-400 underline hover:text-blue-900 dark:hover:text-sky-300">
-                (410) 955-5147, option 2
-              </a>{' '}
-              or the care partner support line at{' '}
-              <a href="tel:4105024163" className="font-bold text-emerald-800 dark:text-emerald-400 underline hover:text-emerald-950 dark:hover:text-emerald-300">
-                (410) 502-4163
-              </a>
-              . For life-threatening emergencies, call <strong>911</strong>.
-            </p>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>Your post will be shared with</span>
+              <AudienceBadge condition={currentUser.condition} />
+              <span>care partners</span>
+            </div>
+          )}
 
           {/* Clear, well-placed action button */}
           <div className="pt-1">

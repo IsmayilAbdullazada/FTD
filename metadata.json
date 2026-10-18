@@ -1,6 +1,6 @@
 {
   "name": "Hopkins Care Partner Connect",
-  "description": "Secure, clinician-moderated knowledge exchange and peer support platform for Frontotemporal Dementia care partners, featuring real-time clinical deflection, safety triage, and clinical RAG.",
+  "description": "Secure, clinician-moderated knowledge exchange and peer support platform for Frontotemporal Dementia care partners, featuring real-time clinical deflection, safety triage, and institutional care guides.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

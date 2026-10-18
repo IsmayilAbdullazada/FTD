@@ -1,8 +1,10 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { PDFParse } from 'pdf-parse';
 import { CLINICAL_50_FAQ, searchClinicalFaq, generateLocalRagResponse, type ClinicalFaqItem } from './src/data/ragEngine.ts';
 
 dotenv.config();
@@ -16,7 +18,8 @@ const PORT = Number(process.env.PORT) || 3000;
 type Condition = 'FTD' | 'AD';
 type Audience = Condition | 'BOTH';
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Initialize Gemini SDK on server-side if key is present
 let ai: GoogleGenAI | null = null;
@@ -418,7 +421,7 @@ function getRequester(req: express.Request): User | undefined {
 // The single visibility rule.
 function canSee(user: User | undefined, audience: Audience = 'FTD'): boolean {
   if (!user) return false;
-  if (user.role !== 'CARE_PARTNER') return true; // Seema / admins see both
+  if (user.role !== 'CARE_PARTNER') return true; // Dr. Seema / admins see both
   return audience === 'BOTH' || audience === user.condition;
 }
 
@@ -863,8 +866,8 @@ const posts: Post[] = [
     id: 'post-general-1',
     authorId: 'user-clinician-1',
     title: 'General Forum: Managing apathy vs depression in frontotemporal dementia',
-    rawContent: 'Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
-    sanitizedContent: 'Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    rawContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    sanitizedContent: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-18T10:00:00Z',
@@ -2260,7 +2263,7 @@ app.post('/api/v1/posts', (req, res) => {
     status: newPost.status,
     message: staff
       ? 'Post published.'
-      : 'Your submission has been safely received. Seema reviews all posts within 24 hours to keep this community safe and accurate.',
+      : 'Your submission has been safely received. Dr. Seema reviews all posts within 24 hours to keep this community safe and accurate.',
     hasPhiAlerts: phiAlerts.length > 0,
     phiAlertsCount: phiAlerts.length,
   });
@@ -2991,7 +2994,622 @@ app.get('/api/v1/knowledge/faq', (req, res) => {
   res.json(r?.condition === 'AD' ? [] : CLINICAL_50_FAQ);
 });
 
-// Closed-Loop Clinician RAG Assistant (Section 7.1)
+// -------------------------------------------------------------
+// CHATBOT KNOWLEDGE GUIDE FILES STORE & RAG ENGINE
+// -------------------------------------------------------------
+
+interface ChatbotGuideFile {
+  id: string;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  category: string;
+  description?: string;
+  content: string;
+  sectionCount?: number;
+  wordCount?: number;
+  isActive: boolean;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+type ChatbotKnowledgeSourceMode = 'UPLOADED_GUIDES_ONLY' | 'HYBRID' | 'MOCK_FAQS_ONLY';
+
+let chatbotKnowledgeConfig: {
+  sourceMode: ChatbotKnowledgeSourceMode;
+} = {
+  sourceMode: 'UPLOADED_GUIDES_ONLY',
+};
+
+const DB_DIR = path.join(process.cwd(), 'data');
+const GUIDES_DB_FILE = path.join(DB_DIR, 'clinical_guides.json');
+
+const initialChatbotGuidesSeed: ChatbotGuideFile[] = [
+  {
+    id: 'guide-jhm-ftd-2026',
+    title: 'Johns Hopkins Comprehensive bvFTD & PPA Caregiver Protocol (2026)',
+    fileName: 'JH_FTD_Clinical_Caregiver_Protocol_2026.pdf',
+    fileSize: 14280,
+    mimeType: 'application/pdf',
+    category: 'GENERAL_CLINICAL_PROTOCOL',
+    description: 'Official clinical guidelines for daily behavioral, shower safety, and caregiving management in Frontotemporal Dementia.',
+    content: `# Johns Hopkins Comprehensive bvFTD & PPA Clinical Caregiver Protocol (2026)
+
+## De-escalating Bathing and Shower Defensiveness in bvFTD
+In Behavioral Variant Frontotemporal Dementia, resistance to bathing is driven by frontal sensory disinhibition, loss of procedural sequencing, and fear of sudden naked cold vulnerability.
+Key Interventions:
+1. **Pre-warm the Bathroom to 78°F**: Run space radiant heater or hot tap 15 minutes before undressing begins.
+2. **Utilize No-Rinse Warm Towel Bathing**: Wrap the care recipient in large, heated towels. Uncover strictly one limb at a time to cleanse with no-rinse warm cloths.
+3. **Eliminate Overhead Shower Sprays**: Directing water onto the face feels like a physical attack to a disinhibited frontal lobe. Use a handheld wand directed low at the legs.
+4. **Music Auditory Cortical Engagement**: Play familiar upbeat music from their 20s during the routine to occupy amygdala threat alarms.
+
+## Managing Compulsive Eating, Sweet Cravings & Hyperorality
+FTD atrophy in the hypothalamus and orbitofrontal circuits destroys satiety signaling and normal appetite braking, creating intense carbohydrate cravings.
+Key Interventions:
+1. **Environmental Security Over Verbal Confrontation**: Install discreet child-proof magnetic latches (e.g. Tot-Lok) on food pantries and refrigerators rather than arguing.
+2. **Pre-portioned Healthy Substitutions**: Keep sliced berries, chilled grapes, and sugar-free gelatins in clear view, while hiding high-calorie baked goods in opaque, high cabinets.
+3. **Choking Precautions & Pacing**: If rapid shoveling (food bolting) occurs, serve meals cut into bite-sized pieces on smaller 8-inch salad plates with pacing utensils.
+
+## Driving Retirement Transition Protocol
+Discontinue driving privileges decisively once executive reflex loss or traffic signal comprehension deteriorates.
+Key Interventions:
+1. **Physical Disablement Over Logic Debates**: Logic arguments fail due to anosognosia. Disconnect the vehicle battery cable, pull the ignition fuse, or park the car off-site.
+2. **Blame the Physician & Maryland MVA**: Frame driving cessation as an institutional medical and legal mandate from the Johns Hopkins clinic team.
+3. **Substitute Transportation Promptly**: Arrange alternative rides via family accounts or county specialized transit.
+
+## Managing Nocturnal Pacing and Reversed Circadian Rhythm
+Disruption of hypothalamic suprachiasmatic sleep regulation causes night wakefulness and hallway wandering.
+Key Interventions:
+1. **Maximize Morning Bright Light Exposure**: Ensure 45 minutes of bright morning outdoor sunlight or 10,000 lux therapy light box before 10 AM.
+2. **Silent Door Chimes & Motion Sensors**: Install wireless magnetic sensors that alert the caregiver's smartphone silently without sounding blaring audible alarms in the hallway.
+3. **Secure Hallway Environment**: Keep nightlights at baseboard level and remove throw rugs to prevent falls during nighttime pacing.
+
+## Addressing Inappropriate Public Disinhibition and Blunt Remarks
+Loss of ventromedial prefrontal inhibition leads to loud comments about strangers or impulsive touching.
+Key Interventions:
+1. **Caregiver Explanatory Cards**: Carry discrete business-sized cards that state: "My companion has Frontotemporal Dementia (a neurological condition that impairs speech and social filter). Thank you for your patience and understanding." Hand these quietly to cashiers, waitstaff, or bystanders.
+2. **Non-Confrontational Gentle Redirection**: Avoid arguing or saying "That was rude." Calmly pivot attention: "Look at this display over here."`,
+    sectionCount: 5,
+    wordCount: 520,
+    isActive: true,
+    uploadedBy: 'user-clinician-1',
+    uploadedByName: 'Dr. Seema Gulyani',
+    createdAt: '2026-10-10T09:00:00Z',
+    updatedAt: '2026-10-10T09:00:00Z',
+  },
+];
+
+function loadChatbotGuidesFromDb(): ChatbotGuideFile[] {
+  try {
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    if (fs.existsSync(GUIDES_DB_FILE)) {
+      const data = fs.readFileSync(GUIDES_DB_FILE, 'utf-8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read guides from file database:', err);
+  }
+  saveChatbotGuidesToDb(initialChatbotGuidesSeed);
+  return [...initialChatbotGuidesSeed];
+}
+
+function saveChatbotGuidesToDb(guides: ChatbotGuideFile[]): void {
+  try {
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    fs.writeFileSync(GUIDES_DB_FILE, JSON.stringify(guides, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to write clinical guides to database file:', err);
+  }
+}
+
+let chatbotGuidesStore: ChatbotGuideFile[] = loadChatbotGuidesFromDb();
+
+interface GuideChunk {
+  guideId: string;
+  guideTitle: string;
+  fileName: string;
+  sectionTitle: string;
+  category: string;
+  content: string;
+}
+
+function parseGuideChunks(guides: ChatbotGuideFile[]): GuideChunk[] {
+  const chunks: GuideChunk[] = [];
+
+  for (const guide of guides) {
+    if (!guide.isActive) continue;
+    const content = guide.content;
+    const headingRegex = /^#{1,3}\s+(.+)$/gm;
+    const sections: { title: string; startIndex: number }[] = [];
+    let m: RegExpExecArray | null;
+
+    while ((m = headingRegex.exec(content)) !== null) {
+      sections.push({ title: m[1].trim(), startIndex: m.index });
+    }
+
+    if (sections.length === 0) {
+      const paras = content.split(/\n\s*\n/).filter((p) => p.trim().length > 30);
+      if (paras.length <= 1) {
+        chunks.push({
+          guideId: guide.id,
+          guideTitle: guide.title,
+          fileName: guide.fileName,
+          sectionTitle: guide.title,
+          category: guide.category,
+          content: content.trim(),
+        });
+      } else {
+        paras.forEach((p, idx) => {
+          chunks.push({
+            guideId: guide.id,
+            guideTitle: guide.title,
+            fileName: guide.fileName,
+            sectionTitle: `${guide.title} (Part ${idx + 1})`,
+            category: guide.category,
+            content: p.trim(),
+          });
+        });
+      }
+    } else {
+      // Check if there is preamble before first heading
+      if (sections[0].startIndex > 60) {
+        const preamble = content.slice(0, sections[0].startIndex).trim();
+        if (preamble.length > 50) {
+          chunks.push({
+            guideId: guide.id,
+            guideTitle: guide.title,
+            fileName: guide.fileName,
+            sectionTitle: `${guide.title} - Overview`,
+            category: guide.category,
+            content: preamble,
+          });
+        }
+      }
+
+      for (let i = 0; i < sections.length; i++) {
+        const cur = sections[i];
+        const nextStart = i + 1 < sections.length ? sections[i + 1].startIndex : content.length;
+        const body = content.slice(cur.startIndex, nextStart).trim();
+        chunks.push({
+          guideId: guide.id,
+          guideTitle: guide.title,
+          fileName: guide.fileName,
+          sectionTitle: cur.title,
+          category: guide.category,
+          content: body,
+        });
+      }
+    }
+  }
+
+  return chunks;
+}
+
+const GUIDE_SEARCH_STOP_WORDS = new Set([
+  'what', 'is', 'the', 'best', 'way', 'to', 'my', 'in', 'on', 'at', 'by', 'for', 'with', 'a', 'an', 'and', 'or', 'do',
+  'how', 'can', 'i', 'we', 'you', 'they', 'them', 'of', 'this', 'that', 'these', 'those', 'be', 'are', 'was', 'were',
+  'been', 'being', 'have', 'has', 'had', 'it', 'its', 'so', 'as', 'if', 'about', 'from', 'help', 'need', 'please',
+  'tell', 'me', 'our', 'your', 'his', 'her', 'their', 'there', 'here', 'when', 'where', 'why', 'who', 'does', 'did',
+]);
+
+function searchGuideChunks(query: string, chunks: GuideChunk[], topK: number = 3): { chunk: GuideChunk; score: number }[] {
+  const queryLower = query.toLowerCase();
+  const rawWords = queryLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const tokens = rawWords.filter((w) => w.length >= 3 && !GUIDE_SEARCH_STOP_WORDS.has(w));
+
+  const synonyms: Record<string, string[]> = {
+    shower: ['bath', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'towel', 'wand', 'clean', 'refusal'],
+    bath: ['shower', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'clean', 'towel', 'refusal', 'bathing'],
+    sweet: ['sweets', 'candy', 'eating', 'food', 'sugar', 'binge', 'cravings', 'pastries', 'ice cream', 'cookies', 'hyperorality'],
+    eat: ['eating', 'sweet', 'food', 'choking', 'bolting', 'cravings', 'chewing', 'swallow', 'carbohydrate', 'appetite', 'plate', 'hunger', 'hyperorality'],
+    sugar: ['sweet', 'sweets', 'candy', 'cookies', 'hyperorality', 'binge', 'pastry', 'carbohydrate'],
+    drive: ['car', 'driving', 'license', 'keys', 'vehicle', 'mva', 'dmv', 'ignition', 'battery', 'transportation'],
+    wander: ['night', 'pacing', 'walk', 'walking', 'sensor', 'door', 'lost', 'elopement', 'chime', 'hallway'],
+    sleep: ['night', 'pacing', 'insomnia', 'awake', 'circadian', 'hallway', 'wakefulness', 'sundowning'],
+    yell: ['agitation', 'outburst', 'aggression', 'sponge', 'hit', 'anger', 'screaming', 'violence', 'fighting', 'lashing'],
+    rude: ['blunt', 'filter', 'public', 'cards', 'disinhibition', 'stranger', 'embarrassing', 'inappropriate', 'impulsive', 'insulting'],
+    toilet: ['incontinence', 'voiding', 'briefs', 'diapers', 'bathroom', 'urinary', 'urine'],
+    aphasia: ['ppa', 'speech', 'words', 'talking', 'language', 'nonverbal'],
+    legal: ['lawyer', 'poa', 'power of attorney', 'directive', 'guardianship', 'will', 'medicaid'],
+    pill: ['medication', 'medicine', 'swallow', 'spit', 'dose', 'crush', 'refuse'],
+    agitation: ['aggression', 'anger', 'hit', 'scream', 'violence', 'combative', 'yell', 'fighting'],
+  };
+
+  const scored = chunks.map((chunk) => {
+    let score = 0;
+    const titleLower = chunk.sectionTitle.toLowerCase();
+    const contentLower = chunk.content.toLowerCase();
+    const titleWords = new Set(titleLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
+    const contentWords = new Set(contentLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
+
+    // Multi-word exact phrase match (if meaningful length)
+    if (tokens.length >= 2 && queryLower.length >= 6) {
+      if (contentLower.includes(queryLower)) score += 40;
+      if (titleLower.includes(queryLower)) score += 30;
+    }
+
+    // Direct token matches using word set
+    for (const token of tokens) {
+      if (titleWords.has(token)) score += 15;
+      if (contentWords.has(token)) score += 5;
+
+      // Synonym expansion
+      const synList = synonyms[token];
+      if (synList) {
+        for (const s of synList) {
+          if (titleWords.has(s)) score += 12;
+          if (contentWords.has(s)) score += 4;
+        }
+      }
+    }
+
+    return { chunk, score };
+  });
+
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+function formatUploadedGuideAnswer(chunk: GuideChunk): string {
+  const lines = chunk.content.split('\n');
+  const contentLines = lines.filter((l) => !l.startsWith('# '));
+  const rawText = contentLines.join('\n').trim();
+
+  const stepIndex = rawText.search(/\n(?:\d+\.|\*|\-)\s+/);
+  let explanation = rawText;
+  let steps = '';
+  if (stepIndex > 0) {
+    explanation = rawText.slice(0, stepIndex).trim();
+    steps = rawText.slice(stepIndex).trim();
+  }
+
+  let answer = `### Understanding What Is Happening\n${explanation || 'In Frontotemporal Dementia, this symptom stems from neurodegeneration affecting frontal brain circuits, not willful opposition.'}`;
+
+  if (steps) {
+    answer += `\n\n### Practical Steps\n${steps}`;
+  }
+
+  return answer;
+}
+
+// -------------------------------------------------------------
+// CHATBOT KNOWLEDGE MANAGEMENT ROUTES (MODERATOR DASHBOARD)
+// -------------------------------------------------------------
+
+app.get('/api/v1/chatbot/guides', (_req, res) => {
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const active = chatbotGuidesStore.filter((g) => g.isActive);
+  const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+  res.json({
+    guides: chatbotGuidesStore,
+    config: {
+      ...chatbotKnowledgeConfig,
+      totalActiveGuides: active.length,
+      totalWords,
+    },
+  });
+});
+
+app.post('/api/v1/chatbot/guides', (req, res) => {
+  const { title, fileName, fileSize, mimeType, category, description, content, uploadedBy, uploadedByName } = req.body;
+
+  if (!title?.trim() || !content?.trim()) {
+    return res.status(400).json({ error: 'Title and guide content are required.' });
+  }
+
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const sections = content.split(/(?=^##\s+)/m).filter(Boolean).length || 1;
+
+  const newGuide: ChatbotGuideFile = {
+    id: `guide-${Date.now()}`,
+    title: title.trim(),
+    fileName: fileName?.trim() || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.md`,
+    fileSize: fileSize || content.length,
+    mimeType: mimeType || 'text/markdown',
+    category: category || 'GENERAL_CLINICAL_PROTOCOL',
+    description: description?.trim() || '',
+    content: content.trim(),
+    sectionCount: sections,
+    wordCount: words,
+    isActive: true,
+    uploadedBy: uploadedBy || 'user-clinician-1',
+    uploadedByName: uploadedByName || 'Dr. Seema Gulyani',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  chatbotGuidesStore.unshift(newGuide);
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: uploadedBy || 'user-clinician-1',
+    moderatorName: uploadedByName || 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: newGuide.id,
+    actionTaken: 'UPLOADED_CHATBOT_GUIDE',
+    notes: `Uploaded clinical guide "${newGuide.title}" (${words} words) for chatbot knowledge`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.status(201).json(newGuide);
+});
+
+app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
+  const idx = chatbotGuidesStore.findIndex((g) => g.id === req.params.id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Guide file not found.' });
+  }
+
+  const deleted = chatbotGuidesStore.splice(idx, 1)[0];
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: deleted.id,
+    actionTaken: 'DELETED_CHATBOT_GUIDE',
+    notes: `Removed chatbot guide file "${deleted.title}"`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ success: true, id: req.params.id });
+});
+
+app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
+  const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
+  if (!guide) {
+    return res.status(404).json({ error: 'Guide file not found.' });
+  }
+
+  guide.isActive = !guide.isActive;
+  guide.updatedAt = new Date().toISOString();
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: guide.id,
+    actionTaken: guide.isActive ? 'ACTIVATED_CHATBOT_GUIDE' : 'DEACTIVATED_CHATBOT_GUIDE',
+    notes: `${guide.isActive ? 'Enabled' : 'Disabled'} guide "${guide.title}" for chatbot retrieval`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ guide, success: true });
+});
+
+// PDF Extraction Endpoint using PDFParse with Gemini OCR fallback
+app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
+  const { fileName = 'clinical_guide.pdf', fileBase64 } = req.body;
+
+  if (!fileBase64 || typeof fileBase64 !== 'string') {
+    return res.status(400).json({ error: 'Valid fileBase64 payload is required.' });
+  }
+
+  try {
+    const cleanBase64 = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    let extractedText = '';
+    let pageCount = 1;
+
+    try {
+      const parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const textResult = await parser.getText();
+      pageCount = textResult?.total || textResult?.pages?.length || 1;
+
+      if (textResult?.pages && textResult.pages.length > 0) {
+        extractedText = textResult.pages
+          .map((p) => p.text || '')
+          .filter(Boolean)
+          .join('\n\n');
+      } else if (textResult?.text) {
+        extractedText = textResult.text;
+      }
+
+      try {
+        await parser.destroy();
+      } catch {}
+    } catch (parseErr) {
+      console.warn('PDFParse primary extraction notice:', parseErr);
+    }
+
+    // Clean any binary/control characters and normalize text
+    extractedText = extractedText
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
+      .replace(/\r\n/g, '\n')
+      .replace(/(\w+)-\n(\w+)/g, '$1$2')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // If text is very short (e.g. scanned image PDF) and Gemini AI is available, use multimodal PDF understanding
+    if (extractedText.length < 80 && ai) {
+      try {
+        const geminiResp = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [
+            {
+              inlineData: {
+                mimeType: 'application/pdf',
+                data: cleanBase64,
+              },
+            },
+            {
+              text: 'You are an expert clinical document transcription engine. Extract and transcribe the full text and clinical guidelines from this PDF document. Format with clean markdown headers (## Section Title) and numbered practical steps. Return only the clean markdown text.',
+            },
+          ],
+        });
+        if (geminiResp.text && geminiResp.text.trim().length > 30) {
+          extractedText = geminiResp.text.trim();
+        }
+      } catch (geminiPdfErr) {
+        console.warn('Gemini multimodal PDF transcription notice:', geminiPdfErr);
+      }
+    }
+
+    if (!extractedText) {
+      extractedText = `# ${fileName.replace(/\.pdf$/i, '')}\n\nClinical guidelines extracted from uploaded PDF document.`;
+    }
+
+    // Derive suggested title
+    const lines = extractedText.split('\n').map((l) => l.trim()).filter(Boolean);
+    let suggestedTitle = fileName.replace(/\.pdf$/i, '').replace(/[_-]/g, ' ');
+    suggestedTitle = suggestedTitle.replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+    for (const l of lines.slice(0, 5)) {
+      const cleanLine = l.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
+      if (cleanLine.length >= 8 && cleanLine.length <= 100 && !/^(page|\d+|confidential)/i.test(cleanLine)) {
+        suggestedTitle = cleanLine;
+        break;
+      }
+    }
+
+    // Suggest category
+    const textLower = extractedText.toLowerCase();
+    let suggestedCategory = 'GENERAL_CLINICAL_PROTOCOL';
+    if (textLower.includes('shower') || textLower.includes('bath') || textLower.includes('hygiene') || textLower.includes('wash')) {
+      suggestedCategory = 'HYGIENE_BATHING';
+    } else if (textLower.includes('sweet') || textLower.includes('eating') || textLower.includes('sugar') || textLower.includes('food') || textLower.includes('binge')) {
+      suggestedCategory = 'NUTRITION_HYPERORALITY';
+    } else if (textLower.includes('disinhibit') || textLower.includes('social filter') || textLower.includes('blunt') || textLower.includes('rude')) {
+      suggestedCategory = 'BEHAVIORAL_DISINHIBITION';
+    } else if (textLower.includes('driv') || textLower.includes('vehicle') || textLower.includes('car') || textLower.includes('license')) {
+      suggestedCategory = 'DRIVING_SAFETY';
+    } else if (textLower.includes('sleep') || textLower.includes('night') || textLower.includes('wander') || textLower.includes('pacing')) {
+      suggestedCategory = 'SLEEP_WANDERING';
+    } else if (textLower.includes('aphasia') || textLower.includes('speech') || textLower.includes('ppa') || textLower.includes('language')) {
+      suggestedCategory = 'COMMUNICATION_PPA';
+    } else if (textLower.includes('poa') || textLower.includes('attorney') || textLower.includes('medicaid') || textLower.includes('legal')) {
+      suggestedCategory = 'LEGAL_MEDICAID';
+    } else if (textLower.includes('crisis') || textLower.includes('emergency') || textLower.includes('agitation') || textLower.includes('aggression')) {
+      suggestedCategory = 'CRISIS_DE_ESCALATION';
+    }
+
+    const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+
+    res.json({
+      text: extractedText,
+      wordCount,
+      pageCount,
+      fileName,
+      suggestedTitle,
+      suggestedCategory,
+    });
+  } catch (err: any) {
+    console.error('Failed to extract PDF:', err);
+    res.status(500).json({ error: 'Could not extract PDF text: ' + (err.message || 'Unknown error') });
+  }
+});
+
+app.post('/api/v1/chatbot/guides/settings', (_req, res) => {
+  chatbotKnowledgeConfig.sourceMode = 'UPLOADED_GUIDES_ONLY';
+  const active = chatbotGuidesStore.filter((g) => g.isActive);
+  const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+  res.json({
+    ...chatbotKnowledgeConfig,
+    totalActiveGuides: active.length,
+    totalWords,
+  });
+});
+
+app.post('/api/v1/chatbot/guides/test', async (req, res) => {
+  const { query } = req.body;
+  if (!query || typeof query !== 'string') {
+    return res.status(400).json({ error: 'Query is required for testing.' });
+  }
+
+  const activeGuides = chatbotGuidesStore.filter((g) => g.isActive);
+  const chunks = parseGuideChunks(activeGuides);
+  const matches = searchGuideChunks(query, chunks, 3);
+
+  if (matches.length === 0) {
+    return res.json({
+      query,
+      answer: 'No relevant section found in your uploaded guide files. Please ensure your uploaded clinical guides cover this caregiving topic.',
+      usedMockFaq: false,
+      allMatchedSections: [],
+    });
+  }
+
+  const best = matches[0].chunk;
+  let testAnswer = formatUploadedGuideAnswer(best);
+
+  if (ai) {
+    try {
+      const guideContext = matches
+        .map((m, idx) => `GUIDE SECTION #${idx + 1}: ${m.chunk.guideTitle} - ${m.chunk.sectionTitle}\n${m.chunk.content}`)
+        .join('\n\n');
+
+      const testPrompt = `You are Dr. Seema Gulyani's Clinical Assistant for Johns Hopkins FTD families.
+Answer this care partner inquiry strictly using the verified uploaded clinical guide sections below:
+Inquiry: "${query}"
+
+Uploaded Clinical Guide Context:
+${guideContext}
+
+Format requirements:
+- Warm opening sentence
+- ### Understanding What Is Happening
+- ### Practical Steps from Uploaded Guide (numbered with bold titles)
+- Under NO circumstances recommend prescription drug dosages.
+- Explicitly reference the source guide: "${best.fileName}".`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: testPrompt,
+        config: { temperature: 0.1 },
+      });
+
+      if (response.text?.trim()) {
+        testAnswer = response.text.trim();
+      }
+    } catch (e) {
+      console.warn('Gemini test query generation notice:', e);
+    }
+  }
+
+  res.json({
+    query,
+    answer: testAnswer,
+    usedMockFaq: false,
+    matchedGuide: {
+      id: best.guideId,
+      title: best.guideTitle,
+      fileName: best.fileName,
+      sectionTitle: best.sectionTitle,
+      matchScore: matches[0].score,
+      snippet: best.content.slice(0, 220),
+    },
+    allMatchedSections: matches.map((m) => ({
+      guideTitle: m.chunk.guideTitle,
+      sectionTitle: m.chunk.sectionTitle,
+      matchScore: m.score,
+      snippet: m.chunk.content.slice(0, 220),
+    })),
+  });
+});
+
+// -------------------------------------------------------------
+// CHATBOT ASSISTANT RAG ENDPOINT (Strictly Grounded in Uploaded Guides)
+// -------------------------------------------------------------
+
 app.post('/api/v1/knowledge/chat', async (req, res) => {
   const { query, conversationHistory = [] } = req.body;
 
@@ -3001,7 +3619,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
 
   const queryLower = query.toLowerCase();
 
-  // RULE 1 & 2: Prescription / medication dosage refusal gate
+  // RULE 1: Prescription / medication dosage refusal gate
   const restrictedDrugs = [
     'seroquel', 'quetiapine', 'haloperidol', 'haldol', 'donepezil', 'aricept',
     'memantine', 'namenda', 'trazodone', 'risperidone', 'olanzapine', 'zyprexa',
@@ -3012,7 +3630,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const chatRequester = getRequester(req);
   if (chatRequester?.condition === 'AD') {
     return res.json({
-      answer: `Our Alzheimer's care partner guidance is still being prepared by Seema's team. In the meantime, please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
+      answer: `Our Alzheimer's care partner guidance is still being prepared by Dr. Seema's team. In the meantime, please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
       citedResources: [],
       suggestedQuestions: [],
     });
@@ -3047,62 +3665,94 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
     });
   }
 
-  // RAG: Step 1 - Retrieve Top-K relevant clinical FAQs from 50 verified physician answers
-  const topFaqMatches = searchClinicalFaq(query, 4);
-  const bestFaq = topFaqMatches[0]?.item;
+  // Active uploaded guide files retrieval (Exclusive source, persisted in JSON DB)
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const activeGuides = chatbotGuidesStore.filter((g) => g.isActive);
 
-  // RAG: Step 2 - Compile Curated Clinical Context
-  const faqContext = topFaqMatches
+  if (activeGuides.length === 0) {
+    return res.json({
+      answer: `Dr. Seema's Assistant operates strictly using verified institutional clinical guide documents. No active clinical guide files are currently uploaded. Please upload a clinical PDF guide in the Moderator Dashboard to enable guidance answers.`,
+      citedResources: [],
+      suggestedQuestions: [],
+      isUploadedGuideSourced: false,
+      sourceMode: 'UPLOADED_GUIDES_ONLY',
+    });
+  }
+
+  const chunks = parseGuideChunks(activeGuides);
+  const matches = searchGuideChunks(query, chunks, 3);
+  const bestMatchChunk = matches[0]?.chunk || chunks[0];
+  const topScore = matches[0]?.score || 0;
+  const hasStrongContext = matches.length > 0 && topScore >= 12;
+
+  // If query has no relevant match in uploaded guides, answer supportively with clinical contact info
+  if (!hasStrongContext) {
+    return res.json({
+      answer: `I could not find specific recommendations in our clinical care notes for this situation.\n\nBecause every care partner's journey with Frontotemporal Dementia involves unique nuances, please consult your Johns Hopkins neurology team for personalized guidance. You can reach our clinic during business hours at (410) 955-5147 (option 2) or send a non-urgent message via MyChart/EPIC. For any life-threatening emergency, please call 911 immediately.`,
+      citedResources: [],
+      matchedGuide: null,
+      suggestedQuestions: [
+        'How do I handle violent resistance during showers and bathing?',
+        'How do I stop my loved one from driving safely?',
+        'Why are they constantly craving sweets and overeating?',
+      ],
+      isUploadedGuideSourced: false,
+      sourceMode: 'UPLOADED_GUIDES_ONLY',
+      canAnswer: false,
+    });
+  }
+
+  // Build context corpus strictly from uploaded guide documents
+  const uploadedGuidesContext = matches
     .map(
       (m, idx) =>
-        `CLINICAL Q&A #${idx + 1}:\nQUESTION: ${m.item.question}\nCATEGORY: ${m.item.categoryLabel}\nPHYSICIAN ANSWER:\n${m.item.physicianAnswer}\nKEY PROTOCOLS:\n${m.item.keyProtocols.map((p) => `- ${p}`).join('\n')}`
+        `VERIFIED INSTITUTIONAL GUIDE #${idx + 1}:\nDOCUMENT TITLE: ${m.chunk.guideTitle} [File: ${m.chunk.fileName}]\nSECTION: ${m.chunk.sectionTitle}\nCATEGORY: ${m.chunk.category}\nCLINICAL BODY:\n${m.chunk.content}`
     )
-    .join('\n\n--------------------------------\n\n');
+    .join('\n\n================================\n\n');
 
-  const resourceContext = clinicalResources
-    .map(
-      (r) =>
-        `DOCUMENT TITLE: ${r.title}\nCATEGORY: ${r.category}\nSUMMARY: ${r.summary}\nCLINICAL BODY:\n${r.contentBody}\nKEY PROTOCOLS:\n${r.keyTakeaways.map((t) => `- ${t}`).join('\n')}`
-    )
-    .join('\n\n--------------------------------\n\n');
+  const fullContextCorpus = `VERIFIED CLINICAL GUIDELINES FROM UPLOADED INSTITUTIONAL DOCUMENTS:\n\n${uploadedGuidesContext}`;
 
-  const fullContextCorpus = `VERIFIED PHYSICIAN ANSWERS FROM DR. SEEMA'S 50-FAQ KNOWLEDGE BASE:\n\n${faqContext}\n\n================================\n\nAPPROVED CLINICAL GUIDES:\n\n${resourceContext}`;
+  const dynamicSuggestedQuestions = chunks
+    .filter((c) => c.sectionTitle !== bestMatchChunk.sectionTitle)
+    .slice(0, 3)
+    .map((c) => {
+      const cleanTitle = c.sectionTitle.replace(/^[\d.]+\s*/, '').trim();
+      return `What is the protocol for ${cleanTitle}?`;
+    });
+  const suggestedQuestionsList =
+    dynamicSuggestedQuestions.length > 0
+      ? dynamicSuggestedQuestions
+      : [
+          'How do I handle violent resistance during showers?',
+          'How do I stop my loved one from driving safely?',
+          'Why are they constantly craving sweets and overeating?',
+        ];
 
-  // If Gemini API is available on the server, execute Gemini with Grounded Context & Temperature 0.0
   if (ai) {
     try {
-      const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic. You are speaking directly with family care partners (spouses, adult children, loved ones) who are often exhausted, overwhelmed, and looking for practical help.
+      const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic. You are speaking directly with family care partners.
 
-YOUR ROLE & VOICE:
-Speak with the warmth, compassion, and clarity of an experienced physician sitting down with a patient and their family. Speak in plain, human language that anyone can easily understand, regardless of their background or medical knowledge.
+CRITICAL GROUNDING REQUIREMENT:
+All clinical advice, explanations, and action steps MUST be grounded STRICTLY in the uploaded verified clinical guide documents provided below. Do NOT use generic medical assumptions, hallucinations, or outside data.
 
-CRITICAL COMMUNICATION GUIDELINES:
-1. PLAIN, HUMAN LANGUAGE:
-   - Avoid medical jargon. If you explain what is happening in the brain, use simple, everyday analogies (e.g., "the brain's natural social filter," "the brain's internal starter switch," or "loss of brain awareness that anything is wrong").
-   - Always validate the caregiver's experience: remind them that their loved one is NOT doing this on purpose, being mean, or stubborn—the illness is changing how their brain processes the world.
+RELEVANCY & ACCURACY CHECK:
+- If the uploaded clinical documents below DO NOT directly contain information to address the user's specific clinical scenario safely, you MUST NOT guess or invent medical advice.
+- Instead, kindly and clearly state that our current clinical notes do not have specific instructions for this scenario, and remind the caregiver that they can reach the Johns Hopkins clinic at (410) 955-5147 (option 2) or message via EPIC/MyChart for non-urgent clinical guidance. For life-threatening emergencies, always call 911.
 
-2. CLEAR, ACTIONABLE STRUCTURE:
-   Structure your answer with clear, easy-to-read sections:
-   - A brief, warm opening sentence acknowledging how challenging this symptom is.
-   - ### Understanding What Is Happening: 1-2 short, plain-language paragraphs explaining why this happens without clinical coldness.
-   - ### Practical Steps You Can Try: 3 to 4 numbered, step-by-step actions. Start each step with a bold action (e.g., "1. **Stay calm and redirect** — ..."). Give concrete, realistic ideas families can try immediately.
-   - ### What to Keep in Mind: 2-3 brief, reassuring bullet points that give the caregiver peace of mind and remind them to be kind to themselves.
+STRUCTURE & VOICE:
+- Speak warmly and empathetically in plain, everyday language suitable for stressed care partners.
+- If the guide DOES cover the topic, structure your answer clearly:
+  - Warm opening validation.
+  - ### Understanding What Is Happening
+  - ### Practical Steps (numbered steps with bold action titles)
+  - ### What to Keep in Mind
+- Under NO circumstances recommend or discuss specific prescription drug dosages.
 
-3. STRICT CLINICAL RULES:
-   - Under NO circumstances recommend or discuss specific prescription drug dosages or off-label pharmaceuticals.
-   - If the user asks about specific prescription medications (e.g., Seroquel, Haldol, Aricept, Trazodone), politely explain: "Prescription medications must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911."
-   - In physical danger or acute behavioral emergencies, calmly remind them to prioritize their physical safety and call 911.
-
-4. FORMATTING:
-   - Keep paragraphs short (2-3 sentences max).
-   - Use bolding on key action titles so tired caregivers can quickly scan.
-   - Never use robotic prefixes like "CLINICAL Q&A" or "Dr. Seema's Clinical Protocol for:". Address the user warmly and directly.
-
-VERIFIED CLINICAL KNOWLEDGE CORPUS:
+VERIFIED CLINICAL KNOWLEDGE CORPUS (FROM UPLOADED GUIDE FILES):
 ${fullContextCorpus}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-2.5-flash',
         contents: query,
         config: {
           systemInstruction,
@@ -3110,47 +3760,27 @@ ${fullContextCorpus}`;
         },
       });
 
-      const answerText = response.text || '';
-
-      // Match citations from approved resources & FAQs
-      const citedResources: { id: string; title: string; url?: string }[] = [];
-      if (bestFaq?.relatedGuideId && bestFaq?.relatedGuideTitle) {
-        citedResources.push({
-          id: bestFaq.relatedGuideId,
-          title: bestFaq.relatedGuideTitle,
-        });
-      }
-
-      clinicalResources.forEach((r) => {
-        const cat = r.category.toLowerCase();
-        const title = r.title.toLowerCase();
-        if (
-          (answerText.toLowerCase().includes(cat) || queryLower.includes(cat) || answerText.toLowerCase().includes(title.split(' ')[0])) &&
-          !citedResources.some((c) => c.id === r.id)
-        ) {
-          citedResources.push({ id: r.id, title: r.title, url: r.externalUrl });
-        }
-      });
-
-      const suggestedQuestions = CLINICAL_50_FAQ
-        .filter((f: ClinicalFaqItem) => f.id !== bestFaq?.id)
-        .slice(0, 3)
-        .map((f: ClinicalFaqItem) => f.question);
+      const answerText = (response.text || '').trim();
 
       return res.json({
         answer: answerText,
-        citedResources: citedResources.slice(0, 3),
-        matchedFaq: bestFaq,
-        suggestedQuestions,
+        suggestedQuestions: suggestedQuestionsList,
+        isUploadedGuideSourced: true,
+        sourceMode: 'UPLOADED_GUIDES_ONLY',
       });
     } catch (genAiError) {
-      console.warn('Gemini generation unavailable or quota reached, using clinical RAG database:', genAiError);
+      console.warn('Gemini generation error, falling back to deterministic uploaded guide response:', genAiError);
     }
   }
 
-  // High-Precision Deterministic Clinical RAG Fallback
-  const localRag = generateLocalRagResponse(query);
-  return res.json(localRag);
+  // Deterministic fallback formatted directly from top matching uploaded guide section
+  const fallbackAnswer = formatUploadedGuideAnswer(bestMatchChunk);
+  return res.json({
+    answer: fallbackAnswer,
+    suggestedQuestions: suggestedQuestionsList,
+    isUploadedGuideSourced: true,
+    sourceMode: 'UPLOADED_GUIDES_ONLY',
+  });
 });
 
 // Private 1-on-1 Messages between Dr. Seema & Caregivers

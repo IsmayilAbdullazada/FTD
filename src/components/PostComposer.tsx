@@ -25,6 +25,7 @@ import { INITIAL_POSTS, INITIAL_COMMENTS } from '../data/clinicalStore';
 interface PostComposerProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
+  initialTitle?: string;
   onPostSubmitted: () => void;
   onCancel: () => void;
   onOpenResource: (resourceId: string) => void;
@@ -479,12 +480,13 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
 export const PostComposer: React.FC<PostComposerProps> = ({
   currentUser,
   cohorts,
+  initialTitle,
   onPostSubmitted,
   onCancel,
   onOpenResource,
   onOpenDiscussion,
 }) => {
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle || '');
   const [content, setContent] = useState('');
   const [selectedCohortId, setSelectedCohortId] = useState(
     cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || ''
@@ -495,6 +497,12 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     title: string;
     cohortName: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (initialTitle) {
+      setTitle(initialTitle);
+    }
+  }, [initialTitle]);
 
   const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
     user.role !== 'CARE_PARTNER' || audience === 'BOTH' || audience === user.condition;

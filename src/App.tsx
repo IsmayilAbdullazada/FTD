@@ -41,6 +41,7 @@ export default function App() {
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [inspectedResourceId, setInspectedResourceId] = useState<string | null>(null);
+  const [composerInitialTitle, setComposerInitialTitle] = useState<string>('');
 
   // Initial load
   const loadUserAndData = async (asUserId?: string) => {
@@ -150,7 +151,6 @@ export default function App() {
         pendingTriageCount={pendingTriageCount}
         notifications={notifications}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenAssistant={() => setIsAssistantOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -165,7 +165,6 @@ export default function App() {
             recentNotice={feedNotice}
             onDismissNotice={() => setFeedNotice(null)}
             onOpenComposer={() => setActiveTab('compose')}
-            onOpenAssistant={() => setIsAssistantOpen(true)}
           />
         )}
 
@@ -173,14 +172,20 @@ export default function App() {
           <PostComposer
             currentUser={currentUser}
             cohorts={cohorts}
+            initialTitle={composerInitialTitle}
             onPostSubmitted={() => {
+              setComposerInitialTitle('');
               setFeedNotice('Your question has been submitted and is currently being reviewed by Dr. Seema.');
               setActiveTab('feed');
               handleQueueUpdated();
             }}
-            onCancel={() => setActiveTab('feed')}
+            onCancel={() => {
+              setComposerInitialTitle('');
+              setActiveTab('feed');
+            }}
             onOpenResource={handleOpenResourceFromDeflection}
             onOpenDiscussion={(postId) => {
+              setComposerInitialTitle('');
               setTargetDiscussionId(postId);
               setActiveTab('feed');
             }}
@@ -245,11 +250,6 @@ export default function App() {
         isOpen={isAssistantOpen}
         onToggle={() => setIsAssistantOpen((prev) => !prev)}
         onClose={() => setIsAssistantOpen(false)}
-        onOpenResource={(resId) => {
-          setIsAssistantOpen(false);
-          setInspectedResourceId(resId);
-          setActiveTab('knowledge');
-        }}
       />
 
       <InvitationModal

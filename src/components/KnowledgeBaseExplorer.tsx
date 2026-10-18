@@ -96,7 +96,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newTitle.trim() || !newSummary.trim() || isSubmitting) return;
+    if (!newTitle.trim() || !newSummary.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
 
     if (!newExternalUrl.trim() && !newPdfFile && !newFileAttachmentUrl.trim()) {
       setSuccessToast('Please provide an external URL or a PDF resource.');
@@ -533,7 +533,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   Add Clinical Source / Protocol
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Publish verified guidance to the caregiver knowledge base and RAG search.
+                  Publish verified guidance to the caregiver knowledge base and assistant.
                 </p>
               </div>
               <button

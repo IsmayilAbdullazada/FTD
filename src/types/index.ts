@@ -219,6 +219,7 @@ export interface GroupMember {
   role: UserRole;
   status: 'ACTIVE' | 'PENDING' | 'MUTED';
   joinedAt: string;
+  condition?: Condition;
 }
 
 
@@ -267,3 +268,51 @@ export interface CalendarEvent {
   authorId: string;
   condition?: Audience;
 }
+
+export interface ChatbotGuideFile {
+  id: string;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  category: string;
+  description?: string;
+  content: string;
+  sectionCount?: number;
+  wordCount?: number;
+  isActive: boolean;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChatbotKnowledgeSourceMode = 'UPLOADED_GUIDES_ONLY' | 'HYBRID' | 'MOCK_FAQS_ONLY';
+
+export interface ChatbotKnowledgeConfig {
+  sourceMode: ChatbotKnowledgeSourceMode;
+  totalActiveGuides: number;
+  totalWords: number;
+}
+
+export interface ChatbotGuideTestResult {
+  query: string;
+  answer: string;
+  sourceMode: ChatbotKnowledgeSourceMode;
+  matchedGuide?: {
+    id: string;
+    title: string;
+    fileName: string;
+    sectionTitle: string;
+    matchScore: number;
+    snippet: string;
+  };
+  allMatchedSections: {
+    guideTitle: string;
+    sectionTitle: string;
+    matchScore: number;
+    snippet: string;
+  }[];
+  usedMockFaq: boolean;
+}
+

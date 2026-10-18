@@ -32,7 +32,6 @@ interface CarePartnerFeedProps {
   recentNotice?: string | null;
   onDismissNotice?: () => void;
   onOpenComposer: () => void;
-  onOpenAssistant: () => void;
 }
 
 export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
@@ -44,7 +43,6 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   recentNotice,
   onDismissNotice,
   onOpenComposer,
-  onOpenAssistant,
 }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);

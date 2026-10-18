@@ -373,15 +373,35 @@ export const INITIAL_RESOURCES: ClinicalResource[] = [
       'Review practical approaches to incontinence care.',
       'Consider whether a new symptom needs clinical evaluation.'
     ],
-    createdAt: '2026-10-16T00:00:00.000Z'
-  }
+    createdAt: '2026-03-05T09:15:00Z',
+  },
+  {
+    id: 'res-both-selfcare',
+    title: 'Caring for the Caregiver: Respite and Self-Care',
+    summary: 'Practical ways to protect your own health while caring for someone with dementia.',
+    contentBody: `Caregiver burnout is common and preventable.\n\n1. Schedule respite before you need it, even a few hours a week.\n2. Keep your own medical appointments.\n3. Join a support group.\n4. Accept specific offers of help and give people a task.\n5. Tell the clinic team early if you feel overwhelmed.`,
+    diseaseDomain: 'BOTH',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: ['Plan respite early', 'Protect your own health', 'Ask for help with specific tasks'],
+    createdAt: '2026-10-01T09:00:00Z',
+  },
+  {
+    id: 'res-ad-sundowning',
+    title: 'Managing Sundowning in Alzheimer\'s Disease',
+    summary: 'Routines that can ease late-afternoon confusion and restlessness.',
+    contentBody: `Sundowning is increased confusion or agitation in the late afternoon and evening.\n\n1. Keep a predictable daily routine.\n2. Get daylight and gentle activity in the morning.\n3. Limit long afternoon naps and caffeine.\n4. Turn lights on before dusk and reduce noise.\n5. Respond calmly. Avoid correcting or arguing.\n\nPlaceholder text: replace with Dr. Seema's reviewed guidance.`,
+    diseaseDomain: 'AD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: ['Predictable routine', 'Light before dusk', 'Calm responses'],
+    createdAt: '2026-10-02T09:00:00Z',
+  },
 ];
 
 export const INITIAL_POSTS: Post[] = [
   {
     id: 'post-general-1',
     title: 'General Forum: Managing apathy vs depression in frontotemporal dementia',
-    content: 'Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
+    content: 'Dr. Seema explained that apathy in bvFTD stems from frontal executive disconnection, not emotional grief. What daily low-pressure routines or sensory tasks have helped keep your loved one gently engaged without triggering resistance?',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',

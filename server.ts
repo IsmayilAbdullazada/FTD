@@ -127,6 +127,7 @@ interface ClinicalResource {
   contentBody: string;
   externalUrl?: string;
   fileAttachmentUrl?: string;
+  additionalLinks?: { label: string; url: string }[];
   diseaseDomain: Audience;
   category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
   keyTakeaways: string[];
@@ -284,7 +285,7 @@ const users: User[] = [
     phoneNumber: '(410) 955-5000',
     clinicPatientId: 'STAFF-MD-409',
     isActive: true,
-    anonymousHandle: 'Dr. Seema Gulyani (Moderator)',
+    anonymousHandle: 'Seema Gulyani (Moderator)',
     avatarColor: '#002D72',
     badgeLabel: 'Clinician Moderator',
     createdAt: '2026-01-15T09:00:00Z',
@@ -547,99 +548,241 @@ function getUserAllowedGroups(userId: string, role: string): string[] {
 
 const clinicalResources: ClinicalResource[] = [
   {
-    id: 'res-aftd-incontinence',
-    title: 'AFTD Practical Care Sheet: Managing Incontinence in bvFTD',
-    summary: 'Clinical guidelines on loss of bowel/bladder awareness, toileting schedules, and behavioral strategies without confrontation.',
-    contentBody: `In Behavioral Variant FTD (bvFTD), incontinence often stems not from urological failure, but from frontal lobe disinhibition and loss of interoceptive awareness (inability to perceive body cues).
-
-Key Strategies:
-1. Scheduled Voiding Routine: Escort patient to restroom every 90-120 minutes on a fixed timer rather than asking "Do you need to go?" (asking frequently triggers automatic oppositional refusal).
-2. Adaptive Garments: Tear-away side pull-ons with quiet cloth liners reduce tactile defensiveness compared to noisy plastic briefs.
-3. Visual Cueing: Leave restroom door open with the toilet in direct sightline, illuminated by high-contrast warm lighting. Use contrasting color toilet seats (dark blue on white porcelain).
-4. Fluid Management: Maintain high hydration during morning and early afternoon to prevent UTIs, but taper fluids 2 hours before bedtime.
-5. Escalation Warning: Sudden acute incontinence or delirium may signal a urinary tract infection (UTI). Contact the clinic promptly for urinalysis.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/incontinence/',
-    fileAttachmentUrl: '/resources/aftd-incontinence-guide.pdf',
-    diseaseDomain: 'FTD',
-    category: 'INCONTINENCE',
-    keyTakeaways: [
-      'Scheduled voiding every 90-120 minutes prevents resistance',
-      'Use quiet cloth-backed tear-away briefs rather than crinkly plastic',
-      'High-contrast colored toilet seat assists visual spatial processing',
-      'Rule out UTI if sudden acute incontinence develops',
-    ],
-    createdAt: '2026-01-20T10:00:00Z',
-  },
-  {
-    id: 'res-aftd-bathing',
-    title: 'De-escalating Bathing and Shower Agitation in Frontotemporal Dementia',
-    summary: 'Trauma-informed, non-pharmacological protocols for severe shower resistance, sponge throwing, and tactile hypersensitivity.',
-    contentBody: `Shower aggression in FTD is almost always driven by sensory overload (the sound of rushing water, cold air, naked vulnerability) and loss of cognitive sequence comprehension.
-
-Recommended Clinic Protocols:
-1. Towel Bathing Method: Keep the patient wrapped in large warm bath towels. Uncover only one limb at a time to wash with warm, no-rinse soothing washcloths.
-2. Ambient Preparation: Heat the bathroom to 78°F with a portable radiant heater before undressing begins. Run the water beforehand so the sound is constant rather than a sudden startling blast.
-3. Remove Overhead Showers: Overhead water sprays directly onto the face feel like an assault to a disinhibited frontal lobe. Use a handheld wand directed strictly at the feet and torso.
-4. Sing or Play Familiar Music: Familiar songs from early adulthood occupy the auditory cortex and decrease amygdala threat responses.
-5. NEVER Argue or Restrain: If agitation escalates to physical defense, step back, ensure physical safety, disengage calmly, and re-attempt 45 minutes later with a different caregiver or technique.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/daily-care/',
-    fileAttachmentUrl: '/resources/bathing-agitation-protocol.pdf',
+    id: 'ftd-aggressive-behavior',
+    title: 'Managing Aggressive Behavior in FTD',
+    summary: 'A source document about managing aggressive behavior in FTD.',
+    contentBody: 'Read the attached source document for guidance on this topic.',
+    fileAttachmentUrl: '/resources/Managing-Aggressive-Behavior.pdf',
     diseaseDomain: 'FTD',
     category: 'BEHAVIORAL_AGITATION',
-    keyTakeaways: [
-      'Pre-warm the bathroom to 78°F before undressing',
-      'Utilize no-rinse warm towel bathing when showers cause terror',
-      'Handheld shower wand directed away from face',
-      'Music and step-by-step calm reassurance reduces fight-or-flight',
-    ],
-    createdAt: '2026-02-05T12:00:00Z',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
   },
   {
-    id: 'res-medicaid-legal',
-    title: 'Medicaid Long-Term Care & Elder Law Resource Guide (Maryland & PA)',
-    summary: 'Guidance on Medicaid five-year look-back, spousal impoverishment protections, and vetted elder law counsel in MD/PA.',
-    contentBody: `Navigating long-term residential memory care placement requires early legal structuring before cognitive impairment prevents signing Powers of Attorney.
-
-Crucial Facts for Care Partners:
-1. Spousal Impoverishment Protections: In Maryland, the community spouse can retain the primary residence, one automobile, and a substantial Community Spouse Resource Allowance (CSRA) up to statutory limits (~$154,140 in 2026).
-2. Five-Year Lookback Rule: Any gift or transfer of assets for less than fair market value within 60 months prior to Medicaid application triggers penalty periods.
-3. Special Needs / Supplemental Trusts: Enable families to provide quality-of-life enhancements for the diagnosed individual without jeopardizing Medicaid eligibility.
-4. Clinic Vetted Contacts: Maryland Legal Aid Senior Legal Helpline: 1-800-999-8904. National Academy of Elder Law Attorneys (NAELA) directory at naela.org.`,
-    externalUrl: 'https://aging.maryland.gov/Pages/medicaid-long-term-care.aspx',
-    fileAttachmentUrl: '/resources/md-medicaid-elder-law.pdf',
+    id: 'ftd-lack-of-insight',
+    title: 'Everything Is Just Fine: Lack of Insight in FTD',
+    summary: 'AFTD newsletter resource about lack of insight.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_Newsletter_Winter_2019.pdf',
     diseaseDomain: 'FTD',
-    category: 'LEGAL_MEDICAID',
-    keyTakeaways: [
-      'Community spouse retains primary home and protected asset allowance',
-      'Beware 60-month lookback on uncompensated transfers',
-      'Execute Durable Financial & Medical Powers of Attorney immediately',
-      'Consult vetted NAELA-certified elder law counsel',
-    ],
-    createdAt: '2026-02-18T15:30:00Z',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
   },
   {
-    id: 'res-safety-wandering',
-    title: 'FTD Wandering, Elopement & Impulsive Driving Risk Management',
-    summary: 'Mitigating acute safety risks from loss of hazard awareness, GPS tracker placement, and driving retirement.',
-    contentBody: `Unlike Alzheimer's wandering where patients are disoriented and looking for childhood homes, bvFTD wandering is frequently purposeful and rapid (e.g., compulsive walks along known routes or fixated shopping trips), but with total disregard for oncoming traffic.
-
-Protocols:
-1. Discrete GPS Tracking: Affix discreet Apple AirTags or AngelSense wearable devices in shoe insoles or jacket linings (wristwatches are often discarded).
-2. Key Camouflage & Disabling: Discontinue driving privileges decisively. Hide car keys, install a battery disconnect switch or fuse-pull rather than debating driving competence.
-3. Door Alarms: Install magnetic chime sensors on exterior doors placed at top of door frame outside normal line of sight.
-4. Safe Return Registry: File a wandering profile with local Baltimore / county police departments including recent photo, favorite walking spots, and de-escalation instructions.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/safety/',
-    fileAttachmentUrl: '/resources/wandering-safety-guide.pdf',
+    id: 'ftd-apathy',
+    title: 'Understanding Apathy in FTD',
+    summary: 'AFTD newsletter resource about apathy.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_Newsletter_Winter_2018.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-compulsive-behaviors',
+    title: 'Compulsive Behaviors in FTD',
+    summary: 'Resources on compulsive behaviors from AFTD.',
+    contentBody: 'Read the attached PDF or visit the AFTD webpage.',
+    fileAttachmentUrl: '/resources/July-2012.pdf',
+    externalUrl: 'https://www.theaftd.org/help-and-hope/ta-compulsive-behaviors/',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-hospice-care',
+    title: 'Hospice Care in FTD',
+    summary: 'AFTD newsletter resource about hospice care.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_Newsletter_Fall_2016.pdf',
+    diseaseDomain: 'FTD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-driving',
+    title: 'Driving and FTD',
+    summary: 'AFTD resources about driving-related decisions and caregiver guidance.',
+    contentBody: 'Visit the AFTD webpages for information on driving and FTD.',
+    externalUrl: 'https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/',
+    fileAttachmentUrl: undefined,
     diseaseDomain: 'FTD',
     category: 'SAFETY_WANDERING',
-    keyTakeaways: [
-      'Place GPS trackers in shoe insoles or sewn into jackets',
-      'Physically disable vehicle rather than engaging in logic arguments',
-      'Register with local county Safe Return police program',
-      'High door-frame chimes alert family during night wandering',
-    ],
-    createdAt: '2026-03-05T09:15:00Z',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
   },
+  {
+    id: 'ftd-loss-of-empathy',
+    title: 'The Loss of Empathy and Connection in FTD',
+    summary: 'AFTD newsletter resource about loss of empathy.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PiC-fall-2014-WTDA.pdf',
+    diseaseDomain: 'FTD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-incontinence',
+    title: 'Incontinence in FTD',
+    summary: 'AFTD newsletter resource about incontinence.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/January-2014.pdf',
+    diseaseDomain: 'FTD',
+    category: 'INCONTINENCE',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-resistant-behavior',
+    title: 'Approaches to Resistant Behavior in FTD',
+    summary: 'AFTD newsletter resource about resistant behavior.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_sprng_2020.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-roaming',
+    title: 'Roaming in FTD',
+    summary: 'AFTD newsletter resource about roaming.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/Spring-2013.pdf',
+    diseaseDomain: 'FTD',
+    category: 'SAFETY_WANDERING',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-sexual-behavior',
+    title: 'Sexual Behavior in FTD',
+    summary: 'AFTD newsletter resource about sexual behavior.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/Summer-2014-Newsletter_Final.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-sleep',
+    title: 'Sleep Issues in FTD',
+    summary: 'A source document about sleep issues in FTD.',
+    contentBody: 'Read the attached source document for information about sleep and FTD.',
+    fileAttachmentUrl: '/resources/Sleep-Issues-in-FTD.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-grief',
+    title: 'Grief and the FTD Journey',
+    summary: 'AFTD resources about grief during the FTD journey.',
+    contentBody: 'Visit the AFTD webpage or read the attached grief booklet.',
+    externalUrl: 'https://www.theaftd.org/help-and-hope/hs-grief-and-the-ftd-journey/',
+    fileAttachmentUrl: '/resources/AFTDGriefBookletForWeb.pdf',
+    diseaseDomain: 'FTD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'res-ad-behavior-changes',
+    title: "Managing Personality and Behavior Changes",
+    summary: "Understand common behavior changes in Alzheimer's and explore ways to respond calmly and safely.",
+    contentBody: "This National Institute on Aging guide explains that changes in behavior may be associated with Alzheimer's, but can also be influenced by pain, hunger, thirst, constipation, sleep problems, medication effects, or a stressful environment. It discusses practical approaches such as avoiding arguments, offering reassurance, redirecting attention, reducing noise and clutter, and maintaining familiar routines. Sudden or rapidly changing symptoms should be discussed promptly with a healthcare professional.",
+    externalUrl: "https://www.nia.nih.gov/health/alzheimers-changes-behavior-and-communication/alzheimers-caregiving-managing-personality-and",
+    diseaseDomain: 'AD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [
+      'Look for possible physical or environmental triggers.',
+      'Use reassurance and redirection rather than arguing.',
+      'Discuss sudden or rapidly changing symptoms with a healthcare professional.'
+    ],
+    createdAt: '2026-10-16T00:00:00.000Z'
+  },
+  {
+    id: 'res-ad-home-safety',
+    title: "Home Safety for People with Alzheimer's",
+    summary: "Review household hazards and practical changes that can help make the home safer as needs change.",
+    contentBody: "This National Institute on Aging checklist covers home safety for people living with Alzheimer's. It includes suggestions for improving lighting, reducing fall risks, securing potentially dangerous household items, and making the kitchen, bedroom, and bathroom safer. Care partners can review the home periodically and adapt safety measures as the person's abilities and needs change.",
+    externalUrl: "https://www.nia.nih.gov/health/safety/home-safety-checklist-alzheimers-disease",
+    diseaseDomain: 'AD',
+    category: 'SAFETY_WANDERING',
+    keyTakeaways: [
+      'Review the home for fall risks and hazards.',
+      'Secure medicines, cleaning products, and other dangerous items.',
+      'Reassess safety as abilities and care needs change.'
+    ],
+    createdAt: '2026-10-16T00:00:00.000Z'
+  },
+  {
+    id: 'res-ad-daily-care',
+    title: "Daily Care and Everyday Routines",
+    summary: "Explore guidance for adapting daily routines, activities, personal care, and meals for someone living with dementia.",
+    contentBody: "The Alzheimer's Association Daily Care resource hub links to information about planning a daily routine, adapting activities, communication, food and eating, incontinence, bathing, dressing, dental care, and medication safety. It can help care partners explore practical approaches to everyday support and find more specific guidance for an individual care need.",
+    externalUrl: "https://www.alz.org/help-support/caregiving/daily-care",
+    diseaseDomain: 'AD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [
+      'Adapt routines and activities as needs change.',
+      'Explore dedicated guidance for personal care and eating.',
+      'Use the topic links to find more specific information.'
+    ],
+    createdAt: '2026-10-16T00:00:00.000Z'
+  },
+  {
+    id: 'res-ad-caregiving-hub',
+    title: "Alzheimer's Caregiving Resource Hub",
+    summary: "Find broader caregiving guidance covering communication, daily care, safety, care options, and planning ahead.",
+    contentBody: "This Alzheimer's Association resource hub brings together caregiver information on daily care, communication, safety, care options, legal planning, and paying for care. It is a useful starting point when a care partner is unsure which topic to explore first. Follow the individual topic links for more detailed information.",
+    externalUrl: "https://www.alz.org/help-support/caregiving",
+    diseaseDomain: 'AD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [
+      'Browse resources by caregiving topic.',
+      'Explore safety and future care planning.',
+      'Use topic-specific guidance for the current concern.'
+    ],
+    createdAt: '2026-10-16T00:00:00.000Z'
+  },
+  {
+    id: 'res-ad-caregiver-wellbeing',
+    title: "Taking Care of Yourself as a Care Partner",
+    summary: "Learn ways to seek help, share caregiving responsibilities, and protect your own physical and emotional well-being.",
+    contentBody: "The National Institute on Aging discusses the challenges of caring for a person with Alzheimer's and emphasizes that care partners also need support. The resource covers asking others for specific help, joining support groups, taking breaks, considering respite or adult day services, and planning for what might happen if care needs increase.",
+    externalUrl: "https://www.nia.nih.gov/health/alzheimers-caregiving-caring-yourself",
+    diseaseDomain: 'AD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [
+      'Ask others for specific, practical help.',
+      'Consider respite services and caregiver support groups.',
+      'Plan ahead for changes in caregiving responsibilities.'
+    ],
+    createdAt: '2026-10-16T00:00:00.000Z'
+  },
+  {
+    id: 'res-ad-stages-behaviors',
+    title: "Stages of Alzheimer's and Changing Care Needs",
+    summary: "Explore how caregiving needs and behaviors may change over time, including resources for specific stages and challenges.",
+    contentBody: "The Alzheimer's Association provides resources on accepting a diagnosis, early-, middle-, and late-stage caregiving, and common challenges such as aggression, anger, anxiety, and agitation. Care partners can use the page to identify a relevant topic and follow the links for more detailed guidance.",
+    externalUrl: "https://www.alz.org/help-support/caregiving/stages-behaviors",
+    diseaseDomain: 'AD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [
+      'Caregiving needs can change as the disease progresses.',
+      'Find topic-specific information about behavior challenges.',
+      'Revisit care strategies as needs change.'
+    ],
+    createdAt: '2026-10-16T00:00:00.000Z'
+  }
 ];
 
 // Helper: PII/PHI scrubber
@@ -939,8 +1082,8 @@ const posts: Post[] = [
     id: 'post-12',
     authorId: 'user-care-1',
     title: 'Coping with emotional blunting and loss of empathy in your partner',
-    rawContent: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Dr. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
-    sanitizedContent: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Dr. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
+    rawContent: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
+    sanitizedContent: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
     status: 'APPROVED',
     isClosed: false,
     moderatedBy: 'user-clinician-1',
@@ -1009,6 +1152,83 @@ const posts: Post[] = [
     updatedAt: '2026-10-08T10:00:00Z', 
     commentCount: 1, 
     upvotes: 4 
+  },
+
+  {
+    id: 'post-ad-2',
+    authorId: 'user-care-7',
+    title: 'Mom gets frustrated when she cannot find familiar objects',
+    rawContent: 'My mother often puts everyday items somewhere and then becomes upset when she cannot find them. We have tried reminding her where things belong, but that can make her more frustrated. What organization strategies have helped your families?',
+    sanitizedContent: 'My mother often puts everyday items somewhere and then becomes upset when she cannot find them. We have tried reminding her where things belong, but that can make her more frustrated. What organization strategies have helped your families?',
+    status: 'APPROVED',
+    condition: 'AD',
+    isClosed: false,
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-10T10:00:00Z',
+    assignedGroupIds: ['group-general'],
+    suggestedCohortId: 'group-general',
+    phiAlerts: [],
+    createdAt: '2026-10-10T09:15:00Z',
+    updatedAt: '2026-10-10T10:00:00Z',
+    commentCount: 2,
+    upvotes: 6,
+  },
+  {
+    id: 'post-ad-3',
+    authorId: 'user-care-6',
+    title: 'Helping Dad stay involved in activities he used to enjoy',
+    rawContent: 'My father used to love gardening and listening to music, but lately he loses interest quickly or says he cannot do it anymore. Have you found ways to adapt familiar hobbies so they still feel enjoyable without becoming overwhelming?',
+    sanitizedContent: 'My father used to love gardening and listening to music, but lately he loses interest quickly or says he cannot do it anymore. Have you found ways to adapt familiar hobbies so they still feel enjoyable without becoming overwhelming?',
+    status: 'APPROVED',
+    condition: 'AD',
+    isClosed: false,
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-11T11:00:00Z',
+    assignedGroupIds: ['group-general'],
+    suggestedCohortId: 'group-general',
+    phiAlerts: [],
+    createdAt: '2026-10-11T10:00:00Z',
+    updatedAt: '2026-10-11T11:00:00Z',
+    commentCount: 2,
+    upvotes: 9,
+  },
+  {
+    id: 'post-ad-4',
+    authorId: 'user-care-7',
+    title: 'Getting through appointments without overwhelming Mom',
+    rawContent: 'Medical appointments have become stressful because my mother gets anxious in unfamiliar places and has trouble following long explanations. What helps you prepare for appointments and make the experience easier for your loved one?',
+    sanitizedContent: 'Medical appointments have become stressful because my mother gets anxious in unfamiliar places and has trouble following long explanations. What helps you prepare for appointments and make the experience easier for your loved one?',
+    status: 'APPROVED',
+    condition: 'AD',
+    isClosed: false,
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-12T13:00:00Z',
+    assignedGroupIds: ['group-general'],
+    suggestedCohortId: 'group-general',
+    phiAlerts: [],
+    createdAt: '2026-10-12T12:00:00Z',
+    updatedAt: '2026-10-12T13:00:00Z',
+    commentCount: 2,
+    upvotes: 5,
+  },
+  {
+    id: 'post-ad-5',
+    authorId: 'user-care-6',
+    title: 'Feeling guilty when I need a break from caregiving',
+    rawContent: 'I love my father, but I sometimes feel guilty when I need time away or feel impatient after a difficult day. How do other care partners make room for their own needs while still feeling like they are doing enough?',
+    sanitizedContent: 'I love my father, but I sometimes feel guilty when I need time away or feel impatient after a difficult day. How do other care partners make room for their own needs while still feeling like they are doing enough?',
+    status: 'APPROVED',
+    condition: 'AD',
+    isClosed: false,
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-13T15:00:00Z',
+    assignedGroupIds: ['group-general'],
+    suggestedCohortId: 'group-general',
+    phiAlerts: [],
+    createdAt: '2026-10-13T14:00:00Z',
+    updatedAt: '2026-10-13T15:00:00Z',
+    commentCount: 2,
+    upvotes: 12,
   },
   { 
     id: 'post-both-1', 
@@ -1103,8 +1323,8 @@ const comments: Comment[] = [
     id: 'comm-gen-1',
     postId: 'post-general-1',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Great observation. Apathy does not equal clinical depression in FTD. Break activities down into simple 1-step tactile prompts (like folding warm towels or sorting coins) rather than asking "Do you want to do this?".',
-    sanitizedContent: 'Dr. Seema Gulyani: Great observation. Apathy does not equal clinical depression in FTD. Break activities down into simple 1-step tactile prompts (like folding warm towels or sorting coins) rather than asking "Do you want to do this?".',
+    rawContent: 'Seema Gulyani: Great observation. Apathy does not equal clinical depression in FTD. Break activities down into simple 1-step tactile prompts (like folding warm towels or sorting coins) rather than asking "Do you want to do this?".',
+    sanitizedContent: 'Seema Gulyani: Great observation. Apathy does not equal clinical depression in FTD. Break activities down into simple 1-step tactile prompts (like folding warm towels or sorting coins) rather than asking "Do you want to do this?".',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-18T12:00:00Z',
@@ -1114,8 +1334,8 @@ const comments: Comment[] = [
     id: 'comm-1',
     postId: 'post-1',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Great advice from the group. Remember the "Towel Bathing" protocol listed in our clinic resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
-    sanitizedContent: 'Dr. Seema Gulyani: Great advice from the group. Remember the "Towel Bathing" protocol listed in our clinic resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    rawContent: 'Seema Gulyani: Great advice from the group. Remember the "Towel Bathing" protocol listed in our clinic resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    sanitizedContent: 'Seema Gulyani: Great advice from the group. Remember the "Towel Bathing" protocol listed in our clinic resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-20T11:00:00Z',
@@ -1147,8 +1367,8 @@ const comments: Comment[] = [
     id: 'comm-4',
     postId: 'post-2',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
-    sanitizedContent: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    rawContent: 'Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    sanitizedContent: 'Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-22T15:20:00Z',
@@ -1191,8 +1411,8 @@ const comments: Comment[] = [
     id: 'comm-8',
     postId: 'post-4',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
-    sanitizedContent: 'Dr. Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
+    rawContent: 'Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
+    sanitizedContent: 'Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-25T13:30:00Z',
@@ -1213,8 +1433,8 @@ const comments: Comment[] = [
     id: 'comm-10',
     postId: 'post-5',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
-    sanitizedContent: 'Dr. Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
+    rawContent: 'Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
+    sanitizedContent: 'Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-26T11:15:00Z',
@@ -1246,8 +1466,8 @@ const comments: Comment[] = [
     id: 'comm-13',
     postId: 'post-6',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
-    sanitizedContent: 'Dr. Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
+    rawContent: 'Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
+    sanitizedContent: 'Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-27T16:00:00Z',
@@ -1268,8 +1488,8 @@ const comments: Comment[] = [
     id: 'comm-15',
     postId: 'post-7',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
-    sanitizedContent: 'Dr. Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
+    rawContent: 'Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
+    sanitizedContent: 'Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-27T10:00:00Z',
@@ -1312,8 +1532,8 @@ const comments: Comment[] = [
     id: 'comm-19',
     postId: 'post-9',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
-    sanitizedContent: 'Dr. Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
+    rawContent: 'Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
+    sanitizedContent: 'Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-27T14:30:00Z',
@@ -1334,8 +1554,8 @@ const comments: Comment[] = [
     id: 'comm-21',
     postId: 'post-10',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
-    sanitizedContent: 'Dr. Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
+    rawContent: 'Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
+    sanitizedContent: 'Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-28T09:00:00Z',
@@ -1356,8 +1576,8 @@ const comments: Comment[] = [
     id: 'comm-23',
     postId: 'post-11',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
-    sanitizedContent: 'Dr. Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
+    rawContent: 'Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
+    sanitizedContent: 'Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-27T19:00:00Z',
@@ -1389,8 +1609,8 @@ const comments: Comment[] = [
     id: 'comm-26',
     postId: 'post-12',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
-    sanitizedContent: 'Dr. Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
+    rawContent: 'Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
+    sanitizedContent: 'Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-28T08:45:00Z',
@@ -1411,8 +1631,8 @@ const comments: Comment[] = [
     id: 'comm-28',
     postId: 'post-13',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
-    sanitizedContent: 'Dr. Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
+    rawContent: 'Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
+    sanitizedContent: 'Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-28T09:40:00Z',
@@ -1433,8 +1653,8 @@ const comments: Comment[] = [
     id: 'comm-30',
     postId: 'post-14',
     authorId: 'user-clinician-1',
-    rawContent: 'Dr. Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
-    sanitizedContent: 'Dr. Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
+    rawContent: 'Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
+    sanitizedContent: 'Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
     status: 'APPROVED',
     moderatedBy: 'user-clinician-1',
     moderatedAt: '2026-09-28T10:00:00Z',
@@ -1450,6 +1670,95 @@ const comments: Comment[] = [
     moderatedBy: 'user-clinician-1', 
     moderatedAt: '2026-10-08T11:00:00Z', 
     createdAt: '2026-10-08T10:30:00Z' 
+  },
+
+  {
+    id: 'comm-ad-2',
+    postId: 'post-ad-2',
+    authorId: 'user-care-6',
+    rawContent: 'We started keeping commonly used things in the same visible places and added simple picture labels to a few drawers. It has made finding things less stressful for both of us.',
+    sanitizedContent: 'We started keeping commonly used things in the same visible places and added simple picture labels to a few drawers. It has made finding things less stressful for both of us.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-10T10:45:00Z',
+    createdAt: '2026-10-10T10:30:00Z',
+  },
+  {
+    id: 'comm-ad-3',
+    postId: 'post-ad-2',
+    authorId: 'user-clinician-1',
+    rawContent: 'A consistent place for frequently used items and simple visual cues may reduce frustration. Try introducing one change at a time and see which setup works best for your family.',
+    sanitizedContent: 'A consistent place for frequently used items and simple visual cues may reduce frustration. Try introducing one change at a time and see which setup works best for your family.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-10T11:00:00Z',
+    createdAt: '2026-10-10T11:00:00Z',
+  },
+  {
+    id: 'comm-ad-4',
+    postId: 'post-ad-3',
+    authorId: 'user-care-7',
+    rawContent: 'My mother enjoys helping water a few plants when I set everything up beforehand. Keeping the activity short and focusing on doing it together has worked better than asking her to complete a whole project.',
+    sanitizedContent: 'My mother enjoys helping water a few plants when I set everything up beforehand. Keeping the activity short and focusing on doing it together has worked better than asking her to complete a whole project.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-11T11:30:00Z',
+    createdAt: '2026-10-11T11:15:00Z',
+  },
+  {
+    id: 'comm-ad-5',
+    postId: 'post-ad-3',
+    authorId: 'user-clinician-1',
+    rawContent: 'Familiar activities can be adapted to focus on enjoyment rather than completion. Offer a simple step, give plenty of time, and let your loved one decide when they have had enough.',
+    sanitizedContent: 'Familiar activities can be adapted to focus on enjoyment rather than completion. Offer a simple step, give plenty of time, and let your loved one decide when they have had enough.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-11T12:00:00Z',
+    createdAt: '2026-10-11T12:00:00Z',
+  },
+  {
+    id: 'comm-ad-6',
+    postId: 'post-ad-4',
+    authorId: 'user-care-6',
+    rawContent: 'I write down the main questions we want to ask before we leave home and bring a familiar snack and something comforting. Having a short list helps me remember what to discuss, too.',
+    sanitizedContent: 'I write down the main questions we want to ask before we leave home and bring a familiar snack and something comforting. Having a short list helps me remember what to discuss, too.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-12T13:30:00Z',
+    createdAt: '2026-10-12T13:15:00Z',
+  },
+  {
+    id: 'comm-ad-7',
+    postId: 'post-ad-4',
+    authorId: 'user-clinician-1',
+    rawContent: 'Preparing a short written list, allowing extra time, and asking the clinician to explain one point at a time may help. Let the care team know ahead of the visit what makes appointments difficult.',
+    sanitizedContent: 'Preparing a short written list, allowing extra time, and asking the clinician to explain one point at a time may help. Let the care team know ahead of the visit what makes appointments difficult.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-12T14:00:00Z',
+    createdAt: '2026-10-12T14:00:00Z',
+  },
+  {
+    id: 'comm-ad-8',
+    postId: 'post-ad-5',
+    authorId: 'user-care-7',
+    rawContent: 'I used to think taking an afternoon off meant I was letting my family down. Now my sister covers one regular time slot each week, and I use it to rest or see a friend.',
+    sanitizedContent: 'I used to think taking an afternoon off meant I was letting my family down. Now my sister covers one regular time slot each week, and I use it to rest or see a friend.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-13T15:30:00Z',
+    createdAt: '2026-10-13T15:15:00Z',
+  },
+  {
+    id: 'comm-ad-9',
+    postId: 'post-ad-5',
+    authorId: 'user-clinician-1',
+    rawContent: 'Needing rest does not mean you care any less. If possible, identify one dependable source of support and one small activity that helps you recharge. A caregiver support group or social worker may also help you explore respite options.',
+    sanitizedContent: 'Needing rest does not mean you care any less. If possible, identify one dependable source of support and one small activity that helps you recharge. A caregiver support group or social worker may also help you explore respite options.',
+    status: 'APPROVED',
+    moderatedBy: 'user-clinician-1',
+    moderatedAt: '2026-10-13T16:00:00Z',
+    createdAt: '2026-10-13T16:00:00Z',
   },
   { id: 'comm-both-1', 
     postId: 'post-both-1', 
@@ -1478,7 +1787,7 @@ const auditEvents: ModerationAuditEvent[] = [
   {
     id: 'audit-1',
     moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'POST',
     entityId: 'post-1',
     actionTaken: 'APPROVED',
@@ -1488,7 +1797,7 @@ const auditEvents: ModerationAuditEvent[] = [
   {
     id: 'audit-2',
     moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'POST',
     entityId: 'post-2',
     actionTaken: 'APPROVED',
@@ -1518,7 +1827,7 @@ const directMessages: DirectMessage[] = [
     id: 'dm-1',
     recipientUserId: 'user-care-1',
     title: 'Post Approved: Bathing Aggression',
-    message: 'Your discussion query has been approved by Dr. Seema and published to the Baltimore Metro and General Clinic boards.',
+    message: 'Your discussion query has been approved by Seema and published to the Baltimore Metro and General Clinic boards.',
     type: 'APPROVAL',
     createdAt: '2026-09-20T10:15:00Z',
     read: true,
@@ -1636,7 +1945,7 @@ app.post('/api/v1/cohorts', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'COHORT',
     entityId: newCohort.id,
     actionTaken: 'CREATED_COHORT',
@@ -2024,7 +2333,7 @@ app.put('/api/v1/posts/:id/close', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId,
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'POST',
     entityId: post.id,
     actionTaken: post.isClosed ? 'CLOSED_DISCUSSION' : 'REOPENED_DISCUSSION',
@@ -2231,7 +2540,7 @@ app.post('/api/v1/moderation/action', (req, res) => {
       id: `dm-${Date.now()}`,
       recipientUserId: post.authorId,
       title: 'Your discussion query was approved',
-      message: `Dr. Seema reviewed and approved your post: "${post.title}". It is now visible to peer care partners.`,
+      message: `Seema reviewed and approved your post: "${post.title}". It is now visible to peer care partners.`,
       type: 'APPROVAL',
       createdAt: now,
       read: false,
@@ -2240,7 +2549,7 @@ app.post('/api/v1/moderation/action', (req, res) => {
     auditEvents.unshift({
       id: `audit-${Date.now()}`,
       moderatorId: 'user-clinician-1',
-      moderatorName: 'Dr. Seema Gulyani',
+      moderatorName: 'Seema Gulyani',
       entityType: 'POST',
       entityId: post.id,
       actionTaken: 'APPROVE',
@@ -2273,7 +2582,7 @@ app.post('/api/v1/moderation/action', (req, res) => {
     auditEvents.unshift({
       id: `audit-${Date.now()}`,
       moderatorId: 'user-clinician-1',
-      moderatorName: 'Dr. Seema Gulyani',
+      moderatorName: 'Seema Gulyani',
       entityType: 'POST',
       entityId: post.id,
       actionTaken: 'REJECT',
@@ -2298,8 +2607,8 @@ app.post('/api/v1/moderation/action', (req, res) => {
     directMessages.unshift({
       id: `dm-${Date.now()}`,
       recipientUserId: post.authorId,
-      title: 'Clinical Follow-up from Dr. Seema',
-      message: 'Prescription, medication dosing, and acute safety queries cannot be handled on public peer boards. Dr. Seema has opened a private message thread with you to follow up directly.',
+      title: 'Clinical Follow-up from Seema',
+      message: 'Prescription, medication dosing, and acute safety queries cannot be handled on public peer boards. Seema has opened a private message thread with you to follow up directly.',
       type: 'CLINICAL_ESCALATION',
       createdAt: now,
       read: false,
@@ -2308,7 +2617,7 @@ app.post('/api/v1/moderation/action', (req, res) => {
     auditEvents.unshift({
       id: `audit-${Date.now()}`,
       moderatorId: 'user-clinician-1',
-      moderatorName: 'Dr. Seema Gulyani',
+      moderatorName: 'Seema Gulyani',
       entityType: 'POST',
       entityId: post.id,
       actionTaken: 'CLINICAL_REDIRECT',
@@ -2351,9 +2660,23 @@ app.get('/api/v1/resources', (req, res) => {
 });
 
 app.post('/api/v1/resources', (req, res) => {
-  const { title, category, summary, contentBody, diseaseDomain, externalUrl, keyTakeaways } = req.body;
-  if (!title || !contentBody) {
-    return res.status(400).json({ error: 'Title and contentBody required' });
+  const {
+    title,
+    category,
+    summary,
+    contentBody,
+    diseaseDomain,
+    externalUrl,
+    fileAttachmentUrl,
+    additionalLinks,
+    keyTakeaways,
+    authorId
+  } = req.body;
+
+  if (!title?.trim() || !contentBody?.trim()) {
+    return res.status(400).json({
+      error: 'Title and contentBody are required.',
+    });
   }
 
   const newRes: ClinicalResource = {
@@ -2364,6 +2687,8 @@ app.post('/api/v1/resources', (req, res) => {
     contentBody,
     diseaseDomain: diseaseDomain || 'FTD',
     externalUrl: externalUrl || '',
+    fileAttachmentUrl: fileAttachmentUrl || undefined,
+    additionalLinks: Array.isArray(additionalLinks) ? additionalLinks : [],
     keyTakeaways: keyTakeaways || [],
     createdAt: new Date().toISOString(),
   };
@@ -2373,7 +2698,7 @@ app.post('/api/v1/resources', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'RESOURCE' as any,
     entityId: newRes.id,
     actionTaken: 'CREATED_CLINICAL_RESOURCE',
@@ -2382,6 +2707,31 @@ app.post('/api/v1/resources', (req, res) => {
   });
 
   res.status(201).json(newRes);
+});
+
+// Clinician can delete a resource 
+app.delete('/api/v1/resources/:id', (req, res) => {
+  const { id } = req.params;
+  const index = clinicalResources.findIndex((resource) => resource.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Clinical resource not found.' });
+  }
+
+  const [deleted] = clinicalResources.splice(index, 1);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: deleted.id,
+    actionTaken: 'DELETED_CLINICAL_RESOURCE',
+    notes: `Deleted resource: "${deleted.title}"`,
+    createdAt: new Date().toISOString(),
+  });
+
+  return res.status(200).json({ message: 'Clinical resource deleted.', id });
 });
 
 // Clinic Updates (everyone reads, staff writes)
@@ -2421,7 +2771,7 @@ app.post('/api/v1/updates', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: authorId,
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'UPDATE' as any,
     entityId: update.id,
     actionTaken: 'PUBLISHED_CLINIC_UPDATE',
@@ -2476,7 +2826,7 @@ app.post('/api/v1/events', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: authorId,
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'EVENT' as any,
     entityId: event.id,
     actionTaken: 'CREATED_EVENT',
@@ -2537,7 +2887,7 @@ app.post('/api/v1/auth/invitations', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'USER',
     entityId: newInvitation.id,
     actionTaken: 'INVITED_CARE_PARTNER',
@@ -3304,7 +3654,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const unverifiedKeywords = ['ivermectin', 'coconut oil', 'lion mane', 'turmeric', 'hydroxychloroquine', 'cure'];
   if (unverifiedKeywords.some((u) => queryLower.includes(u))) {
     return res.json({
-      answer: `I cannot provide guidance on unverified or speculative remedies. Dr. Seema’s repository only includes scientifically verified clinical protocols approved for Johns Hopkins FTD families. Please discuss any dietary supplements directly with your clinical neurology team at (410) 955-5147 (option 2).`,
+      answer: `I cannot provide guidance on unverified or speculative remedies. Seema’s repository only includes scientifically verified clinical protocols approved for Johns Hopkins FTD families. Please discuss any dietary supplements directly with your clinical neurology team at (410) 955-5147 (option 2).`,
       isMedicationRefusal: false,
       citedResources: [],
       suggestedQuestions: [
@@ -3454,8 +3804,8 @@ const privateChatsStore: any[] = [
     senderName: 'CarePartner-882',
     senderRole: 'CARE_PARTNER',
     recipientId: 'user-clinician-1',
-    recipientName: 'Dr. Seema Gulyani',
-    content: 'Thank you Dr. Seema. The towel bathing method helped us tremendously yesterday without escalating his anxiety.',
+    recipientName: 'Seema Gulyani',
+    content: 'Thank you Seema. The towel bathing method helped us tremendously yesterday without escalating his anxiety.',
     createdAt: '2026-09-21T14:30:00Z',
     read: true,
   },
@@ -3482,10 +3832,10 @@ app.post('/api/v1/chat/private', (req, res) => {
     id: `chat-msg-${Date.now()}`,
     conversationId: `chat-${caregiverId}`,
     senderId: sender.id,
-    senderName: sender.role === 'CLINICIAN_MODERATOR' ? 'Dr. Seema Gulyani' : sender.anonymousHandle,
+    senderName: sender.role === 'CLINICIAN_MODERATOR' ? 'Seema Gulyani' : sender.anonymousHandle,
     senderRole: sender.role,
     recipientId: recipient.id,
-    recipientName: recipient.role === 'CLINICIAN_MODERATOR' ? 'Dr. Seema Gulyani' : recipient.anonymousHandle,
+    recipientName: recipient.role === 'CLINICIAN_MODERATOR' ? 'Seema Gulyani' : recipient.anonymousHandle,
     content,
     createdAt: new Date().toISOString(),
     read: false,
@@ -3633,7 +3983,7 @@ app.post('/api/v1/cohorts/members/reassign', (req, res) => {
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: 'user-clinician-1',
-    moderatorName: 'Dr. Seema Gulyani',
+    moderatorName: 'Seema Gulyani',
     entityType: 'MEMBER_ASSIGNMENT' as any,
     entityId: userId,
     actionTaken: 'REASSIGNED_COHORT',

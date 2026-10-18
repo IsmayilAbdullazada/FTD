@@ -22,7 +22,7 @@ export const INITIAL_USERS: (CurrentUser & { phoneNumber?: string })[] = [
     lastName: 'Gulyani',
     phoneNumber: '(410) 955-5000',
     clinicPatientId: 'STAFF-MD-409',
-    anonymousHandle: 'Dr. Seema Gulyani',
+    anonymousHandle: 'Seema Gulyani',
     avatarColor: '#002D72',
     badgeLabel: 'Clinician Moderator',
   },
@@ -215,92 +215,163 @@ export const INITIAL_GROUPS: CommunityGroup[] = [
 
 export const INITIAL_RESOURCES: ClinicalResource[] = [
   {
+    id: 'ftd-aggressive-behavior',
+    title: 'Managing Aggressive Behavior in FTD',
+    summary: 'A source document about managing aggressive behavior in FTD.',
+    contentBody: 'Read the attached source document for guidance on this topic.',
+    fileAttachmentUrl: '/resources/Managing-Aggressive-Behavior.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-lack-of-insight',
+    title: 'Everything Is Just Fine: Lack of Insight in FTD',
+    summary: 'AFTD newsletter resource about lack of insight.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_Newsletter_Winter_2019.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-apathy',
+    title: 'Understanding Apathy in FTD',
+    summary: 'AFTD newsletter resource about apathy.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_Newsletter_Winter_2018.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-compulsive-behaviors',
+    title: 'Compulsive Behaviors in FTD',
+    summary: 'Resources on compulsive behaviors from AFTD.',
+    contentBody: 'Read the attached PDF or visit the AFTD webpage.',
+    fileAttachmentUrl: '/resources/July-2012.pdf',
+    externalUrl: 'https://www.theaftd.org/help-and-hope/ta-compulsive-behaviors/',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-hospice-care',
+    title: 'Hospice Care in FTD',
+    summary: 'AFTD newsletter resource about hospice care.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_Newsletter_Fall_2016.pdf',
+    diseaseDomain: 'FTD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-driving',
+    title: 'Driving and FTD',
+    summary: 'AFTD resources about driving-related decisions and caregiver guidance.',
+    contentBody: 'Visit the AFTD webpages for information on driving and FTD.',
+    externalUrl: 'https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/',
+    fileAttachmentUrl: undefined,
+    diseaseDomain: 'FTD',
+    category: 'SAFETY_WANDERING',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-loss-of-empathy',
+    title: 'The Loss of Empathy and Connection in FTD',
+    summary: 'AFTD newsletter resource about loss of empathy.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PiC-fall-2014-WTDA.pdf',
+    diseaseDomain: 'FTD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-incontinence',
+    title: 'Incontinence in FTD',
+    summary: 'AFTD newsletter resource about incontinence.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/January-2014.pdf',
+    diseaseDomain: 'FTD',
+    category: 'INCONTINENCE',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-resistant-behavior',
+    title: 'Approaches to Resistant Behavior in FTD',
+    summary: 'AFTD newsletter resource about resistant behavior.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/PinFTDcare_sprng_2020.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-roaming',
+    title: 'Roaming in FTD',
+    summary: 'AFTD newsletter resource about roaming.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/Spring-2013.pdf',
+    diseaseDomain: 'FTD',
+    category: 'SAFETY_WANDERING',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-sexual-behavior',
+    title: 'Sexual Behavior in FTD',
+    summary: 'AFTD newsletter resource about sexual behavior.',
+    contentBody: 'Read the attached AFTD source document.',
+    fileAttachmentUrl: '/resources/Summer-2014-Newsletter_Final.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-sleep',
+    title: 'Sleep Issues in FTD',
+    summary: 'A source document about sleep issues in FTD.',
+    contentBody: 'Read the attached source document for information about sleep and FTD.',
+    fileAttachmentUrl: '/resources/Sleep-Issues-in-FTD.pdf',
+    diseaseDomain: 'FTD',
+    category: 'BEHAVIORAL_AGITATION',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
+    id: 'ftd-grief',
+    title: 'Grief and the FTD Journey',
+    summary: 'AFTD resources about grief during the FTD journey.',
+    contentBody: 'Visit the AFTD webpage or read the attached grief booklet.',
+    externalUrl: 'https://www.theaftd.org/help-and-hope/hs-grief-and-the-ftd-journey/',
+    fileAttachmentUrl: '/resources/AFTDGriefBookletForWeb.pdf',
+    diseaseDomain: 'FTD',
+    category: 'COMMUNICATION_PPA',
+    keyTakeaways: [],
+    createdAt: '2026-10-16T00:00:00Z',
+  },
+  {
     id: 'res-aftd-incontinence',
-    title: 'AFTD Practical Care Sheet: Managing Incontinence in bvFTD',
-    summary: 'Clinical guidelines on loss of bowel/bladder awareness, toileting schedules, and behavioral strategies without confrontation.',
-    contentBody: `In Behavioral Variant FTD (bvFTD), incontinence often stems not from urological failure, but from frontal lobe disinhibition and loss of interoceptive awareness.
-
-Key Strategies:
-1. Scheduled Voiding Routine: Escort patient to restroom every 90-120 minutes on a fixed timer rather than asking "Do you need to go?" (asking frequently triggers automatic oppositional refusal).
-2. Adaptive Garments: Tear-away side pull-ons with quiet cloth liners reduce tactile defensiveness compared to noisy plastic briefs.
-3. Visual Cueing: Leave restroom door open with the toilet in direct sightline, illuminated by high-contrast warm lighting. Use contrasting color toilet seats (dark blue on white porcelain).
-4. Fluid Management: Maintain high hydration during morning and early afternoon to prevent UTIs, but taper fluids 2 hours before bedtime.
-5. Escalation Warning: Sudden acute incontinence or delirium may signal a urinary tract infection (UTI). Contact the clinic promptly for urinalysis.`,
+    title: 'Incontinence in FTD',
+    summary: 'Guidance for understanding and responding to incontinence in the context of frontotemporal dementia, including how to find practical daily-care suggestions.',
+    contentBody: 'This AFTD resource discusses incontinence as a care challenge for people living with FTD. Care partners can review the guidance and discuss persistent or new symptoms with the persons healthcare team.',
     externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/incontinence/',
+    fileAttachmentUrl: '/resources/January-2014.pdf',
     diseaseDomain: 'FTD',
     category: 'INCONTINENCE',
     keyTakeaways: [
-      'Scheduled voiding every 90-120 minutes prevents resistance',
-      'Use quiet cloth-backed tear-away briefs rather than crinkly plastic',
-      'High-contrast colored toilet seat assists visual spatial processing',
-      'Rule out UTI if sudden acute incontinence develops',
-    ],
-    createdAt: '2026-01-20T10:00:00Z',
-  },
-  {
-    id: 'res-aftd-bathing',
-    title: 'De-escalating Bathing and Shower Agitation in Frontotemporal Dementia',
-    summary: 'Trauma-informed, non-pharmacological protocols for severe shower resistance, sponge throwing, and tactile hypersensitivity.',
-    contentBody: `Shower aggression in FTD is almost always driven by sensory overload (the sound of rushing water, cold air, naked vulnerability) and loss of cognitive sequence comprehension.
-
-Recommended Clinic Protocols:
-1. Towel Bathing Method: Keep the patient wrapped in large warm bath towels. Uncover only one limb at a time to wash with warm, no-rinse soothing washcloths.
-2. Ambient Preparation: Heat the bathroom to 78°F with a portable radiant heater before undressing begins. Run the water beforehand so the sound is constant rather than a sudden startling blast.
-3. Remove Overhead Showers: Overhead water sprays directly onto the face feel like an assault to a disinhibited frontal lobe. Use a handheld wand directed strictly at the feet and torso.
-4. Sing or Play Familiar Music: Familiar songs from early adulthood occupy the auditory cortex and decrease amygdala threat responses.
-5. NEVER Argue or Restrain: If agitation escalates to physical defense, step back, ensure physical safety, disengage calmly, and re-attempt 45 minutes later with a different caregiver or technique.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/daily-care/',
-    diseaseDomain: 'FTD',
-    category: 'BEHAVIORAL_AGITATION',
-    keyTakeaways: [
-      'Pre-warm the bathroom to 78°F before undressing',
-      'Utilize no-rinse warm towel bathing when showers cause terror',
-      'Handheld shower wand directed away from face',
-      'Music and step-by-step calm reassurance reduces fight-or-flight',
-    ],
-    createdAt: '2026-02-05T12:00:00Z',
-  },
-  {
-    id: 'res-medicaid-legal',
-    title: 'Medicaid Long-Term Care & Elder Law Resource Guide (Maryland & PA)',
-    summary: 'Guidance on Medicaid five-year look-back, spousal impoverishment protections, and vetted elder law counsel in MD/PA.',
-    contentBody: `Navigating long-term residential memory care placement requires early legal structuring before cognitive impairment prevents signing Powers of Attorney.
-
-Crucial Facts for Care Partners:
-1. Spousal Impoverishment Protections: In Maryland, the community spouse can retain the primary residence, one automobile, and a substantial Community Spouse Resource Allowance (CSRA) up to statutory limits (~$154,140 in 2026).
-2. Five-Year Lookback Rule: Any gift or transfer of assets for less than fair market value within 60 months prior to Medicaid application triggers penalty periods.
-3. Special Needs / Supplemental Trusts: Enable families to provide quality-of-life enhancements for the diagnosed individual without jeopardizing Medicaid eligibility.
-4. Clinic Vetted Contacts: Maryland Legal Aid Senior Legal Helpline: 1-800-999-8904. National Academy of Elder Law Attorneys (NAELA) directory at naela.org.`,
-    externalUrl: 'https://aging.maryland.gov/Pages/medicaid-long-term-care.aspx',
-    diseaseDomain: 'FTD',
-    category: 'LEGAL_MEDICAID',
-    keyTakeaways: [
-      'Community spouse retains primary home and protected asset allowance',
-      'Beware 60-month lookback on uncompensated transfers',
-      'Execute Durable Financial & Medical Powers of Attorney immediately',
-      'Consult vetted NAELA-certified elder law counsel',
-    ],
-    createdAt: '2026-02-18T15:30:00Z',
-  },
-  {
-    id: 'res-safety-wandering',
-    title: 'FTD Wandering, Elopement & Impulsive Driving Risk Management',
-    summary: 'Mitigating acute safety risks from loss of hazard awareness, GPS tracker placement, and driving retirement.',
-    contentBody: `Unlike Alzheimer's wandering where patients are disoriented and looking for childhood homes, bvFTD wandering is frequently purposeful and rapid (e.g., compulsive walks along known routes or fixated shopping trips), but with total disregard for oncoming traffic.
-
-Protocols:
-1. Discrete GPS Tracking: Affix discreet Apple AirTags or AngelSense wearable devices in shoe insoles or jacket linings (wristwatches are often discarded).
-2. Key Camouflage & Disabling: Discontinue driving privileges decisively. Hide car keys, install a battery disconnect switch or fuse-pull rather than debating driving competence.
-3. Door Alarms: Install magnetic chime sensors on exterior doors placed at top of door frame outside normal line of sight.
-4. Safe Return Registry: File a wandering profile with local Baltimore / county police departments including recent photo, favorite walking spots, and de-escalation instructions.`,
-    externalUrl: 'https://www.theaftd.org/living-with-ftd/managing-ftd/safety/',
-    diseaseDomain: 'FTD',
-    category: 'SAFETY_WANDERING',
-    keyTakeaways: [
-      'Place GPS trackers in shoe insoles or sewn into jackets',
-      'Physically disable vehicle rather than engaging in logic arguments',
-      'Register with local county Safe Return police program',
-      'High door-frame chimes alert family during night wandering',
+      'Review practical approaches to incontinence care.',
+      'Consider whether a new symptom needs clinical evaluation.'
     ],
     createdAt: '2026-03-05T09:15:00Z',
   },
@@ -334,7 +405,7 @@ export const INITIAL_POSTS: Post[] = [
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -534,7 +605,7 @@ export const INITIAL_POSTS: Post[] = [
   {
     id: 'post-12',
     title: 'Coping with emotional blunting and loss of empathy in your partner',
-    content: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Dr. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
+    content: 'The hardest aspect of bvFTD for me has been the emotional flatness. When I injured my arm last week, my partner showed zero reaction. Seema reminded us this is anatomical damage to the ventromedial prefrontal cortex, not a choice. How do you process this grief?',
     status: 'APPROVED',
     isClosed: false,
     author: {
@@ -588,11 +659,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-gen-1',
     postId: 'post-general-1',
-    content: 'Dr. Seema Gulyani: Remember to break tasks into concrete 1-step tactile prompts (like folding warm towels or sorting familiar coins) rather than asking open-ended questions like "What do you want to do today?".',
+    content: 'Seema Gulyani: Remember to break tasks into concrete 1-step tactile prompts (like folding warm towels or sorting familiar coins) rather than asking open-ended questions like "What do you want to do today?".',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -601,11 +672,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-1',
     postId: 'post-1',
-    content: 'Dr. Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    content: 'Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -640,11 +711,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-4',
     postId: 'post-2',
-    content: 'Dr. Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
+    content: 'Seema Gulyani: Look for tear-away side seams so you do not have to pull soiled garments down over shoes. Also ensure regular scheduled voiding every 90-120 minutes.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -692,11 +763,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-8',
     postId: 'post-4',
-    content: 'Dr. Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
+    content: 'Seema Gulyani: Hyperorality and carb craving reflect orbitofrontal and hypothalamic pathology. Do not scold or debate. Instead, control the food environment by keeping sweets out of visual sight and serving smaller portioned plates.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -718,11 +789,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-10',
     postId: 'post-5',
-    content: 'Dr. Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
+    content: 'Seema Gulyani: In semantic variant PPA, multimodal cueing (photograph + written word) works best because visual recognition outlasts word retrieval. Speech pathology can provide customized picture exchange boards.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -757,11 +828,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-13',
     postId: 'post-6',
-    content: 'Dr. Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
+    content: 'Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -783,11 +854,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-15',
     postId: 'post-7',
-    content: 'Dr. Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
+    content: 'Seema Gulyani: Maintain high physical activity before 2 PM. Avoid blue-light screens after 6 PM. If wandering at night persists, ensure safety gates are secured at top of staircases.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -835,11 +906,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-19',
     postId: 'post-9',
-    content: 'Dr. Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
+    content: 'Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -861,11 +932,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-21',
     postId: 'post-10',
-    content: 'Dr. Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
+    content: 'Seema Gulyani: Note from clinic legal consult: Maryland enacted statutory protections requiring financial institutions to accept valid Maryland Statutory POAs within 7 business days unless good cause exists. Discussion closed as legal reference.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -887,11 +958,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-23',
     postId: 'post-11',
-    content: 'Dr. Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
+    content: 'Seema Gulyani: Rapid wolfing of food is common in bvFTD. Use smaller dessert spoons instead of tablespoons, cut all meats into dime-sized bites, and ensure upright posture for 30 minutes after dining.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -926,11 +997,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-26',
     postId: 'post-12',
-    content: 'Dr. Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
+    content: 'Seema Gulyani: This is one of the most painful griefs in neurodegenerative disease — ambiguous loss. Please remember to schedule respite care for yourself. Protecting caregiver wellbeing is paramount.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -952,11 +1023,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-28',
     postId: 'post-13',
-    content: 'Dr. Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
+    content: 'Seema Gulyani: Silent pager or phone notifications are ideal because audible blaring alarms trigger adrenaline and oppositional agitation.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },
@@ -978,11 +1049,11 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-30',
     postId: 'post-14',
-    content: 'Dr. Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
+    content: 'Seema Gulyani: Foam and strong mint flavor often trigger choking fears or sensory disgust in FTD. 3-sided brushes cut brushing time from two minutes down to 30 seconds.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
-      anonymousHandle: 'Dr. Seema Gulyani',
+      anonymousHandle: 'Seema Gulyani',
       badgeLabel: 'Clinician Moderator',
       avatarColor: '#002D72',
     },

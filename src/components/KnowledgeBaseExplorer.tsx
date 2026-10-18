@@ -9,6 +9,7 @@ import {
   Plus,
   X,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { ClinicalResource, CurrentUser, Audience } from '../types';
 import { AudienceBadge } from './AudienceBadge';
@@ -31,6 +32,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [activeResource, setActiveResource] = useState<ClinicalResource | null>(null);
   const [newAudience, setNewAudience] = useState<Audience | ''>('');
+  const [pendingDelete, setPendingDelete] = useState<ClinicalResource | null>(null);
 
   // Add Source Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,8 +42,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [newContentBody, setNewContentBody] = useState('');
   const [newKeyTakeaways, setNewKeyTakeaways] = useState('');
   const [newExternalUrl, setNewExternalUrl] = useState('');
+  const [newFileAttachmentUrl, setNewFileAttachmentUrl] = useState('');
+  const [newAdditionalLinks, setNewAdditionalLinks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
 
   const isClinician = currentUser?.role === 'CLINICIAN_MODERATOR' || currentUser?.role === 'SYSTEM_ADMIN';
 
@@ -79,13 +84,29 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     const matchesSearch =
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      res.contentBody.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+      (res.contentBody ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesAudience = isClinician ||
+      res.diseaseDomain === 'BOTH' ||
+      res.diseaseDomain === currentUser?.condition;
+
+    return matchesCategory && matchesSearch && matchesAudience;
   });
 
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
+
+    if (!newTitle.trim() || !newSummary.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
+
+    if (!newExternalUrl.trim() && !newPdfFile && !newFileAttachmentUrl.trim()) {
+      setSuccessToast('Please provide an external URL or a PDF resource.');
+      return;
+    }
+
+    if (!newAudience) {
+      setSuccessToast('Please select FTD, Alzheimer’s, or Both.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -94,6 +115,17 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
+      const additionalLinks = newAdditionalLinks
+      .split('\n')
+      .map((line) => {
+        const [label, ...urlParts] = line.split('|');
+        return {
+          label: label.trim(),
+          url: urlParts.join('|').trim(),
+        };
+      })
+      .filter((link) => link.label && link.url);
+
       const created = await api.createResource({
         title: newTitle.trim(),
         category: newCategory,
@@ -101,6 +133,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         contentBody: newContentBody.trim(),
         keyTakeaways: takeawaysList.length > 0 ? takeawaysList : [newSummary.trim() || newTitle.trim()],
         externalUrl: newExternalUrl.trim() || undefined,
+        additionalLinks,
         diseaseDomain: newAudience,
         authorId: currentUser?.id ?? '',
       });
@@ -124,6 +157,21 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     }
   };
 
+  const handleDeleteGuide = async (resource: ClinicalResource) => {
+    try {
+      await api.deleteResource(resource.id);
+      setResources((prev) => prev.filter((r) => r.id !== resource.id));
+      setActiveResource((prev) => prev?.id === resource.id ? null : prev);
+      setPendingDelete(null);
+      setSuccessToast(`Clinical guide "${resource.title}" deleted.`);
+      setTimeout(() => setSuccessToast(null), 3500);
+    } catch (err) {
+      console.error('Failed to delete guide:', err);
+      setSuccessToast('Could not delete guide. Please try again.');
+      setTimeout(() => setSuccessToast(null), 4000);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* Header Bar */}
@@ -139,7 +187,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins FTD specialists.
+            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins specialists.
           </p>
         </div>
 
@@ -152,6 +200,43 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             <Plus className="w-4 h-4" />
             <span>Add Guide</span>
           </button>
+        )}
+
+        {isClinician && pendingDelete && (
+          <div
+            onClick={() => setPendingDelete(null)}
+            className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            >
+              <div className="space-y-1.5">
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  Delete this guide?
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  "{pendingDelete.title}" will be removed for all care partners. This can't be undone.
+                </p>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(null)}
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteGuide(pendingDelete)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -213,12 +298,29 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               onClick={() => setActiveResource(res)}
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <div className="space-y-2">          
+                <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-[#002D72] dark:text-blue-400">
                     {categories.find((c) => c.key === res.category)?.label || res.category}
                   </span>
-                  <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                  <div className="flex items-center gap-2">
+                    {isClinician && <AudienceBadge condition={res.diseaseDomain} />}
+                    <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                    {isClinician && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDelete(res);
+                        }}
+                        title="Delete guide"
+                        aria-label={`Delete ${res.title}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
@@ -230,14 +332,29 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-[#002D72] dark:text-blue-400 font-semibold">
-                <span className="flex items-center gap-1 group-hover:underline">
-                  <span>Read protocol</span>
-                  <span>→</span>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
+                <div className="flex flex-wrap items-center gap-2">
+                  {res.fileAttachmentUrl && (
+                    <span className="inline-flex items-center gap-1 text-[#002D72] dark:text-blue-400">
+                      <FileText className="w-4 h-4" />
+                      PDF available
+                    </span>
+                  )}
+                  {res.externalUrl && (
+                    <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                      <ExternalLink className="w-4 h-4" />
+                      Website
+                    </span>
+                  )}
+                  {res.additionalLinks?.length ? (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      +{res.additionalLinks.length} more link{res.additionalLinks.length === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </div>
+                <span className="text-[#002D72] dark:text-blue-400 group-hover:underline shrink-0">
+                  View guide →
                 </span>
-                {res.externalUrl && (
-                  <ExternalLink className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
-                )}
               </div>
             </article>
           ))}
@@ -286,6 +403,60 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 <p className="leading-relaxed">{activeResource.summary}</p>
               </div>
 
+              {/* Source Documents */}
+              {(activeResource.fileAttachmentUrl ||
+                activeResource.externalUrl ||
+                activeResource.additionalLinks?.length) && (
+                <div className="space-y-2">
+                  <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
+                    Source Documents
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    {activeResource.fileAttachmentUrl && (
+                      <a
+                        href={activeResource.fileAttachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <FileText className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">Open PDF guide</span>
+                        <ExternalLink className="w-4 h-4 ml-auto shrink-0" />
+                      </a>
+                    )}
+
+                    {activeResource.externalUrl && (
+                      <a
+                        href={activeResource.externalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <ExternalLink className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">Visit source website</span>
+                      </a>
+                    )}
+
+                    {activeResource.additionalLinks?.map((link) => (
+                      <a
+                        key={link.url}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        <ExternalLink className="w-5 h-5 shrink-0" />
+                        <span className="font-medium">{link.label}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Protocol Content */}
               <div className="space-y-2">
                 <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
@@ -323,11 +494,13 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   rel="noopener noreferrer"
                   className="text-[#002D72] dark:text-blue-400 hover:underline font-semibold flex items-center gap-1.5"
                 >
-                  <span>Official AFTD Source</span>
+                  <span>View original source</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
               ) : (
-                <span className="text-slate-400 dark:text-slate-500">Johns Hopkins Internal Protocol</span>
+                <span className="text-slate-400 dark:text-slate-500">
+                  Resource details
+                </span>
               )}
 
               <button
@@ -469,7 +642,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  External Citation or AFTD Reference URL (Optional)
+                  External Citation
                 </label>
                 <input
                   type="url"
@@ -478,6 +651,39 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   placeholder="https://www.theaftd.org/..."
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Additional website links (one per line: Label | URL)
+                </label>
+                <textarea
+                  rows={3}
+                  value={newAdditionalLinks}
+                  onChange={(e) => setNewAdditionalLinks(e.target.value)}
+                  placeholder={'AFTD driving guidance | https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/\nAnother source | https://example.org'}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  PDF Resource (Optional)
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(e) => setNewPdfFile(e.target.files?.[0] ?? null)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                />
+                {newPdfFile && (
+                  <p className="mt-1 text-slate-500 dark:text-slate-400">
+                    Selected: {newPdfFile.name}
+                  </p>
+                )}
+                <p className="mt-1 text-slate-500 dark:text-slate-400">
+                  Upload a PDF, or provide a webpage URL above. At least one source is required.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">

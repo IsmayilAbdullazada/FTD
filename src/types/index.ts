@@ -147,8 +147,15 @@ export interface ClinicalResource {
   contentBody: string;
   externalUrl?: string;
   fileAttachmentUrl?: string;
+  additionalLinks?: { label: string; url: string }[];
   diseaseDomain: Audience;
-  category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
+  category:
+    | 'INCONTINENCE'
+    | 'LEGAL_MEDICAID'
+    | 'BEHAVIORAL_AGITATION'
+    | 'SAFETY_WANDERING'
+    | 'COMMUNICATION_PPA'
+    | 'NUTRITION_DIET';
   keyTakeaways: string[];
   createdAt: string;
 }
@@ -205,6 +212,7 @@ export interface GroupMember {
   email: string;
   phone?: string;
   clinicPatientId?: string;
+  condition?: Condition;
   anonymousHandle: string;
   primaryGroupId: string;
   primaryGroupName: string;

@@ -1241,6 +1241,8 @@ export const api = {
     contentBody: string;
     diseaseDomain?: Audience;
     externalUrl?: string;
+    fileAttachmentUrl?: string;
+    additionalLinks?: { label: string; url: string }[];
     keyTakeaways?: string[];
     authorId: string;
   }): Promise<ClinicalResource> => {
@@ -1260,11 +1262,25 @@ export const api = {
           contentBody: payload.contentBody,
           diseaseDomain: payload.diseaseDomain || 'FTD',
           externalUrl: payload.externalUrl || '',
+          fileAttachmentUrl: payload.fileAttachmentUrl || '',
+          additionalLinks: payload.additionalLinks || [],
           keyTakeaways: payload.keyTakeaways || [],
           createdAt: new Date().toISOString(),
         };
         localResources.unshift(newRes);
         return newRes;
+      }
+    );
+  },
+
+  deleteResource: async (id: string): Promise<void> => {
+    await safeFetchJson(
+      `/api/v1/resources/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      () => {
+        const index = localResources.findIndex((r) => r.id === id);
+        if (index !== -1) localResources.splice(index, 1);
+        return undefined;
       }
     );
   },

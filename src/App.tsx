@@ -41,6 +41,10 @@ export default function App() {
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [inspectedResourceId, setInspectedResourceId] = useState<string | null>(null);
+<<<<<<< HEAD
+=======
+  const [composerInitialTitle, setComposerInitialTitle] = useState<string>('');
+>>>>>>> origin/codex/chatbot-knowledge
 
   // Initial load
   const loadUserAndData = async (asUserId?: string) => {
@@ -150,7 +154,10 @@ export default function App() {
         pendingTriageCount={pendingTriageCount}
         notifications={notifications}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
+<<<<<<< HEAD
         onOpenAssistant={() => setIsAssistantOpen(true)}
+=======
+>>>>>>> origin/codex/chatbot-knowledge
       />
 
       {/* Main Content Area */}
@@ -165,7 +172,10 @@ export default function App() {
             recentNotice={feedNotice}
             onDismissNotice={() => setFeedNotice(null)}
             onOpenComposer={() => setActiveTab('compose')}
+<<<<<<< HEAD
             onOpenAssistant={() => setIsAssistantOpen(true)}
+=======
+>>>>>>> origin/codex/chatbot-knowledge
           />
         )}
 
@@ -173,14 +183,30 @@ export default function App() {
           <PostComposer
             currentUser={currentUser}
             cohorts={cohorts}
+<<<<<<< HEAD
             onPostSubmitted={() => {
+=======
+            initialTitle={composerInitialTitle}
+            onPostSubmitted={() => {
+              setComposerInitialTitle('');
+>>>>>>> origin/codex/chatbot-knowledge
               setFeedNotice('Your question has been submitted and is currently being reviewed by Dr. Seema.');
               setActiveTab('feed');
               handleQueueUpdated();
             }}
+<<<<<<< HEAD
             onCancel={() => setActiveTab('feed')}
             onOpenResource={handleOpenResourceFromDeflection}
             onOpenDiscussion={(postId) => {
+=======
+            onCancel={() => {
+              setComposerInitialTitle('');
+              setActiveTab('feed');
+            }}
+            onOpenResource={handleOpenResourceFromDeflection}
+            onOpenDiscussion={(postId) => {
+              setComposerInitialTitle('');
+>>>>>>> origin/codex/chatbot-knowledge
               setTargetDiscussionId(postId);
               setActiveTab('feed');
             }}
@@ -245,11 +271,14 @@ export default function App() {
         isOpen={isAssistantOpen}
         onToggle={() => setIsAssistantOpen((prev) => !prev)}
         onClose={() => setIsAssistantOpen(false)}
+<<<<<<< HEAD
         onOpenResource={(resId) => {
           setIsAssistantOpen(false);
           setInspectedResourceId(resId);
           setActiveTab('knowledge');
         }}
+=======
+>>>>>>> origin/codex/chatbot-knowledge
       />
 
       <InvitationModal

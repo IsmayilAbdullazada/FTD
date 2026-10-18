@@ -9,7 +9,10 @@ import {
   Plus,
   X,
   Sparkles,
+<<<<<<< HEAD
   Trash2,
+=======
+>>>>>>> origin/codex/chatbot-knowledge
 } from 'lucide-react';
 import { ClinicalResource, CurrentUser, Audience } from '../types';
 import { AudienceBadge } from './AudienceBadge';
@@ -32,7 +35,10 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [activeResource, setActiveResource] = useState<ClinicalResource | null>(null);
   const [newAudience, setNewAudience] = useState<Audience | ''>('');
+<<<<<<< HEAD
   const [pendingDelete, setPendingDelete] = useState<ClinicalResource | null>(null);
+=======
+>>>>>>> origin/codex/chatbot-knowledge
 
   // Add Source Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -42,11 +48,16 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [newContentBody, setNewContentBody] = useState('');
   const [newKeyTakeaways, setNewKeyTakeaways] = useState('');
   const [newExternalUrl, setNewExternalUrl] = useState('');
+<<<<<<< HEAD
   const [newFileAttachmentUrl, setNewFileAttachmentUrl] = useState('');
   const [newAdditionalLinks, setNewAdditionalLinks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
+=======
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+>>>>>>> origin/codex/chatbot-knowledge
 
   const isClinician = currentUser?.role === 'CLINICIAN_MODERATOR' || currentUser?.role === 'SYSTEM_ADMIN';
 
@@ -84,6 +95,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     const matchesSearch =
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+<<<<<<< HEAD
       (res.contentBody ?? '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesAudience = isClinician ||
@@ -91,10 +103,15 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       res.diseaseDomain === currentUser?.condition;
 
     return matchesCategory && matchesSearch && matchesAudience;
+=======
+      res.contentBody.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+>>>>>>> origin/codex/chatbot-knowledge
   });
 
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
+<<<<<<< HEAD
 
     if (!newTitle.trim() || !newSummary.trim() || isSubmitting) return;
 
@@ -107,6 +124,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       setSuccessToast('Please select FTD, Alzheimer’s, or Both.');
       return;
     }
+=======
+    if (!newTitle.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
+>>>>>>> origin/codex/chatbot-knowledge
 
     setIsSubmitting(true);
     try {
@@ -115,6 +135,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         .map((t) => t.trim())
         .filter((t) => t.length > 0);
 
+<<<<<<< HEAD
       const additionalLinks = newAdditionalLinks
       .split('\n')
       .map((line) => {
@@ -126,6 +147,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       })
       .filter((link) => link.label && link.url);
 
+=======
+>>>>>>> origin/codex/chatbot-knowledge
       const created = await api.createResource({
         title: newTitle.trim(),
         category: newCategory,
@@ -133,7 +156,10 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         contentBody: newContentBody.trim(),
         keyTakeaways: takeawaysList.length > 0 ? takeawaysList : [newSummary.trim() || newTitle.trim()],
         externalUrl: newExternalUrl.trim() || undefined,
+<<<<<<< HEAD
         additionalLinks,
+=======
+>>>>>>> origin/codex/chatbot-knowledge
         diseaseDomain: newAudience,
         authorId: currentUser?.id ?? '',
       });
@@ -157,6 +183,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     }
   };
 
+<<<<<<< HEAD
   const handleDeleteGuide = async (resource: ClinicalResource) => {
     try {
       await api.deleteResource(resource.id);
@@ -172,6 +199,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     }
   };
 
+=======
+>>>>>>> origin/codex/chatbot-knowledge
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* Header Bar */}
@@ -187,7 +216,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
+<<<<<<< HEAD
             Trauma-informed, non-pharmacological protocols curated by Johns Hopkins specialists.
+=======
+            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins FTD specialists.
+>>>>>>> origin/codex/chatbot-knowledge
           </p>
         </div>
 
@@ -201,6 +234,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             <span>Add Guide</span>
           </button>
         )}
+<<<<<<< HEAD
 
         {isClinician && pendingDelete && (
           <div
@@ -238,6 +272,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
           </div>
         )}
+=======
+>>>>>>> origin/codex/chatbot-knowledge
       </div>
 
       {successToast && (
@@ -298,6 +334,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               onClick={() => setActiveResource(res)}
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
+<<<<<<< HEAD
               <div className="space-y-2">          
                 <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold text-[#002D72] dark:text-blue-400">
@@ -321,6 +358,14 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                       </button>
                     )}
                   </div>
+=======
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-[#002D72] dark:text-blue-400">
+                    {categories.find((c) => c.key === res.category)?.label || res.category}
+                  </span>
+                  <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+>>>>>>> origin/codex/chatbot-knowledge
                 </div>
 
                 <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
@@ -332,6 +377,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </p>
               </div>
 
+<<<<<<< HEAD
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
                 <div className="flex flex-wrap items-center gap-2">
                   {res.fileAttachmentUrl && (
@@ -355,6 +401,16 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 <span className="text-[#002D72] dark:text-blue-400 group-hover:underline shrink-0">
                   View guide →
                 </span>
+=======
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-[#002D72] dark:text-blue-400 font-semibold">
+                <span className="flex items-center gap-1 group-hover:underline">
+                  <span>Read protocol</span>
+                  <span>→</span>
+                </span>
+                {res.externalUrl && (
+                  <ExternalLink className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
+                )}
+>>>>>>> origin/codex/chatbot-knowledge
               </div>
             </article>
           ))}
@@ -403,6 +459,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 <p className="leading-relaxed">{activeResource.summary}</p>
               </div>
 
+<<<<<<< HEAD
               {/* Source Documents */}
               {(activeResource.fileAttachmentUrl ||
                 activeResource.externalUrl ||
@@ -457,6 +514,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </div>
               )}
 
+=======
+>>>>>>> origin/codex/chatbot-knowledge
               {/* Protocol Content */}
               <div className="space-y-2">
                 <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
@@ -494,6 +553,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   rel="noopener noreferrer"
                   className="text-[#002D72] dark:text-blue-400 hover:underline font-semibold flex items-center gap-1.5"
                 >
+<<<<<<< HEAD
                   <span>View original source</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
@@ -501,6 +561,13 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 <span className="text-slate-400 dark:text-slate-500">
                   Resource details
                 </span>
+=======
+                  <span>Official AFTD Source</span>
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              ) : (
+                <span className="text-slate-400 dark:text-slate-500">Johns Hopkins Internal Protocol</span>
+>>>>>>> origin/codex/chatbot-knowledge
               )}
 
               <button
@@ -533,7 +600,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   Add Clinical Source / Protocol
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
+<<<<<<< HEAD
                   Publish verified guidance to the caregiver knowledge base and RAG search.
+=======
+                  Publish verified guidance to the caregiver knowledge base and assistant.
+>>>>>>> origin/codex/chatbot-knowledge
                 </p>
               </div>
               <button
@@ -642,7 +713,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+<<<<<<< HEAD
                   External Citation
+=======
+                  External Citation or AFTD Reference URL (Optional)
+>>>>>>> origin/codex/chatbot-knowledge
                 </label>
                 <input
                   type="url"
@@ -653,6 +728,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 />
               </div>
 
+<<<<<<< HEAD
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Additional website links (one per line: Label | URL)
@@ -686,6 +762,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </p>
               </div>
 
+=======
+>>>>>>> origin/codex/chatbot-knowledge
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"

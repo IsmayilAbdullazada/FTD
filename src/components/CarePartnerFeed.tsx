@@ -32,7 +32,10 @@ interface CarePartnerFeedProps {
   recentNotice?: string | null;
   onDismissNotice?: () => void;
   onOpenComposer: () => void;
+<<<<<<< HEAD
   onOpenAssistant: () => void;
+=======
+>>>>>>> origin/codex/chatbot-knowledge
 }
 
 export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
@@ -44,7 +47,10 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   recentNotice,
   onDismissNotice,
   onOpenComposer,
+<<<<<<< HEAD
   onOpenAssistant,
+=======
+>>>>>>> origin/codex/chatbot-knowledge
 }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);

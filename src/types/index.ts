@@ -147,6 +147,7 @@ export interface ClinicalResource {
   contentBody: string;
   externalUrl?: string;
   fileAttachmentUrl?: string;
+<<<<<<< HEAD
   additionalLinks?: { label: string; url: string }[];
   diseaseDomain: Audience;
   category:
@@ -156,6 +157,10 @@ export interface ClinicalResource {
     | 'SAFETY_WANDERING'
     | 'COMMUNICATION_PPA'
     | 'NUTRITION_DIET';
+=======
+  diseaseDomain: Audience;
+  category: 'INCONTINENCE' | 'LEGAL_MEDICAID' | 'BEHAVIORAL_AGITATION' | 'SAFETY_WANDERING' | 'COMMUNICATION_PPA' | 'NUTRITION_DIET';
+>>>>>>> origin/codex/chatbot-knowledge
   keyTakeaways: string[];
   createdAt: string;
 }
@@ -212,13 +217,20 @@ export interface GroupMember {
   email: string;
   phone?: string;
   clinicPatientId?: string;
+<<<<<<< HEAD
   condition?: Condition;
+=======
+>>>>>>> origin/codex/chatbot-knowledge
   anonymousHandle: string;
   primaryGroupId: string;
   primaryGroupName: string;
   role: UserRole;
   status: 'ACTIVE' | 'PENDING' | 'MUTED';
   joinedAt: string;
+<<<<<<< HEAD
+=======
+  condition?: Condition;
+>>>>>>> origin/codex/chatbot-knowledge
 }
 
 
@@ -267,3 +279,54 @@ export interface CalendarEvent {
   authorId: string;
   condition?: Audience;
 }
+<<<<<<< HEAD
+=======
+
+export interface ChatbotGuideFile {
+  id: string;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  category: string;
+  description?: string;
+  content: string;
+  sectionCount?: number;
+  wordCount?: number;
+  isActive: boolean;
+  uploadedBy: string;
+  uploadedByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChatbotKnowledgeSourceMode = 'UPLOADED_GUIDES_ONLY' | 'HYBRID' | 'MOCK_FAQS_ONLY';
+
+export interface ChatbotKnowledgeConfig {
+  sourceMode: ChatbotKnowledgeSourceMode;
+  totalActiveGuides: number;
+  totalWords: number;
+}
+
+export interface ChatbotGuideTestResult {
+  query: string;
+  answer: string;
+  sourceMode: ChatbotKnowledgeSourceMode;
+  matchedGuide?: {
+    id: string;
+    title: string;
+    fileName: string;
+    sectionTitle: string;
+    matchScore: number;
+    snippet: string;
+  };
+  allMatchedSections: {
+    guideTitle: string;
+    sectionTitle: string;
+    matchScore: number;
+    snippet: string;
+  }[];
+  usedMockFaq: boolean;
+}
+
+>>>>>>> origin/codex/chatbot-knowledge

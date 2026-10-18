@@ -25,6 +25,10 @@ import { INITIAL_POSTS, INITIAL_COMMENTS } from '../data/clinicalStore';
 interface PostComposerProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
+<<<<<<< HEAD
+=======
+  initialTitle?: string;
+>>>>>>> origin/codex/chatbot-knowledge
   onPostSubmitted: () => void;
   onCancel: () => void;
   onOpenResource: (resourceId: string) => void;
@@ -479,12 +483,20 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
 export const PostComposer: React.FC<PostComposerProps> = ({
   currentUser,
   cohorts,
+<<<<<<< HEAD
+=======
+  initialTitle,
+>>>>>>> origin/codex/chatbot-knowledge
   onPostSubmitted,
   onCancel,
   onOpenResource,
   onOpenDiscussion,
 }) => {
+<<<<<<< HEAD
   const [title, setTitle] = useState('');
+=======
+  const [title, setTitle] = useState(initialTitle || '');
+>>>>>>> origin/codex/chatbot-knowledge
   const [content, setContent] = useState('');
   const [selectedCohortId, setSelectedCohortId] = useState(
     cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || ''
@@ -496,6 +508,15 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     cohortName: string;
   } | null>(null);
 
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    if (initialTitle) {
+      setTitle(initialTitle);
+    }
+  }, [initialTitle]);
+
+>>>>>>> origin/codex/chatbot-knowledge
   const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
     user.role !== 'CARE_PARTNER' || audience === 'BOTH' || audience === user.condition;
   

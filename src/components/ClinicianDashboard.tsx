@@ -135,6 +135,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [guideSearchFilter, setGuideSearchFilter] = useState('');
   const [showUploadGuideModal, setShowUploadGuideModal] = useState(false);
   const [inspectGuideModal, setInspectGuideModal] = useState<ChatbotGuideFile | null>(null);
+  const [guideToDelete, setGuideToDelete] = useState<ChatbotGuideFile | null>(null);
+  const [isDeletingGuide, setIsDeletingGuide] = useState(false);
+  const [isRestoringDefault, setIsRestoringDefault] = useState(false);
 
   // Upload Guide Form State
   const [uploadTitle, setUploadTitle] = useState('');
@@ -279,18 +282,44 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  const handleDeleteGuide = async (guide: ChatbotGuideFile) => {
-    if (!window.confirm(`Are you sure you want to delete "${guide.title}" from chatbot knowledge?`)) return;
+  const handleRequestDeleteGuide = (guide: ChatbotGuideFile) => {
+    setGuideToDelete(guide);
+  };
+
+  const handleConfirmDeleteGuide = async () => {
+    if (!guideToDelete || isDeletingGuide) return;
+    setIsDeletingGuide(true);
     try {
-      await api.deleteChatbotGuide(guide.id);
-      setChatbotGuides((prev) => prev.filter((g) => g.id !== guide.id));
-      setActionSuccessNotice(`Guide "${guide.title}" removed.`);
+      await api.deleteChatbotGuide(guideToDelete.id);
+      setChatbotGuides((prev) => prev.filter((g) => g.id !== guideToDelete.id));
+      setActionSuccessNotice(`Guide "${guideToDelete.title}" successfully removed.`);
       setTimeout(() => setActionSuccessNotice(null), 3500);
-      loadChatbotGuides();
+      setGuideToDelete(null);
+      await loadChatbotGuides();
+      onQueueUpdated();
     } catch (err) {
       console.error('Failed to delete guide:', err);
-      setActionSuccessNotice('Could not delete guide.');
+      setActionSuccessNotice('Could not delete clinical guide. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 3500);
+    } finally {
+      setIsDeletingGuide(false);
+    }
+  };
+
+  const handleRestoreDefaultGuide = async () => {
+    setIsRestoringDefault(true);
+    try {
+      await api.restoreDefaultChatbotGuide();
+      await loadChatbotGuides();
+      setActionSuccessNotice('Restored benchmark Johns Hopkins FTD protocol.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+      onQueueUpdated();
+    } catch (err) {
+      console.error('Failed to restore default guide:', err);
+      setActionSuccessNotice('Failed to restore default guide.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+    } finally {
+      setIsRestoringDefault(false);
     }
   };
 
@@ -679,44 +708,44 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-5 transition-colors">
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-4 py-3.5 sm:py-6 space-y-4 sm:space-y-5 transition-colors">
       {/* TOP HEADER */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pb-3.5 sm:pb-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
             Dashboard
           </h1>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 w-full sm:w-auto">
           <button
             onClick={() => setShowNewPostModal(true)}
-            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>New Post</span>
           </button>
 
           <button
             onClick={() => setShowCreateGroupModal(true)}
-            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>New Group</span>
           </button>
 
           <button
             onClick={onOpenInvite}
-            className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
+            className="flex-1 sm:flex-initial px-3 sm:px-4 py-1.5 sm:py-2.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap cursor-pointer"
           >
-            <UserPlus className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <UserPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 dark:text-slate-400" />
             <span>Invite Member</span>
           </button>
 
           <button
             onClick={onOpenAudit}
-            className="px-3.5 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer"
+            className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer"
           >
             Activity Log
           </button>
@@ -724,7 +753,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       </div>
 
       {actionSuccessNotice && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center justify-between">
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-3.5 py-2 sm:py-2.5 rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="font-medium">{actionSuccessNotice}</span>
@@ -736,7 +765,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       )}
 
       { /* Viewing Filter */ }
-      <div className="flex items-center gap-2 text-xs sm:text-sm">
+      <div className="flex items-center gap-2 text-xs">
         <span className="font-semibold text-slate-600 dark:text-slate-400">Viewing:</span>
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg font-semibold">
           {(['all', 'FTD', 'AD'] as const).map((opt) => (
@@ -744,9 +773,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               key={opt}
               type="button"
               onClick={() => setAudienceFilter(opt)}
-              className={`px-3 py-1 rounded-md transition cursor-pointer ${
+              className={`px-2.5 sm:px-3 py-1 rounded-md transition cursor-pointer text-xs ${
                 audienceFilter === opt
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -757,22 +786,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       </div>
 
       {/* 5 STAT CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 lg:gap-4">
         <div
           onClick={() => setActiveTab('queue')}
-          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
+          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
             activeTab === 'queue'
               ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-300 dark:ring-amber-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Pending</span>
-            <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{queueItems.length}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
               {queueItems.length === 1 ? 'review' : 'review'}
             </span>
           </div>
@@ -780,74 +809,74 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
         <div
           onClick={() => setActiveTab('discussions')}
-          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
+          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
             activeTab === 'discussions'
               ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800 ring-1 ring-indigo-300 dark:ring-indigo-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Discussions</span>
-            <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{publishedPosts.length}</span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">posts</span>
+          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{publishedPosts.length}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">posts</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('cohorts')}
-          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
+          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
             activeTab === 'cohorts'
               ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Groups</span>
-            <Layers className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
+            <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#002D72] dark:text-blue-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">regions</span>
+          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{cohorts.length}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">regions</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('members')}
-          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
+          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
             activeTab === 'members'
               ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-300 dark:ring-emerald-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-750 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">Members</span>
-            <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">caregivers</span>
+          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">caregivers</span>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTab('chatbot-knowledge')}
-          className={`p-3.5 sm:p-4 rounded-2xl border transition cursor-pointer ${
+          className={`col-span-2 sm:col-span-1 lg:col-span-1 p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
             activeTab === 'chatbot-knowledge'
               ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-300 dark:ring-purple-800'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
           }`}
         >
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1">
               <span>Clinical Guides</span>
             </span>
-            <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-xl sm:text-2xl font-bold text-purple-900 dark:text-purple-100 tabular-nums">
+          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-900 dark:text-purple-100 tabular-nums">
               {chatbotGuides.filter((g) => g.isActive).length}
             </span>
             <span className="text-[10px] sm:text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
@@ -859,18 +888,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* TABS */}
       <div className="border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div className="flex items-center gap-4 sm:gap-6 text-sm font-semibold overflow-x-auto no-scrollbar flex-nowrap">
+        <div className="flex items-center gap-2.5 sm:gap-4 lg:gap-6 text-xs sm:text-sm font-semibold overflow-x-auto no-scrollbar flex-nowrap">
           <button
             onClick={() => setActiveTab('queue')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'queue'
-                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400 font-bold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Pending Posts</span>
             {queueItems.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold tabular-nums">
+              <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold tabular-nums">
                 {queueItems.length}
               </span>
             )}
@@ -878,57 +907,57 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
           <button
             onClick={() => setActiveTab('discussions')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'discussions'
-                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400 font-bold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Discussions</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
+            <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-bold tabular-nums">
               {publishedPosts.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('cohorts')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'cohorts'
-                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400 font-bold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Groups</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
+            <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-bold tabular-nums">
               {cohorts.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('members')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'members'
-                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400 font-bold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span>Members</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
+            <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-bold tabular-nums">
               {members.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('chatbot-knowledge')}
-            className={`pb-3 flex items-center gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'chatbot-knowledge'
                 ? 'border-purple-600 dark:border-purple-400 text-purple-800 dark:text-purple-300 font-bold'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400" />
             <span>Clinical Guides</span>
-            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs font-bold tabular-nums">
+            <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-[10px] sm:text-xs font-bold tabular-nums">
               {chatbotGuides.length}
             </span>
           </button>
@@ -1184,85 +1213,98 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* TAB: DISCUSSIONS & REPLY POLICIES */}
       {activeTab === 'discussions' && (
-        <div className="space-y-4">
-          {/* Header Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
-            <div className="space-y-0.5">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Discussions & Reply Policies</span>
-                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                  ({publishedPosts.length} published)
-                </span>
+        <div className="space-y-3.5 sm:space-y-4">
+          {/* Header Description Card */}
+          <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                Discussions & Reply Policies
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Manage reply moderation mode for discussions one by one. By default, all replies to posts are moderated. Turn on unmoderated mode to allow everyone to reply immediately, with moderator removal controls.
-              </p>
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] sm:text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                {publishedPosts.length} published
+              </span>
             </div>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
+              Manage reply moderation mode for discussions one by one. By default, all replies to posts are moderated. Turn on unmoderated mode to allow everyone to reply immediately, with moderator removal controls.
+            </p>
+          </div>
 
-            {/* Filter by Policy */}
-            <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+          {/* Filter & Search Toolbar */}
+          <div className="space-y-2">
+            {/* Filter by Policy: Dedicated full-width bar with smooth horizontal scroll safety */}
+            <div className="w-full overflow-x-auto no-scrollbar py-0.5">
+              <div className="inline-flex w-full min-w-full sm:w-auto sm:min-w-0 items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setPostsPolicyFilter('all')}
-                  className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
                     postsPolicyFilter === 'all'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  All ({publishedPosts.length})
+                  <span>All</span>
+                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">({publishedPosts.length})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPostsPolicyFilter('moderated')}
-                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
                     postsPolicyFilter === 'moderated'
-                      ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Shield className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                  <span>Moderated ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies && !p.isClosed).length})</span>
+                  <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span>Moderated</span>
+                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">
+                    ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies && !p.isClosed).length})
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPostsPolicyFilter('unmoderated')}
-                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
                     postsPolicyFilter === 'unmoderated'
-                      ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>Unmoderated ({publishedPosts.filter((p) => p.allowUnmoderatedReplies && !p.isClosed).length})</span>
+                  <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Unmoderated</span>
+                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">
+                    ({publishedPosts.filter((p) => p.allowUnmoderatedReplies && !p.isClosed).length})
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPostsPolicyFilter('closed')}
-                  className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
                     postsPolicyFilter === 'closed'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
-                  <span>Closed ({publishedPosts.filter((p) => p.isClosed).length})</span>
+                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <span>Closed</span>
+                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">
+                    ({publishedPosts.filter((p) => p.isClosed).length})
+                  </span>
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchPostsQuery}
-              onChange={(e) => setSearchPostsQuery(e.target.value)}
-              placeholder="Search discussions by title, author handle, or keywords..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"
-            />
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchPostsQuery}
+                onChange={(e) => setSearchPostsQuery(e.target.value)}
+                placeholder="Search discussions by title, author handle, or keywords..."
+                className="w-full pl-8.5 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           {/* List of discussions */}
@@ -1306,47 +1348,47 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       <div
                         key={post.id}
                         onClick={() => onOpenDiscussion?.(post.id)}
-                        className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-[#002D72]/40 dark:hover:border-blue-500/50 hover:shadow-md cursor-pointer"
+                        className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 transition-all hover:border-[#002D72]/40 dark:hover:border-blue-500/50 hover:shadow-xs cursor-pointer"
                       >
-                        <div className="space-y-2 flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <div className="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
                             <span className="font-semibold text-slate-900 dark:text-white truncate">
                               {post.author.anonymousHandle}
                             </span>
                             <span className="text-slate-300 dark:text-slate-700">·</span>
-                            <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate">
+                            <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] truncate">
                               {groupName}
                             </span>
                             <span className="text-slate-300 dark:text-slate-700">·</span>
                             <AudienceBadge condition={post.condition} />
-                            <span className="text-slate-400 dark:text-slate-500 text-[11px]">
+                            <span className="text-slate-400 dark:text-slate-500 text-[10px] sm:text-[11px]">
                               {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
                             </span>
                           </div>
 
-                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-[#002D72] dark:group-hover:text-blue-400 text-sm leading-snug transition-colors">
+                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-[#002D72] dark:group-hover:text-blue-400 text-xs sm:text-sm leading-snug transition-colors">
                             {post.title}
                           </h3>
 
-                          <p className="text-slate-500 dark:text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                          <p className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs line-clamp-2 leading-relaxed">
                             {post.content}
                           </p>
 
                           {/* Status Badge */}
-                          <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+                          <div className="pt-0.5 sm:pt-1 flex flex-wrap items-center gap-2 text-xs">
                             {post.isClosed ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-200/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 rounded-lg">
-                                <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-200/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg">
+                                <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-600 dark:text-slate-400" />
                                 <span>Discussion Closed</span>
                               </span>
                             ) : isUnmoderated ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-lg">
-                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg">
+                                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
                                 <span>Unmoderated</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 rounded-lg">
-                                <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg">
+                                <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400" />
                                 <span>Moderated</span>
                               </span>
                             )}
@@ -1356,20 +1398,20 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         {/* Actions for this post: Toggle Allow open replies and Button below it for closing/reopening */}
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 flex flex-col items-stretch sm:items-end gap-2"
+                          className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 flex flex-col items-stretch sm:items-end gap-1.5 sm:gap-2 w-full sm:w-auto"
                         >
                           <div
-                            className={`inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
+                            className={`inline-flex items-center justify-between sm:justify-start gap-2.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
                               post.isClosed ? 'opacity-60' : ''
                             }`}
                           >
                             <label
                               onClick={(e) => e.stopPropagation()}
-                              className={`inline-flex items-center gap-2.5 ${
+                              className={`inline-flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto ${
                                 post.isClosed ? 'cursor-not-allowed' : 'cursor-pointer'
                               } select-none`}
                             >
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                              <span className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                                 Allow open replies
                               </span>
                               <div className="relative inline-flex items-center">
@@ -1383,7 +1425,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                                   }}
                                   className="sr-only peer"
                                 />
-                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                                <div className="w-8 h-4.5 sm:w-9 sm:h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 sm:after:h-4 sm:after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
                               </div>
                             </label>
                           </div>
@@ -1396,10 +1438,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                                 e.stopPropagation();
                                 handleTogglePostClose(post);
                               }}
-                              className="w-full sm:w-auto px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                              className="w-full sm:w-auto px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                               title="Reopen discussion to allow new replies"
                             >
-                              <LockOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <LockOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
                               <span>Reopen Discussion</span>
                             </button>
                           ) : (
@@ -1409,10 +1451,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                                 e.stopPropagation();
                                 setPostToClose(post);
                               }}
-                              className="w-full sm:w-auto px-3.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                              className="w-full sm:w-auto px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                               title="Close discussion to prevent new replies while preserving existing comments"
                             >
-                              <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                              <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400" />
                               <span>Close Discussion</span>
                             </button>
                           )}
@@ -1708,13 +1750,25 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                   Upload your clinical PDF guidelines so the assistant can use verified institutional instructions to answer family care partner questions.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowUploadGuideModal(true)}
-                  className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition"
-                >
-                  Upload Care Guide
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowUploadGuideModal(true)}
+                    className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Upload Care Guide</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultGuide}
+                    disabled={isRestoringDefault}
+                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isRestoringDefault ? 'animate-spin' : ''}`} />
+                    <span>{isRestoringDefault ? 'Restoring...' : 'Restore Benchmark Protocol'}</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1784,9 +1838,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => handleDeleteGuide(guide)}
+                          onClick={() => handleRequestDeleteGuide(guide)}
                           className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
                           title="Delete Guide"
+                          aria-label={`Delete ${guide.title}`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -2591,13 +2646,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
                 <button
                   type="button"
-                  onClick={async () => {
-                    const guideToDelete = inspectGuideModal;
+                  onClick={() => {
+                    const target = inspectGuideModal;
                     setInspectGuideModal(null);
-                    await handleDeleteGuide(guideToDelete);
+                    handleRequestDeleteGuide(target);
                   }}
                   className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition cursor-pointer"
                   title="Delete Guide"
+                  aria-label="Delete Guide"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -2631,6 +2687,83 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DELETE CLINICAL GUIDE CONFIRMATION */}
+      {guideToDelete && (
+        <div
+          onClick={() => !isDeletingGuide && setGuideToDelete(null)}
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-[70] flex items-center justify-center p-4 cursor-pointer overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default transition-colors my-auto"
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-serif font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+                  Remove Clinical Guide?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Are you sure you want to delete this document from Dr. Seema's Assistant knowledge base?
+                </p>
+              </div>
+            </div>
+
+            {/* Document summary box */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 space-y-1.5 text-xs">
+              <div className="font-semibold text-slate-900 dark:text-white line-clamp-2">
+                {guideToDelete.title}
+              </div>
+              <div className="text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="font-mono">{guideToDelete.fileName}</span>
+                <span>•</span>
+                <span>{guideToDelete.wordCount?.toLocaleString() || '—'} words</span>
+                <span>•</span>
+                <span className="px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
+                  {guideToDelete.category.replace(/_/g, ' ')}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+              Once removed, the assistant will immediately stop indexing this document or referencing its protocols when responding to caregiver queries. This deletion will be recorded in the audit trail.
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setGuideToDelete(null)}
+                disabled={isDeletingGuide}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteGuide}
+                disabled={isDeletingGuide}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-60"
+              >
+                {isDeletingGuide ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Removing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Guide</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

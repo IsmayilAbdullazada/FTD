@@ -153,9 +153,9 @@ function loadStoredGuides(): ChatbotGuideFile[] {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       const stored = window.localStorage.getItem(GUIDES_STORAGE_KEY);
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
@@ -1521,18 +1521,38 @@ export const api = {
     );
   },
 
-  deleteChatbotGuide: async (id: string): Promise<{ success: boolean }> => {
+  deleteChatbotGuide: async (id: string): Promise<{ success: boolean; remainingGuides?: number }> => {
     return safeFetchJson(
-      `/api/v1/chatbot/guides/${id}`,
+      `/api/v1/chatbot/guides/${encodeURIComponent(id)}`,
       { method: 'DELETE' },
       () => {
         localChatbotGuides = localChatbotGuides.filter((g) => g.id !== id);
         persistGuides(localChatbotGuides);
-        return { success: true };
+        return { success: true, remainingGuides: localChatbotGuides.length };
       }
     ).then((res) => {
       localChatbotGuides = localChatbotGuides.filter((g) => g.id !== id);
       persistGuides(localChatbotGuides);
+      return res;
+    });
+  },
+
+  restoreDefaultChatbotGuide: async (): Promise<{ success: boolean; guides: ChatbotGuideFile[] }> => {
+    return safeFetchJson(
+      '/api/v1/chatbot/guides/restore-default',
+      { method: 'POST' },
+      () => {
+        if (!localChatbotGuides.some((g) => g.id === initialLocalChatbotGuides[0].id)) {
+          localChatbotGuides.unshift(initialLocalChatbotGuides[0]);
+          persistGuides(localChatbotGuides);
+        }
+        return { success: true, guides: [...localChatbotGuides] };
+      }
+    ).then((res) => {
+      if (res?.guides) {
+        localChatbotGuides = res.guides;
+        persistGuides(res.guides);
+      }
       return res;
     });
   },

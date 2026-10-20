@@ -3090,7 +3090,7 @@ function loadChatbotGuidesFromDb(): ChatbotGuideFile[] {
     if (fs.existsSync(GUIDES_DB_FILE)) {
       const data = fs.readFileSync(GUIDES_DB_FILE, 'utf-8');
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -3348,7 +3348,10 @@ app.post('/api/v1/chatbot/guides', (req, res) => {
 });
 
 app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
-  const idx = chatbotGuidesStore.findIndex((g) => g.id === req.params.id);
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const targetId = req.params.id;
+  const decodedId = decodeURIComponent(targetId);
+  const idx = chatbotGuidesStore.findIndex((g) => g.id === targetId || g.id === decodedId);
   if (idx === -1) {
     return res.status(404).json({ error: 'Guide file not found.' });
   }
@@ -3367,7 +3370,18 @@ app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
     createdAt: new Date().toISOString(),
   });
 
-  res.json({ success: true, id: req.params.id });
+  res.json({ success: true, id: deleted.id, remainingGuides: chatbotGuidesStore.length });
+});
+
+app.post('/api/v1/chatbot/guides/restore-default', (_req, res) => {
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const seedGuide = initialChatbotGuidesSeed[0];
+  const existing = chatbotGuidesStore.find((g) => g.id === seedGuide.id);
+  if (!existing) {
+    chatbotGuidesStore.unshift({ ...seedGuide, updatedAt: new Date().toISOString() });
+    saveChatbotGuidesToDb(chatbotGuidesStore);
+  }
+  res.json({ success: true, guides: chatbotGuidesStore });
 });
 
 app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {

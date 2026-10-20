@@ -219,7 +219,6 @@ export interface GroupMember {
   role: UserRole;
   status: 'ACTIVE' | 'PENDING' | 'MUTED';
   joinedAt: string;
-  condition?: Condition;
 }
 
 

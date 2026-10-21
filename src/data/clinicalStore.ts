@@ -342,7 +342,7 @@ export const INITIAL_RESOURCES: ClinicalResource[] = [
     title: 'Sleep Issues in FTD',
     summary: 'A source document about sleep issues in FTD.',
     contentBody: 'Read the attached source document for information about sleep and FTD.',
-    fileAttachmentUrl: '/resources/Sleep-Issues-in-FTD.pdf',
+    fileAttachmentUrl: '/resources/SleepIssuesFTD-090623.pdf',
     diseaseDomain: 'FTD',
     category: 'BEHAVIORAL_AGITATION',
     keyTakeaways: [],

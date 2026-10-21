@@ -33,6 +33,7 @@ import {
   ToggleRight,
   Play,
   RotateCcw,
+  ExternalLink,
 } from 'lucide-react';
 import {
   CurrentUser,
@@ -47,11 +48,11 @@ import {
   getFullGroupName,
   ChatbotGuideFile,
   ChatbotKnowledgeConfig,
-  ChatbotKnowledgeSourceMode,
   ChatbotGuideTestResult,
 } from '../types';
 import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
+import { cleanPdfText } from '../utils/cleanPdfText';
 
 interface ClinicianDashboardProps {
   currentUser: CurrentUser;
@@ -127,9 +128,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   // Chatbot Knowledge Management State
   const [chatbotGuides, setChatbotGuides] = useState<ChatbotGuideFile[]>([]);
   const [chatbotConfig, setChatbotConfig] = useState<ChatbotKnowledgeConfig>({
-    sourceMode: 'UPLOADED_GUIDES_ONLY',
-    totalActiveGuides: 1,
-    totalWords: 520,
+    totalActiveGuides: 0,
+    totalWords: 0,
   });
   const [loadingGuides, setLoadingGuides] = useState(false);
   const [guideSearchFilter, setGuideSearchFilter] = useState('');
@@ -137,14 +137,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [inspectGuideModal, setInspectGuideModal] = useState<ChatbotGuideFile | null>(null);
   const [guideToDelete, setGuideToDelete] = useState<ChatbotGuideFile | null>(null);
   const [isDeletingGuide, setIsDeletingGuide] = useState(false);
-  const [isRestoringDefault, setIsRestoringDefault] = useState(false);
+  const [guideStatusFilter, setGuideStatusFilter] = useState<'ALL' | 'DRAFT' | 'APPROVED'>('ALL');
 
-  // Upload Guide Form State
+  // Upload Guide Form State (Blank defaults, publisher, year, side-by-side preview)
   const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadPublisher, setUploadPublisher] = useState('');
+  const [uploadYear, setUploadYear] = useState('');
   const [uploadFileName, setUploadFileName] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('GENERAL_CLINICAL_PROTOCOL');
+  const [uploadCategory, setUploadCategory] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadContent, setUploadContent] = useState('');
+  const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(null);
+  const [uploadPdfBase64, setUploadPdfBase64] = useState<string | null>(null);
+  const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
   const [isUploadingGuide, setIsUploadingGuide] = useState(false);
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
   const [extractedPdfStats, setExtractedPdfStats] = useState<{ pages: number; words: number } | null>(null);
@@ -306,37 +311,96 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  const handleRestoreDefaultGuide = async () => {
-    setIsRestoringDefault(true);
+  const resetUploadModal = () => {
+    setShowUploadGuideModal(false);
+    setUploadTitle('');
+    setUploadPublisher('');
+    setUploadYear('');
+    setUploadFileName('');
+    setUploadCategory('');
+    setUploadDescription('');
+    setUploadContent('');
+    setUploadPdfPreviewUrl(null);
+    setUploadPdfBase64(null);
+    setEditingGuideId(null);
+    setExtractedPdfStats(null);
+  };
+
+  const handleOpenReviewModal = (guide: ChatbotGuideFile) => {
+    setEditingGuideId(guide.id);
+    setUploadTitle(guide.title);
+    setUploadPublisher(guide.publisher || '');
+    setUploadYear(guide.year || '');
+    setUploadCategory(guide.category || '');
+    setUploadDescription(guide.description || '');
+    setUploadContent(guide.content);
+    setUploadFileName(guide.fileName);
+    setUploadPdfPreviewUrl(guide.pdfUrl || `/resources/${guide.fileName}`);
+    setShowUploadGuideModal(true);
+  };
+
+  const handleQuickApprove = async (guide: ChatbotGuideFile) => {
     try {
-      await api.restoreDefaultChatbotGuide();
-      await loadChatbotGuides();
-      setActionSuccessNotice('Restored benchmark Johns Hopkins FTD protocol.');
+      await api.approveChatbotGuide(guide.id);
+      setActionSuccessNotice(`Approved & published "${guide.title}" to knowledge assistant!`);
       setTimeout(() => setActionSuccessNotice(null), 3500);
-      onQueueUpdated();
+      loadChatbotGuides();
     } catch (err) {
-      console.error('Failed to restore default guide:', err);
-      setActionSuccessNotice('Failed to restore default guide.');
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-    } finally {
-      setIsRestoringDefault(false);
+      console.error('Failed to approve guide:', err);
+      setActionSuccessNotice('Could not approve guide.');
+      setTimeout(() => setActionSuccessNotice(null), 3000);
+    }
+  };
+
+  const INSTITUTIONAL_RESOURCE_FILES = [
+    { fileName: 'Managing-Aggressive-Behavior.pdf', label: 'Managing Aggressive Behavior' },
+    { fileName: 'SleepIssuesFTD-090623.pdf', label: 'Sleep Issues in FTD' },
+    { fileName: 'PinFTDcare_Newsletter_Fall_2016.pdf', label: 'Partners in FTD Care - Fall 2016' },
+    { fileName: 'PinFTDcare_Newsletter_Winter_2018.pdf', label: 'Partners in FTD Care - Winter 2018' },
+    { fileName: 'PinFTDcare_Newsletter_Winter_2019.pdf', label: 'Partners in FTD Care - Winter 2019' },
+    { fileName: 'PinFTDcare_sprng_2020.pdf', label: 'Partners in FTD Care - Spring 2020' },
+    { fileName: 'January-2014.pdf', label: 'Partners in FTD Care - January 2014' },
+    { fileName: 'July-2012.pdf', label: 'Partners in FTD Care - July 2012' },
+    { fileName: 'PiC-fall-2014-WTDA.pdf', label: 'Partners in FTD Care - Fall 2014' },
+    { fileName: 'Summer-2014-Newsletter_Final.pdf', label: 'Partners in FTD Care - Summer 2014' },
+  ];
+
+  const handleLoadResourceFile = async (resourceFileName: string) => {
+    try {
+      setIsExtractingPdf(true);
+      setUploadFileName(resourceFileName);
+      setUploadTitle('');
+      setUploadCategory('');
+      setUploadPublisher('');
+      setUploadYear('');
+      const previewUrl = `/resources/${resourceFileName}`;
+      setUploadPdfPreviewUrl(previewUrl);
+
+      const res = await fetch(previewUrl);
+      const blob = await res.blob();
+      const file = new File([blob], resourceFileName, { type: 'application/pdf' });
+      handleProcessFile(file);
+    } catch (err) {
+      console.error('Failed to load resource file:', err);
+      setIsExtractingPdf(false);
+      setActionSuccessNotice('Could not load library PDF file.');
+      setTimeout(() => setActionSuccessNotice(null), 3000);
     }
   };
 
   const handleProcessFile = (file: File) => {
     const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
     setUploadFileName(file.name);
-
-    const cleanDefaultTitle = file.name
-      .replace(/\.[^/.]+$/, '')
-      .replace(/[_-]/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-
-    if (!uploadTitle.trim()) {
-      setUploadTitle(cleanDefaultTitle);
-    }
+    // As explicitly instructed: Blank title, no category guess, publisher and year fields
+    setUploadTitle('');
+    setUploadCategory('');
+    setUploadPublisher('');
+    setUploadYear('');
 
     if (isPdf) {
+      const previewUrl = URL.createObjectURL(file);
+      setUploadPdfPreviewUrl(previewUrl);
+
       setIsExtractingPdf(true);
       setExtractedPdfStats(null);
       const reader = new FileReader();
@@ -352,21 +416,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             binary += String.fromCharCode.apply(null, sub as unknown as number[]);
           }
           const base64 = btoa(binary);
+          setUploadPdfBase64(base64);
 
           const result = await api.extractPdfText({
             fileName: file.name,
             fileBase64: base64,
           });
 
-          setUploadContent(result.text);
-          if (result.suggestedTitle && !uploadTitle.trim()) {
-            setUploadTitle(result.suggestedTitle);
-          }
-          if (result.suggestedCategory) {
-            setUploadCategory(result.suggestedCategory);
-          }
+          // Text cleaned using cleanPdfText cleaner
+          setUploadContent(cleanPdfText(result.text));
+          // Strictly keep title, category, publisher, year blank as requested for clinician entry
+          setUploadTitle('');
+          setUploadCategory('');
+          setUploadPublisher('');
+          setUploadYear('');
           setExtractedPdfStats({ pages: result.pageCount, words: result.wordCount });
-          setActionSuccessNotice(`Processed ${result.wordCount.toLocaleString()} words from "${file.name}".`);
+          setActionSuccessNotice(`Extracted ${result.wordCount.toLocaleString()} words from "${file.name}". Please enter title, publisher, and year.`);
           setTimeout(() => setActionSuccessNotice(null), 3500);
         } catch (err) {
           console.error('PDF extraction failed:', err);
@@ -385,41 +450,66 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     } else {
       setIsExtractingPdf(false);
       setExtractedPdfStats(null);
+      setUploadPdfPreviewUrl(null);
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = (e.target?.result as string) || '';
-        setUploadContent(text);
+        setUploadContent(cleanPdfText(text));
+        setUploadTitle('');
+        setUploadCategory('');
       };
       reader.readAsText(file);
     }
   };
 
-  const handleSubmitUploadGuide = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveGuide = async (statusToSet: 'DRAFT' | 'APPROVED') => {
     if (!uploadTitle.trim() || !uploadContent.trim() || isUploadingGuide) return;
     setIsUploadingGuide(true);
     try {
-      const res = await api.uploadChatbotGuide({
-        title: uploadTitle.trim(),
-        fileName: uploadFileName.trim() || `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
-        category: uploadCategory,
-        description: uploadDescription.trim(),
-        content: uploadContent.trim(),
-        mimeType: uploadFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain',
-        uploadedBy: currentUser.id,
-        uploadedByName: `${currentUser.firstName} ${currentUser.lastName}`,
-      });
-      setShowUploadGuideModal(false);
-      setUploadTitle('');
-      setUploadFileName('');
-      setUploadDescription('');
-      setUploadContent('');
-      setActionSuccessNotice(`Clinical guide "${res.title}" uploaded! Dr. Seema's Assistant is now using this file.`);
+      const isApproved = statusToSet === 'APPROVED';
+      if (editingGuideId) {
+        await api.updateChatbotGuide(editingGuideId, {
+          title: uploadTitle.trim(),
+          publisher: uploadPublisher.trim(),
+          year: uploadYear.trim(),
+          category: uploadCategory.trim(),
+          description: uploadDescription.trim(),
+          content: uploadContent.trim(),
+          status: statusToSet,
+          pdfUrl: uploadPdfPreviewUrl || undefined,
+        });
+        setActionSuccessNotice(
+          isApproved
+            ? `Guide "${uploadTitle}" approved & published to knowledge assistant!`
+            : `Guide "${uploadTitle}" draft updated.`
+        );
+      } else {
+        const res = await api.uploadChatbotGuide({
+          title: uploadTitle.trim(),
+          publisher: uploadPublisher.trim(),
+          year: uploadYear.trim(),
+          fileName: uploadFileName.trim() || `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
+          category: uploadCategory.trim(),
+          description: uploadDescription.trim(),
+          content: uploadContent.trim(),
+          status: statusToSet,
+          pdfUrl: uploadPdfPreviewUrl || undefined,
+          mimeType: uploadFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain',
+          uploadedBy: currentUser.id,
+          uploadedByName: `${currentUser.firstName} ${currentUser.lastName}`,
+        });
+        setActionSuccessNotice(
+          isApproved
+            ? `Guide "${res.title}" approved & published to knowledge assistant!`
+            : `Guide "${res.title}" saved as draft for review.`
+        );
+      }
+      resetUploadModal();
       setTimeout(() => setActionSuccessNotice(null), 4500);
       loadChatbotGuides();
     } catch (err) {
-      console.error('Failed to upload guide:', err);
-      setActionSuccessNotice('Could not upload guide document. Please try again.');
+      console.error('Failed to save guide:', err);
+      setActionSuccessNotice('Could not save guide document. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {
       setIsUploadingGuide(false);
@@ -1717,18 +1807,61 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   Uploaded Clinical Guides ({chatbotGuides.length})
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {chatbotGuides.filter((g) => g.isActive).length} active · {chatbotGuides.reduce((a, b) => a + (b.wordCount || 0), 0).toLocaleString()} words
+                  {chatbotGuides.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status)).length} approved & active · {chatbotGuides.filter((g) => g.status === 'DRAFT').length} drafts pending review
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex-1 sm:w-60">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {/* Draft / Approved Filter Pills */}
+                <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setGuideStatusFilter('ALL')}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      guideStatusFilter === 'ALL'
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    All ({chatbotGuides.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGuideStatusFilter('DRAFT')}
+                    className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                      guideStatusFilter === 'DRAFT'
+                        ? 'bg-amber-500 text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-amber-600'
+                    }`}
+                  >
+                    <span>Drafts</span>
+                    <span className="text-[10px] px-1 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                      {chatbotGuides.filter((g) => g.status === 'DRAFT').length}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGuideStatusFilter('APPROVED')}
+                    className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                      guideStatusFilter === 'APPROVED'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'
+                    }`}
+                  >
+                    <span>Approved</span>
+                    <span className="text-[10px] px-1 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                      {chatbotGuides.filter((g) => g.status === 'APPROVED' || !g.status).length}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="relative flex-1 sm:w-56">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                   <input
                     type="text"
                     value={guideSearchFilter}
                     onChange={(e) => setGuideSearchFilter(e.target.value)}
-                    placeholder="Search guide documents..."
+                    placeholder="Search guides..."
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -1745,28 +1878,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   <UploadCloud className="w-6 h-6" />
                 </div>
                 <h4 className="font-semibold text-slate-900 dark:text-white text-sm">
-                  No Guide Documents Uploaded
+                  No Clinical Guides Uploaded Yet
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                  Upload your clinical PDF guidelines so the assistant can use verified institutional instructions to answer family care partner questions.
+                  Upload verified PDF guidelines from public/resources. Use the side-by-side preview to inspect the extraction and approve documents for the knowledge assistant.
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                <div className="pt-1">
                   <button
                     type="button"
-                    onClick={() => setShowUploadGuideModal(true)}
-                    className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    onClick={() => {
+                      resetUploadModal();
+                      setShowUploadGuideModal(true);
+                    }}
+                    className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs mx-auto"
                   >
                     <UploadCloud className="w-4 h-4" />
                     <span>Upload Care Guide</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleRestoreDefaultGuide}
-                    disabled={isRestoringDefault}
-                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-                  >
-                    <RotateCcw className={`w-3.5 h-3.5 ${isRestoringDefault ? 'animate-spin' : ''}`} />
-                    <span>{isRestoringDefault ? 'Restoring...' : 'Restore Benchmark Protocol'}</span>
                   </button>
                 </div>
               </div>
@@ -1774,80 +1901,145 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {chatbotGuides
                   .filter((g) => {
-                    const q = guideSearchFilter.toLowerCase();
-                    return !q || g.title.toLowerCase().includes(q) || g.fileName.toLowerCase().includes(q) || g.content.toLowerCase().includes(q);
+                    if (guideStatusFilter === 'DRAFT') return g.status === 'DRAFT';
+                    if (guideStatusFilter === 'APPROVED') return g.status === 'APPROVED' || !g.status;
+                    return true;
                   })
-                  .map((guide) => (
-                    <div
-                      key={guide.id}
-                      className="p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition"
-                    >
-                      <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                        <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 shrink-0 mt-0.5">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">
-                            {guide.title}
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {guide.fileName} · {guide.category.replace(/_/g, ' ')} · {guide.wordCount?.toLocaleString() || '—'} words · Uploaded {new Date(guide.createdAt).toLocaleDateString()}
-                          </p>
+                  .filter((g) => {
+                    const q = guideSearchFilter.toLowerCase();
+                    return (
+                      !q ||
+                      g.title.toLowerCase().includes(q) ||
+                      g.fileName.toLowerCase().includes(q) ||
+                      (g.publisher && g.publisher.toLowerCase().includes(q)) ||
+                      (g.year && g.year.toLowerCase().includes(q)) ||
+                      g.content.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((guide) => {
+                    const isDraft = guide.status === 'DRAFT';
+                    return (
+                      <div
+                        key={guide.id}
+                        className="p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition"
+                      >
+                        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                          <div
+                            className={`p-2.5 rounded-xl shrink-0 mt-0.5 border ${
+                              isDraft
+                                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/40'
+                                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-900/40'
+                            }`}
+                          >
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">
+                                {guide.title}
+                              </h4>
+                              {isDraft ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  Draft (Pending Review)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
+                                  <CheckCircle className="w-2.5 h-2.5" />
+                                  Approved & Grounded
+                                </span>
+                              )}
+                            </div>
 
-                          {guide.description && (
-                            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">
-                              {guide.description}
+                            <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
+                              <span>{guide.fileName}</span>
+                              {guide.publisher && <span>· Publisher: <strong className="font-medium text-slate-700 dark:text-slate-300">{guide.publisher}</strong></span>}
+                              {guide.year && <span>· Year: {guide.year}</span>}
+                              {guide.category && <span>· {guide.category.replace(/_/g, ' ')}</span>}
+                              <span>· {guide.wordCount?.toLocaleString() || '—'} words</span>
                             </p>
-                          )}
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleGuide(guide)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                            guide.isActive
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
-                          title={guide.isActive ? 'Active for assistant guidance' : 'Paused'}
-                        >
-                          {guide.isActive ? (
+                            {guide.description && (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">
+                                {guide.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                          {isDraft ? (
                             <>
-                              <ToggleRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                              <span>Active</span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReviewModal(guide)}
+                                className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-[#002D72] dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 border border-blue-200/70 dark:border-blue-800/60 transition cursor-pointer"
+                                title="Open side-by-side PDF preview and text reviewer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Review Side-by-Side</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleQuickApprove(guide)}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                title="Approve this draft immediately"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Approve</span>
+                              </button>
                             </>
                           ) : (
                             <>
-                              <ToggleLeft className="w-4 h-4 text-slate-400" />
-                              <span>Paused</span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleGuide(guide)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                                  guide.isActive
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                }`}
+                                title={guide.isActive ? 'Active for assistant guidance' : 'Paused'}
+                              >
+                                {guide.isActive ? (
+                                  <>
+                                    <ToggleRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                    <span>Active</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ToggleLeft className="w-4 h-4 text-slate-400" />
+                                    <span>Paused</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReviewModal(guide)}
+                                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                                title="Review Side-by-Side & Edit"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Review</span>
+                              </button>
                             </>
                           )}
-                        </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setInspectGuideModal(guide)}
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
-                          title="View Guide Content"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleRequestDeleteGuide(guide)}
-                          className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
-                          title="Delete Guide"
-                          aria-label={`Delete ${guide.title}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRequestDeleteGuide(guide)}
+                            className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                            title="Delete Guide"
+                            aria-label={`Delete ${guide.title}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -2298,237 +2490,401 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* MODAL: UPLOAD CHATBOT GUIDE FILE */}
+      {/* MODAL: SIDE-BY-SIDE PDF PREVIEW & DRAFT-THEN-APPROVE REVIEW */}
       {showUploadGuideModal && (
         <div
-          onClick={() => setShowUploadGuideModal(false)}
-          className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer overflow-y-auto"
+          onClick={resetUploadModal}
+          className="fixed inset-0 bg-slate-900/70 dark:bg-black/80 backdrop-blur-2xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden cursor-default transition-colors my-auto"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-[96vw] xl:max-w-7xl h-[94vh] flex flex-col overflow-hidden cursor-default transition-colors"
           >
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-200/50 dark:border-rose-900/50">
+            <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0 border border-blue-200/60 dark:border-blue-900/50">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white">
-                    Upload Clinical Care Guide
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Upload institutional guidelines for Dr. Seema's Assistant to guide family care partners
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate">
+                      {editingGuideId
+                        ? `Review & Verify: ${uploadTitle || uploadFileName || 'Clinical Guide'}`
+                        : 'Upload & Side-by-Side Review'}
+                    </h3>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
+                        editingGuideId
+                          ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
+                          : 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900'
+                      }`}
+                    >
+                      {editingGuideId ? 'Review Mode' : 'New Document'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    Compare extracted markdown side-by-side with original institutional PDF before approving for Dr. Seema's Assistant
                   </p>
                 </div>
               </div>
+
               <button
                 type="button"
-                onClick={() => setShowUploadGuideModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                onClick={resetUploadModal}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close and discard"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Form Body */}
-            <form onSubmit={handleSubmitUploadGuide} className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
-              {/* Drag and Drop Upload Zone */}
-              <div
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`p-5 rounded-2xl border-2 border-dashed transition text-center cursor-pointer flex flex-col items-center justify-center gap-2 ${
-                  dragActive
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 ring-4 ring-blue-400/20'
-                    : uploadFileName
-                    ? 'border-emerald-400 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/20'
-                    : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 bg-slate-50/60 dark:bg-slate-850/60'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.txt,.md"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleProcessFile(e.target.files[0]);
-                    }
-                  }}
-                />
+            {/* Hidden file input for uploading or replacing PDF */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt,.md"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleProcessFile(e.target.files[0]);
+                }
+              }}
+            />
 
-                {isExtractingPdf ? (
-                  <div className="py-4 flex flex-col items-center justify-center gap-2">
-                    <div className="w-6 h-6 border-2 border-[#002D72] dark:border-sky-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      Extracting text from PDF without formatting errors...
+            {/* Split Screen Container: Left (PDF) vs Right (Metadata & Extracted Markdown) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
+              
+              {/* LEFT PANE: PDF Document Viewer */}
+              <div className="flex flex-col min-h-0 bg-slate-100 dark:bg-slate-950">
+                {/* PDF Toolbar */}
+                <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      {uploadFileName || 'No PDF Document Selected'}
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Parsing clinical sections and normalizing document content
-                    </span>
+                    {extractedPdfStats && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0 font-mono">
+                        {extractedPdfStats.pages ? `${extractedPdfStats.pages} pages · ` : ''}
+                        {extractedPdfStats.words.toLocaleString()} words
+                      </span>
+                    )}
                   </div>
-                ) : uploadFileName ? (
-                  <div className="flex items-center gap-3 w-full justify-between px-3 py-1">
-                    <div className="flex items-center gap-2.5 text-left min-w-0">
-                      <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 shrink-0">
-                        <FileCheck className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm truncate block">
-                          {uploadFileName}
-                        </span>
-                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
-                          {extractedPdfStats?.pages ? `${extractedPdfStats.pages} pages · ` : ''}
-                          {uploadContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()} words
-                        </span>
-                      </div>
-                    </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {uploadPdfPreviewUrl && (
+                      <a
+                        href={uploadPdfPreviewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-[#002D72] dark:text-sky-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 transition"
+                        title="Open PDF in a full browser window"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Open PDF</span>
+                      </a>
+                    )}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fileInputRef.current?.click();
-                      }}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 transition shrink-0 cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
                     >
-                      Change File
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>{uploadFileName ? 'Change PDF' : 'Upload PDF'}</span>
                     </button>
                   </div>
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-                      <UploadCloud className="w-6 h-6" />
+                </div>
+
+                {/* PDF Viewer Body */}
+                <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col">
+                  {isExtractingPdf ? (
+                    <div className="m-auto p-8 flex flex-col items-center justify-center text-center gap-3">
+                      <div className="w-10 h-10 border-3 border-[#002D72] dark:border-sky-400 border-t-transparent rounded-full animate-spin" />
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                          Extracting text & cleaning formatting...
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
+                          Running <code className="font-mono text-blue-600 dark:text-blue-400">cleanPdfText</code> to de-hyphenate line breaks, strip running page headers/footers, and normalize headings.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
-                        Drag and drop your clinical PDF guide here, or{' '}
-                        <span className="text-[#002D72] dark:text-sky-400 underline">browse files</span>
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Accepts PDF documents (.pdf), Clinical Guidelines, Protocols (.txt, .md)
-                      </p>
+                  ) : uploadPdfPreviewUrl ? (
+                    <div className="w-full h-full flex flex-col">
+                      <iframe
+                        src={uploadPdfPreviewUrl}
+                        title={uploadFileName || 'PDF Document Viewer'}
+                        className="w-full flex-1 border-0 bg-slate-100 dark:bg-slate-950"
+                      />
+                      <div className="px-3 py-1.5 bg-slate-200/70 dark:bg-slate-900 border-t border-slate-300 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
+                        <span>Side-by-Side Reference Preview</span>
+                        <span>Use the editor on the right to verify every guideline before approving.</span>
+                      </div>
                     </div>
-                  </>
-                )}
+                  ) : (
+                    <div className="p-6 flex-1 flex flex-col items-center justify-center overflow-y-auto">
+                      {/* Drag & Drop Area */}
+                      <div
+                        onDragEnter={handleDrag}
+                        onDragOver={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`w-full max-w-md p-8 rounded-2xl border-2 border-dashed transition text-center cursor-pointer flex flex-col items-center justify-center gap-3 ${
+                          dragActive
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 ring-4 ring-blue-400/20'
+                            : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 bg-white/70 dark:bg-slate-900/60'
+                        }`}
+                      >
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-sky-400 flex items-center justify-center">
+                          <UploadCloud className="w-7 h-7" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                            Drop clinical PDF guide here, or{' '}
+                            <span className="text-[#002D72] dark:text-sky-400 underline">browse</span>
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Accepts institutional PDF guidelines, protocols, and manuals (.pdf)
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quick library selection helper */}
+                      <div className="w-full max-w-md mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2.5 text-center">
+                          Or select an institutional guideline from <code className="font-mono text-blue-600 dark:text-blue-400">/resources/</code>:
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                          {INSTITUTIONAL_RESOURCE_FILES.map((resFile) => (
+                            <button
+                              key={resFile.fileName}
+                              type="button"
+                              onClick={() => handleLoadResourceFile(resFile.fileName)}
+                              className="px-2.5 py-1.5 text-left rounded-lg bg-white dark:bg-slate-850 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-750 text-slate-800 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-800 transition text-[11px] truncate flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              title={resFile.label}
+                            >
+                              <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                              <span className="truncate">{resFile.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Document Title (Full Width, File Name removed) */}
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                  Document Title <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                  placeholder="e.g. Johns Hopkins Shower & Hygiene Safety Protocol"
-                  className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
+              {/* RIGHT PANE: Clinical Metadata & Clean Markdown Extraction Editor */}
+              <div className="flex flex-col min-h-0 bg-white dark:bg-slate-900">
+                {/* Editor Header Bar */}
+                <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Extraction Review & Metadata
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      (Blank title & manual category required)
+                    </span>
+                  </div>
 
-              {/* Category & Description Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                    Clinical Category
-                  </label>
-                  <select
-                    value={uploadCategory}
-                    onChange={(e) => setUploadCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (uploadContent.trim()) {
+                        setUploadContent(cleanPdfText(uploadContent));
+                        setActionSuccessNotice('Re-ran cleanPdfText cleaner on extraction text.');
+                        setTimeout(() => setActionSuccessNotice(null), 3000);
+                      }
+                    }}
+                    disabled={!uploadContent.trim()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition cursor-pointer disabled:opacity-50"
+                    title="Re-run cleanPdfText to strip hyphens, footers, and page numbers"
                   >
-                    <option value="GENERAL_CLINICAL_PROTOCOL">General Clinical Protocol</option>
-                    <option value="HYGIENE_BATHING">Hygiene, Bathing & Shower Safety</option>
-                    <option value="NUTRITION_HYPERORALITY">Eating, Sweets & Hyperorality</option>
-                    <option value="BEHAVIORAL_DISINHIBITION">Behavioral Disinhibition & Social Filter</option>
-                    <option value="DRIVING_SAFETY">Driving Retirement & Safety</option>
-                    <option value="SLEEP_WANDERING">Sleep, Sundowning & Wandering</option>
-                    <option value="COMMUNICATION_PPA">Primary Progressive Aphasia (PPA)</option>
-                    <option value="LEGAL_MEDICAID">Legal, Financial & Medicaid Planning</option>
-                    <option value="CRISIS_DE_ESCALATION">Crisis De-escalation & Emergency</option>
-                  </select>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Re-clean Text</span>
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                    Summary / Description (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={uploadDescription}
-                    onChange={(e) => setUploadDescription(e.target.value)}
-                    placeholder="Brief description of this protocol manual..."
-                    className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
+                {/* Form Inputs Container */}
+                <div className="flex-1 min-h-0 p-4 sm:p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+                  {/* Document Title (Strictly Blank on upload, required) */}
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                      Document Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={uploadTitle}
+                      onChange={(e) => setUploadTitle(e.target.value)}
+                      placeholder="e.g. Managing Aggressive Behavior in FTD"
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Blank by default — enter the verified clinical title from the original document.
+                    </p>
+                  </div>
 
-              {/* Guide Content Area */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 text-xs">
-                    Extracted Guide Text <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-slate-400">
-                    Use <code className="font-mono text-blue-600 dark:text-blue-400">## Section Name</code> for individual protocol sections
-                  </span>
-                </div>
-                <textarea
-                  rows={8}
-                  value={uploadContent}
-                  onChange={(e) => setUploadContent(e.target.value)}
-                  placeholder="Extracted text from your clinical PDF will appear here for review..."
-                  className="w-full px-3.5 py-2.5 font-mono text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
-                  required
-                />
+                  {/* Publisher / Organization & Publication Year Fields */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Publisher / Organization
+                      </label>
+                      <input
+                        type="text"
+                        value={uploadPublisher}
+                        onChange={(e) => setUploadPublisher(e.target.value)}
+                        placeholder="e.g. The Association for Frontotemporal Degeneration (AFTD)"
+                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
 
-                {/* Content Analysis Bar */}
-                <div className="mt-1.5 flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1">
-                  <div className="flex items-center gap-3">
-                    <span>
-                      <strong>{uploadContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
-                    </span>
-                    <span>•</span>
-                    <span>
-                      <strong>{uploadContent.split(/(?=^##\s+)/m).filter(Boolean).length || (uploadContent.trim() ? 1 : 0)}</strong> sections detected
-                    </span>
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Publication Year
+                      </label>
+                      <input
+                        type="text"
+                        value={uploadYear}
+                        onChange={(e) => setUploadYear(e.target.value)}
+                        placeholder="e.g. 2014, 2016, 2023"
+                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clinical Category (No Category Guess) & Summary Description */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Clinical Category
+                      </label>
+                      <select
+                        value={uploadCategory}
+                        onChange={(e) => setUploadCategory(e.target.value)}
+                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      >
+                        <option value="">Select clinical category (No auto-guess)...</option>
+                        <option value="GENERAL_CLINICAL_PROTOCOL">General Clinical Protocol</option>
+                        <option value="HYGIENE_BATHING">Hygiene, Bathing & Shower Safety</option>
+                        <option value="NUTRITION_HYPERORALITY">Eating, Sweets & Hyperorality</option>
+                        <option value="BEHAVIORAL_DISINHIBITION">Behavioral Disinhibition & Social Filter</option>
+                        <option value="DRIVING_SAFETY">Driving Retirement & Safety</option>
+                        <option value="SLEEP_WANDERING">Sleep, Sundowning & Wandering</option>
+                        <option value="COMMUNICATION_PPA">Primary Progressive Aphasia (PPA)</option>
+                        <option value="LEGAL_MEDICAID">Legal, Financial & Medicaid Planning</option>
+                        <option value="CRISIS_DE_ESCALATION">Crisis De-escalation & Emergency</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                        Summary / Description (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={uploadDescription}
+                        onChange={(e) => setUploadDescription(e.target.value)}
+                        placeholder="Brief clinical scope or caregiver audience..."
+                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Extracted Guide Text (Clean Markdown Editor) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 text-xs">
+                        Extracted Guide Text (Markdown) <span className="text-rose-500">*</span>
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        Use <code className="font-mono text-blue-600 dark:text-blue-400">## Section Name</code> for section breaks
+                      </span>
+                    </div>
+
+                    <textarea
+                      rows={13}
+                      value={uploadContent}
+                      onChange={(e) => setUploadContent(e.target.value)}
+                      placeholder="Extracted text from your clinical PDF will appear here for side-by-side comparison with the PDF on the left..."
+                      className="w-full px-3.5 py-2.5 font-mono text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed min-h-[300px]"
+                      required
+                    />
+
+                    {/* Word and Section Count Bar */}
+                    <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-0.5">
+                      <div className="flex items-center gap-3">
+                        <span>
+                          <strong>{uploadContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
+                        </span>
+                        <span>•</span>
+                        <span>
+                          <strong>
+                            {uploadContent.split(/(?=^##\s+)/m).filter(Boolean).length || (uploadContent.trim() ? 1 : 0)}
+                          </strong> sections detected
+                        </span>
+                      </div>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                        cleanPdfText cleaner active
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
+            {/* Modal Footer with Draft-then-Approve Actions */}
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>
+                  Drafts are saved safely and are <strong>not</strong> served by the assistant until approved.
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowUploadGuideModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                  onClick={resetUploadModal}
+                  className="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Cancel
                 </button>
+
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSaveGuide('DRAFT')}
                   disabled={isUploadingGuide || isExtractingPdf || !uploadTitle.trim() || !uploadContent.trim()}
-                  className="px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Save as Draft (will not be active in assistant)"
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Save as Draft</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveGuide('APPROVED')}
+                  disabled={isUploadingGuide || isExtractingPdf || !uploadTitle.trim() || !uploadContent.trim()}
+                  className="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white transition flex items-center gap-2 shadow-xs cursor-pointer"
+                  title="Approve extraction and publish to Knowledge Assistant"
                 >
                   {isUploadingGuide ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Saving Guide...</span>
+                      <span>Saving...</span>
                     </>
                   ) : (
                     <>
-                      <UploadCloud className="w-4 h-4" />
-                      <span>Save Clinical Guide</span>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Approve & Ground Guide</span>
                     </>
                   )}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

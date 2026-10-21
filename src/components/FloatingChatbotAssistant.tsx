@@ -10,6 +10,8 @@ import {
   ChevronRight,
   Heart,
   CheckCircle2,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrentUser } from '../types';
@@ -27,6 +29,17 @@ interface ChatMessage {
   text: string;
   isMedicationRefusal?: boolean;
   suggestedQuestions?: string[];
+  matchedGuide?: {
+    id: string;
+    title: string;
+    fileName: string;
+    sectionTitle?: string;
+  };
+  citedResources?: {
+    id: string;
+    title: string;
+    url?: string;
+  }[];
   timestamp: string;
 }
 
@@ -289,6 +302,8 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         text: res.answer,
         isMedicationRefusal: res.isMedicationRefusal,
         suggestedQuestions: res.suggestedQuestions || [],
+        matchedGuide: res.matchedGuide,
+        citedResources: res.citedResources,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
@@ -483,6 +498,30 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       </div>
                     )}
 
+                    {/* Institutional Grounded Guide Citation */}
+                    {!isUser && (msg.matchedGuide || (msg.citedResources && msg.citedResources.length > 0)) && (
+                      <div className="pt-1.5 pb-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[10px]">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 min-w-0">
+                          <FileText className="w-3 h-3 text-[#002D72] dark:text-sky-400 shrink-0" />
+                          <span className="truncate">
+                            Source: <strong className="font-semibold text-slate-700 dark:text-slate-300">{msg.matchedGuide?.title || msg.citedResources?.[0]?.title}</strong>
+                          </span>
+                        </div>
+                        {msg.citedResources?.[0]?.url && (
+                          <a
+                            href={msg.citedResources[0].url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-medium"
+                            title="Open institutional guide PDF"
+                          >
+                            <span>PDF</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
                     {/* Related Follow-Up Topics */}
                     {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
                       <div className="pt-1 border-t border-slate-100 dark:border-slate-800 space-y-1">
@@ -530,6 +569,48 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           <div className="px-2 py-1 sm:px-2.5 sm:py-1.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-1 no-scrollbar shrink-0">
             <button
               type="button"
+              onClick={() => handleSend('How do I de-escalate aggressive outbursts or agitation?')}
+              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Aggression & agitation
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('How do I handle sudden incontinence and toileting resistance?')}
+              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Incontinence routine
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('How do I handle severe apathy and lack of motivation?')}
+              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Apathy & motivation
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('How do I manage night wakefulness, sleep issues, and wandering?')}
+              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Sleep & night pacing
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('How do I manage compulsive behaviors and rituals?')}
+              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Compulsive rituals
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend('What should family care partners know about hospice and comfort care in FTD?')}
+              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+            >
+              Hospice & comfort care
+            </button>
+            <button
+              type="button"
               onClick={() => handleSend('How do I handle bathing and shower resistance?')}
               className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
             >
@@ -537,24 +618,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             </button>
             <button
               type="button"
-              onClick={() => handleSend('Why does my loved one make blunt remarks with no filter?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-            >
-              Blunt remarks
-            </button>
-            <button
-              type="button"
               onClick={() => handleSend('How do I handle driving retirement safely?')}
               className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
             >
               Driving retirement
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How to manage compulsive sweet cravings and overeating?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
-            >
-              Sweet cravings
             </button>
           </div>
 

@@ -271,6 +271,8 @@ export interface CalendarEvent {
 export interface ChatbotGuideFile {
   id: string;
   title: string;
+  publisher?: string;
+  year?: string;
   fileName: string;
   fileSize: number;
   mimeType: string;
@@ -279,6 +281,10 @@ export interface ChatbotGuideFile {
   content: string;
   sectionCount?: number;
   wordCount?: number;
+  status?: 'DRAFT' | 'APPROVED';
+  approvedAt?: string;
+  approvedBy?: string;
+  pdfUrl?: string;
   isActive: boolean;
   uploadedBy: string;
   uploadedByName: string;
@@ -286,32 +292,30 @@ export interface ChatbotGuideFile {
   updatedAt: string;
 }
 
-export type ChatbotKnowledgeSourceMode = 'UPLOADED_GUIDES_ONLY' | 'HYBRID' | 'MOCK_FAQS_ONLY';
-
 export interface ChatbotKnowledgeConfig {
-  sourceMode: ChatbotKnowledgeSourceMode;
   totalActiveGuides: number;
   totalWords: number;
 }
 
 export interface ChatbotGuideTestResult {
-  query: string;
+  query?: string;
   answer: string;
-  sourceMode: ChatbotKnowledgeSourceMode;
   matchedGuide?: {
     id: string;
     title: string;
     fileName: string;
-    sectionTitle: string;
-    matchScore: number;
-    snippet: string;
+    sectionTitle?: string;
+    matchScore?: number;
+    snippet?: string;
   };
-  allMatchedSections: {
+  allMatchedSections?: {
     guideTitle: string;
     sectionTitle: string;
-    matchScore: number;
-    snippet: string;
+    matchScore?: number;
+    snippet?: string;
   }[];
-  usedMockFaq: boolean;
+  citedResources?: Array<{ id: string; title: string; url?: string }>;
+  suggestedQuestions?: string[];
+  isOffline?: boolean;
 }
 

@@ -5,7 +5,8 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { PDFParse } from 'pdf-parse';
-import { CLINICAL_50_FAQ, searchClinicalFaq, generateLocalRagResponse, type ClinicalFaqItem } from './src/data/ragEngine.ts';
+import { parseGuideChunks, searchGuideChunks, type GuideChunk } from './src/data/clinicalGuidesData.ts';
+import { cleanPdfText } from './src/utils/cleanPdfText.ts';
 
 dotenv.config();
 
@@ -675,7 +676,7 @@ const clinicalResources: ClinicalResource[] = [
     title: 'Sleep Issues in FTD',
     summary: 'A source document about sleep issues in FTD.',
     contentBody: 'Read the attached source document for information about sleep and FTD.',
-    fileAttachmentUrl: '/resources/Sleep-Issues-in-FTD.pdf',
+    fileAttachmentUrl: '/resources/SleepIssuesFTD-090623.pdf',
     diseaseDomain: 'FTD',
     category: 'BEHAVIORAL_AGITATION',
     keyTakeaways: [],
@@ -2988,12 +2989,6 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
   res.json({ deflectionMatches });
 });
 
-// 50 Clinical FAQs Endpoint
-app.get('/api/v1/knowledge/faq', (req, res) => {
-  const r = getRequester(req);
-  res.json(r?.condition === 'AD' ? [] : CLINICAL_50_FAQ);
-});
-
 // -------------------------------------------------------------
 // CHATBOT KNOWLEDGE GUIDE FILES STORE & RAG ENGINE
 // -------------------------------------------------------------
@@ -3001,6 +2996,8 @@ app.get('/api/v1/knowledge/faq', (req, res) => {
 interface ChatbotGuideFile {
   id: string;
   title: string;
+  publisher?: string;
+  year?: string;
   fileName: string;
   fileSize: number;
   mimeType: string;
@@ -3009,6 +3006,10 @@ interface ChatbotGuideFile {
   content: string;
   sectionCount?: number;
   wordCount?: number;
+  status?: 'DRAFT' | 'APPROVED';
+  approvedAt?: string;
+  approvedBy?: string;
+  pdfUrl?: string;
   isActive: boolean;
   uploadedBy: string;
   uploadedByName: string;
@@ -3016,71 +3017,10 @@ interface ChatbotGuideFile {
   updatedAt: string;
 }
 
-type ChatbotKnowledgeSourceMode = 'UPLOADED_GUIDES_ONLY' | 'HYBRID' | 'MOCK_FAQS_ONLY';
-
-let chatbotKnowledgeConfig: {
-  sourceMode: ChatbotKnowledgeSourceMode;
-} = {
-  sourceMode: 'UPLOADED_GUIDES_ONLY',
-};
+let chatbotKnowledgeConfig = {};
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const GUIDES_DB_FILE = path.join(DB_DIR, 'clinical_guides.json');
-
-const initialChatbotGuidesSeed: ChatbotGuideFile[] = [
-  {
-    id: 'guide-jhm-ftd-2026',
-    title: 'Johns Hopkins Comprehensive bvFTD & PPA Caregiver Protocol (2026)',
-    fileName: 'JH_FTD_Clinical_Caregiver_Protocol_2026.pdf',
-    fileSize: 14280,
-    mimeType: 'application/pdf',
-    category: 'GENERAL_CLINICAL_PROTOCOL',
-    description: 'Official clinical guidelines for daily behavioral, shower safety, and caregiving management in Frontotemporal Dementia.',
-    content: `# Johns Hopkins Comprehensive bvFTD & PPA Clinical Caregiver Protocol (2026)
-
-## De-escalating Bathing and Shower Defensiveness in bvFTD
-In Behavioral Variant Frontotemporal Dementia, resistance to bathing is driven by frontal sensory disinhibition, loss of procedural sequencing, and fear of sudden naked cold vulnerability.
-Key Interventions:
-1. **Pre-warm the Bathroom to 78°F**: Run space radiant heater or hot tap 15 minutes before undressing begins.
-2. **Utilize No-Rinse Warm Towel Bathing**: Wrap the care recipient in large, heated towels. Uncover strictly one limb at a time to cleanse with no-rinse warm cloths.
-3. **Eliminate Overhead Shower Sprays**: Directing water onto the face feels like a physical attack to a disinhibited frontal lobe. Use a handheld wand directed low at the legs.
-4. **Music Auditory Cortical Engagement**: Play familiar upbeat music from their 20s during the routine to occupy amygdala threat alarms.
-
-## Managing Compulsive Eating, Sweet Cravings & Hyperorality
-FTD atrophy in the hypothalamus and orbitofrontal circuits destroys satiety signaling and normal appetite braking, creating intense carbohydrate cravings.
-Key Interventions:
-1. **Environmental Security Over Verbal Confrontation**: Install discreet child-proof magnetic latches (e.g. Tot-Lok) on food pantries and refrigerators rather than arguing.
-2. **Pre-portioned Healthy Substitutions**: Keep sliced berries, chilled grapes, and sugar-free gelatins in clear view, while hiding high-calorie baked goods in opaque, high cabinets.
-3. **Choking Precautions & Pacing**: If rapid shoveling (food bolting) occurs, serve meals cut into bite-sized pieces on smaller 8-inch salad plates with pacing utensils.
-
-## Driving Retirement Transition Protocol
-Discontinue driving privileges decisively once executive reflex loss or traffic signal comprehension deteriorates.
-Key Interventions:
-1. **Physical Disablement Over Logic Debates**: Logic arguments fail due to anosognosia. Disconnect the vehicle battery cable, pull the ignition fuse, or park the car off-site.
-2. **Blame the Physician & Maryland MVA**: Frame driving cessation as an institutional medical and legal mandate from the Johns Hopkins clinic team.
-3. **Substitute Transportation Promptly**: Arrange alternative rides via family accounts or county specialized transit.
-
-## Managing Nocturnal Pacing and Reversed Circadian Rhythm
-Disruption of hypothalamic suprachiasmatic sleep regulation causes night wakefulness and hallway wandering.
-Key Interventions:
-1. **Maximize Morning Bright Light Exposure**: Ensure 45 minutes of bright morning outdoor sunlight or 10,000 lux therapy light box before 10 AM.
-2. **Silent Door Chimes & Motion Sensors**: Install wireless magnetic sensors that alert the caregiver's smartphone silently without sounding blaring audible alarms in the hallway.
-3. **Secure Hallway Environment**: Keep nightlights at baseboard level and remove throw rugs to prevent falls during nighttime pacing.
-
-## Addressing Inappropriate Public Disinhibition and Blunt Remarks
-Loss of ventromedial prefrontal inhibition leads to loud comments about strangers or impulsive touching.
-Key Interventions:
-1. **Caregiver Explanatory Cards**: Carry discrete business-sized cards that state: "My companion has Frontotemporal Dementia (a neurological condition that impairs speech and social filter). Thank you for your patience and understanding." Hand these quietly to cashiers, waitstaff, or bystanders.
-2. **Non-Confrontational Gentle Redirection**: Avoid arguing or saying "That was rude." Calmly pivot attention: "Look at this display over here."`,
-    sectionCount: 5,
-    wordCount: 520,
-    isActive: true,
-    uploadedBy: 'user-clinician-1',
-    uploadedByName: 'Dr. Seema Gulyani',
-    createdAt: '2026-10-10T09:00:00Z',
-    updatedAt: '2026-10-10T09:00:00Z',
-  },
-];
 
 function loadChatbotGuidesFromDb(): ChatbotGuideFile[] {
   try {
@@ -3097,8 +3037,7 @@ function loadChatbotGuidesFromDb(): ChatbotGuideFile[] {
   } catch (err) {
     console.warn('Could not read guides from file database:', err);
   }
-  saveChatbotGuidesToDb(initialChatbotGuidesSeed);
-  return [...initialChatbotGuidesSeed];
+  return [];
 }
 
 function saveChatbotGuidesToDb(guides: ChatbotGuideFile[]): void {
@@ -3114,222 +3053,74 @@ function saveChatbotGuidesToDb(guides: ChatbotGuideFile[]): void {
 
 let chatbotGuidesStore: ChatbotGuideFile[] = loadChatbotGuidesFromDb();
 
-interface GuideChunk {
-  guideId: string;
-  guideTitle: string;
-  fileName: string;
-  sectionTitle: string;
-  category: string;
-  content: string;
-}
-
-function parseGuideChunks(guides: ChatbotGuideFile[]): GuideChunk[] {
-  const chunks: GuideChunk[] = [];
-
-  for (const guide of guides) {
-    if (!guide.isActive) continue;
-    const content = guide.content;
-    const headingRegex = /^#{1,3}\s+(.+)$/gm;
-    const sections: { title: string; startIndex: number }[] = [];
-    let m: RegExpExecArray | null;
-
-    while ((m = headingRegex.exec(content)) !== null) {
-      sections.push({ title: m[1].trim(), startIndex: m.index });
-    }
-
-    if (sections.length === 0) {
-      const paras = content.split(/\n\s*\n/).filter((p) => p.trim().length > 30);
-      if (paras.length <= 1) {
-        chunks.push({
-          guideId: guide.id,
-          guideTitle: guide.title,
-          fileName: guide.fileName,
-          sectionTitle: guide.title,
-          category: guide.category,
-          content: content.trim(),
-        });
-      } else {
-        paras.forEach((p, idx) => {
-          chunks.push({
-            guideId: guide.id,
-            guideTitle: guide.title,
-            fileName: guide.fileName,
-            sectionTitle: `${guide.title} (Part ${idx + 1})`,
-            category: guide.category,
-            content: p.trim(),
-          });
-        });
-      }
-    } else {
-      // Check if there is preamble before first heading
-      if (sections[0].startIndex > 60) {
-        const preamble = content.slice(0, sections[0].startIndex).trim();
-        if (preamble.length > 50) {
-          chunks.push({
-            guideId: guide.id,
-            guideTitle: guide.title,
-            fileName: guide.fileName,
-            sectionTitle: `${guide.title} - Overview`,
-            category: guide.category,
-            content: preamble,
-          });
-        }
-      }
-
-      for (let i = 0; i < sections.length; i++) {
-        const cur = sections[i];
-        const nextStart = i + 1 < sections.length ? sections[i + 1].startIndex : content.length;
-        const body = content.slice(cur.startIndex, nextStart).trim();
-        chunks.push({
-          guideId: guide.id,
-          guideTitle: guide.title,
-          fileName: guide.fileName,
-          sectionTitle: cur.title,
-          category: guide.category,
-          content: body,
-        });
-      }
-    }
-  }
-
-  return chunks;
-}
-
-const GUIDE_SEARCH_STOP_WORDS = new Set([
-  'what', 'is', 'the', 'best', 'way', 'to', 'my', 'in', 'on', 'at', 'by', 'for', 'with', 'a', 'an', 'and', 'or', 'do',
-  'how', 'can', 'i', 'we', 'you', 'they', 'them', 'of', 'this', 'that', 'these', 'those', 'be', 'are', 'was', 'were',
-  'been', 'being', 'have', 'has', 'had', 'it', 'its', 'so', 'as', 'if', 'about', 'from', 'help', 'need', 'please',
-  'tell', 'me', 'our', 'your', 'his', 'her', 'their', 'there', 'here', 'when', 'where', 'why', 'who', 'does', 'did',
-]);
-
-function searchGuideChunks(query: string, chunks: GuideChunk[], topK: number = 3): { chunk: GuideChunk; score: number }[] {
-  const queryLower = query.toLowerCase();
-  const rawWords = queryLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
-  const tokens = rawWords.filter((w) => w.length >= 3 && !GUIDE_SEARCH_STOP_WORDS.has(w));
-
-  const synonyms: Record<string, string[]> = {
-    shower: ['bath', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'towel', 'wand', 'clean', 'refusal'],
-    bath: ['shower', 'wash', 'hygiene', 'water', 'sponge', 'soap', 'clean', 'towel', 'refusal', 'bathing'],
-    sweet: ['sweets', 'candy', 'eating', 'food', 'sugar', 'binge', 'cravings', 'pastries', 'ice cream', 'cookies', 'hyperorality'],
-    eat: ['eating', 'sweet', 'food', 'choking', 'bolting', 'cravings', 'chewing', 'swallow', 'carbohydrate', 'appetite', 'plate', 'hunger', 'hyperorality'],
-    sugar: ['sweet', 'sweets', 'candy', 'cookies', 'hyperorality', 'binge', 'pastry', 'carbohydrate'],
-    drive: ['car', 'driving', 'license', 'keys', 'vehicle', 'mva', 'dmv', 'ignition', 'battery', 'transportation'],
-    wander: ['night', 'pacing', 'walk', 'walking', 'sensor', 'door', 'lost', 'elopement', 'chime', 'hallway'],
-    sleep: ['night', 'pacing', 'insomnia', 'awake', 'circadian', 'hallway', 'wakefulness', 'sundowning'],
-    yell: ['agitation', 'outburst', 'aggression', 'sponge', 'hit', 'anger', 'screaming', 'violence', 'fighting', 'lashing'],
-    rude: ['blunt', 'filter', 'public', 'cards', 'disinhibition', 'stranger', 'embarrassing', 'inappropriate', 'impulsive', 'insulting'],
-    toilet: ['incontinence', 'voiding', 'briefs', 'diapers', 'bathroom', 'urinary', 'urine'],
-    aphasia: ['ppa', 'speech', 'words', 'talking', 'language', 'nonverbal'],
-    legal: ['lawyer', 'poa', 'power of attorney', 'directive', 'guardianship', 'will', 'medicaid'],
-    pill: ['medication', 'medicine', 'swallow', 'spit', 'dose', 'crush', 'refuse'],
-    agitation: ['aggression', 'anger', 'hit', 'scream', 'violence', 'combative', 'yell', 'fighting'],
-  };
-
-  const scored = chunks.map((chunk) => {
-    let score = 0;
-    const titleLower = chunk.sectionTitle.toLowerCase();
-    const contentLower = chunk.content.toLowerCase();
-    const titleWords = new Set(titleLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
-    const contentWords = new Set(contentLower.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 3));
-
-    // Multi-word exact phrase match (if meaningful length)
-    if (tokens.length >= 2 && queryLower.length >= 6) {
-      if (contentLower.includes(queryLower)) score += 40;
-      if (titleLower.includes(queryLower)) score += 30;
-    }
-
-    // Direct token matches using word set
-    for (const token of tokens) {
-      if (titleWords.has(token)) score += 15;
-      if (contentWords.has(token)) score += 5;
-
-      // Synonym expansion
-      const synList = synonyms[token];
-      if (synList) {
-        for (const s of synList) {
-          if (titleWords.has(s)) score += 12;
-          if (contentWords.has(s)) score += 4;
-        }
-      }
-    }
-
-    return { chunk, score };
-  });
-
-  return scored
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
-}
-
-function formatUploadedGuideAnswer(chunk: GuideChunk): string {
-  const lines = chunk.content.split('\n');
-  const contentLines = lines.filter((l) => !l.startsWith('# '));
-  const rawText = contentLines.join('\n').trim();
-
-  const stepIndex = rawText.search(/\n(?:\d+\.|\*|\-)\s+/);
-  let explanation = rawText;
-  let steps = '';
-  if (stepIndex > 0) {
-    explanation = rawText.slice(0, stepIndex).trim();
-    steps = rawText.slice(stepIndex).trim();
-  }
-
-  let answer = `### Understanding What Is Happening\n${explanation || 'In Frontotemporal Dementia, this symptom stems from neurodegeneration affecting frontal brain circuits, not willful opposition.'}`;
-
-  if (steps) {
-    answer += `\n\n### Practical Steps\n${steps}`;
-  }
-
-  return answer;
-}
-
 // -------------------------------------------------------------
 // CHATBOT KNOWLEDGE MANAGEMENT ROUTES (MODERATOR DASHBOARD)
 // -------------------------------------------------------------
 
 app.get('/api/v1/chatbot/guides', (_req, res) => {
   chatbotGuidesStore = loadChatbotGuidesFromDb();
-  const active = chatbotGuidesStore.filter((g) => g.isActive);
-  const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
+  const approvedActive = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
+  const totalWords = approvedActive.reduce((acc, g) => acc + (g.wordCount || 0), 0);
   res.json({
     guides: chatbotGuidesStore,
     config: {
       ...chatbotKnowledgeConfig,
-      totalActiveGuides: active.length,
+      totalActiveGuides: approvedActive.length,
       totalWords,
     },
   });
 });
 
 app.post('/api/v1/chatbot/guides', (req, res) => {
-  const { title, fileName, fileSize, mimeType, category, description, content, uploadedBy, uploadedByName } = req.body;
+  const {
+    title,
+    publisher,
+    year,
+    fileName,
+    fileSize,
+    mimeType,
+    category,
+    description,
+    content,
+    status = 'DRAFT',
+    pdfUrl,
+    uploadedBy,
+    uploadedByName,
+  } = req.body;
 
   if (!title?.trim() || !content?.trim()) {
     return res.status(400).json({ error: 'Title and guide content are required.' });
   }
 
+  const isApproved = status === 'APPROVED';
   const words = content.trim().split(/\s+/).filter(Boolean).length;
   const sections = content.split(/(?=^##\s+)/m).filter(Boolean).length || 1;
 
   const newGuide: ChatbotGuideFile = {
     id: `guide-${Date.now()}`,
     title: title.trim(),
-    fileName: fileName?.trim() || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.md`,
+    publisher: publisher?.trim() || '',
+    year: year?.trim() || '',
+    fileName: fileName?.trim() || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
     fileSize: fileSize || content.length,
-    mimeType: mimeType || 'text/markdown',
-    category: category || 'GENERAL_CLINICAL_PROTOCOL',
+    mimeType: mimeType || 'application/pdf',
+    category: category?.trim() || '',
     description: description?.trim() || '',
     content: content.trim(),
     sectionCount: sections,
     wordCount: words,
-    isActive: true,
+    status: isApproved ? 'APPROVED' : 'DRAFT',
+    approvedAt: isApproved ? new Date().toISOString() : undefined,
+    approvedBy: isApproved ? (uploadedBy || 'user-clinician-1') : undefined,
+    pdfUrl: pdfUrl || undefined,
+    isActive: isApproved, // Drafts are not active until explicitly approved
     uploadedBy: uploadedBy || 'user-clinician-1',
     uploadedByName: uploadedByName || 'Dr. Seema Gulyani',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
   chatbotGuidesStore.unshift(newGuide);
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
@@ -3339,12 +3130,75 @@ app.post('/api/v1/chatbot/guides', (req, res) => {
     moderatorName: uploadedByName || 'Dr. Seema Gulyani',
     entityType: 'RESOURCE' as any,
     entityId: newGuide.id,
-    actionTaken: 'UPLOADED_CHATBOT_GUIDE',
-    notes: `Uploaded clinical guide "${newGuide.title}" (${words} words) for chatbot knowledge`,
+    actionTaken: isApproved ? 'APPROVED_CHATBOT_GUIDE' : 'SAVED_DRAFT_CHATBOT_GUIDE',
+    notes: `${isApproved ? 'Approved & published' : 'Saved draft of'} clinical guide "${newGuide.title}" (${words} words)`,
     createdAt: new Date().toISOString(),
   });
 
   res.status(201).json(newGuide);
+});
+
+app.put('/api/v1/chatbot/guides/:id', (req, res) => {
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
+  if (!guide) {
+    return res.status(404).json({ error: 'Guide file not found.' });
+  }
+
+  const { title, publisher, year, category, description, content, status, pdfUrl } = req.body;
+  if (title !== undefined) guide.title = title.trim();
+  if (publisher !== undefined) guide.publisher = publisher.trim();
+  if (year !== undefined) guide.year = year.trim();
+  if (category !== undefined) guide.category = category.trim();
+  if (description !== undefined) guide.description = description.trim();
+  if (content !== undefined) {
+    guide.content = content.trim();
+    guide.wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+    guide.sectionCount = content.split(/(?=^##\s+)/m).filter(Boolean).length || 1;
+  }
+  if (pdfUrl !== undefined) guide.pdfUrl = pdfUrl;
+  if (status !== undefined) {
+    guide.status = status;
+    if (status === 'APPROVED') {
+      guide.isActive = true;
+      guide.approvedAt = new Date().toISOString();
+      guide.approvedBy = 'user-clinician-1';
+    } else {
+      guide.isActive = false;
+    }
+  }
+  guide.updatedAt = new Date().toISOString();
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  res.json({ success: true, guide });
+});
+
+app.patch('/api/v1/chatbot/guides/:id/approve', (req, res) => {
+  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
+  if (!guide) {
+    return res.status(404).json({ error: 'Guide file not found.' });
+  }
+
+  guide.status = 'APPROVED';
+  guide.isActive = true;
+  guide.approvedAt = new Date().toISOString();
+  guide.approvedBy = 'user-clinician-1';
+  guide.updatedAt = new Date().toISOString();
+  saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  auditEvents.unshift({
+    id: `audit-${Date.now()}`,
+    moderatorId: 'user-clinician-1',
+    moderatorName: 'Dr. Seema Gulyani',
+    entityType: 'RESOURCE' as any,
+    entityId: guide.id,
+    actionTaken: 'APPROVED_CHATBOT_GUIDE',
+    notes: `Approved verified clinical guide "${guide.title}" for knowledge assistant`,
+    createdAt: new Date().toISOString(),
+  });
+
+  res.json({ success: true, guide });
 });
 
 app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
@@ -3373,17 +3227,6 @@ app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
   res.json({ success: true, id: deleted.id, remainingGuides: chatbotGuidesStore.length });
 });
 
-app.post('/api/v1/chatbot/guides/restore-default', (_req, res) => {
-  chatbotGuidesStore = loadChatbotGuidesFromDb();
-  const seedGuide = initialChatbotGuidesSeed[0];
-  const existing = chatbotGuidesStore.find((g) => g.id === seedGuide.id);
-  if (!existing) {
-    chatbotGuidesStore.unshift({ ...seedGuide, updatedAt: new Date().toISOString() });
-    saveChatbotGuidesToDb(chatbotGuidesStore);
-  }
-  res.json({ success: true, guides: chatbotGuidesStore });
-});
-
 app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
   const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
   if (!guide) {
@@ -3408,7 +3251,8 @@ app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
   res.json({ guide, success: true });
 });
 
-// PDF Extraction Endpoint using PDFParse with Gemini OCR fallback
+// PDF Extraction Endpoint using cleanPdfText cleaner
+// Requirement: Blank title, no category guess, publisher and year fields
 app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
   const { fileName = 'clinical_guide.pdf', fileBase64 } = req.body;
 
@@ -3444,180 +3288,26 @@ app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
       console.warn('PDFParse primary extraction notice:', parseErr);
     }
 
-    // Clean any binary/control characters and normalize text
-    extractedText = extractedText
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ')
-      .replace(/\r\n/g, '\n')
-      .replace(/(\w+)-\n(\w+)/g, '$1$2')
-      .replace(/[ \t]{2,}/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-    // If text is very short (e.g. scanned image PDF) and Gemini AI is available, use multimodal PDF understanding
-    if (extractedText.length < 80 && ai) {
-      try {
-        const geminiResp = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [
-            {
-              inlineData: {
-                mimeType: 'application/pdf',
-                data: cleanBase64,
-              },
-            },
-            {
-              text: 'You are an expert clinical document transcription engine. Extract and transcribe the full text and clinical guidelines from this PDF document. Format with clean markdown headers (## Section Title) and numbered practical steps. Return only the clean markdown text.',
-            },
-          ],
-        });
-        if (geminiResp.text && geminiResp.text.trim().length > 30) {
-          extractedText = geminiResp.text.trim();
-        }
-      } catch (geminiPdfErr) {
-        console.warn('Gemini multimodal PDF transcription notice:', geminiPdfErr);
-      }
-    }
-
-    if (!extractedText) {
-      extractedText = `# ${fileName.replace(/\.pdf$/i, '')}\n\nClinical guidelines extracted from uploaded PDF document.`;
-    }
-
-    // Derive suggested title
-    const lines = extractedText.split('\n').map((l) => l.trim()).filter(Boolean);
-    let suggestedTitle = fileName.replace(/\.pdf$/i, '').replace(/[_-]/g, ' ');
-    suggestedTitle = suggestedTitle.replace(/\b\w/g, (c: string) => c.toUpperCase());
-
-    for (const l of lines.slice(0, 5)) {
-      const cleanLine = l.replace(/^#+\s*/, '').replace(/\*+/g, '').trim();
-      if (cleanLine.length >= 8 && cleanLine.length <= 100 && !/^(page|\d+|confidential)/i.test(cleanLine)) {
-        suggestedTitle = cleanLine;
-        break;
-      }
-    }
-
-    // Suggest category
-    const textLower = extractedText.toLowerCase();
-    let suggestedCategory = 'GENERAL_CLINICAL_PROTOCOL';
-    if (textLower.includes('shower') || textLower.includes('bath') || textLower.includes('hygiene') || textLower.includes('wash')) {
-      suggestedCategory = 'HYGIENE_BATHING';
-    } else if (textLower.includes('sweet') || textLower.includes('eating') || textLower.includes('sugar') || textLower.includes('food') || textLower.includes('binge')) {
-      suggestedCategory = 'NUTRITION_HYPERORALITY';
-    } else if (textLower.includes('disinhibit') || textLower.includes('social filter') || textLower.includes('blunt') || textLower.includes('rude')) {
-      suggestedCategory = 'BEHAVIORAL_DISINHIBITION';
-    } else if (textLower.includes('driv') || textLower.includes('vehicle') || textLower.includes('car') || textLower.includes('license')) {
-      suggestedCategory = 'DRIVING_SAFETY';
-    } else if (textLower.includes('sleep') || textLower.includes('night') || textLower.includes('wander') || textLower.includes('pacing')) {
-      suggestedCategory = 'SLEEP_WANDERING';
-    } else if (textLower.includes('aphasia') || textLower.includes('speech') || textLower.includes('ppa') || textLower.includes('language')) {
-      suggestedCategory = 'COMMUNICATION_PPA';
-    } else if (textLower.includes('poa') || textLower.includes('attorney') || textLower.includes('medicaid') || textLower.includes('legal')) {
-      suggestedCategory = 'LEGAL_MEDICAID';
-    } else if (textLower.includes('crisis') || textLower.includes('emergency') || textLower.includes('agitation') || textLower.includes('aggression')) {
-      suggestedCategory = 'CRISIS_DE_ESCALATION';
-    }
+    // Clean any binary/control characters, headers, footers, and hyphens using cleanPdfText cleaner
+    extractedText = cleanPdfText(extractedText);
 
     const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
 
+    // As requested: blank title, no category guess, publisher and year fields
     res.json({
       text: extractedText,
       wordCount,
       pageCount,
       fileName,
-      suggestedTitle,
-      suggestedCategory,
+      title: '',
+      category: '',
+      publisher: '',
+      year: '',
     });
   } catch (err: any) {
     console.error('Failed to extract PDF:', err);
     res.status(500).json({ error: 'Could not extract PDF text: ' + (err.message || 'Unknown error') });
   }
-});
-
-app.post('/api/v1/chatbot/guides/settings', (_req, res) => {
-  chatbotKnowledgeConfig.sourceMode = 'UPLOADED_GUIDES_ONLY';
-  const active = chatbotGuidesStore.filter((g) => g.isActive);
-  const totalWords = active.reduce((acc, g) => acc + (g.wordCount || 0), 0);
-  res.json({
-    ...chatbotKnowledgeConfig,
-    totalActiveGuides: active.length,
-    totalWords,
-  });
-});
-
-app.post('/api/v1/chatbot/guides/test', async (req, res) => {
-  const { query } = req.body;
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Query is required for testing.' });
-  }
-
-  const activeGuides = chatbotGuidesStore.filter((g) => g.isActive);
-  const chunks = parseGuideChunks(activeGuides);
-  const matches = searchGuideChunks(query, chunks, 3);
-
-  if (matches.length === 0) {
-    return res.json({
-      query,
-      answer: 'No relevant section found in your uploaded guide files. Please ensure your uploaded clinical guides cover this caregiving topic.',
-      usedMockFaq: false,
-      allMatchedSections: [],
-    });
-  }
-
-  const best = matches[0].chunk;
-  let testAnswer = formatUploadedGuideAnswer(best);
-
-  if (ai) {
-    try {
-      const guideContext = matches
-        .map((m, idx) => `GUIDE SECTION #${idx + 1}: ${m.chunk.guideTitle} - ${m.chunk.sectionTitle}\n${m.chunk.content}`)
-        .join('\n\n');
-
-      const testPrompt = `You are Dr. Seema Gulyani's Clinical Assistant for Johns Hopkins FTD families.
-Answer this care partner inquiry strictly using the verified uploaded clinical guide sections below:
-Inquiry: "${query}"
-
-Uploaded Clinical Guide Context:
-${guideContext}
-
-Format requirements:
-- Warm opening sentence
-- ### Understanding What Is Happening
-- ### Practical Steps from Uploaded Guide (numbered with bold titles)
-- Under NO circumstances recommend prescription drug dosages.
-- Explicitly reference the source guide: "${best.fileName}".`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: testPrompt,
-        config: { temperature: 0.1 },
-      });
-
-      if (response.text?.trim()) {
-        testAnswer = response.text.trim();
-      }
-    } catch (e) {
-      console.warn('Gemini test query generation notice:', e);
-    }
-  }
-
-  res.json({
-    query,
-    answer: testAnswer,
-    usedMockFaq: false,
-    matchedGuide: {
-      id: best.guideId,
-      title: best.guideTitle,
-      fileName: best.fileName,
-      sectionTitle: best.sectionTitle,
-      matchScore: matches[0].score,
-      snippet: best.content.slice(0, 220),
-    },
-    allMatchedSections: matches.map((m) => ({
-      guideTitle: m.chunk.guideTitle,
-      sectionTitle: m.chunk.sectionTitle,
-      matchScore: m.score,
-      snippet: m.chunk.content.slice(0, 220),
-    })),
-  });
 });
 
 // -------------------------------------------------------------
@@ -3679,25 +3369,27 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
     });
   }
 
-  // Active uploaded guide files retrieval (Exclusive source, persisted in JSON DB)
+  // Active approved uploaded guide files retrieval (Exclusive source, persisted in JSON DB)
   chatbotGuidesStore = loadChatbotGuidesFromDb();
-  const activeGuides = chatbotGuidesStore.filter((g) => g.isActive);
+  const approvedActiveGuides = chatbotGuidesStore.filter((g) => g.isActive && g.status === 'APPROVED');
 
-  if (activeGuides.length === 0) {
+  // Disable the chat endpoint until step 3 is done (until verified guides are uploaded and approved)
+  if (approvedActiveGuides.length === 0) {
     return res.json({
-      answer: `Dr. Seema's Assistant operates strictly using verified institutional clinical guide documents. No active clinical guide files are currently uploaded. Please upload a clinical PDF guide in the Moderator Dashboard to enable guidance answers.`,
+      answer: `The Johns Hopkins Clinical Knowledge Assistant is currently offline while Dr. Seema and the clinical moderation team review, extract, and approve institutional care guides.\n\nPlease consult the Guides library directly or contact the Johns Hopkins Memory and Alzheimer's Treatment Center clinic at (410) 955-5147 (option 2) for clinical inquiries. For life-threatening emergencies, please call 911 immediately.`,
+      isOffline: true,
+      isDisabled: true,
       citedResources: [],
       suggestedQuestions: [],
       isUploadedGuideSourced: false,
-      sourceMode: 'UPLOADED_GUIDES_ONLY',
     });
   }
 
-  const chunks = parseGuideChunks(activeGuides);
+  const chunks = parseGuideChunks(approvedActiveGuides);
   const matches = searchGuideChunks(query, chunks, 3);
   const bestMatchChunk = matches[0]?.chunk || chunks[0];
   const topScore = matches[0]?.score || 0;
-  const hasStrongContext = matches.length > 0 && topScore >= 12;
+  const hasStrongContext = matches.length > 0 && topScore >= 5;
 
   // If query has no relevant match in uploaded guides, answer supportively with clinical contact info
   if (!hasStrongContext) {
@@ -3711,7 +3403,6 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
         'Why are they constantly craving sweets and overeating?',
       ],
       isUploadedGuideSourced: false,
-      sourceMode: 'UPLOADED_GUIDES_ONLY',
       canAnswer: false,
     });
   }
@@ -3727,7 +3418,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const fullContextCorpus = `VERIFIED CLINICAL GUIDELINES FROM UPLOADED INSTITUTIONAL DOCUMENTS:\n\n${uploadedGuidesContext}`;
 
   const dynamicSuggestedQuestions = chunks
-    .filter((c) => c.sectionTitle !== bestMatchChunk.sectionTitle)
+    .filter((c) => c.sectionTitle !== bestMatchChunk.sectionTitle && !c.sectionTitle.includes('Protocol (2026)'))
     .slice(0, 3)
     .map((c) => {
       const cleanTitle = c.sectionTitle.replace(/^[\d.]+\s*/, '').trim();
@@ -3766,7 +3457,7 @@ VERIFIED CLINICAL KNOWLEDGE CORPUS (FROM UPLOADED GUIDE FILES):
 ${fullContextCorpus}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         contents: query,
         config: {
           systemInstruction,
@@ -3780,20 +3471,44 @@ ${fullContextCorpus}`;
         answer: answerText,
         suggestedQuestions: suggestedQuestionsList,
         isUploadedGuideSourced: true,
-        sourceMode: 'UPLOADED_GUIDES_ONLY',
+        matchedGuide: {
+          id: bestMatchChunk.guideId,
+          title: bestMatchChunk.guideTitle,
+          fileName: bestMatchChunk.fileName,
+          sectionTitle: bestMatchChunk.sectionTitle,
+        },
+        citedResources: [
+          {
+            id: bestMatchChunk.guideId,
+            title: bestMatchChunk.guideTitle,
+            url: `/resources/${bestMatchChunk.fileName}`,
+          },
+        ],
       });
     } catch (genAiError) {
       console.warn('Gemini generation error, falling back to deterministic uploaded guide response:', genAiError);
     }
   }
 
-  // Deterministic fallback formatted directly from top matching uploaded guide section
-  const fallbackAnswer = formatUploadedGuideAnswer(bestMatchChunk);
+  // Fallback to raw extracted guide text
+  const fallbackAnswer = bestMatchChunk ? bestMatchChunk.content : 'No guide text available.';
   return res.json({
     answer: fallbackAnswer,
     suggestedQuestions: suggestedQuestionsList,
     isUploadedGuideSourced: true,
-    sourceMode: 'UPLOADED_GUIDES_ONLY',
+    matchedGuide: {
+      id: bestMatchChunk.guideId,
+      title: bestMatchChunk.guideTitle,
+      fileName: bestMatchChunk.fileName,
+      sectionTitle: bestMatchChunk.sectionTitle,
+    },
+    citedResources: [
+      {
+        id: bestMatchChunk.guideId,
+        title: bestMatchChunk.guideTitle,
+        url: `/resources/${bestMatchChunk.fileName}`,
+      },
+    ],
   });
 });
 

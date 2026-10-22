@@ -148,7 +148,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       setNewContentBody('');
       setNewKeyTakeaways('');
       setNewExternalUrl('');
-      setSuccessToast(`Clinical guide "${created.title}" successfully published.`);
+      setSuccessToast(`Guide "${created.title}" successfully published.`);
       setNewAudience('');
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
@@ -166,7 +166,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       setResources((prev) => prev.filter((r) => r.id !== resource.id));
       setActiveResource((prev) => prev?.id === resource.id ? null : prev);
       setPendingDelete(null);
-      setSuccessToast(`Clinical guide "${resource.title}" deleted.`);
+      setSuccessToast(`Guide "${resource.title}" deleted.`);
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
       console.error('Failed to delete guide:', err);

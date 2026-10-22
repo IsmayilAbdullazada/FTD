@@ -1218,7 +1218,7 @@ export const api = {
   getChatbotGuides: async (): Promise<{ guides: ChatbotGuideFile[]; config: ChatbotKnowledgeConfig }> => {
     const res = await fetch('/api/v1/chatbot/guides');
     if (!res.ok) {
-      throw new Error(`Failed to load clinical care guides: ${res.statusText || res.status}`);
+      throw new Error(`Failed to load guides: ${res.statusText || res.status}`);
     }
     return res.json();
   },

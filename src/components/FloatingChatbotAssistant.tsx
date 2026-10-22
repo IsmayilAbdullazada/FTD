@@ -530,7 +530,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                               }]
                             : []
                           ).map((res, cIdx) => (
-                            <div key={res.id || cIdx} className="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-1 px-1.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                            <div key={`${res.id || 'res'}-p${res.page ?? ''}-${cIdx}`} className="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-1 px-1.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
                               <span className="truncate text-slate-700 dark:text-slate-300">
                                 <span className="font-semibold text-[#002D72] dark:text-sky-300 mr-1">[{cIdx + 1}]</span>
                                 {res.title}

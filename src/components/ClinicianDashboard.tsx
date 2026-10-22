@@ -344,7 +344,16 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setLoadingGuides(true);
     try {
       const res = await api.getChatbotGuides();
-      setChatbotGuides(res.guides || []);
+      const rawGuides = res.guides || [];
+      const seen = new Set<string>();
+      const deduped: ChatbotGuideFile[] = [];
+      for (const g of rawGuides) {
+        if (!seen.has(g.id)) {
+          seen.add(g.id);
+          deduped.push(g);
+        }
+      }
+      setChatbotGuides(deduped);
       setChatbotConfig(res.config);
     } catch (err) {
       console.error('Failed to load chatbot guides:', err);
@@ -401,7 +410,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       onQueueUpdated();
     } catch (err) {
       console.error('Failed to delete guide:', err);
-      setActionSuccessNotice('Could not delete clinical guide. Please try again.');
+      setActionSuccessNotice('Could not delete guide. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 3500);
     } finally {
       setIsDeletingGuide(false);
@@ -1045,6 +1054,28 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
 
         <div
+          onClick={() => setActiveTab('chatbot-knowledge')}
+          className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
+            activeTab === 'chatbot-knowledge'
+              ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 ring-1 ring-blue-300 dark:ring-blue-800'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Guides</span>
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#002D72] dark:text-blue-400" />
+          </div>
+          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
+              {chatbotGuides.filter((g) => g.isActive).length}
+            </span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
+              active
+            </span>
+          </div>
+        </div>
+
+        <div
           onClick={() => setActiveTab('cohorts')}
           className={`p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
             activeTab === 'cohorts'
@@ -1077,30 +1108,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
             <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{members.length}</span>
             <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">caregivers</span>
-          </div>
-        </div>
-
-        <div
-          onClick={() => setActiveTab('chatbot-knowledge')}
-          className={`col-span-2 sm:col-span-1 lg:col-span-1 p-2.5 sm:p-3.5 lg:p-4 rounded-xl sm:rounded-2xl border transition cursor-pointer ${
-            activeTab === 'chatbot-knowledge'
-              ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-300 dark:ring-purple-800'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1">
-              <span>Clinical Guides</span>
-            </span>
-            <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
-            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-900 dark:text-purple-100 tabular-nums">
-              {chatbotGuides.filter((g) => g.isActive).length}
-            </span>
-            <span className="text-[10px] sm:text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
-              active
-            </span>
           </div>
         </div>
       </div>
@@ -1139,6 +1146,20 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('chatbot-knowledge')}
+            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
+              activeTab === 'chatbot-knowledge'
+                ? 'border-[#002D72] dark:border-blue-400 text-[#002D72] dark:text-blue-400 font-bold'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>Guides</span>
+            <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-bold tabular-nums">
+              {chatbotGuides.length}
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('cohorts')}
             className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'cohorts'
@@ -1163,21 +1184,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <span>Members</span>
             <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs font-bold tabular-nums">
               {members.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('chatbot-knowledge')}
-            className={`pb-2.5 sm:pb-3 flex items-center gap-1.5 sm:gap-2 border-b-2 transition whitespace-nowrap shrink-0 cursor-pointer ${
-              activeTab === 'chatbot-knowledge'
-                ? 'border-purple-600 dark:border-purple-400 text-purple-800 dark:text-purple-300 font-bold'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400" />
-            <span>Clinical Guides</span>
-            <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-[10px] sm:text-xs font-bold tabular-nums">
-              {chatbotGuides.length}
             </span>
           </button>
         </div>
@@ -1909,10 +1915,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#002D72]/10 dark:bg-blue-900/30 text-[#002D72] dark:text-sky-300 flex items-center justify-center font-bold">
-                  <Bot className="w-5 h-5" />
+                  <FileText className="w-5 h-5" />
                 </div>
                 <h2 className="font-serif text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-                  Clinical Care Guides
+                  Guides
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
@@ -1926,7 +1932,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition shadow-xs cursor-pointer shrink-0"
             >
               <UploadCloud className="w-4 h-4" />
-              <span>Upload Care Guide</span>
+              <span>Upload Guide</span>
             </button>
           </div>
 
@@ -1935,7 +1941,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">
-                  Uploaded Clinical Guides ({chatbotGuides.length})
+                  Uploaded Guides ({chatbotGuides.length})
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {chatbotGuides.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status)).length} approved & active · {chatbotGuides.filter((g) => g.status === 'DRAFT').length} drafts pending review
@@ -2001,7 +2007,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
             {loadingGuides ? (
               <div className="py-16 text-center text-slate-400 text-xs">
-                Loading clinical guide documents...
+                Loading guide documents...
               </div>
             ) : chatbotGuides.length === 0 ? (
               <div className="p-12 text-center space-y-3">
@@ -2009,7 +2015,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   <UploadCloud className="w-6 h-6" />
                 </div>
                 <h4 className="font-semibold text-slate-900 dark:text-white text-sm">
-                  No Clinical Guides Uploaded Yet
+                  No Guides Uploaded Yet
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                   Upload verified PDF guidelines from public/resources. Use the side-by-side preview to inspect the extraction and approve documents for the knowledge assistant.
@@ -2024,7 +2030,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs mx-auto"
                   >
                     <UploadCloud className="w-4 h-4" />
-                    <span>Upload Care Guide</span>
+                    <span>Upload Guide</span>
                   </button>
                 </div>
               </div>
@@ -2047,11 +2053,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       g.content.toLowerCase().includes(q)
                     );
                   })
-                  .map((guide) => {
+                  .map((guide, idx) => {
                     const isDraft = guide.status === 'DRAFT';
                     return (
                       <div
-                        key={guide.id}
+                        key={guide.id ? `${guide.id}-${idx}` : idx}
                         className="p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition"
                       >
                         <div className="flex items-start gap-3.5 min-w-0 flex-1">
@@ -2069,26 +2075,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                               <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">
                                 {guide.title}
                               </h4>
-                              <span
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${
-                                  guide.condition === 'FTD'
-                                    ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                                    : guide.condition === 'AD'
-                                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                                    : 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                                }`}
-                              >
-                                {guide.condition || 'FTD'}
-                              </span>
-                              {isDraft ? (
+                              <AudienceBadge condition={guide.condition || 'FTD'} />
+                              {isDraft && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60">
                                   <Clock className="w-2.5 h-2.5" />
                                   Draft (Pending Review)
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
-                                  <CheckCircle className="w-2.5 h-2.5" />
-                                  Approved & Grounded
                                 </span>
                               )}
                             </div>
@@ -2197,7 +2188,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <span>Test Assistant Guidance</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Type any caregiver inquiry to test how Dr. Seema's Assistant uses your uploaded clinical guides to generate answers.
+                Type any caregiver inquiry to test how Dr. Seema's Assistant uses your uploaded guides to generate answers.
               </p>
             </div>
 
@@ -2773,8 +2764,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   <div className="flex items-center gap-2">
                     <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate">
                       {editingGuideId
-                        ? `Review & Verify: ${uploadTitle || uploadFileName || 'Clinical Guide'}`
-                        : 'Upload & Review Clinical Guide'}
+                        ? `Review & Verify: ${uploadTitle || uploadFileName || 'Guide'}`
+                        : 'Upload & Review Guide'}
                     </h3>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
@@ -2917,7 +2908,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900 dark:text-white text-sm">
-                            Drop clinical PDF guide here, or{' '}
+                            Drop PDF guide here, or{' '}
                             <span className="text-[#002D72] dark:text-sky-400 underline">browse</span>
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -2995,10 +2986,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                             className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                               isSelected
                                 ? item.id === 'FTD'
-                                  ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-500 dark:border-purple-500 ring-2 ring-purple-400/20'
+                                  ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 dark:border-blue-500 ring-2 ring-blue-400/20'
                                   : item.id === 'AD'
-                                  ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 dark:border-amber-500 ring-2 ring-amber-400/20'
-                                  : 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 dark:border-blue-500 ring-2 ring-blue-400/20'
+                                  ? 'bg-violet-50 dark:bg-violet-950/60 border-violet-500 dark:border-violet-500 ring-2 ring-violet-400/20'
+                                  : 'bg-slate-100 dark:bg-slate-800 border-slate-400 dark:border-slate-500 ring-2 ring-slate-400/20'
                                 : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-700'
                             }`}
                           >
@@ -3007,10 +2998,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                                 className={`text-xs font-bold ${
                                   isSelected
                                     ? item.id === 'FTD'
-                                      ? 'text-purple-700 dark:text-purple-300'
+                                      ? 'text-ftd-700 dark:text-blue-300'
                                       : item.id === 'AD'
-                                      ? 'text-amber-700 dark:text-amber-300'
-                                      : 'text-blue-700 dark:text-blue-300'
+                                      ? 'text-ad-700 dark:text-violet-300'
+                                      : 'text-slate-800 dark:text-slate-200'
                                     : 'text-slate-700 dark:text-slate-300'
                                 }`}
                               >
@@ -3279,7 +3270,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             {/* Inspect Header */}
             <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 shrink-0">
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-sky-300 shrink-0">
                   <FileCode className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
@@ -3287,6 +3278,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate">
                       {inspectGuideModal.title}
                     </h3>
+                    <AudienceBadge condition={inspectGuideModal.condition || 'FTD'} />
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         inspectGuideModal.isActive
@@ -3298,7 +3290,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    {inspectGuideModal.fileName} · {inspectGuideModal.condition || 'FTD'}{inspectGuideModal.topicTag ? ` · #${inspectGuideModal.topicTag}` : inspectGuideModal.category ? ` · ${inspectGuideModal.category.replace(/_/g, ' ')}` : ''}
+                    {inspectGuideModal.fileName}{inspectGuideModal.topicTag ? ` · #${inspectGuideModal.topicTag}` : inspectGuideModal.category ? ` · ${inspectGuideModal.category.replace(/_/g, ' ')}` : ''}
                   </p>
                 </div>
               </div>
@@ -3313,7 +3305,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             </div>
 
             {/* Metadata Bar */}
-            <div className="px-5 py-3 bg-purple-50/40 dark:bg-purple-950/20 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-850/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-300">
                 <span>
                   <strong>{inspectGuideModal.wordCount?.toLocaleString() || inspectGuideModal.content.split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
@@ -3426,7 +3418,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* MODAL: DELETE CLINICAL GUIDE CONFIRMATION */}
+      {/* MODAL: DELETE GUIDE CONFIRMATION */}
       {guideToDelete && (
         <div
           onClick={() => !isDeletingGuide && setGuideToDelete(null)}
@@ -3442,7 +3434,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-serif font-bold text-base sm:text-lg text-slate-900 dark:text-white">
-                  Remove Clinical Guide?
+                  Remove Guide?
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
                   Are you sure you want to delete this document from Dr. Seema's Assistant knowledge base?

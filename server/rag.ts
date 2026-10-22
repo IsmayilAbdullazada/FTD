@@ -602,7 +602,7 @@ ${contextSections}`;
       const key = `${r.chunk.guideId}-p${r.chunk.page}`;
       if (!citedMap.has(key)) {
         citedMap.set(key, {
-          id: r.chunk.guideId,
+          id: `${r.chunk.guideId}-p${r.chunk.page}`,
           title: r.chunk.title,
           fileName: r.chunk.fileName,
           page: r.chunk.page,

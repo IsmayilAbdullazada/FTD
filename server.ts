@@ -3150,7 +3150,15 @@ function loadChatbotGuidesFromDb(): ChatbotGuideFile[] {
       const data = fs.readFileSync(GUIDES_DB_FILE, 'utf-8');
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        return parsed;
+        const seen = new Set<string>();
+        const deduped: ChatbotGuideFile[] = [];
+        for (const item of parsed) {
+          if (item && item.id && !seen.has(item.id)) {
+            seen.add(item.id);
+            deduped.push(item);
+          }
+        }
+        return deduped;
       }
     }
   } catch (err) {
@@ -3265,7 +3273,7 @@ app.post('/api/v1/chatbot/guides', async (req, res) => {
     updatedAt: new Date().toISOString(),
   };
 
-  chatbotGuidesStore = loadChatbotGuidesFromDb();
+  chatbotGuidesStore = loadChatbotGuidesFromDb().filter((g) => g.id !== newGuide.id);
   chatbotGuidesStore.unshift(newGuide);
   saveChatbotGuidesToDb(chatbotGuidesStore);
 

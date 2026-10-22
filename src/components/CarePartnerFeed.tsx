@@ -609,7 +609,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                     <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
                       {searchQuery
                         ? 'Try adjusting your search terms or resetting filters.'
-                        : 'You can start the first conversation or check the Clinical Guides for guidance.'}
+                        : 'You can start the first conversation or check the Guides for guidance.'}
                     </p>
                     {searchQuery ? (
                       <button

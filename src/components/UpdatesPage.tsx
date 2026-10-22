@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, X, ExternalLink, Trash2, CheckCircle2, FlaskConical, Pill, Microscope, MessageSquareQuote } from 'lucide-react';
 import { CurrentUser, ClinicUpdate, UpdateCategory, TrialStatus } from '../types';
+import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 
 const CATEGORY_META: Record<UpdateCategory, { label: string; badge: string; Icon: React.ElementType }> = {
@@ -203,14 +204,30 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
                 className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
               >
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border font-semibold ${meta.badge}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${meta.badge}`}>
                       <meta.Icon className="w-3.5 h-3.5" />
                       {meta.label}
                     </span>
-                    <span className="text-slate-500 dark:text-slate-400">
-                      {new Date(u.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
+                    {canEdit && <AudienceBadge condition={u.condition} />}
+                    <div className="ml-auto flex items-center gap-3 shrink-0">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingDelete(u);
+                          }}
+                          aria-label="Delete update"
+                          className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">

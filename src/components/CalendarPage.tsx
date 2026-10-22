@@ -293,7 +293,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
                   <div className="text-2xl font-bold text-[#002D72] dark:text-blue-400 leading-none mt-0.5">{d.getDate()}</div>
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${meta.chip}`}>{meta.label}</span>
                     {canEdit && <AudienceBadge condition={ev.condition ?? 'BOTH'} />}
                   </div>
@@ -313,11 +313,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUs
                   {ev.description && <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{ev.description}</p>}
                 </div>
                 {canEdit && (
-                  <button
-                    onClick={() => setPendingDelete(ev)}
-                    aria-label="Delete event"
-                    className="self-start p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                  >
+                  <button onClick={() => setPendingDelete(ev)} aria-label="Delete event" className="self-start shrink-0 p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}

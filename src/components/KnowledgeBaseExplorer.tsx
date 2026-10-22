@@ -299,13 +299,15 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
               <div className="space-y-2">          
-                <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="font-semibold text-[#002D72] dark:text-blue-400">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs font-semibold text-[#002D72] dark:text-blue-400">
                     {categories.find((c) => c.key === res.category)?.label || res.category}
                   </span>
-                  <div className="flex items-center gap-2">
-                    {isClinician && <AudienceBadge condition={res.diseaseDomain} />}
-                    <span>{new Date(res.createdAt).toLocaleDateString([], { month: 'short', year: 'numeric' })}</span>
+                  {isClinician && <AudienceBadge condition={res.diseaseDomain} />}
+                  <div className="ml-auto flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {new Date(res.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
                     {isClinician && (
                       <button
                         type="button"
@@ -313,9 +315,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                           e.stopPropagation();
                           setPendingDelete(res);
                         }}
-                        title="Delete guide"
-                        aria-label={`Delete ${res.title}`}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                        aria-label="Delete guide"
+                        className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -1719,7 +1719,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       <th className="py-2.5 px-3">Contact</th>
                       <th className="py-2.5 px-3">Assigned Group</th>
                       <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
+                      <th className="py-2.5 px-3">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -1728,7 +1728,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         <td className="py-3 px-3 whitespace-nowrap">
                           <div className="font-semibold text-slate-900 dark:text-white">{m.realName}</div>
                           <div className="text-xs text-slate-400 dark:text-slate-500">{m.anonymousHandle}</div>
-                          <div className="mt-1"><AudienceBadge condition={m.condition} /></div>
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
                           {m.phone ? (
@@ -1745,11 +1744,14 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                           </div>
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
+                          <AudienceBadge condition={m.condition} />
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap">
                           <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-100 dark:border-emerald-900/60">
                             Active
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <td className="py-3 px-3 whitespace-nowrap">
                           <button
                             onClick={() => {
                               setReassigningUser(m);

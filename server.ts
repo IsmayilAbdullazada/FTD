@@ -695,95 +695,35 @@ const clinicalResources: ClinicalResource[] = [
     createdAt: '2026-10-16T00:00:00Z',
   },
   {
-    id: 'res-ad-behavior-changes',
-    title: "Managing Personality and Behavior Changes",
-    summary: "Understand common behavior changes in Alzheimer's and explore ways to respond calmly and safely.",
-    contentBody: "This National Institute on Aging guide explains that changes in behavior may be associated with Alzheimer's, but can also be influenced by pain, hunger, thirst, constipation, sleep problems, medication effects, or a stressful environment. It discusses practical approaches such as avoiding arguments, offering reassurance, redirecting attention, reducing noise and clutter, and maintaining familiar routines. Sudden or rapidly changing symptoms should be discussed promptly with a healthcare professional.",
-    externalUrl: "https://www.nia.nih.gov/health/alzheimers-changes-behavior-and-communication/alzheimers-caregiving-managing-personality-and",
-    diseaseDomain: 'AD',
-    category: 'BEHAVIORAL_AGITATION',
-    keyTakeaways: [
-      'Look for possible physical or environmental triggers.',
-      'Use reassurance and redirection rather than arguing.',
-      'Discuss sudden or rapidly changing symptoms with a healthcare professional.'
-    ],
-    createdAt: '2026-10-16T00:00:00.000Z'
-  },
-  {
-    id: 'res-ad-home-safety',
-    title: "Home Safety for People with Alzheimer's",
-    summary: "Review household hazards and practical changes that can help make the home safer as needs change.",
-    contentBody: "This National Institute on Aging checklist covers home safety for people living with Alzheimer's. It includes suggestions for improving lighting, reducing fall risks, securing potentially dangerous household items, and making the kitchen, bedroom, and bathroom safer. Care partners can review the home periodically and adapt safety measures as the person's abilities and needs change.",
-    externalUrl: "https://www.nia.nih.gov/health/safety/home-safety-checklist-alzheimers-disease",
-    diseaseDomain: 'AD',
-    category: 'SAFETY_WANDERING',
-    keyTakeaways: [
-      'Review the home for fall risks and hazards.',
-      'Secure medicines, cleaning products, and other dangerous items.',
-      'Reassess safety as abilities and care needs change.'
-    ],
-    createdAt: '2026-10-16T00:00:00.000Z'
-  },
-  {
-    id: 'res-ad-daily-care',
-    title: "Daily Care and Everyday Routines",
-    summary: "Explore guidance for adapting daily routines, activities, personal care, and meals for someone living with dementia.",
-    contentBody: "The Alzheimer's Association Daily Care resource hub links to information about planning a daily routine, adapting activities, communication, food and eating, incontinence, bathing, dressing, dental care, and medication safety. It can help care partners explore practical approaches to everyday support and find more specific guidance for an individual care need.",
-    externalUrl: "https://www.alz.org/help-support/caregiving/daily-care",
+    id: 'res-ad-alzheimers-association',
+    title: "Alzheimer's Association: Caregiving and Dementia Resources",
+    summary: "A comprehensive resource hub with information about Alzheimer's disease and dementia, caregiving, community support, treatment options, and education for families.",
+    contentBody: "The Alzheimer's Association provides information and support for people affected by Alzheimer's disease and other dementias. Care partners can explore guidance on daily caregiving, learn about dementia and its stages, find local community resources, and access educational programs. The Association also offers a free, confidential 24/7 helpline for dementia-related information, support, and help finding resources.",
+    externalUrl: 'https://www.alz.org/',
     diseaseDomain: 'AD',
     category: 'COMMUNICATION_PPA',
     keyTakeaways: [
-      'Adapt routines and activities as needs change.',
-      'Explore dedicated guidance for personal care and eating.',
-      'Use the topic links to find more specific information.'
+      "Explore caregiving guidance and information about Alzheimer's and other dementias.",
+      'Find local support services and community resources.',
+      'Access educational programs and the 24/7 helpline for additional support.'
     ],
-    createdAt: '2026-10-16T00:00:00.000Z'
+    createdAt: '2026-10-22T09:00:00Z',
   },
   {
-    id: 'res-ad-caregiving-hub',
-    title: "Alzheimer's Caregiving Resource Hub",
-    summary: "Find broader caregiving guidance covering communication, daily care, safety, care options, and planning ahead.",
-    contentBody: "This Alzheimer's Association resource hub brings together caregiver information on daily care, communication, safety, care options, legal planning, and paying for care. It is a useful starting point when a care partner is unsure which topic to explore first. Follow the individual topic links for more detailed information.",
-    externalUrl: "https://www.alz.org/help-support/caregiving",
+    id: 'res-both-yes-support',
+    title: 'YES! Young-onset Dementia Education and Support',
+    summary: 'A support and education organization for individuals and families affected by young-onset dementia, with resources for care partners and family members.',
+    contentBody: 'YES! (Young-onset Dementia Education and Support) supports individuals and families affected by dementia diagnosed before age 65. Its programs include support groups, care-partner wellness retreats, educational opportunities, advocacy, and resources for family members, including partners, children, parents, and siblings. Care partners can explore these resources to find community, learn from others with similar experiences, and access support throughout the dementia journey.',
+    externalUrl: 'https://yessupport.org/',
     diseaseDomain: 'AD',
     category: 'COMMUNICATION_PPA',
     keyTakeaways: [
-      'Browse resources by caregiving topic.',
-      'Explore safety and future care planning.',
-      'Use topic-specific guidance for the current concern.'
+      'Explore support groups for families affected by young-onset dementia.',
+      'Learn about care-partner wellness retreats and educational programs.',
+      'Find resources for partners, children, and other family members.'
     ],
-    createdAt: '2026-10-16T00:00:00.000Z'
+    createdAt: '2026-10-22T09:00:00Z',
   },
-  {
-    id: 'res-ad-caregiver-wellbeing',
-    title: "Taking Care of Yourself as a Care Partner",
-    summary: "Learn ways to seek help, share caregiving responsibilities, and protect your own physical and emotional well-being.",
-    contentBody: "The National Institute on Aging discusses the challenges of caring for a person with Alzheimer's and emphasizes that care partners also need support. The resource covers asking others for specific help, joining support groups, taking breaks, considering respite or adult day services, and planning for what might happen if care needs increase.",
-    externalUrl: "https://www.nia.nih.gov/health/alzheimers-caregiving-caring-yourself",
-    diseaseDomain: 'AD',
-    category: 'COMMUNICATION_PPA',
-    keyTakeaways: [
-      'Ask others for specific, practical help.',
-      'Consider respite services and caregiver support groups.',
-      'Plan ahead for changes in caregiving responsibilities.'
-    ],
-    createdAt: '2026-10-16T00:00:00.000Z'
-  },
-  {
-    id: 'res-ad-stages-behaviors',
-    title: "Stages of Alzheimer's and Changing Care Needs",
-    summary: "Explore how caregiving needs and behaviors may change over time, including resources for specific stages and challenges.",
-    contentBody: "The Alzheimer's Association provides resources on accepting a diagnosis, early-, middle-, and late-stage caregiving, and common challenges such as aggression, anger, anxiety, and agitation. Care partners can use the page to identify a relevant topic and follow the links for more detailed guidance.",
-    externalUrl: "https://www.alz.org/help-support/caregiving/stages-behaviors",
-    diseaseDomain: 'AD',
-    category: 'BEHAVIORAL_AGITATION',
-    keyTakeaways: [
-      'Caregiving needs can change as the disease progresses.',
-      'Find topic-specific information about behavior challenges.',
-      'Revisit care strategies as needs change.'
-    ],
-    createdAt: '2026-10-16T00:00:00.000Z'
-  }
 ];
 
 // Helper: PII/PHI scrubber

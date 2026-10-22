@@ -1,4 +1,4 @@
-import { ChatbotGuideFile } from '../types';
+import type { ChatbotGuideFile } from '../types/index.ts';
 
 export interface GuideChunk {
   guideId: string;

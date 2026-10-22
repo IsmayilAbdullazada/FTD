@@ -34,6 +34,8 @@ import {
   Play,
   RotateCcw,
   ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   CurrentUser,
@@ -49,10 +51,101 @@ import {
   ChatbotGuideFile,
   ChatbotKnowledgeConfig,
   ChatbotGuideTestResult,
+  GuideCondition,
+  GuidePageData,
 } from '../types';
 import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
 import { cleanPdfText } from '../utils/cleanPdfText';
+
+export const INSTITUTIONAL_RESOURCE_FILES = [
+  { fileName: 'Managing-Aggressive-Behavior.pdf', label: 'Managing Aggressive Behavior' },
+  { fileName: 'SleepIssuesFTD-090623.pdf', label: 'Sleep Issues in FTD' },
+  { fileName: 'PinFTDcare_Newsletter_Fall_2016.pdf', label: 'Partners in FTD Care - Fall 2016' },
+  { fileName: 'PinFTDcare_Newsletter_Winter_2018.pdf', label: 'Partners in FTD Care - Winter 2018' },
+  { fileName: 'PinFTDcare_Newsletter_Winter_2019.pdf', label: 'Partners in FTD Care - Winter 2019' },
+  { fileName: 'PinFTDcare_sprng_2020.pdf', label: 'Partners in FTD Care - Spring 2020' },
+  { fileName: 'January-2014.pdf', label: 'Partners in FTD Care - January 2014' },
+  { fileName: 'July-2012.pdf', label: 'Partners in FTD Care - July 2012' },
+  { fileName: 'PiC-fall-2014-WTDA.pdf', label: 'Partners in FTD Care - Fall 2014' },
+  { fileName: 'Summer-2014-Newsletter_Final.pdf', label: 'Partners in FTD Care - Summer 2014' },
+];
+
+export function suggestGuideTitle(fileName: string, firstPageText?: string): string {
+  if (!fileName) return '';
+
+  // 1. Direct match from known institutional library resources
+  const match = INSTITUTIONAL_RESOURCE_FILES.find(
+    (f) => f.fileName.toLowerCase() === fileName.toLowerCase()
+  );
+  if (match) return match.label;
+
+  // 2. Check first page text for a clean, human clinical title line
+  if (firstPageText) {
+    const lines = firstPageText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    for (const rawLine of lines.slice(0, 6)) {
+      const line = rawLine.replace(/^[#*\-•\s]+/, '').trim();
+      if (
+        line.length >= 8 &&
+        line.length <= 80 &&
+        !/^page\s+\d+/i.test(line) &&
+        !/^\d+$/.test(line) &&
+        !/^www\./i.test(line) &&
+        !/^https?:/i.test(line) &&
+        !/^vol(ume)?\.?\s*\d+/i.test(line)
+      ) {
+        if (
+          line.includes('FTD') ||
+          line.includes('Partners') ||
+          line.includes('Behavior') ||
+          line.includes('Care') ||
+          line.includes('Sleep') ||
+          line.includes('Dementia') ||
+          line.includes('Guide') ||
+          line.includes('Managing')
+        ) {
+          return line;
+        }
+      }
+    }
+  }
+
+  // 3. Fallback: Parse filename patterns
+  let name = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+
+  // Pattern: PinFTDcare_Newsletter_Winter_2019
+  const p1 = name.match(/^PinFTDcare_Newsletter_([A-Za-z]+)_(\d{4})/i);
+  if (p1) return `Partners in FTD Care - ${p1[1]} ${p1[2]}`;
+
+  // Pattern: PinFTDcare_sprng_2020
+  const p2 = name.match(/^PinFTDcare_([A-Za-z]+)_(\d{4})/i);
+  if (p2) {
+    const season = p2[1].toLowerCase() === 'sprng' ? 'Spring' : p2[1];
+    return `Partners in FTD Care - ${season} ${p2[2]}`;
+  }
+
+  // Pattern: PiC-fall-2014-WTDA
+  const p3 = name.match(/^PiC-([A-Za-z]+)-(\d{4})/i);
+  if (p3) return `Partners in FTD Care - ${p3[1]} ${p3[2]}`;
+
+  // Pattern: Month-Year, e.g. January-2014
+  const p4 = name.match(/^([A-Za-z]+)-(\d{4})$/i);
+  if (p4) return `Partners in FTD Care - ${p4[1]} ${p4[2]}`;
+
+  // Beautify underscores and dashes
+  name = name
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return name
+    .split(' ')
+    .map((w) => (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
 
 interface ClinicianDashboardProps {
   currentUser: CurrentUser;
@@ -139,14 +232,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [isDeletingGuide, setIsDeletingGuide] = useState(false);
   const [guideStatusFilter, setGuideStatusFilter] = useState<'ALL' | 'DRAFT' | 'APPROVED'>('ALL');
 
-  // Upload Guide Form State (Blank defaults, publisher, year, side-by-side preview)
+  // Upload Guide Form State (Condition, Title, Topic Tag, Page-by-Page Extraction)
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadPublisher, setUploadPublisher] = useState('');
-  const [uploadYear, setUploadYear] = useState('');
+  const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(null);
+  const [uploadTopicTag, setUploadTopicTag] = useState('');
   const [uploadFileName, setUploadFileName] = useState('');
-  const [uploadCategory, setUploadCategory] = useState('');
-  const [uploadDescription, setUploadDescription] = useState('');
   const [uploadContent, setUploadContent] = useState('');
+  const [uploadPages, setUploadPages] = useState<GuidePageData[]>([]);
+  const [expandedPages, setExpandedPages] = useState<Record<number, boolean>>({ 1: true });
+  const [showExtractedInspector, setShowExtractedInspector] = useState(false);
+  const [selectedInspectPage, setSelectedInspectPage] = useState<number>(1);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [showTechDetails, setShowTechDetails] = useState(false);
   const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(null);
   const [uploadPdfBase64, setUploadPdfBase64] = useState<string | null>(null);
   const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
@@ -314,12 +411,16 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const resetUploadModal = () => {
     setShowUploadGuideModal(false);
     setUploadTitle('');
-    setUploadPublisher('');
-    setUploadYear('');
+    setUploadCondition(null);
+    setUploadTopicTag('');
     setUploadFileName('');
-    setUploadCategory('');
-    setUploadDescription('');
     setUploadContent('');
+    setUploadPages([]);
+    setExpandedPages({ 1: true });
+    setShowExtractedInspector(false);
+    setSelectedInspectPage(1);
+    setShowMoreOptions(false);
+    setShowTechDetails(false);
     setUploadPdfPreviewUrl(null);
     setUploadPdfBase64(null);
     setEditingGuideId(null);
@@ -329,12 +430,35 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const handleOpenReviewModal = (guide: ChatbotGuideFile) => {
     setEditingGuideId(guide.id);
     setUploadTitle(guide.title);
-    setUploadPublisher(guide.publisher || '');
-    setUploadYear(guide.year || '');
-    setUploadCategory(guide.category || '');
-    setUploadDescription(guide.description || '');
+    setUploadCondition(guide.condition || null);
+    setUploadTopicTag(guide.topicTag || guide.category || '');
     setUploadContent(guide.content);
     setUploadFileName(guide.fileName);
+    setShowExtractedInspector(false);
+    setSelectedInspectPage(1);
+    setShowMoreOptions(false);
+    setShowTechDetails(false);
+
+    if (guide.pages && guide.pages.length > 0) {
+      setUploadPages(guide.pages);
+      setExtractedPdfStats({ pages: guide.pages.length, words: guide.wordCount || 0 });
+    } else {
+      // Reconstruct pages if older guide record didn't save page array
+      const rawPages = guide.content.split(/(?=^##\s+)/m).filter(Boolean);
+      const builtPages: GuidePageData[] = rawPages.map((sec, idx) => {
+        const words = sec.trim().split(/\s+/).filter(Boolean).length;
+        return {
+          pageNumber: idx + 1,
+          text: sec,
+          wordCount: words,
+          chunkCount: Math.max(1, Math.ceil(words / 340)),
+        };
+      });
+      setUploadPages(builtPages.length > 0 ? builtPages : [{ pageNumber: 1, text: guide.content, wordCount: guide.wordCount || 0, chunkCount: 1 }]);
+      setExtractedPdfStats({ pages: builtPages.length || 1, words: guide.wordCount || 0 });
+    }
+
+    setExpandedPages({ 1: true });
     setUploadPdfPreviewUrl(guide.pdfUrl || `/resources/${guide.fileName}`);
     setShowUploadGuideModal(true);
   };
@@ -342,7 +466,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const handleQuickApprove = async (guide: ChatbotGuideFile) => {
     try {
       await api.approveChatbotGuide(guide.id);
-      setActionSuccessNotice(`Approved & published "${guide.title}" to knowledge assistant!`);
+      setActionSuccessNotice(`Approved "${guide.title}" for chatbot!`);
       setTimeout(() => setActionSuccessNotice(null), 3500);
       loadChatbotGuides();
     } catch (err) {
@@ -352,31 +476,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  const INSTITUTIONAL_RESOURCE_FILES = [
-    { fileName: 'Managing-Aggressive-Behavior.pdf', label: 'Managing Aggressive Behavior' },
-    { fileName: 'SleepIssuesFTD-090623.pdf', label: 'Sleep Issues in FTD' },
-    { fileName: 'PinFTDcare_Newsletter_Fall_2016.pdf', label: 'Partners in FTD Care - Fall 2016' },
-    { fileName: 'PinFTDcare_Newsletter_Winter_2018.pdf', label: 'Partners in FTD Care - Winter 2018' },
-    { fileName: 'PinFTDcare_Newsletter_Winter_2019.pdf', label: 'Partners in FTD Care - Winter 2019' },
-    { fileName: 'PinFTDcare_sprng_2020.pdf', label: 'Partners in FTD Care - Spring 2020' },
-    { fileName: 'January-2014.pdf', label: 'Partners in FTD Care - January 2014' },
-    { fileName: 'July-2012.pdf', label: 'Partners in FTD Care - July 2012' },
-    { fileName: 'PiC-fall-2014-WTDA.pdf', label: 'Partners in FTD Care - Fall 2014' },
-    { fileName: 'Summer-2014-Newsletter_Final.pdf', label: 'Partners in FTD Care - Summer 2014' },
-  ];
-
   const handleLoadResourceFile = async (resourceFileName: string) => {
     try {
       setIsExtractingPdf(true);
       setUploadFileName(resourceFileName);
-      setUploadTitle('');
-      setUploadCategory('');
-      setUploadPublisher('');
-      setUploadYear('');
-      const previewUrl = `/resources/${resourceFileName}`;
-      setUploadPdfPreviewUrl(previewUrl);
+      setUploadTitle(suggestGuideTitle(resourceFileName));
+      setUploadCondition(null); // Never preselect FTD!
+      setUploadTopicTag('');
+      setUploadPages([]);
+      setShowExtractedInspector(false);
+      setSelectedInspectPage(1);
+      setUploadPdfPreviewUrl(`/resources/${resourceFileName}`);
 
-      const res = await fetch(previewUrl);
+      const res = await fetch(`/resources/${resourceFileName}`);
       const blob = await res.blob();
       const file = new File([blob], resourceFileName, { type: 'application/pdf' });
       handleProcessFile(file);
@@ -391,16 +503,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const handleProcessFile = (file: File) => {
     const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
     setUploadFileName(file.name);
-    // As explicitly instructed: Blank title, no category guess, publisher and year fields
-    setUploadTitle('');
-    setUploadCategory('');
-    setUploadPublisher('');
-    setUploadYear('');
+    // Suggest title immediately from filename or known library entry
+    setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name)));
+    setUploadCondition(null); // Start with NOTHING selected so reviewer must make a deliberate choice
+    setUploadTopicTag('');
+    setUploadPages([]);
+    setExpandedPages({ 1: true });
+    setShowExtractedInspector(false);
+    setSelectedInspectPage(1);
 
     if (isPdf) {
-      const previewUrl = URL.createObjectURL(file);
-      setUploadPdfPreviewUrl(previewUrl);
-
+      // Do NOT set temporary blob URL (causes broken viewer in iframes); show extraction spinner until server returns stable path
+      setUploadPdfPreviewUrl(null);
       setIsExtractingPdf(true);
       setExtractedPdfStats(null);
       const reader = new FileReader();
@@ -423,15 +537,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             fileBase64: base64,
           });
 
-          // Text cleaned using cleanPdfText cleaner
-          setUploadContent(cleanPdfText(result.text));
-          // Strictly keep title, category, publisher, year blank as requested for clinician entry
-          setUploadTitle('');
-          setUploadCategory('');
-          setUploadPublisher('');
-          setUploadYear('');
+          // Text and pages returned cleanly from server
+          setUploadContent(result.text);
+          setUploadPages(result.pages || []);
+          if (result.pdfUrl) {
+            setUploadPdfPreviewUrl(result.pdfUrl);
+          } else {
+            setUploadPdfPreviewUrl(`/resources/${file.name}`);
+          }
           setExtractedPdfStats({ pages: result.pageCount, words: result.wordCount });
-          setActionSuccessNotice(`Extracted ${result.wordCount.toLocaleString()} words from "${file.name}". Please enter title, publisher, and year.`);
+          // If title was empty, refine from page 1 text
+          setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name, result.pages?.[0]?.text)));
+          setActionSuccessNotice(`Extracted ${result.pageCount} pages (${result.wordCount.toLocaleString()} words) from "${file.name}".`);
           setTimeout(() => setActionSuccessNotice(null), 3500);
         } catch (err) {
           console.error('PDF extraction failed:', err);
@@ -454,44 +571,56 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = (e.target?.result as string) || '';
-        setUploadContent(cleanPdfText(text));
-        setUploadTitle('');
-        setUploadCategory('');
+        const cleaned = cleanPdfText(text);
+        setUploadContent(cleaned);
+        const words = cleaned.trim().split(/\s+/).filter(Boolean).length;
+        setUploadPages([{ pageNumber: 1, text: cleaned, wordCount: words, chunkCount: Math.max(1, Math.ceil(words / 340)) }]);
+        setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name, cleaned)));
       };
       reader.readAsText(file);
     }
   };
 
   const handleSaveGuide = async (statusToSet: 'DRAFT' | 'APPROVED') => {
-    if (!uploadTitle.trim() || !uploadContent.trim() || isUploadingGuide) return;
+    if (!uploadCondition) {
+      setActionSuccessNotice('Please select a Target Condition (FTD, AD, or General) before saving.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+      return;
+    }
+    if (!uploadTitle.trim() || isUploadingGuide) return;
+    const finalContent = uploadContent.trim() || uploadPages.map((p) => p.text).join('\n\n');
+    if (!finalContent && uploadPages.length === 0) return;
+
     setIsUploadingGuide(true);
     try {
       const isApproved = statusToSet === 'APPROVED';
+      const totalChunksCalc = uploadPages.reduce((acc, p) => acc + p.chunkCount, 0);
+
       if (editingGuideId) {
         await api.updateChatbotGuide(editingGuideId, {
           title: uploadTitle.trim(),
-          publisher: uploadPublisher.trim(),
-          year: uploadYear.trim(),
-          category: uploadCategory.trim(),
-          description: uploadDescription.trim(),
-          content: uploadContent.trim(),
+          condition: uploadCondition,
+          topicTag: uploadTopicTag.trim() || undefined,
+          content: finalContent,
+          pages: uploadPages,
+          totalChunks: totalChunksCalc,
           status: statusToSet,
           pdfUrl: uploadPdfPreviewUrl || undefined,
         });
         setActionSuccessNotice(
           isApproved
-            ? `Guide "${uploadTitle}" approved & published to knowledge assistant!`
+            ? `Guide "${uploadTitle}" approved for chatbot!`
             : `Guide "${uploadTitle}" draft updated.`
         );
       } else {
         const res = await api.uploadChatbotGuide({
           title: uploadTitle.trim(),
-          publisher: uploadPublisher.trim(),
-          year: uploadYear.trim(),
+          condition: uploadCondition,
+          topicTag: uploadTopicTag.trim() || undefined,
           fileName: uploadFileName.trim() || `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
-          category: uploadCategory.trim(),
-          description: uploadDescription.trim(),
-          content: uploadContent.trim(),
+          content: finalContent,
+          pages: uploadPages,
+          totalChunks: totalChunksCalc,
           status: statusToSet,
           pdfUrl: uploadPdfPreviewUrl || undefined,
           mimeType: uploadFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain',
@@ -500,8 +629,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         });
         setActionSuccessNotice(
           isApproved
-            ? `Guide "${res.title}" approved & published to knowledge assistant!`
-            : `Guide "${res.title}" saved as draft for review.`
+            ? `Guide "${res.title}" approved for chatbot!`
+            : `Guide "${res.title}" saved as draft.`
         );
       }
       resetUploadModal();
@@ -1940,6 +2069,17 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                               <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">
                                 {guide.title}
                               </h4>
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${
+                                  guide.condition === 'FTD'
+                                    ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                                    : guide.condition === 'AD'
+                                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                    : 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                                }`}
+                              >
+                                {guide.condition || 'FTD'}
+                              </span>
                               {isDraft ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60">
                                   <Clock className="w-2.5 h-2.5" />
@@ -1955,17 +2095,20 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
                             <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
                               <span>{guide.fileName}</span>
-                              {guide.publisher && <span>· Publisher: <strong className="font-medium text-slate-700 dark:text-slate-300">{guide.publisher}</strong></span>}
-                              {guide.year && <span>· Year: {guide.year}</span>}
-                              {guide.category && <span>· {guide.category.replace(/_/g, ' ')}</span>}
+                              {guide.pages && guide.pages.length > 0 ? (
+                                <span>· {guide.pages.length} {guide.pages.length === 1 ? 'page' : 'pages'} ({guide.totalChunks || guide.pages.reduce((a, b) => a + b.chunkCount, 0)} chunks)</span>
+                              ) : guide.totalChunks ? (
+                                <span>· {guide.totalChunks} chunks</span>
+                              ) : null}
+                              {guide.topicTag ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10.5px]">
+                                  #{guide.topicTag}
+                                </span>
+                              ) : guide.category ? (
+                                <span>· {guide.category.replace(/_/g, ' ')}</span>
+                              ) : null}
                               <span>· {guide.wordCount?.toLocaleString() || '—'} words</span>
                             </p>
-
-                            {guide.description && (
-                              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">
-                                {guide.description}
-                              </p>
-                            )}
                           </div>
                         </div>
 
@@ -2091,22 +2234,119 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
             {/* Test Query Output */}
             {testResult && (
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3 animate-in fade-in">
-                {testResult.matchedGuide && (
-                  <div className="text-xs text-slate-700 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-                    <div>
-                      <span className="font-semibold text-slate-900 dark:text-white">Grounded in: </span>
-                      <span>{testResult.matchedGuide.title} ({testResult.matchedGuide.fileName})</span>
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in">
+                {/* RAG Retrieval Debug View: Chunks & Scores */}
+                {testResult.retrievedChunks && testResult.retrievedChunks.length > 0 && (
+                  <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>Retrieved Chunks & Vector Cosine Similarity ({testResult.retrievedChunks.length})</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                        Cutoff: ≥ 0.58
+                      </span>
                     </div>
-                    <div className="text-slate-500 dark:text-slate-400">
-                      Section: {testResult.matchedGuide.sectionTitle}
+
+                    <div className="space-y-2">
+                      {testResult.retrievedChunks.map((chunk, idx) => {
+                        const scorePercent = (chunk.score * 100).toFixed(1);
+                        const isAboveCutoff = chunk.score >= 0.58;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-lg border text-xs transition-colors ${
+                              isAboveCutoff
+                                ? 'bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-900/60'
+                                : 'bg-slate-100/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-75'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-[#002D72] dark:text-sky-300">
+                                  [{idx + 1}]
+                                </span>
+                                <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[260px] sm:max-w-md">
+                                  {chunk.guideTitle}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  Page {chunk.page}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10.5px] font-mono font-semibold ${
+                                    isAboveCutoff
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                  }`}
+                                >
+                                  {scorePercent}% match ({chunk.score})
+                                </span>
+                                <a
+                                  href={`/resources/${chunk.fileName}#page=${chunk.page}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                                  title="View page in PDF"
+                                >
+                                  <span>PDF</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+
+                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-sans line-clamp-3 hover:line-clamp-none transition-all cursor-pointer text-[11px] bg-slate-50 dark:bg-slate-950/50 p-2 rounded border border-slate-100 dark:border-slate-800 font-mono">
+                              {chunk.content}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
+                {/* Grounded Guide Summary */}
+                {testResult.matchedGuide && (
+                  <div className="text-xs text-slate-700 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <div>
+                      <span className="font-semibold text-slate-900 dark:text-white">Top Grounded Guide: </span>
+                      <span>{testResult.matchedGuide.title} ({testResult.matchedGuide.fileName})</span>
+                      {testResult.matchedGuide.page && (
+                        <span className="ml-1 text-slate-500 dark:text-slate-400 font-medium">— Page {testResult.matchedGuide.page}</span>
+                      )}
+                    </div>
+                    {testResult.citedResources && testResult.citedResources.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        {testResult.citedResources.map((c, i) => (
+                          <a
+                            key={i}
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10.5px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40 hover:underline"
+                          >
+                            <span>[{i + 1}] Page {c.page || 1}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Assistant Output */}
                 <div className="space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Assistant Response:
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Assistant Response (Strictly Grounded):
+                    </span>
+                    {testResult.isMedicationRefusal && (
+                      <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                        Medication Refusal Triggered
+                      </span>
+                    )}
                   </div>
                   <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed select-text font-sans">
                     {testResult.answer}
@@ -2513,7 +2753,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate">
                       {editingGuideId
                         ? `Review & Verify: ${uploadTitle || uploadFileName || 'Clinical Guide'}`
-                        : 'Upload & Side-by-Side Review'}
+                        : 'Upload & Review Clinical Guide'}
                     </h3>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${
@@ -2526,7 +2766,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    Compare extracted markdown side-by-side with original institutional PDF before approving for Dr. Seema's Assistant
+                    Check the extracted text against the PDF.
                   </p>
                 </div>
               </div>
@@ -2554,19 +2794,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               }}
             />
 
-            {/* Split Screen Container: Left (PDF) vs Right (Metadata & Extracted Markdown) */}
+            {/* Split Screen Container: Left (PDF) vs Right (Metadata & Verification) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
               
               {/* LEFT PANE: PDF Document Viewer */}
               <div className="flex flex-col min-h-0 bg-slate-100 dark:bg-slate-950">
                 {/* PDF Toolbar */}
-                <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 text-xs">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span
+                      title={uploadFileName || undefined}
+                      className="font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm break-all font-mono select-text"
+                    >
                       {uploadFileName || 'No PDF Document Selected'}
                     </span>
                     {extractedPdfStats && (
-                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0 font-mono">
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-750 text-slate-700 dark:text-slate-300 shrink-0 font-mono">
                         {extractedPdfStats.pages ? `${extractedPdfStats.pages} pages · ` : ''}
                         {extractedPdfStats.words.toLocaleString()} words
                       </span>
@@ -2580,20 +2823,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-[#002D72] dark:text-sky-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 transition"
-                        title="Open PDF in a full browser window"
+                        title="Open PDF in a full browser tab"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Open PDF</span>
                       </a>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-                    >
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>{uploadFileName ? 'Change PDF' : 'Upload PDF'}</span>
-                    </button>
                   </div>
                 </div>
 
@@ -2604,24 +2839,42 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       <div className="w-10 h-10 border-3 border-[#002D72] dark:border-sky-400 border-t-transparent rounded-full animate-spin" />
                       <div>
                         <p className="font-semibold text-slate-900 dark:text-white text-sm">
-                          Extracting text & cleaning formatting...
+                          Extracting text & calculating pages...
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
-                          Running <code className="font-mono text-blue-600 dark:text-blue-400">cleanPdfText</code> to de-hyphenate line breaks, strip running page headers/footers, and normalize headings.
+                          Storing PDF on server and extracting clean text per page.
                         </p>
                       </div>
                     </div>
                   ) : uploadPdfPreviewUrl ? (
                     <div className="w-full h-full flex flex-col">
-                      <iframe
-                        src={uploadPdfPreviewUrl}
-                        title={uploadFileName || 'PDF Document Viewer'}
-                        className="w-full flex-1 border-0 bg-slate-100 dark:bg-slate-950"
-                      />
-                      <div className="px-3 py-1.5 bg-slate-200/70 dark:bg-slate-900 border-t border-slate-300 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
-                        <span>Side-by-Side Reference Preview</span>
-                        <span>Use the editor on the right to verify every guideline before approving.</span>
-                      </div>
+                      <object
+                        data={uploadPdfPreviewUrl}
+                        type="application/pdf"
+                        className="w-full flex-1 min-h-0 bg-slate-100 dark:bg-slate-950"
+                      >
+                        <iframe
+                          src={uploadPdfPreviewUrl}
+                          title={uploadFileName || 'PDF Document Viewer'}
+                          className="w-full h-full border-0 bg-slate-100 dark:bg-slate-950"
+                        >
+                          <div className="p-8 text-center flex flex-col items-center justify-center h-full space-y-3">
+                            <FileText className="w-10 h-10 text-slate-400" />
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                              Preview not supported in this frame view
+                            </p>
+                            <a
+                              href={uploadPdfPreviewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#002D72] text-white rounded-lg text-xs font-semibold hover:bg-blue-900 transition"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Open PDF in New Tab</span>
+                            </a>
+                          </div>
+                        </iframe>
+                      </object>
                     </div>
                   ) : (
                     <div className="p-6 flex-1 flex flex-col items-center justify-center overflow-y-auto">
@@ -2677,43 +2930,89 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 </div>
               </div>
 
-              {/* RIGHT PANE: Clinical Metadata & Clean Markdown Extraction Editor */}
+              {/* RIGHT PANE: Clinical Classification & Verification */}
               <div className="flex flex-col min-h-0 bg-white dark:bg-slate-900">
                 {/* Editor Header Bar */}
                 <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      Extraction Review & Metadata
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      (Blank title & manual category required)
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (uploadContent.trim()) {
-                        setUploadContent(cleanPdfText(uploadContent));
-                        setActionSuccessNotice('Re-ran cleanPdfText cleaner on extraction text.');
-                        setTimeout(() => setActionSuccessNotice(null), 3000);
-                      }
-                    }}
-                    disabled={!uploadContent.trim()}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition cursor-pointer disabled:opacity-50"
-                    title="Re-run cleanPdfText to strip hyphens, footers, and page numbers"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Re-clean Text</span>
-                  </button>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    Document Details & Verification
+                  </span>
+                  {uploadPages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowExtractedInspector((prev) => !prev)}
+                      className="text-xs text-[#002D72] dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{showExtractedInspector ? 'Hide text' : 'Check text'}</span>
+                      {showExtractedInspector ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
                 </div>
 
-                {/* Form Inputs Container */}
+                {/* Form Inputs & Simplified Page Verification */}
                 <div className="flex-1 min-h-0 p-4 sm:p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
-                  {/* Document Title (Strictly Blank on upload, required) */}
+                  {/* CONDITION SELECTOR: Nothing preselected by default */}
+                  <div>
+                    <label className="block font-semibold text-slate-800 dark:text-slate-200 text-xs mb-1.5">
+                      Condition <span className="text-rose-500">*</span>
+                    </label>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {(
+                        [
+                          { id: 'FTD', label: 'FTD', name: 'Frontotemporal Dementia' },
+                          { id: 'AD', label: 'AD', name: "Alzheimer's Disease" },
+                          { id: 'GENERAL', label: 'General', name: 'All Dementia Care' },
+                        ] as const
+                      ).map((item) => {
+                        const isSelected = uploadCondition === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setUploadCondition(item.id)}
+                            className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                              isSelected
+                                ? item.id === 'FTD'
+                                  ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-500 dark:border-purple-500 ring-2 ring-purple-400/20'
+                                  : item.id === 'AD'
+                                  ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 dark:border-amber-500 ring-2 ring-amber-400/20'
+                                  : 'bg-blue-50 dark:bg-blue-950/60 border-blue-500 dark:border-blue-500 ring-2 ring-blue-400/20'
+                                : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`text-xs font-bold ${
+                                  isSelected
+                                    ? item.id === 'FTD'
+                                      ? 'text-purple-700 dark:text-purple-300'
+                                      : item.id === 'AD'
+                                      ? 'text-amber-700 dark:text-amber-300'
+                                      : 'text-blue-700 dark:text-blue-300'
+                                    : 'text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                {item.label}
+                              </span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-current shrink-0" />}
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                              {item.name}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                      FTD users see FTD and General guides only.
+                    </p>
+                  </div>
+
+                  {/* Document Title (Prefilled from filename or first page text) */}
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                      Document Title <span className="text-rose-500">*</span>
+                      Title <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -2723,115 +3022,170 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Blank by default — enter the verified clinical title from the original document.
-                    </p>
                   </div>
 
-                  {/* Publisher / Organization & Publication Year Fields */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                        Publisher / Organization
-                      </label>
-                      <input
-                        type="text"
-                        value={uploadPublisher}
-                        onChange={(e) => setUploadPublisher(e.target.value)}
-                        placeholder="e.g. The Association for Frontotemporal Degeneration (AFTD)"
-                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                  {/* ONE SUMMARY LINE & EXTRACTION VERIFICATION */}
+                  {uploadPages.length > 0 ? (
+                    (() => {
+                      const totalPages = uploadPages.length;
+                      const totalWords = uploadPages.reduce((acc, p) => acc + p.wordCount, 0);
+                      const emptyPages = uploadPages.filter((p) => !p.text || p.wordCount === 0);
+                      const shortPages = uploadPages.filter((p) => p.wordCount > 0 && p.wordCount < 20);
+                      const hasIssues = emptyPages.length > 0 || shortPages.length > 0;
+
+                      return (
+                        <div className="space-y-2 pt-1">
+                          {/* Summary Row */}
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-800 dark:text-slate-200">
+                              {hasIssues ? (
+                                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              )}
+                              <span>
+                                {totalPages} {totalPages === 1 ? 'page' : 'pages'} · {totalWords.toLocaleString()} words ·{' '}
+                                <strong className={hasIssues ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}>
+                                  {hasIssues ? 'Extraction warning' : 'No issues found'}
+                                </strong>
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setShowExtractedInspector((prev) => !prev)}
+                              className="text-xs text-[#002D72] dark:text-sky-400 hover:underline font-semibold cursor-pointer"
+                            >
+                              {showExtractedInspector ? 'Hide text' : 'Check text'}
+                            </button>
+                          </div>
+
+                          {/* Warning callout (shown only when something is wrong) */}
+                          {emptyPages.length > 0 && (
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-semibold">Page {emptyPages.map((p) => p.pageNumber).join(', ')} is empty. </span>
+                                <span>Scanned or image-only pages cannot produce retrieval answers.</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {shortPages.length > 0 && emptyPages.length === 0 && (
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-semibold">Short text on page {shortPages.map((p) => p.pageNumber).join(', ')}. </span>
+                                <span>Verify against the PDF on the left.</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Extracted Text Inspector (Collapsed by default, opens on demand) */}
+                          {showExtractedInspector && (
+                            <div className="space-y-2.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 animate-in fade-in">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                  Select page to inspect:
+                                </span>
+                                <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] py-0.5">
+                                  {uploadPages.map((p) => {
+                                    const isSelected = selectedInspectPage === p.pageNumber;
+                                    const isEmpty = p.wordCount === 0 || !p.text.trim();
+                                    return (
+                                      <button
+                                        key={p.pageNumber}
+                                        type="button"
+                                        onClick={() => setSelectedInspectPage(p.pageNumber)}
+                                        className={`px-2 py-0.5 text-xs rounded-md transition cursor-pointer font-medium ${
+                                          isSelected
+                                            ? 'bg-[#002D72] text-white'
+                                            : isEmpty
+                                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                        }`}
+                                        title={`Page ${p.pageNumber} (${p.wordCount} words)`}
+                                      >
+                                        {p.pageNumber}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto select-text text-slate-800 dark:text-slate-200">
+                                {uploadPages.find((p) => p.pageNumber === selectedInspectPage)?.text || (
+                                  <span className="text-amber-600 dark:text-amber-400 italic">
+                                    No text extracted on page {selectedInspectPage}.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="p-6 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850/50 text-slate-400 space-y-1">
+                      <FileText className="w-7 h-7 mx-auto text-slate-300 dark:text-slate-600" />
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        No PDF loaded yet
+                      </p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                        Upload or pick a document from the left pane to extract text.
+                      </p>
                     </div>
+                  )}
 
-                    <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                        Publication Year
-                      </label>
-                      <input
-                        type="text"
-                        value={uploadYear}
-                        onChange={(e) => setUploadYear(e.target.value)}
-                        placeholder="e.g. 2014, 2016, 2023"
-                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
+                  {/* Topic Tag behind "More options" */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreOptions((prev) => !prev)}
+                      className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium cursor-pointer"
+                    >
+                      <span>{showMoreOptions ? '− Fewer options' : '+ More options'}</span>
+                    </button>
 
-                  {/* Clinical Category (No Category Guess) & Summary Description */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                        Clinical Category
-                      </label>
-                      <select
-                        value={uploadCategory}
-                        onChange={(e) => setUploadCategory(e.target.value)}
-                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      >
-                        <option value="">Select clinical category (No auto-guess)...</option>
-                        <option value="GENERAL_CLINICAL_PROTOCOL">General Clinical Protocol</option>
-                        <option value="HYGIENE_BATHING">Hygiene, Bathing & Shower Safety</option>
-                        <option value="NUTRITION_HYPERORALITY">Eating, Sweets & Hyperorality</option>
-                        <option value="BEHAVIORAL_DISINHIBITION">Behavioral Disinhibition & Social Filter</option>
-                        <option value="DRIVING_SAFETY">Driving Retirement & Safety</option>
-                        <option value="SLEEP_WANDERING">Sleep, Sundowning & Wandering</option>
-                        <option value="COMMUNICATION_PPA">Primary Progressive Aphasia (PPA)</option>
-                        <option value="LEGAL_MEDICAID">Legal, Financial & Medicaid Planning</option>
-                        <option value="CRISIS_DE_ESCALATION">Crisis De-escalation & Emergency</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                        Summary / Description (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={uploadDescription}
-                        onChange={(e) => setUploadDescription(e.target.value)}
-                        placeholder="Brief clinical scope or caregiver audience..."
-                        className="w-full px-3 py-2 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Extracted Guide Text (Clean Markdown Editor) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 text-xs">
-                        Extracted Guide Text (Markdown) <span className="text-rose-500">*</span>
-                      </label>
-                      <span className="text-[11px] text-slate-400">
-                        Use <code className="font-mono text-blue-600 dark:text-blue-400">## Section Name</code> for section breaks
-                      </span>
-                    </div>
-
-                    <textarea
-                      rows={13}
-                      value={uploadContent}
-                      onChange={(e) => setUploadContent(e.target.value)}
-                      placeholder="Extracted text from your clinical PDF will appear here for side-by-side comparison with the PDF on the left..."
-                      className="w-full px-3.5 py-2.5 font-mono text-xs border border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-850 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed min-h-[300px]"
-                      required
-                    />
-
-                    {/* Word and Section Count Bar */}
-                    <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-0.5">
-                      <div className="flex items-center gap-3">
-                        <span>
-                          <strong>{uploadContent.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
-                        </span>
-                        <span>•</span>
-                        <span>
-                          <strong>
-                            {uploadContent.split(/(?=^##\s+)/m).filter(Boolean).length || (uploadContent.trim() ? 1 : 0)}
-                          </strong> sections detected
-                        </span>
+                    {showMoreOptions && (
+                      <div className="mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 animate-in fade-in">
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                          Topic Tag (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={uploadTopicTag}
+                          onChange={(e) => setUploadTopicTag(e.target.value)}
+                          placeholder="e.g. Aggression, Sleep, Bathing"
+                          className="w-full px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
                       </div>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                        cleanPdfText cleaner active
-                      </span>
-                    </div>
+                    )}
+                  </div>
+
+                  {/* Technical details (Closed by default) */}
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowTechDetails((prev) => !prev)}
+                      className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{showTechDetails ? '▾ Technical details' : '▸ Technical details'}</span>
+                    </button>
+
+                    {showTechDetails && (
+                      <div className="mt-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400 space-y-1 animate-in fade-in">
+                        <div>
+                          Total RAG chunks: <strong>{uploadPages.reduce((acc, p) => acc + p.chunkCount, 0)}</strong> (~300–500 words per chunk, 60-word overlap)
+                        </div>
+                        {uploadPdfPreviewUrl && (
+                          <div className="truncate" title={uploadPdfPreviewUrl}>
+                            Server path: {uploadPdfPreviewUrl}
+                          </div>
+                        )}
+                        <div>Target condition: {uploadCondition || 'Not yet selected'}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2858,8 +3212,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSaveGuide('DRAFT')}
-                  disabled={isUploadingGuide || isExtractingPdf || !uploadTitle.trim() || !uploadContent.trim()}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  disabled={isUploadingGuide || isExtractingPdf || !uploadCondition || !uploadTitle.trim() || uploadPages.length === 0}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                   title="Save as Draft (will not be active in assistant)"
                 >
                   <Clock className="w-3.5 h-3.5 text-amber-500" />
@@ -2869,9 +3223,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSaveGuide('APPROVED')}
-                  disabled={isUploadingGuide || isExtractingPdf || !uploadTitle.trim() || !uploadContent.trim()}
-                  className="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white transition flex items-center gap-2 shadow-xs cursor-pointer"
-                  title="Approve extraction and publish to Knowledge Assistant"
+                  disabled={isUploadingGuide || isExtractingPdf || !uploadCondition || !uploadTitle.trim() || uploadPages.length === 0}
+                  className="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-40 text-white transition flex items-center gap-2 shadow-xs cursor-pointer"
+                  title="Approve extraction for chatbot"
                 >
                   {isUploadingGuide ? (
                     <>
@@ -2881,7 +3235,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4" />
-                      <span>Approve & Ground Guide</span>
+                      <span>Approve for chatbot</span>
                     </>
                   )}
                 </button>
@@ -2923,7 +3277,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    {inspectGuideModal.fileName} · {inspectGuideModal.category.replace(/_/g, ' ')}
+                    {inspectGuideModal.fileName} · {inspectGuideModal.condition || 'FTD'}{inspectGuideModal.topicTag ? ` · #${inspectGuideModal.topicTag}` : inspectGuideModal.category ? ` · ${inspectGuideModal.category.replace(/_/g, ' ')}` : ''}
                   </p>
                 </div>
               </div>
@@ -3086,7 +3440,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <span>{guideToDelete.wordCount?.toLocaleString() || '—'} words</span>
                 <span>•</span>
                 <span className="px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
-                  {guideToDelete.category.replace(/_/g, ' ')}
+                  {(guideToDelete.topicTag || guideToDelete.category || guideToDelete.condition || 'General Guide').replace(/_/g, ' ')}
                 </span>
               </div>
             </div>

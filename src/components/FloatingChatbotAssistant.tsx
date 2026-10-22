@@ -33,12 +33,15 @@ interface ChatMessage {
     id: string;
     title: string;
     fileName: string;
+    page?: number;
     sectionTitle?: string;
-  };
+  } | null;
   citedResources?: {
     id: string;
     title: string;
-    url?: string;
+    fileName?: string;
+    page?: number;
+    url: string;
   }[];
   timestamp: string;
 }
@@ -294,8 +297,17 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     setInputQuery('');
     setLoading(true);
 
+    const historyPayload = messages.slice(-6).map((m) => ({
+      role: m.sender === 'assistant' ? 'model' : 'user',
+      text: m.text,
+    }));
+
     try {
-      const res = await api.chatWithAssistant(q.trim(), currentUser?.id || 'anonymous');
+      const res = await api.chatWithAssistant(
+        q.trim(),
+        currentUser?.id || 'anonymous',
+        historyPayload
+      );
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         sender: 'assistant',
@@ -500,25 +512,45 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
                     {/* Institutional Grounded Guide Citation */}
                     {!isUser && (msg.matchedGuide || (msg.citedResources && msg.citedResources.length > 0)) && (
-                      <div className="pt-1.5 pb-0.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1 text-[10px]">
-                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 min-w-0">
+                      <div className="pt-2 pb-0.5 border-t border-slate-100 dark:border-slate-800 space-y-1 text-[10px]">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[9px]">
                           <FileText className="w-3 h-3 text-[#002D72] dark:text-sky-400 shrink-0" />
-                          <span className="truncate">
-                            Source: <strong className="font-semibold text-slate-700 dark:text-slate-300">{msg.matchedGuide?.title || msg.citedResources?.[0]?.title}</strong>
-                          </span>
+                          <span>Clinical Sources:</span>
                         </div>
-                        {msg.citedResources?.[0]?.url && (
-                          <a
-                            href={msg.citedResources[0].url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-medium"
-                            title="Open institutional guide PDF"
-                          >
-                            <span>PDF</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          {(msg.citedResources && msg.citedResources.length > 0
+                            ? msg.citedResources
+                            : msg.matchedGuide
+                            ? [{
+                                id: msg.matchedGuide.id,
+                                title: msg.matchedGuide.title,
+                                fileName: msg.matchedGuide.fileName,
+                                page: msg.matchedGuide.page,
+                                url: `/resources/${msg.matchedGuide.fileName}${msg.matchedGuide.page ? `#page=${msg.matchedGuide.page}` : ''}`,
+                              }]
+                            : []
+                          ).map((res, cIdx) => (
+                            <div key={res.id || cIdx} className="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-1 px-1.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                              <span className="truncate text-slate-700 dark:text-slate-300">
+                                <span className="font-semibold text-[#002D72] dark:text-sky-300 mr-1">[{cIdx + 1}]</span>
+                                {res.title}
+                                {res.page ? ` (Page ${res.page})` : ''}
+                              </span>
+                              {res.url && (
+                                <a
+                                  href={res.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-0.5 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-medium ml-1"
+                                  title="Open institutional guide PDF at page"
+                                >
+                                  <span>PDF</span>
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 

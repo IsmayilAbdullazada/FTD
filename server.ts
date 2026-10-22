@@ -5,8 +5,13 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { PDFParse } from 'pdf-parse';
-import { parseGuideChunks, searchGuideChunks, type GuideChunk } from './src/data/clinicalGuidesData.ts';
 import { cleanPdfText } from './src/utils/cleanPdfText.ts';
+import {
+  ingestGuide,
+  deleteGuideChunks,
+  answerRagQuery,
+  getLoadedChunksCount,
+} from './server/rag.ts';
 
 dotenv.config();
 
@@ -21,6 +26,28 @@ type Audience = Condition | 'BOTH';
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Serve static PDF guides from stable uploads and resources paths without frame blocking
+const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads', 'guides');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+app.use('/uploads/guides', (req, res, next) => {
+  res.removeHeader('X-Frame-Options');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(UPLOADS_DIR));
+
+app.use('/resources', (req, res, next) => {
+  res.removeHeader('X-Frame-Options');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(process.cwd(), 'public', 'resources')));
 
 // Initialize Gemini SDK on server-side if key is present
 let ai: GoogleGenAI | null = null;
@@ -3061,17 +3088,28 @@ app.post('/api/v1/knowledge/deflect', (req, res) => {
 // CHATBOT KNOWLEDGE GUIDE FILES STORE & RAG ENGINE
 // -------------------------------------------------------------
 
+interface GuidePageData {
+  pageNumber: number;
+  text: string;
+  wordCount: number;
+  chunkCount: number;
+}
+
 interface ChatbotGuideFile {
   id: string;
   title: string;
+  condition: 'FTD' | 'AD' | 'GENERAL';
+  topicTag?: string;
   publisher?: string;
   year?: string;
   fileName: string;
   fileSize: number;
   mimeType: string;
-  category: string;
+  category?: string;
   description?: string;
   content: string;
+  pages?: GuidePageData[];
+  totalChunks?: number;
   sectionCount?: number;
   wordCount?: number;
   status?: 'DRAFT' | 'APPROVED';
@@ -3121,6 +3159,23 @@ function saveChatbotGuidesToDb(guides: ChatbotGuideFile[]): void {
 
 let chatbotGuidesStore: ChatbotGuideFile[] = loadChatbotGuidesFromDb();
 
+// Auto-ingest approved guides into RAG vector store on server start if empty
+if (ai) {
+  const approvedOnStartup = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
+  if (approvedOnStartup.length > 0 && getLoadedChunksCount() === 0) {
+    console.log(`Auto-ingesting ${approvedOnStartup.length} approved guides into RAG vector store...`);
+    (async () => {
+      for (const guide of approvedOnStartup) {
+        try {
+          await ingestGuide(guide, ai!);
+        } catch (ingestErr) {
+          console.error(`Failed to auto-ingest guide "${guide.title}":`, ingestErr);
+        }
+      }
+    })();
+  }
+}
+
 // -------------------------------------------------------------
 // CHATBOT KNOWLEDGE MANAGEMENT ROUTES (MODERATOR DASHBOARD)
 // -------------------------------------------------------------
@@ -3139,9 +3194,11 @@ app.get('/api/v1/chatbot/guides', (_req, res) => {
   });
 });
 
-app.post('/api/v1/chatbot/guides', (req, res) => {
+app.post('/api/v1/chatbot/guides', async (req, res) => {
   const {
     title,
+    condition = 'FTD',
+    topicTag,
     publisher,
     year,
     fileName,
@@ -3150,6 +3207,8 @@ app.post('/api/v1/chatbot/guides', (req, res) => {
     category,
     description,
     content,
+    pages,
+    totalChunks,
     status = 'DRAFT',
     pdfUrl,
     uploadedBy,
@@ -3163,24 +3222,30 @@ app.post('/api/v1/chatbot/guides', (req, res) => {
   const isApproved = status === 'APPROVED';
   const words = content.trim().split(/\s+/).filter(Boolean).length;
   const sections = content.split(/(?=^##\s+)/m).filter(Boolean).length || 1;
+  const computedFileName = fileName?.trim() || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`;
+  const computedPdfUrl = pdfUrl || `/resources/${computedFileName}`;
 
   const newGuide: ChatbotGuideFile = {
     id: `guide-${Date.now()}`,
     title: title.trim(),
+    condition: (condition as any) || 'FTD',
+    topicTag: topicTag?.trim() || category?.trim() || '',
     publisher: publisher?.trim() || '',
     year: year?.trim() || '',
-    fileName: fileName?.trim() || `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
+    fileName: computedFileName,
     fileSize: fileSize || content.length,
     mimeType: mimeType || 'application/pdf',
-    category: category?.trim() || '',
+    category: topicTag?.trim() || category?.trim() || '',
     description: description?.trim() || '',
     content: content.trim(),
+    pages: pages || undefined,
+    totalChunks: totalChunks || undefined,
     sectionCount: sections,
     wordCount: words,
     status: isApproved ? 'APPROVED' : 'DRAFT',
     approvedAt: isApproved ? new Date().toISOString() : undefined,
     approvedBy: isApproved ? (uploadedBy || 'user-clinician-1') : undefined,
-    pdfUrl: pdfUrl || undefined,
+    pdfUrl: computedPdfUrl,
     isActive: isApproved, // Drafts are not active until explicitly approved
     uploadedBy: uploadedBy || 'user-clinician-1',
     uploadedByName: uploadedByName || 'Dr. Seema Gulyani',
@@ -3192,6 +3257,15 @@ app.post('/api/v1/chatbot/guides', (req, res) => {
   chatbotGuidesStore.unshift(newGuide);
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
+  // Ingest on save when approved
+  if (isApproved && ai) {
+    try {
+      await ingestGuide(newGuide, ai);
+    } catch (ingestErr) {
+      console.error('Failed to ingest approved guide into RAG store:', ingestErr);
+    }
+  }
+
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: uploadedBy || 'user-clinician-1',
@@ -3199,26 +3273,30 @@ app.post('/api/v1/chatbot/guides', (req, res) => {
     entityType: 'RESOURCE' as any,
     entityId: newGuide.id,
     actionTaken: isApproved ? 'APPROVED_CHATBOT_GUIDE' : 'SAVED_DRAFT_CHATBOT_GUIDE',
-    notes: `${isApproved ? 'Approved & published' : 'Saved draft of'} clinical guide "${newGuide.title}" (${words} words)`,
+    notes: `${isApproved ? 'Approved & published' : 'Saved draft of'} [${newGuide.condition}] clinical guide "${newGuide.title}" (${words} words)`,
     createdAt: new Date().toISOString(),
   });
 
   res.status(201).json(newGuide);
 });
 
-app.put('/api/v1/chatbot/guides/:id', (req, res) => {
+app.put('/api/v1/chatbot/guides/:id', async (req, res) => {
   chatbotGuidesStore = loadChatbotGuidesFromDb();
   const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
   if (!guide) {
     return res.status(404).json({ error: 'Guide file not found.' });
   }
 
-  const { title, publisher, year, category, description, content, status, pdfUrl } = req.body;
+  const { title, condition, topicTag, publisher, year, category, description, content, pages, totalChunks, status, pdfUrl } = req.body;
   if (title !== undefined) guide.title = title.trim();
+  if (condition !== undefined) guide.condition = condition;
+  if (topicTag !== undefined) guide.topicTag = topicTag.trim();
   if (publisher !== undefined) guide.publisher = publisher.trim();
   if (year !== undefined) guide.year = year.trim();
   if (category !== undefined) guide.category = category.trim();
   if (description !== undefined) guide.description = description.trim();
+  if (pages !== undefined) guide.pages = pages;
+  if (totalChunks !== undefined) guide.totalChunks = totalChunks;
   if (content !== undefined) {
     guide.content = content.trim();
     guide.wordCount = content.trim().split(/\s+/).filter(Boolean).length;
@@ -3233,15 +3311,24 @@ app.put('/api/v1/chatbot/guides/:id', (req, res) => {
       guide.approvedBy = 'user-clinician-1';
     } else {
       guide.isActive = false;
+      deleteGuideChunks(guide.id);
     }
   }
   guide.updatedAt = new Date().toISOString();
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
+  if (guide.status === 'APPROVED' && guide.isActive && ai) {
+    try {
+      await ingestGuide(guide, ai);
+    } catch (ingestErr) {
+      console.error('Failed to re-ingest updated guide into RAG store:', ingestErr);
+    }
+  }
+
   res.json({ success: true, guide });
 });
 
-app.patch('/api/v1/chatbot/guides/:id/approve', (req, res) => {
+app.patch('/api/v1/chatbot/guides/:id/approve', async (req, res) => {
   chatbotGuidesStore = loadChatbotGuidesFromDb();
   const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
   if (!guide) {
@@ -3254,6 +3341,14 @@ app.patch('/api/v1/chatbot/guides/:id/approve', (req, res) => {
   guide.approvedBy = 'user-clinician-1';
   guide.updatedAt = new Date().toISOString();
   saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  if (ai) {
+    try {
+      await ingestGuide(guide, ai);
+    } catch (ingestErr) {
+      console.error('Failed to ingest approved guide into RAG store:', ingestErr);
+    }
+  }
 
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
@@ -3280,6 +3375,7 @@ app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
 
   const deleted = chatbotGuidesStore.splice(idx, 1)[0];
   saveChatbotGuidesToDb(chatbotGuidesStore);
+  deleteGuideChunks(deleted.id);
 
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
@@ -3295,7 +3391,7 @@ app.delete('/api/v1/chatbot/guides/:id', (req, res) => {
   res.json({ success: true, id: deleted.id, remainingGuides: chatbotGuidesStore.length });
 });
 
-app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
+app.patch('/api/v1/chatbot/guides/:id/toggle', async (req, res) => {
   const guide = chatbotGuidesStore.find((g) => g.id === req.params.id);
   if (!guide) {
     return res.status(404).json({ error: 'Guide file not found.' });
@@ -3304,6 +3400,16 @@ app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
   guide.isActive = !guide.isActive;
   guide.updatedAt = new Date().toISOString();
   saveChatbotGuidesToDb(chatbotGuidesStore);
+
+  if (guide.isActive && (guide.status === 'APPROVED' || !guide.status) && ai) {
+    try {
+      await ingestGuide(guide, ai);
+    } catch (ingestErr) {
+      console.error('Failed to re-ingest guide on toggle:', ingestErr);
+    }
+  } else if (!guide.isActive) {
+    deleteGuideChunks(guide.id);
+  }
 
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
@@ -3320,7 +3426,7 @@ app.patch('/api/v1/chatbot/guides/:id/toggle', (req, res) => {
 });
 
 // PDF Extraction Endpoint using cleanPdfText cleaner
-// Requirement: Blank title, no category guess, publisher and year fields
+// Stores uploaded PDF in public/uploads/guides and returns page-by-page text & chunk metrics
 app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
   const { fileName = 'clinical_guide.pdf', fileBase64 } = req.body;
 
@@ -3332,6 +3438,33 @@ app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
     const cleanBase64 = fileBase64.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
 
+    // Store the uploaded PDF on the server under public/uploads/guides with stable URL
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'guides');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const safeFileName = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storedFileName = `guide_${Date.now()}_${safeFileName}`;
+    const targetFilePath = path.join(uploadsDir, storedFileName);
+    fs.writeFileSync(targetFilePath, buffer);
+
+    // Also mirror to public/resources as fallback
+    const resourcesDir = path.join(process.cwd(), 'public', 'resources');
+    if (fs.existsSync(resourcesDir)) {
+      try {
+        fs.writeFileSync(path.join(resourcesDir, safeFileName), buffer);
+      } catch {}
+    }
+
+    const pdfUrl = `/uploads/guides/${storedFileName}`;
+
+    interface PageResult {
+      pageNumber: number;
+      text: string;
+      wordCount: number;
+      chunkCount: number;
+    }
+    const pagesData: PageResult[] = [];
     let extractedText = '';
     let pageCount = 1;
 
@@ -3341,12 +3474,27 @@ app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
       pageCount = textResult?.total || textResult?.pages?.length || 1;
 
       if (textResult?.pages && textResult.pages.length > 0) {
-        extractedText = textResult.pages
-          .map((p) => p.text || '')
-          .filter(Boolean)
-          .join('\n\n');
+        textResult.pages.forEach((p, idx) => {
+          const cleaned = cleanPdfText(p.text || '');
+          const words = cleaned.trim().split(/\s+/).filter(Boolean).length;
+          const chunkCount = words === 0 ? 0 : Math.max(1, Math.ceil(words / (400 - 60)));
+          pagesData.push({
+            pageNumber: idx + 1,
+            text: cleaned,
+            wordCount: words,
+            chunkCount,
+          });
+        });
+        extractedText = pagesData.map((p) => p.text).filter(Boolean).join('\n\n');
       } else if (textResult?.text) {
-        extractedText = textResult.text;
+        extractedText = cleanPdfText(textResult.text);
+        const words = extractedText.trim().split(/\s+/).filter(Boolean).length;
+        pagesData.push({
+          pageNumber: 1,
+          text: extractedText,
+          wordCount: words,
+          chunkCount: Math.max(1, Math.ceil(words / (400 - 60))),
+        });
       }
 
       try {
@@ -3356,21 +3504,29 @@ app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
       console.warn('PDFParse primary extraction notice:', parseErr);
     }
 
-    // Clean any binary/control characters, headers, footers, and hyphens using cleanPdfText cleaner
-    extractedText = cleanPdfText(extractedText);
+    if (pagesData.length === 0) {
+      extractedText = cleanPdfText(extractedText);
+      const words = extractedText.trim().split(/\s+/).filter(Boolean).length;
+      pagesData.push({
+        pageNumber: 1,
+        text: extractedText,
+        wordCount: words,
+        chunkCount: Math.max(1, Math.ceil(words / (400 - 60))),
+      });
+    }
 
-    const wordCount = extractedText.split(/\s+/).filter(Boolean).length;
+    const wordCount = pagesData.reduce((acc, p) => acc + p.wordCount, 0);
+    const totalChunks = pagesData.reduce((acc, p) => acc + p.chunkCount, 0);
 
-    // As requested: blank title, no category guess, publisher and year fields
     res.json({
       text: extractedText,
+      pages: pagesData,
+      totalChunks,
       wordCount,
-      pageCount,
-      fileName,
+      pageCount: pagesData.length || pageCount,
+      fileName: safeFileName,
+      pdfUrl,
       title: '',
-      category: '',
-      publisher: '',
-      year: '',
     });
   } catch (err: any) {
     console.error('Failed to extract PDF:', err);
@@ -3380,204 +3536,53 @@ app.post('/api/v1/chatbot/extract-pdf', async (req, res) => {
 
 // -------------------------------------------------------------
 // CHATBOT ASSISTANT RAG ENDPOINT (Strictly Grounded in Uploaded Guides)
+// Single endpoint serving both caregiver assistant and clinician test panel
 // -------------------------------------------------------------
 
 app.post('/api/v1/knowledge/chat', async (req, res) => {
-  const { query, conversationHistory = [] } = req.body;
+  const query = (typeof req.body.query === 'string' ? req.body.query : typeof req.body.message === 'string' ? req.body.message : '').trim();
+  const { conversationHistory = [] } = req.body;
 
-  if (!query || typeof query !== 'string') {
+  if (!query) {
     return res.status(400).json({ error: 'Query is required' });
   }
 
-  const queryLower = query.toLowerCase();
-
-  // RULE 1: Prescription / medication dosage refusal gate
-  const restrictedDrugs = [
-    'seroquel', 'quetiapine', 'haloperidol', 'haldol', 'donepezil', 'aricept',
-    'memantine', 'namenda', 'trazodone', 'risperidone', 'olanzapine', 'zyprexa',
-    'lorazepam', 'ativan', 'clonazepam', 'klonopin', 'xanax', 'alprazolam',
-    'dose', 'dosage', 'milligrams', 'prescribe',
-  ];
-
   const chatRequester = getRequester(req);
-  if (chatRequester?.condition === 'AD') {
-    return res.json({
-      answer: `Our Alzheimer's care partner guidance is still being prepared by Dr. Seema's team. In the meantime, please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
-      citedResources: [],
-      suggestedQuestions: [],
-    });
-  }
+  const conditionFilter = (req.body.condition || chatRequester?.condition || 'FTD') as 'FTD' | 'AD' | 'GENERAL' | 'BOTH';
 
-  const mentionsDrug = restrictedDrugs.some((d) => queryLower.includes(d));
-  if (mentionsDrug) {
-    return res.json({
-      answer: `Prescription medications and drug dosages must be evaluated directly by your clinic medical team. Please reach out through the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.`,
-      isMedicationRefusal: true,
-      citedResources: [],
-      suggestedQuestions: [
-        'How do I administer medicine safely when they spit pills out?',
-        'What should I tell Emergency Room doctors about sedatives?',
-        'How do I handle sudden acute agitation without sedatives?'
-      ]
-    });
-  }
-
-  // Check unverified supplements
-  const unverifiedKeywords = ['ivermectin', 'coconut oil', 'lion mane', 'turmeric', 'hydroxychloroquine', 'cure'];
-  if (unverifiedKeywords.some((u) => queryLower.includes(u))) {
-    return res.json({
-      answer: `I cannot provide guidance on unverified or speculative remedies. Seema’s repository only includes scientifically verified clinical protocols approved for Johns Hopkins FTD families. Please discuss any dietary supplements directly with your clinical neurology team at (410) 955-5147 (option 2).`,
-      isMedicationRefusal: false,
-      citedResources: [],
-      suggestedQuestions: [
-        'Why does my loved one crave sweets and carbohydrates?',
-        'How do I manage rapid weight loss or gain?',
-        'What are proven non-drug de-escalation techniques?'
-      ]
-    });
-  }
-
-  // Active approved uploaded guide files retrieval (Exclusive source, persisted in JSON DB)
   chatbotGuidesStore = loadChatbotGuidesFromDb();
-  const approvedActiveGuides = chatbotGuidesStore.filter((g) => g.isActive && g.status === 'APPROVED');
+  const approvedActiveGuides = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
 
-  // Disable the chat endpoint until step 3 is done (until verified guides are uploaded and approved)
+  // Disable the chat endpoint until verified guides are uploaded and approved
   if (approvedActiveGuides.length === 0) {
     return res.json({
       answer: `The Johns Hopkins Clinical Knowledge Assistant is currently offline while Dr. Seema and the clinical moderation team review, extract, and approve institutional care guides.\n\nPlease consult the Guides library directly or contact the Johns Hopkins Memory and Alzheimer's Treatment Center clinic at (410) 955-5147 (option 2) for clinical inquiries. For life-threatening emergencies, please call 911 immediately.`,
       isOffline: true,
       isDisabled: true,
+      retrievedChunks: [],
       citedResources: [],
       suggestedQuestions: [],
       isUploadedGuideSourced: false,
     });
   }
 
-  const chunks = parseGuideChunks(approvedActiveGuides);
-  const matches = searchGuideChunks(query, chunks, 3);
-  const bestMatchChunk = matches[0]?.chunk || chunks[0];
-  const topScore = matches[0]?.score || 0;
-  const hasStrongContext = matches.length > 0 && topScore >= 5;
-
-  // If query has no relevant match in uploaded guides, answer supportively with clinical contact info
-  if (!hasStrongContext) {
-    return res.json({
-      answer: `I could not find specific recommendations in our clinical care notes for this situation.\n\nBecause every care partner's journey with Frontotemporal Dementia involves unique nuances, please consult your Johns Hopkins neurology team for personalized guidance. You can reach our clinic during business hours at (410) 955-5147 (option 2) or send a non-urgent message via MyChart/EPIC. For any life-threatening emergency, please call 911 immediately.`,
+  if (!ai) {
+    return res.status(503).json({
+      error: 'Gemini AI service is not initialized on the server.',
+      answer: 'The Clinical Knowledge Assistant requires an active Gemini API key.',
+      retrievedChunks: [],
       citedResources: [],
-      matchedGuide: null,
-      suggestedQuestions: [
-        'How do I handle violent resistance during showers and bathing?',
-        'How do I stop my loved one from driving safely?',
-        'Why are they constantly craving sweets and overeating?',
-      ],
-      isUploadedGuideSourced: false,
-      canAnswer: false,
+      suggestedQuestions: [],
     });
   }
 
-  // Build context corpus strictly from uploaded guide documents
-  const uploadedGuidesContext = matches
-    .map(
-      (m, idx) =>
-        `VERIFIED INSTITUTIONAL GUIDE #${idx + 1}:\nDOCUMENT TITLE: ${m.chunk.guideTitle} [File: ${m.chunk.fileName}]\nSECTION: ${m.chunk.sectionTitle}\nCATEGORY: ${m.chunk.category}\nCLINICAL BODY:\n${m.chunk.content}`
-    )
-    .join('\n\n================================\n\n');
-
-  const fullContextCorpus = `VERIFIED CLINICAL GUIDELINES FROM UPLOADED INSTITUTIONAL DOCUMENTS:\n\n${uploadedGuidesContext}`;
-
-  const dynamicSuggestedQuestions = chunks
-    .filter((c) => c.sectionTitle !== bestMatchChunk.sectionTitle && !c.sectionTitle.includes('Protocol (2026)'))
-    .slice(0, 3)
-    .map((c) => {
-      const cleanTitle = c.sectionTitle.replace(/^[\d.]+\s*/, '').trim();
-      return `What is the protocol for ${cleanTitle}?`;
-    });
-  const suggestedQuestionsList =
-    dynamicSuggestedQuestions.length > 0
-      ? dynamicSuggestedQuestions
-      : [
-          'How do I handle violent resistance during showers?',
-          'How do I stop my loved one from driving safely?',
-          'Why are they constantly craving sweets and overeating?',
-        ];
-
-  if (ai) {
-    try {
-      const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic. You are speaking directly with family care partners.
-
-CRITICAL GROUNDING REQUIREMENT:
-All clinical advice, explanations, and action steps MUST be grounded STRICTLY in the uploaded verified clinical guide documents provided below. Do NOT use generic medical assumptions, hallucinations, or outside data.
-
-RELEVANCY & ACCURACY CHECK:
-- If the uploaded clinical documents below DO NOT directly contain information to address the user's specific clinical scenario safely, you MUST NOT guess or invent medical advice.
-- Instead, kindly and clearly state that our current clinical notes do not have specific instructions for this scenario, and remind the caregiver that they can reach the Johns Hopkins clinic at (410) 955-5147 (option 2) or message via EPIC/MyChart for non-urgent clinical guidance. For life-threatening emergencies, always call 911.
-
-STRUCTURE & VOICE:
-- Speak warmly and empathetically in plain, everyday language suitable for stressed care partners.
-- If the guide DOES cover the topic, structure your answer clearly:
-  - Warm opening validation.
-  - ### Understanding What Is Happening
-  - ### Practical Steps (numbered steps with bold action titles)
-  - ### What to Keep in Mind
-- Under NO circumstances recommend or discuss specific prescription drug dosages.
-
-VERIFIED CLINICAL KNOWLEDGE CORPUS (FROM UPLOADED GUIDE FILES):
-${fullContextCorpus}`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: query,
-        config: {
-          systemInstruction,
-          temperature: 0.1,
-        },
-      });
-
-      const answerText = (response.text || '').trim();
-
-      return res.json({
-        answer: answerText,
-        suggestedQuestions: suggestedQuestionsList,
-        isUploadedGuideSourced: true,
-        matchedGuide: {
-          id: bestMatchChunk.guideId,
-          title: bestMatchChunk.guideTitle,
-          fileName: bestMatchChunk.fileName,
-          sectionTitle: bestMatchChunk.sectionTitle,
-        },
-        citedResources: [
-          {
-            id: bestMatchChunk.guideId,
-            title: bestMatchChunk.guideTitle,
-            url: `/resources/${bestMatchChunk.fileName}`,
-          },
-        ],
-      });
-    } catch (genAiError) {
-      console.warn('Gemini generation error, falling back to deterministic uploaded guide response:', genAiError);
-    }
+  try {
+    const result = await answerRagQuery(query, conversationHistory, ai, conditionFilter);
+    return res.json(result);
+  } catch (err: any) {
+    console.error('Error answering RAG query:', err);
+    return res.status(500).json({ error: err.message || 'Error executing knowledge assistant query' });
   }
-
-  // Fallback to raw extracted guide text
-  const fallbackAnswer = bestMatchChunk ? bestMatchChunk.content : 'No guide text available.';
-  return res.json({
-    answer: fallbackAnswer,
-    suggestedQuestions: suggestedQuestionsList,
-    isUploadedGuideSourced: true,
-    matchedGuide: {
-      id: bestMatchChunk.guideId,
-      title: bestMatchChunk.guideTitle,
-      fileName: bestMatchChunk.fileName,
-      sectionTitle: bestMatchChunk.sectionTitle,
-    },
-    citedResources: [
-      {
-        id: bestMatchChunk.guideId,
-        title: bestMatchChunk.guideTitle,
-        url: `/resources/${bestMatchChunk.fileName}`,
-      },
-    ],
-  });
 });
 
 // Private 1-on-1 Messages between Dr. Seema & Caregivers

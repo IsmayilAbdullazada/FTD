@@ -19,6 +19,8 @@ import {
   ChatbotGuideFile,
   ChatbotKnowledgeConfig,
   ChatbotGuideTestResult,
+  GuideCondition,
+  GuidePageData,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -982,29 +984,45 @@ export const api = {
   // Closed-loop Assistant Grounded in Verified Institutional Care Guides
   chatWithAssistant: async (
     query: string,
-    userId: string = 'anonymous'
+    userId: string = 'anonymous',
+    conversationHistory: Array<{ role: string; content?: string; text?: string }> = []
   ): Promise<{
     answer: string;
+    retrievedChunks?: Array<{
+      guideTitle: string;
+      fileName: string;
+      page: number;
+      content: string;
+      score: number;
+    }>;
     isOffline?: boolean;
     isDisabled?: boolean;
     isMedicationRefusal?: boolean;
-    citedResources?: any[];
+    citedResources?: Array<{
+      id: string;
+      title: string;
+      fileName?: string;
+      page?: number;
+      url: string;
+    }>;
     suggestedQuestions?: string[];
     isUploadedGuideSourced?: boolean;
     matchedGuide?: {
       id: string;
       title: string;
       fileName: string;
+      page?: number;
       sectionTitle?: string;
     };
   }> => {
     const res = await fetch('/api/v1/knowledge/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, userId }),
+      body: JSON.stringify({ query, userId, conversationHistory }),
     });
     if (!res.ok) {
-      throw new Error(`Knowledge Assistant request failed: ${res.statusText || res.status}`);
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Knowledge Assistant request failed: ${res.statusText || res.status}`);
     }
     return res.json();
   },
@@ -1207,14 +1225,18 @@ export const api = {
 
   uploadChatbotGuide: async (payload: {
     title: string;
+    condition: GuideCondition;
+    topicTag?: string;
     publisher?: string;
     year?: string;
     fileName: string;
     fileSize?: number;
     mimeType?: string;
-    category: string;
+    category?: string;
     description?: string;
     content: string;
+    pages?: GuidePageData[];
+    totalChunks?: number;
     status?: 'DRAFT' | 'APPROVED';
     pdfUrl?: string;
     uploadedBy: string;
@@ -1264,13 +1286,16 @@ export const api = {
     fileBase64: string;
   }): Promise<{
     text: string;
+    pages: GuidePageData[];
+    totalChunks: number;
     wordCount: number;
     pageCount: number;
     fileName: string;
+    pdfUrl?: string;
     title: string;
-    category: string;
-    publisher: string;
-    year: string;
+    category?: string;
+    publisher?: string;
+    year?: string;
   }> => {
     const res = await fetch('/api/v1/chatbot/extract-pdf', {
       method: 'POST',

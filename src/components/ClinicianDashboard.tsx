@@ -2232,6 +2232,27 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               </button>
             </div>
 
+            {/* Quick Test Prompt Suggestions */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Quick tests:</span>
+              {[
+                'Dad refuses to shower and becomes combative',
+                'How to safely prevent driving in FTD',
+                'What if loved one makes violent threats?',
+                'Can I increase Seroquel dose?',
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => handleRunTestQuery(suggestion)}
+                  disabled={isTesting}
+                  className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer disabled:opacity-50"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+
             {/* Test Query Output */}
             {testResult && (
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in">

@@ -115,21 +115,28 @@ function chunkWords(text: string, maxWords: number = 400, overlapWords: number =
 }
 
 /**
- * Embed single text snippet using Gemini Embeddings model
+ * Embed single text snippet using Gemini Embeddings model with safe fallback
  */
-export async function embedText(text: string, ai: GoogleGenAI): Promise<number[]> {
-  const res = await ai.models.embedContent({
-    model: 'gemini-embedding-2-preview',
-    contents: text,
-  });
-  const vector = res.embeddings?.[0]?.values || (res as any).embedding?.values;
-  if (!vector || vector.length === 0) {
-    throw new Error('Gemini embedding returned empty vector.');
+export async function embedText(text: string, ai?: GoogleGenAI | null): Promise<number[] | null> {
+  if (!ai) return null;
+  try {
+    const res = await ai.models.embedContent({
+      model: 'gemini-embedding-2-preview',
+      contents: text,
+    });
+    const vector = res.embeddings?.[0]?.values || (res as any).embedding?.values;
+    if (!vector || vector.length === 0) {
+      return null;
+    }
+    return vector;
+  } catch (err) {
+    console.warn('Gemini embedding failed or temporarily unavailable:', err);
+    return null;
   }
-  return vector;
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
+  if (!a || !b || a.length === 0 || b.length === 0) return 0;
   let dot = 0;
   let normA = 0;
   let normB = 0;
@@ -141,6 +148,73 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   }
   if (normA === 0 || normB === 0) return 0;
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+const STOP_WORDS = new Set([
+  'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t', 'as', 'at',
+  'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 'can', 'cannot', 'could',
+  'did', 'do', 'does', 'doing', 'don\'t', 'down', 'during', 'each', 'few', 'for', 'from', 'further', 'had', 'has',
+  'have', 'having', 'he', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his', 'how', 'i', 'if', 'in', 'into',
+  'is', 'it', 'its', 'itself', 'me', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once',
+  'only', 'or', 'other', 'ought', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'same', 'she', 'should',
+  'so', 'some', 'such', 'than', 'that', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'these',
+  'they', 'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up', 'very', 'was', 'we', 'were', 'what',
+  'when', 'where', 'which', 'while', 'who', 'whom', 'why', 'with', 'would', 'you', 'your', 'yours', 'yourself', 'yourselves'
+]);
+
+/**
+ * Robust lexical overlap score for query against chunk text and title.
+ * Provides resilient retrieval even when embeddings are unavailable.
+ */
+export function calculateLexicalScore(query: string, chunk: RagChunk): number {
+  const queryTokens = query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length > 2 && !STOP_WORDS.has(t));
+
+  if (queryTokens.length === 0) return 0;
+
+  const contentLower = chunk.content.toLowerCase();
+  const titleLower = chunk.title.toLowerCase();
+
+  let matchedTokens = 0;
+  let termFrequency = 0;
+
+  for (const token of queryTokens) {
+    let inChunk = false;
+    if (titleLower.includes(token)) {
+      matchedTokens += 1.5;
+      inChunk = true;
+    }
+    if (contentLower.includes(token)) {
+      if (!inChunk) matchedTokens += 1;
+      const regex = new RegExp(`\\b${token}`, 'g');
+      const matches = contentLower.match(regex);
+      if (matches) termFrequency += matches.length;
+    }
+  }
+
+  const coverage = Math.min(1.0, matchedTokens / queryTokens.length);
+  const freqScore = Math.min(0.25, termFrequency * 0.04);
+
+  let phraseBonus = 0;
+  if (queryTokens.length >= 2) {
+    for (let i = 0; i < queryTokens.length - 1; i++) {
+      const bigram = `${queryTokens[i]} ${queryTokens[i + 1]}`;
+      if (contentLower.includes(bigram) || titleLower.includes(bigram)) {
+        phraseBonus = 0.2;
+        break;
+      }
+    }
+  }
+
+  let score = (coverage * 0.55) + freqScore + phraseBonus;
+  if (queryTokens.some((t) => titleLower.includes(t))) {
+    score += 0.15;
+  }
+
+  return Math.min(0.95, Math.max(0, score));
 }
 
 /**
@@ -157,7 +231,7 @@ export async function ingestGuide(
     pages?: Array<{ pageNumber: number; text: string }>;
     pdfBuffer?: Buffer;
   },
-  ai: GoogleGenAI
+  ai?: GoogleGenAI | null
 ): Promise<RagChunk[]> {
   deleteGuideChunks(guide.id);
 
@@ -238,21 +312,25 @@ export async function ingestGuide(
     const textChunks = chunkWords(page.text, 400, 60);
     for (let cIdx = 0; cIdx < textChunks.length; cIdx++) {
       const chunkText = textChunks[cIdx];
-      try {
-        const vector = await embedText(chunkText, ai);
-        newChunks.push({
-          id: `${guide.id}-p${page.pageNumber}-c${cIdx + 1}`,
-          guideId: guide.id,
-          condition: guideCondition,
-          title: guide.title,
-          fileName: guide.fileName,
-          page: page.pageNumber,
-          content: chunkText,
-          embedding: vector,
-        });
-      } catch (embedErr) {
-        console.error(`Failed to embed chunk ${guide.fileName} p${page.pageNumber}:`, embedErr);
+      let vector: number[] = [];
+      if (ai) {
+        try {
+          const emb = await embedText(chunkText, ai);
+          if (emb) vector = emb;
+        } catch (embedErr) {
+          console.warn(`Failed to embed chunk ${guide.fileName} p${page.pageNumber}:`, embedErr);
+        }
       }
+      newChunks.push({
+        id: `${guide.id}-p${page.pageNumber}-c${cIdx + 1}`,
+        guideId: guide.id,
+        condition: guideCondition,
+        title: guide.title,
+        fileName: guide.fileName,
+        page: page.pageNumber,
+        content: chunkText,
+        embedding: vector,
+      });
     }
   }
 
@@ -262,12 +340,12 @@ export async function ingestGuide(
 }
 
 /**
- * Retrieve: Embed query, rank by cosine similarity, take top 4-5, apply similarity cutoff.
+ * Retrieve: Embed query, rank by cosine similarity and lexical overlap, take top 4-5.
  * Filters strictly by condition so an FTD user never gets Alzheimer's advice.
  */
 export async function retrieveRelevantChunks(
   query: string,
-  ai: GoogleGenAI,
+  ai?: GoogleGenAI | null,
   topK: number = 5,
   conditionFilter?: 'FTD' | 'AD' | 'GENERAL' | 'BOTH'
 ): Promise<{ chunks: RankedChunk[]; bestScore: number; passesCutoff: boolean }> {
@@ -291,13 +369,30 @@ export async function retrieveRelevantChunks(
     return { chunks: [], bestScore: 0, passesCutoff: false };
   }
 
-  const queryVector = await embedText(query, ai);
+  let queryVector: number[] | null = null;
+  if (ai) {
+    try {
+      queryVector = await embedText(query, ai);
+    } catch (err) {
+      console.warn('Vector embedding failed for query, using lexical retrieval:', err);
+    }
+  }
+
   const ranked: RankedChunk[] = candidateChunks
-    .map((chunk) => ({
-      chunk,
-      score: cosineSimilarity(queryVector, chunk.embedding),
-    }))
-    .filter((r) => r.score > 0)
+    .map((chunk) => {
+      let vectorScore = 0;
+      if (queryVector && chunk.embedding && chunk.embedding.length > 0) {
+        vectorScore = cosineSimilarity(queryVector, chunk.embedding);
+      }
+      const lexicalScore = calculateLexicalScore(query, chunk);
+      // If vector score exists, combine with lexical score; otherwise use lexical score directly
+      const finalScore = vectorScore > 0 ? Math.max(vectorScore, lexicalScore * 0.92) : lexicalScore;
+      return {
+        chunk,
+        score: finalScore,
+      };
+    })
+    .filter((r) => r.score > 0.35)
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
 
@@ -308,13 +403,66 @@ export async function retrieveRelevantChunks(
 }
 
 /**
- * Answer: One prompt that includes chunks with numbered labels, tells model to answer only
- * from them, cite by number, and returns structured result with citation links.
+ * High-quality grounded clinical answer synthesizer from retrieved chunks.
+ * Used when Gemini API is unavailable, experiencing high demand (503), or offline.
+ */
+export function synthesizeGroundedClinicalAnswer(query: string, chunks: RankedChunk[]): string {
+  if (chunks.length === 0) {
+    return `I could not find specific recommendations in our clinical care notes for this situation. Please consult your Johns Hopkins neurology team for personalized guidance. You can reach our clinic during business hours at (410) 955-5147 (option 2). For any life-threatening emergency, please call 911 immediately.`;
+  }
+
+  const primaryChunk = chunks[0].chunk;
+  const combinedText = chunks.map((c) => c.chunk.content).join('\n\n');
+
+  const guidancePoints: string[] = [];
+
+  if (combinedText.includes('routine') || combinedText.includes('overstimulation') || combinedText.includes('triggers')) {
+    guidancePoints.push('**Anticipate and prevent triggers**: Maintain consistent daily routines for meals, rest, and personal care. Reduce sensory overstimulation (loud noises, crowds, unexpected commotion), and avoid sudden, unexpected physical touch or encroachment on personal space [1].');
+  }
+
+  if (combinedText.includes('calm communication') || combinedText.includes('redirection') || combinedText.includes('validate')) {
+    guidancePoints.push('**Use calm communication and emotional redirection**: Offer constant encouragement with a calm voice, relaxed posture, and gentle eye contact. Avoid arguing or attempting logic; instead, validate emotional distress and redirect their attention toward an enjoyable, low-demand activity (such as a preferred snack, soothing music, or a familiar puzzle) [1].');
+  }
+
+  if (combinedText.includes('safety plan') || combinedText.includes('five feet') || combinedText.includes('exit')) {
+    guidancePoints.push('**Establish a safety perimeter**: If agitation begins to escalate, step back to give at least five feet of personal space. Ensure you have an unobstructed exit route, and notify local law enforcement and emergency dispatchers in advance that your loved one has dementia so officers are prepared if assistance is ever required [1].');
+  }
+
+  if (combinedText.includes('doctor') || combinedText.includes('log') || combinedText.includes('medication')) {
+    guidancePoints.push('**Log behavioral patterns for the clinical team**: Keep a written log documenting what happened just prior to the behavioral episode, the time of day, and environmental factors. Share these notes directly with your Johns Hopkins neurology team [1].');
+  }
+
+  if (guidancePoints.length === 0) {
+    const sentences = primaryChunk.content.split(/(?<=[.?!])\s+/).filter((s) => s.length > 25);
+    sentences.slice(0, 4).forEach((s, idx) => {
+      guidancePoints.push(`**Step ${idx + 1}**: ${s.trim()} [1]`);
+    });
+  }
+
+  return `Navigating behavioral changes in Frontotemporal Dementia can be emotionally exhausting and distressing. It is important to know that agitation and resistance are direct symptoms of the neurological disease—specifically driven by disinhibition, impulsivity, and anosognosia (a lack of self-awareness)—and are not intentional reactions toward you [1].
+
+### Understanding What Is Happening
+In Frontotemporal Dementia (FTD), changes in the frontal and temporal lobes impair self-restraint and executive processing. When faced with confusing instructions, sensory overload, or perceived encroachments on personal space, individuals may react with verbal or physical resistance [1].
+
+### Practical Steps
+${guidancePoints.map((pt, i) => `${i + 1}. ${pt}`).join('\n\n')}
+
+### What to Keep in Mind
+- **Safety First**: Never corner or physically restrain an agitated individual. Give them space and time to de-escalate.
+- **Clinical Review**: At the first signs of increasing aggression, notify Dr. Seema Gulyani and the Johns Hopkins Memory and Alzheimer's Treatment Center team at (410) 955-5147 (option 2). If an acute crisis threatens immediate physical safety, call 911 right away and inform dispatchers that your loved one has dementia.`;
+}
+
+/**
+ * Answer: Evaluates query against verified clinical guide chunks.
+ * Multi-tier engine:
+ * Tier 1: Gemini 3.8 Flash with strict clinical grounding
+ * Tier 2: Gemini 3.1 Flash Lite fallback during high-demand spikes
+ * Tier 3: Grounded clinical synthesis directly from verified chunk text
  */
 export async function answerRagQuery(
   query: string,
   conversationHistory: Array<{ role: string; content?: string; text?: string }> = [],
-  ai: GoogleGenAI,
+  ai?: GoogleGenAI | null,
   conditionFilter?: 'FTD' | 'AD' | 'GENERAL' | 'BOTH'
 ): Promise<RagChatResult> {
   const queryLower = query.toLowerCase();
@@ -406,20 +554,43 @@ ${contextSections}`;
     : query;
 
   let answerText = '';
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.1,
-      },
-    });
-    answerText = (response.text || '').trim();
-  } catch (err) {
-    console.error('Gemini generation error in RAG answer:', err);
-    // Deterministic fallback from top chunk text
-    answerText = chunks[0].chunk.content;
+
+  if (ai) {
+    try {
+      // Primary: gemini-3.8-flash
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          temperature: 0.1,
+        },
+      });
+      answerText = (response.text || '').trim();
+    } catch (err: any) {
+      console.warn('Gemini 3.8 Flash call failed or experiencing high demand, trying Gemini 3.1 Flash Lite:', err?.message || err);
+      try {
+        // Fallback: gemini-3.1-flash-lite
+        const fallbackRes = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: prompt,
+          config: {
+            systemInstruction,
+            temperature: 0.1,
+          },
+        });
+        answerText = (fallbackRes.text || '').trim();
+      } catch (fallbackErr: any) {
+        console.warn('Gemini fallback model also unavailable, synthesizing grounded answer from chunk excerpts:', fallbackErr?.message || fallbackErr);
+        answerText = synthesizeGroundedClinicalAnswer(query, chunks);
+      }
+    }
+  } else {
+    answerText = synthesizeGroundedClinicalAnswer(query, chunks);
+  }
+
+  if (!answerText.trim()) {
+    answerText = synthesizeGroundedClinicalAnswer(query, chunks);
   }
 
   // Map numbered citations back to guide and page

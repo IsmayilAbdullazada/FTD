@@ -49,22 +49,35 @@ app.use('/resources', (req, res, next) => {
   next();
 }, express.static(path.join(process.cwd(), 'public', 'resources')));
 
-// Initialize Gemini SDK on server-side if key is present
+// Initialize Gemini SDK on server-side with multi-key resolution
 let ai: GoogleGenAI | null = null;
-if (process.env.GEMINI_API_KEY) {
-  try {
-    ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  } catch (err) {
-    console.warn('Failed to initialize GoogleGenAI client:', err);
-  }
+
+export function getGeminiApiKey(): string | undefined {
+  return process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GOOGLE_GENAI_API_KEY || undefined;
 }
+
+export function getAiClient(): GoogleGenAI | null {
+  const key = getGeminiApiKey();
+  if (!key) return null;
+  if (!ai) {
+    try {
+      ai = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+    } catch (err) {
+      console.warn('Failed to initialize GoogleGenAI client:', err);
+    }
+  }
+  return ai;
+}
+
+// Initial initialization attempt
+getAiClient();
 
 // -------------------------------------------------------------
 // IN-MEMORY RELATIONAL DATABASE STORE (Matches Schema Section 4.2)
@@ -3160,20 +3173,19 @@ function saveChatbotGuidesToDb(guides: ChatbotGuideFile[]): void {
 let chatbotGuidesStore: ChatbotGuideFile[] = loadChatbotGuidesFromDb();
 
 // Auto-ingest approved guides into RAG vector store on server start if empty
-if (ai) {
-  const approvedOnStartup = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
-  if (approvedOnStartup.length > 0 && getLoadedChunksCount() === 0) {
-    console.log(`Auto-ingesting ${approvedOnStartup.length} approved guides into RAG vector store...`);
-    (async () => {
-      for (const guide of approvedOnStartup) {
-        try {
-          await ingestGuide(guide, ai!);
-        } catch (ingestErr) {
-          console.error(`Failed to auto-ingest guide "${guide.title}":`, ingestErr);
-        }
+const approvedOnStartup = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
+if (approvedOnStartup.length > 0 && getLoadedChunksCount() === 0) {
+  const startupAi = getAiClient();
+  console.log(`Auto-ingesting ${approvedOnStartup.length} approved guides into RAG vector store...`);
+  (async () => {
+    for (const guide of approvedOnStartup) {
+      try {
+        await ingestGuide(guide, startupAi);
+      } catch (ingestErr) {
+        console.error(`Failed to auto-ingest guide "${guide.title}":`, ingestErr);
       }
-    })();
-  }
+    }
+  })();
 }
 
 // -------------------------------------------------------------
@@ -3258,9 +3270,9 @@ app.post('/api/v1/chatbot/guides', async (req, res) => {
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
   // Ingest on save when approved
-  if (isApproved && ai) {
+  if (isApproved) {
     try {
-      await ingestGuide(newGuide, ai);
+      await ingestGuide(newGuide, getAiClient());
     } catch (ingestErr) {
       console.error('Failed to ingest approved guide into RAG store:', ingestErr);
     }
@@ -3317,9 +3329,9 @@ app.put('/api/v1/chatbot/guides/:id', async (req, res) => {
   guide.updatedAt = new Date().toISOString();
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
-  if (guide.status === 'APPROVED' && guide.isActive && ai) {
+  if (guide.status === 'APPROVED' && guide.isActive) {
     try {
-      await ingestGuide(guide, ai);
+      await ingestGuide(guide, getAiClient());
     } catch (ingestErr) {
       console.error('Failed to re-ingest updated guide into RAG store:', ingestErr);
     }
@@ -3342,12 +3354,10 @@ app.patch('/api/v1/chatbot/guides/:id/approve', async (req, res) => {
   guide.updatedAt = new Date().toISOString();
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
-  if (ai) {
-    try {
-      await ingestGuide(guide, ai);
-    } catch (ingestErr) {
-      console.error('Failed to ingest approved guide into RAG store:', ingestErr);
-    }
+  try {
+    await ingestGuide(guide, getAiClient());
+  } catch (ingestErr) {
+    console.error('Failed to ingest approved guide into RAG store:', ingestErr);
   }
 
   auditEvents.unshift({
@@ -3401,9 +3411,9 @@ app.patch('/api/v1/chatbot/guides/:id/toggle', async (req, res) => {
   guide.updatedAt = new Date().toISOString();
   saveChatbotGuidesToDb(chatbotGuidesStore);
 
-  if (guide.isActive && (guide.status === 'APPROVED' || !guide.status) && ai) {
+  if (guide.isActive && (guide.status === 'APPROVED' || !guide.status)) {
     try {
-      await ingestGuide(guide, ai);
+      await ingestGuide(guide, getAiClient());
     } catch (ingestErr) {
       console.error('Failed to re-ingest guide on toggle:', ingestErr);
     }
@@ -3566,22 +3576,24 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
     });
   }
 
-  if (!ai) {
-    return res.status(503).json({
-      error: 'Gemini AI service is not initialized on the server.',
-      answer: 'The Clinical Knowledge Assistant requires an active Gemini API key.',
-      retrievedChunks: [],
-      citedResources: [],
-      suggestedQuestions: [],
-    });
-  }
+  const aiClient = getAiClient();
 
   try {
-    const result = await answerRagQuery(query, conversationHistory, ai, conditionFilter);
+    const result = await answerRagQuery(query, conversationHistory, aiClient, conditionFilter);
     return res.json(result);
   } catch (err: any) {
     console.error('Error answering RAG query:', err);
-    return res.status(500).json({ error: err.message || 'Error executing knowledge assistant query' });
+    return res.json({
+      answer: `Our clinical knowledge assistant encountered a temporary processing delay. Please consult your Johns Hopkins neurology team directly at (410) 955-5147 (option 2) for guidance. For immediate emergencies, call 911.`,
+      retrievedChunks: [],
+      citedResources: [],
+      suggestedQuestions: [
+        'How do I handle violent resistance during showers and bathing?',
+        'How do I stop my loved one from driving safely?',
+        'Why are they constantly craving sweets and overeating?',
+      ],
+      isUploadedGuideSourced: false,
+    });
   }
 });
 

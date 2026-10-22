@@ -155,7 +155,10 @@ export interface ClinicalResource {
     | 'BEHAVIORAL_AGITATION'
     | 'SAFETY_WANDERING'
     | 'COMMUNICATION_PPA'
-    | 'NUTRITION_DIET';
+    | 'NUTRITION_DIET'
+    | 'CAREGIVER_SUPPORT'
+    | 'DAILY_CARE'
+    | 'GENERAL_EDUCATION'
   keyTakeaways: string[];
   createdAt: string;
 }

@@ -77,6 +77,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     { key: 'LEGAL_MEDICAID', label: 'Legal and Financial' },
     { key: 'COMMUNICATION_PPA', label: 'Speech and Communication' },
     { key: 'NUTRITION_DIET', label: 'Eating and Nutrition' },
+    { key: 'CAREGIVER_SUPPORT', label: 'Caregiver Support & Wellbeing' },
+    { key: 'DAILY_CARE', label: 'Daily Care & Routines' },
+    { key: 'GENERAL_EDUCATION', label: 'General Dementia Education' },
   ];
 
   const filtered = resources.filter((res) => {
@@ -575,6 +578,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   <option value="LEGAL_MEDICAID">Legal & Medicaid Spend-Down</option>
                   <option value="COMMUNICATION_PPA">Speech & Communication (PPA)</option>
                   <option value="NUTRITION_DIET">Nutrition & Swallowing</option>
+                  <option value="CAREGIVER_SUPPORT">Caregiver Support & Wellbeing</option>
+                  <option value="DAILY_CARE">Daily Care & Routines</option>
+                  <option value="GENERAL_EDUCATION">General Dementia Education</option>
                 </select>
               </div>
 

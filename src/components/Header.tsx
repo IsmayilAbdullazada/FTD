@@ -13,6 +13,7 @@ import {
   Moon,
   Plus,
   X,
+  LogOut,
 } from 'lucide-react';
 import { CurrentUser, PersonaOption, DirectMessage } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -21,6 +22,7 @@ interface HeaderProps {
   currentUser: CurrentUser;
   allPersonas: PersonaOption[];
   onSwitchPersona: (userId: string) => void;
+  onSignOut?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   pendingTriageCount: number;
@@ -32,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   allPersonas,
   onSwitchPersona,
+  onSignOut,
   activeTab,
   setActiveTab,
   pendingTriageCount,
@@ -450,6 +453,23 @@ export const Header: React.FC<HeaderProps> = ({
                         );
                       })}
                     </div>
+
+                    {/* Sign Out / Lock Session Action */}
+                    {onSignOut && (
+                      <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800 px-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPersonaMenu(false);
+                            onSignOut();
+                          }}
+                          className="w-full px-3 py-2 text-left rounded-lg transition flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold cursor-pointer"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>Sign Out / Lock Session</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

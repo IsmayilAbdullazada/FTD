@@ -1214,6 +1214,9 @@ export const api = {
     inviteExpiresAt: string;
     registrationUrl: string;
     status: string;
+    emailSent?: boolean;
+    emailPreviewUrl?: string;
+    emailError?: string;
   }> => {
     return safeFetchJson(
       '/api/v1/auth/invitations',
@@ -1230,9 +1233,79 @@ export const api = {
           inviteExpiresAt: new Date(Date.now() + 72 * 3600000).toISOString(),
           registrationUrl: `/register?token=${token}`,
           status: 'DISPATCHED',
+          emailSent: true,
         };
       }
     );
+  },
+
+  // Authentication API Methods
+  login: async (payload: { identifier: string; password?: string }): Promise<{ success: boolean; token: string; user: CurrentUser }> => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to authenticate.');
+    }
+    return res.json();
+  },
+
+  forgotPassword: async (email: string): Promise<{ success: boolean; message: string; emailSent?: boolean; previewUrl?: string; resetToken?: string; testCode?: string }> => {
+    const res = await fetch('/api/v1/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to request password reset.');
+    }
+    return res.json();
+  },
+
+  resetPassword: async (payload: { email?: string; code?: string; token?: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch('/api/v1/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to update password.');
+    }
+    return res.json();
+  },
+
+  getInvitation: async (token: string): Promise<{ valid: boolean; invitation: any }> => {
+    const res = await fetch(`/api/v1/auth/invitations/${encodeURIComponent(token)}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Invitation not found or expired.');
+    }
+    return res.json();
+  },
+
+  registerWithInvite: async (payload: {
+    token: string;
+    password?: string;
+    anonymousHandle?: string;
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+  }): Promise<{ success: boolean; token: string; user: CurrentUser }> => {
+    const res = await fetch('/api/v1/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Registration failed.');
+    }
+    return res.json();
   },
 
   // Chatbot Guide Files & Knowledge Management

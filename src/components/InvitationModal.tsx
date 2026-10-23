@@ -7,6 +7,8 @@ import {
   ShieldCheck,
   Clock,
   X,
+  ExternalLink,
+  Send,
 } from 'lucide-react';
 import { CommunityGroup, Condition, getProperGroupName } from '../types';
 import { api } from '../services/api';
@@ -34,6 +36,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
     token: string;
     expiresAt: string;
     url: string;
+    emailSent?: boolean;
+    emailPreviewUrl?: string;
+    recipientEmail?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [condition, setCondition] = useState<Condition | ''>('');
@@ -61,10 +66,13 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
         token: res.inviteToken,
         expiresAt: res.inviteExpiresAt,
         url: `${window.location.origin}${res.registrationUrl}`,
+        emailSent: res.emailSent,
+        emailPreviewUrl: res.emailPreviewUrl,
+        recipientEmail: email.trim(),
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to issue invitation:', err);
-      setErrorNotice('Unable to issue invitation. Please verify the email and try again.');
+      setErrorNotice(err?.message || 'Unable to issue invitation. Please verify the email and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -113,16 +121,14 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
         {generatedInvite ? (
           /* Result View */
           <div className="p-4 sm:p-6 overflow-y-auto space-y-3.5 overscroll-contain flex-1">
+            {/* Real Email Dispatch Banner */}
             <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm space-y-2 text-emerald-950 dark:text-emerald-100 font-sans">
               <div className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Invitation Ready</span>
+                <span>Invitation Issued & Email Dispatched</span>
               </div>
               <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                A single-use invitation link has been generated and logged in the activity ledger.
-              </p>
-              <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                This invitation adds the care partner to the <strong>{condition}</strong> community.
+                An official Johns Hopkins invitation email was dispatched to <strong>{generatedInvite.recipientEmail}</strong> for the <strong>{condition}</strong> community.
               </p>
               <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-400 pt-0.5">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -130,6 +136,21 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   Expires: {new Date(generatedInvite.expiresAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} (72 Hours)
                 </span>
               </div>
+
+              {generatedInvite.emailPreviewUrl && (
+                <div className="pt-2 border-t border-emerald-200/70 dark:border-emerald-900/40">
+                  <a
+                    href={generatedInvite.emailPreviewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>View Sent Email in Web Inbox</span>
+                    <ExternalLink className="w-3 h-3 ml-0.5" />
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -153,7 +174,19 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               </div>
             </div>
 
-            <div className="pt-2 text-right">
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+              <a
+                href={`mailto:${generatedInvite.recipientEmail}?subject=${encodeURIComponent(
+                  `Invitation to Johns Hopkins Care Partner Connect (${condition} Community)`
+                )}&body=${encodeURIComponent(
+                  `Hello,\n\nYou have been invited to join Johns Hopkins Care Partner Connect for the ${condition} community.\n\nRegister securely here: ${generatedInvite.url}\n\nSecurity Token: ${generatedInvite.token}\n\nJohns Hopkins Memory and Alzheimer's Treatment Center`
+                )}`}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 transition"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Open in Email App</span>
+              </a>
+
               <button
                 onClick={() => {
                   setGeneratedInvite(null);
@@ -163,7 +196,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   setPhone('');
                   setCondition('');
                 }}
-                className="w-full sm:w-auto px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer"
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer text-center"
               >
                 Issue Another Invite
               </button>
@@ -294,9 +327,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !condition}
-                className="px-4 py-1.5 sm:py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
+                className="px-4 py-1.5 sm:py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5"
               >
-                {isSubmitting ? 'Generating...' : 'Issue Invitation'}
+                <Send className="w-3.5 h-3.5" />
+                <span>{isSubmitting ? 'Sending Email & Issuing...' : 'Send Invitation Email'}</span>
               </button>
             </div>
           </form>

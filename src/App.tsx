@@ -11,6 +11,7 @@ import { AuditLedgerModal } from './components/AuditLedgerModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { UpdatesPage } from './components/UpdatesPage';
 import { CalendarPage } from './components/CalendarPage';
+import { AuthScreens } from './components/AuthScreens';
 import { CurrentUser, PersonaOption, CommunityGroup, DirectMessage, QueueItem } from './types';
 import { api } from './services/api';
 
@@ -42,6 +43,9 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [inspectedResourceId, setInspectedResourceId] = useState<string | null>(null);
   const [composerInitialTitle, setComposerInitialTitle] = useState<string>('');
+  const [authMode, setAuthMode] = useState<'login' | 'forgot-password' | 'register'>('login');
+  const [authInviteToken, setAuthInviteToken] = useState<string | undefined>(undefined);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Initial load
   const loadUserAndData = async (asUserId?: string) => {
@@ -54,8 +58,19 @@ export default function App() {
       const searchParams = new URLSearchParams(window.location.search);
       const urlTab = searchParams.get('tab');
       const urlPost = searchParams.get('post');
+      const tokenParam = searchParams.get('token') || (window.location.pathname.startsWith('/register') ? searchParams.get('token') : null);
 
-      if (urlPost) {
+      if (tokenParam) {
+        setAuthInviteToken(tokenParam);
+        setAuthMode('register');
+        setIsAuthOpen(true);
+      } else if (urlTab === 'login') {
+        setAuthMode('login');
+        setIsAuthOpen(true);
+      } else if (urlTab === 'forgot-password' || urlTab === 'reset-password') {
+        setAuthMode('forgot-password');
+        setIsAuthOpen(true);
+      } else if (urlPost) {
         setTargetDiscussionId(urlPost);
         setActiveTab('feed');
       } else if (urlTab) {
@@ -94,13 +109,53 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab') || 'feed';
       const postParam = params.get('post') || null;
-      setActiveTab(tabParam);
-      setTargetDiscussionId(postParam);
+      const tokenParam = params.get('token');
+
+      if (tokenParam) {
+        setAuthInviteToken(tokenParam);
+        setAuthMode('register');
+        setIsAuthOpen(true);
+      } else if (tabParam === 'login') {
+        setAuthMode('login');
+        setIsAuthOpen(true);
+      } else if (tabParam === 'forgot-password') {
+        setAuthMode('forgot-password');
+        setIsAuthOpen(true);
+      } else {
+        setIsAuthOpen(false);
+        setActiveTab(tabParam);
+        setTargetDiscussionId(postParam);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  const handleLoginSuccess = async (user: CurrentUser) => {
+    setCurrentUser(user);
+    setIsAuthOpen(false);
+    const nextTab = user.role === 'CLINICIAN_MODERATOR' || user.role === 'SYSTEM_ADMIN' ? 'moderation' : 'feed';
+    setActiveTab(nextTab);
+    await loadUserAndData(user.id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', nextTab);
+    url.searchParams.delete('token');
+    window.history.pushState({ tab: nextTab }, '', url.toString());
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('jh_user_id');
+    localStorage.removeItem('jh_session_token');
+    setCurrentUser(null);
+    setAuthMode('login');
+    setIsAuthOpen(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'login');
+    url.searchParams.delete('post');
+    url.searchParams.delete('token');
+    window.history.pushState({ tab: 'login' }, '', url.toString());
+  };
 
   const handleSwitchPersona = (userId: string) => {
     loadUserAndData(userId);
@@ -149,14 +204,14 @@ export default function App() {
     window.history.pushState({ tab: 'knowledge', post: null }, '', url.toString());
   };
 
-  if (!currentUser) {
+  if (isAuthOpen || !currentUser) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19] flex flex-col items-center justify-center p-4 transition-colors">
-        <div className="w-12 h-12 border-4 border-[#002D72] dark:border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="font-serif font-bold text-[#002D72] dark:text-blue-400">
-          Connecting to Hopkins Care Partner Connect...
-        </p>
-      </div>
+      <AuthScreens
+        initialMode={authMode}
+        initialToken={authInviteToken}
+        onLoginSuccess={handleLoginSuccess}
+        onCancel={currentUser ? () => setIsAuthOpen(false) : undefined}
+      />
     );
   }
 
@@ -179,6 +234,7 @@ export default function App() {
         currentUser={currentUser}
         allPersonas={allPersonas}
         onSwitchPersona={handleSwitchPersona}
+        onSignOut={handleSignOut}
         activeTab={activeTab}
         setActiveTab={handleSelectTab}
         pendingTriageCount={pendingTriageCount}

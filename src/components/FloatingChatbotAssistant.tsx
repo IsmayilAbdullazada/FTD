@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   FileText,
   ExternalLink,
+  HeartHandshake,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrentUser } from '../types';
@@ -139,7 +140,7 @@ const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
   return {
     id: `msg-welcome-${Date.now()}`,
     sender: 'assistant',
-    text: `Hello! I am Dr. Seema's AI Clinical Assistant for Johns Hopkins care partners supporting loved ones with ${conditionDescription}.\n\nI can help answer day-to-day caregiving questions based on verified Johns Hopkins clinical care guides, behavioral protocols, and family newsletters.\n\nHow can I support you today?`,
+    text: `Hello! I am your Care Companion, here to support you 24/7 as a care partner supporting a loved one with ${conditionDescription}.\n\nI can help answer day-to-day caregiving questions based on verified Johns Hopkins clinical care guides, behavioral routines, and family resources.\n\nWhat is on your mind today?`,
     timestamp: 'Now',
     suggestedQuestions: defaultSuggestedQuestions,
   };
@@ -154,6 +155,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [showUrgentNotice, setShowUrgentNotice] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -161,6 +163,57 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(currentUser)]);
+
+  // Show gentle hint after 1.2s on page load if user hasn't dismissed it this session and chat is closed
+  useEffect(() => {
+    let timer: any;
+    try {
+      const dismissed = sessionStorage.getItem('jh_companion_hint_dismissed');
+      if (!dismissed && !isOpen) {
+        timer = setTimeout(() => {
+          setShowHint(true);
+        }, 1200);
+      }
+    } catch {
+      if (!isOpen) {
+        timer = setTimeout(() => setShowHint(true), 1200);
+      }
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  // Dismiss hint when user opens the chat
+  useEffect(() => {
+    if (isOpen) {
+      setShowHint(false);
+    }
+  }, [isOpen]);
+
+  // Auto-dismiss hint after 20 seconds so it doesn't linger forever
+  useEffect(() => {
+    if (showHint) {
+      const autoDismiss = setTimeout(() => {
+        setShowHint(false);
+      }, 20000);
+      return () => clearTimeout(autoDismiss);
+    }
+  }, [showHint]);
+
+  const handleDismissHint = () => {
+    setShowHint(false);
+    try {
+      sessionStorage.setItem('jh_companion_hint_dismissed', 'true');
+    } catch {}
+  };
+
+  const handleOpenFromHint = () => {
+    handleDismissHint();
+    if (!isOpen) {
+      onToggle();
+    }
+  };
 
   // Reset conversation context when switching persona/condition
   useEffect(() => {
@@ -262,15 +315,65 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   return (
     <>
       {/* ------------------------------------------------------------- */}
-      {/* 1. FLOATING CHATBOT TRIGGER BUTTON (56px size, 44px+ tap target) */}
+      {/* 1. FLOATING CHATBOT TRIGGER BUTTON & HINT CALLOUT */}
       {/* ------------------------------------------------------------- */}
-      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto">
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto flex items-end justify-end">
+        {/* Friendly Inactivity / First-Visit Hint Speech Bubble */}
+        {showHint && !isOpen && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="absolute bottom-16 right-0 sm:bottom-1 sm:right-16 sm:mr-3 w-[270px] sm:w-[290px] bg-white dark:bg-slate-900 border border-blue-200/90 dark:border-blue-900/80 rounded-2xl shadow-2xl p-3.5 text-slate-800 dark:text-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div
+                onClick={handleOpenFromHint}
+                className="flex-1 cursor-pointer group"
+              >
+                <div className="flex items-center gap-1.5 text-[#002D72] dark:text-sky-400 font-semibold text-xs mb-1">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-500 animate-pulse" />
+                  <span>Care Companion</span>
+                </div>
+                <p className="text-xs font-semibold text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-sky-300 transition-colors">
+                  Have a question on your mind?
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  I'm here to help 24/7 with caregiving routines, behavioral tips, and answers.
+                </p>
+                <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#002D72] dark:text-sky-400 group-hover:underline">
+                  <span>Ask a question</span>
+                  <ChevronRight className="w-3 h-3" />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDismissHint();
+                }}
+                title="Dismiss hint"
+                aria-label="Dismiss hint"
+                className="w-6 h-6 -mr-1 -mt-1 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Speech bubble pointer arrow */}
+            {/* Desktop: arrow points right to button */}
+            <div className="hidden sm:block absolute top-1/2 -right-2 -translate-y-1/2 w-0 h-0 border-y-8 border-y-transparent border-l-8 border-l-white dark:border-l-slate-900" />
+            {/* Mobile: arrow points down to button */}
+            <div className="sm:hidden absolute -bottom-2 right-6 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-white dark:border-t-slate-900" />
+          </div>
+        )}
+
         <button
           ref={triggerRef}
           onClick={onToggle}
           type="button"
-          aria-label={isOpen ? 'Close Care Assistant' : 'Open Care Assistant'}
-          title={isOpen ? 'Close Care Assistant' : 'Ask Dr. Seema’s AI Assistant'}
+          aria-label={isOpen ? 'Close Care Companion' : 'Open Care Companion'}
+          title={isOpen ? 'Close Care Companion' : 'Open Care Companion · 24/7 Support'}
           className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 ${
             isOpen
               ? 'bg-slate-800 dark:bg-slate-700 text-white'
@@ -299,29 +402,29 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           ref={windowRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Dr. Seema's Clinical Assistant (AI)"
+          aria-label="Care Companion (Johns Hopkins)"
           className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 w-full sm:w-[420px] md:w-[440px] h-[100dvh] sm:h-[620px] sm:max-h-[calc(100dvh-7.5rem)] bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200/90 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in duration-200 transition-colors"
         >
-          {/* Header - Explicitly Labeled AI Assistant */}
+          {/* Header - Care Companion */}
           <div className="px-4 py-3 sm:px-4 sm:py-3.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative shrink-0">
-                <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-sm shadow-xs">
-                  SG
+                <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-sky-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center shadow-xs">
+                  <HeartHandshake className="w-5 h-5 text-[#002D72] dark:text-sky-300" />
                 </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#002D72] dark:border-slate-900 rounded-full" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h2 className="font-serif font-bold text-sm sm:text-base text-white truncate">
-                    Dr. Seema’s Assistant (AI)
+                    Care Companion
                   </h2>
                   <span title="Verified Clinical Knowledge" className="inline-flex items-center">
                     <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                   </span>
                 </div>
                 <p className="text-xs text-blue-200 dark:text-slate-400 truncate">
-                  Automated Educational Guidance · Johns Hopkins
+                  24/7 Educational Guidance · Johns Hopkins
                 </p>
               </div>
             </div>
@@ -597,7 +700,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             </form>
 
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-1 px-1">
-              <span>Hopkins Care Partner Connect (AI)</span>
+              <span>Johns Hopkins Care Companion</span>
               <span>Crisis: <a href="tel:911" className="underline hover:text-rose-600 font-semibold">911</a></span>
             </div>
           </div>

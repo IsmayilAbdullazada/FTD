@@ -3916,7 +3916,7 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   // Disable the chat endpoint until verified guides are uploaded and approved
   if (approvedActiveGuides.length === 0) {
     return res.json({
-      answer: `The Johns Hopkins Clinical Knowledge Assistant is currently offline while Dr. Seema and the clinical moderation team review, extract, and approve institutional care guides.\n\nPlease consult the Guides library directly or contact the Johns Hopkins Memory and Alzheimer's Treatment Center clinic at (410) 955-5147 (option 2) for clinical inquiries. For life-threatening emergencies, please call 911 immediately.`,
+      answer: `The Johns Hopkins Care Companion is currently offline while the clinical care team reviews, extracts, and approves institutional care guides.\n\nPlease consult the Guides library directly or contact the Johns Hopkins Memory and Alzheimer's Treatment Center clinic at (410) 955-5147 (option 2) for clinical inquiries. For life-threatening emergencies, please call 911 immediately.`,
       isOffline: true,
       isDisabled: true,
       retrievedChunks: [],

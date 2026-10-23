@@ -449,7 +449,7 @@ ${guidancePoints.map((pt, i) => `${i + 1}. ${pt}`).join('\n\n')}
 
 ### What to Keep in Mind
 - **Safety First**: Never corner or physically restrain an agitated individual. Give them space and time to de-escalate.
-- **Clinical Review**: At the first signs of increasing aggression, notify Dr. Seema Gulyani and the Johns Hopkins Memory and Alzheimer's Treatment Center team at (410) 955-5147 (option 2). If an acute crisis threatens immediate physical safety, call 911 right away and inform dispatchers that your loved one has dementia.`;
+- **Clinical Review**: At the first signs of increasing aggression, notify the Johns Hopkins Memory and Alzheimer's Treatment Center team at (410) 955-5147 (option 2). If an acute crisis threatens immediate physical safety, call 911 right away and inform dispatchers that your loved one has dementia.`;
 }
 
 /**
@@ -543,7 +543,7 @@ export async function answerRagQuery(
     .map((msg) => `${msg.role === 'model' || msg.role === 'assistant' ? 'Assistant' : 'Care Partner'}: ${msg.content || msg.text || ''}`)
     .join('\n');
 
-  const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Memory and Alzheimer's Treatment Center and Frontotemporal Dementia (FTD) clinic, speaking directly with family care partners.
+  const systemInstruction = `You are the Care Companion for the Johns Hopkins Memory and Alzheimer's Treatment Center, speaking directly with family care partners.
 
 CRITICAL GROUNDING REQUIREMENTS:
 1. Answer strictly and only from the provided numbered source excerpts below.

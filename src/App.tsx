@@ -12,6 +12,7 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { UpdatesPage } from './components/UpdatesPage';
 import { CalendarPage } from './components/CalendarPage';
 import { AuthScreens } from './components/AuthScreens';
+import { SessionTimeoutModal } from './components/SessionTimeoutModal';
 import { CurrentUser, PersonaOption, CommunityGroup, DirectMessage, QueueItem } from './types';
 import { api } from './services/api';
 
@@ -24,6 +25,7 @@ export default function App() {
   const [pendingQueue, setPendingQueue] = useState<QueueItem[]>([]);
   const [notifications, setNotifications] = useState<DirectMessage[]>([]);
   const [feedNotice, setFeedNotice] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [feedResetKey, setFeedResetKey] = useState<number>(0);
   const [targetDiscussionId, setTargetDiscussionId] = useState<string | null>(null);
 
@@ -131,7 +133,17 @@ export default function App() {
     };
 
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+
+    const handleSessionExpired = (e: any) => {
+      const reason = e?.detail?.reason || 'Your session expired. Please sign in again.';
+      handleSignOut(reason);
+    };
+    window.addEventListener('jh:session-expired', handleSessionExpired);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('jh:session-expired', handleSessionExpired);
+    };
   }, []);
 
   const handleLoginSuccess = async (user: CurrentUser) => {
@@ -143,7 +155,8 @@ export default function App() {
     url.searchParams.set('tab', nextTab);
     window.history.replaceState({ tab: nextTab }, '', url.toString());
 
-    // 2. Clear auth modal state and update active user
+    // 2. Clear auth modal state, clear session notice and update active user
+    setSessionNotice(null);
     setAuthInviteToken(undefined);
     setIsAuthOpen(false);
     setCurrentUser(user);
@@ -153,10 +166,11 @@ export default function App() {
     await loadUserAndData(user.id);
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = (notice?: string) => {
     localStorage.removeItem('jh_user_id');
     localStorage.removeItem('jh_session_token');
     setCurrentUser(null);
+    setSessionNotice(notice || null);
     setAuthMode('login');
     setIsAuthOpen(true);
     const url = new URL(window.location.href);
@@ -219,6 +233,7 @@ export default function App() {
         initialMode={authMode}
         initialToken={authInviteToken}
         onLoginSuccess={handleLoginSuccess}
+        sessionNotice={sessionNotice}
         onCancel={currentUser ? () => setIsAuthOpen(false) : undefined}
       />
     );
@@ -381,7 +396,15 @@ export default function App() {
         onNavigateToFeed={() => setActiveTab('feed')}
       />
 
-
+      {/* Inactivity detection & Session Timeout with 60s countdown warning */}
+      <SessionTimeoutModal
+        isAuthenticated={!!currentUser && !isAuthOpen}
+        onTimeout={() =>
+          handleSignOut(
+            'Your session timed out due to inactivity to protect patient and caregiver privacy. Please sign in again.'
+          )
+        }
+      />
     </div>
   );
 }

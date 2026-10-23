@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   RefreshCw,
+  Clock,
 } from 'lucide-react';
 import { CurrentUser, Condition } from '../types';
 import { api } from '../services/api';
@@ -26,6 +27,7 @@ interface AuthScreensProps {
   initialMode?: 'login' | 'forgot-password' | 'register';
   initialToken?: string;
   onCancel?: () => void;
+  sessionNotice?: string | null;
 }
 
 export const AuthScreens: React.FC<AuthScreensProps> = ({
@@ -33,6 +35,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   initialMode = 'login',
   initialToken,
   onCancel,
+  sessionNotice,
 }) => {
   const [mode, setMode] = useState<'login' | 'forgot-password' | 'register'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
@@ -283,6 +286,16 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   Enter your email and password to access Care Partner Connect.
                 </p>
               </div>
+
+              {sessionNotice && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs animate-in fade-in">
+                  <Clock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-amber-900 dark:text-amber-100">Session Expired</div>
+                    <div className="text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">{sessionNotice}</div>
+                  </div>
+                </div>
+              )}
 
               {loginError && (
                 <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2 animate-in fade-in">

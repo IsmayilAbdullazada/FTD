@@ -161,10 +161,33 @@ async function safeFetchJson<T>(
   fallback: () => T
 ): Promise<T> {
   let res: Response;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jh_session_token') : null;
+  const headers: Record<string, string> = {
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+  };
+
   try {
-    res = await fetch(url, options);
+    res = await fetch(url, fetchOptions);
   } catch {
     return fallback(); // Network error or offline
+  }
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('jh:session-expired', {
+          detail: { reason: 'Your session has expired. Please sign in again.' },
+        })
+      );
+    }
   }
 
   const contentType = res.headers.get('content-type') || '';

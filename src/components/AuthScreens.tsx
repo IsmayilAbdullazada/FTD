@@ -231,6 +231,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
       localStorage.setItem('jh_user_id', res.user.id);
       if (res.token) localStorage.setItem('jh_session_token', res.token);
+      setInviteData(null);
+      setInviteToken('');
+      setRegisterError(null);
       onLoginSuccess(res.user, res.token);
     } catch (err: any) {
       console.error('Registration failed:', err);
@@ -277,7 +280,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   Sign in to your account
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Access your clinical peer cohort, knowledge guides, and verified clinic updates.
+                  Enter your email and password to access Care Partner Connect.
                 </p>
               </div>
 
@@ -291,7 +294,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               <form onSubmit={handleLogin} className="space-y-3.5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Email or Clinic Patient ID
+                    Email or Patient ID
                   </label>
                   <div className="relative rounded-xl shadow-2xs">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -302,7 +305,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       required
                       value={loginIdentifier}
                       onChange={(e) => setLoginIdentifier(e.target.value)}
-                      placeholder="e.g. sgulyan1@jhmi.edu or sarah.smith@example.com"
+                      placeholder="you@example.com"
                       className="block w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                     />
                   </div>
@@ -334,7 +337,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       type={showPassword ? 'text' : 'password'}
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="Enter account password (or default Hopkins2026!)"
+                      placeholder="Enter your password"
                       className="block w-full pl-9 pr-10 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                     />
                     <button
@@ -355,7 +358,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="h-3.5 w-3.5 rounded border-slate-300 text-[#002D72] focus:ring-[#002D72]"
                     />
-                    <span className="ml-2">Remember on this workstation</span>
+                    <span className="ml-2">Remember me</span>
                   </label>
                 </div>
 
@@ -367,11 +370,11 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   {isLoggingIn ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Verifying credentials...</span>
+                      <span>Signing in...</span>
                     </>
                   ) : (
                     <>
-                      <span>Sign In</span>
+                      <span>Sign in</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}
@@ -381,7 +384,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               {/* 1-Click Persona Access Buttons for Fast Verification */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 text-center">
-                  1-Click Test Access:
+                  Quick test accounts:
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                   <button
@@ -432,7 +435,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   }}
                   className="text-xs text-slate-600 dark:text-slate-400 hover:text-[#002D72] dark:hover:text-blue-400 transition cursor-pointer font-medium"
                 >
-                  Have an invitation token? <span className="font-bold underline">Register here</span>
+                  Have an invite link? <span className="font-bold underline">Join here</span>
                 </button>
               </div>
             </div>
@@ -454,16 +457,16 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-2 cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Sign In</span>
+                  <span>Back to sign in</span>
                 </button>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
-                  <span>Reset account password</span>
+                  <span>Reset your password</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {forgotStep === 'request'
-                    ? 'Enter the email address registered with Johns Hopkins Medicine.'
-                    : `Enter the 6-digit recovery code sent to ${forgotEmail}.`}
+                    ? "Enter your email and we'll send you a 6-digit code to reset your password."
+                    : `Enter the 6-digit code sent to ${forgotEmail}.`}
                 </p>
               </div>
 
@@ -487,7 +490,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 underline"
                         >
-                          <span>Open sent recovery email preview</span>
+                          <span>Preview sent reset email</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
@@ -500,7 +503,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                 <form onSubmit={handleRequestPasswordReset} className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Account Email Address
+                      Email address
                     </label>
                     <div className="relative rounded-xl shadow-2xs">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -511,7 +514,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="e.g. sarah.smith@example.com"
+                        placeholder="you@example.com"
                         className="block w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                       />
                     </div>
@@ -525,12 +528,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                     {isSendingReset ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Sending recovery code...</span>
+                        <span>Sending code...</span>
                       </>
                     ) : (
                       <>
                         <Mail className="w-3.5 h-3.5" />
-                        <span>Send Recovery Code</span>
+                        <span>Send reset code</span>
                       </>
                     )}
                   </button>
@@ -540,7 +543,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        6-Digit Verification Code
+                        6-digit code
                       </label>
                       <button
                         type="button"
@@ -563,7 +566,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      New Password
+                      New password
                     </label>
                     <input
                       type="password"
@@ -571,21 +574,21 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       minLength={6}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
+                      placeholder="At least 6 characters"
                       className="block w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Confirm New Password
+                      Confirm new password
                     </label>
                     <input
                       type="password"
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
+                      placeholder="Re-enter your new password"
                       className="block w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                     />
                   </div>
@@ -603,7 +606,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                     ) : (
                       <>
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Save Password & Sign In</span>
+                        <span>Reset password & sign in</span>
                       </>
                     )}
                   </button>
@@ -627,14 +630,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-2 cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Return to Sign In</span>
+                  <span>Back to sign in</span>
                 </button>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Claim Clinical Invitation</span>
+                  <span>Join Care Partner Connect</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Verified invitation required by Johns Hopkins Medicine to ensure caregiver privacy.
+                  Welcome! Set up your password below to create your account and join the community.
                 </p>
               </div>
 
@@ -648,14 +651,14 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               {!inviteData && (
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Invitation Security Token
+                    Invite code or link
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={inviteToken}
                       onChange={(e) => setInviteToken(e.target.value.trim())}
-                      placeholder="Enter invitation link or token"
+                      placeholder="Paste your invite code or link"
                       className="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72]"
                     />
                     <button
@@ -664,7 +667,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       disabled={loadingInvite || !inviteToken}
                       className="px-3.5 py-2 bg-[#002D72] text-white rounded-xl text-xs font-bold hover:bg-blue-900 cursor-pointer disabled:opacity-60 transition"
                     >
-                      {loadingInvite ? 'Checking...' : 'Verify'}
+                      {loadingInvite ? 'Checking...' : 'Continue'}
                     </button>
                   </div>
                 </div>
@@ -676,7 +679,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
                     <div>
                       <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                        Anonymous Community Handle
+                        Anonymous username
                       </div>
                       <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
@@ -690,7 +693,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Create Password
+                      Password
                     </label>
                     <input
                       type="password"
@@ -698,7 +701,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       minLength={6}
                       value={registerPassword}
                       onChange={(e) => setRegisterPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
+                      placeholder="At least 6 characters"
                       className="block w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72]"
                     />
                   </div>
@@ -711,7 +714,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                     {isRegistering ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Creating account...</span>
+                        <span>Joining community...</span>
                       </>
                     ) : (
                       <>

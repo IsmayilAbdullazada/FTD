@@ -124,17 +124,15 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             {/* Real Email Dispatch Banner */}
             <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm space-y-2 text-emerald-950 dark:text-emerald-100 font-sans">
               <div className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Invitation Issued & Email Dispatched</span>
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Invitation Sent!</span>
               </div>
               <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                An official Johns Hopkins invitation email was dispatched to <strong>{generatedInvite.recipientEmail}</strong>.
+                We sent an invitation email to <strong>{generatedInvite.recipientEmail}</strong> with a link to join.
               </p>
               <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-400 pt-0.5">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  Expires: {new Date(generatedInvite.expiresAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} (72 Hours)
-                </span>
+                <span>Link expires in 3 days</span>
               </div>
 
               {generatedInvite.emailPreviewUrl && (
@@ -146,7 +144,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition"
                   >
                     <Mail className="w-3.5 h-3.5" />
-                    <span>View Sent Email in Web Inbox</span>
+                    <span>Preview Email</span>
                     <ExternalLink className="w-3 h-3 ml-0.5" />
                   </a>
                 </div>
@@ -155,7 +153,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
 
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Registration Link
+                Invite Link
               </label>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <input
@@ -184,7 +182,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 transition"
               >
                 <Mail className="w-3.5 h-3.5" />
-                <span>Open in Email App</span>
+                <span>Send via Mail App</span>
               </a>
 
               <button
@@ -198,7 +196,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 }}
                 className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold rounded-xl transition cursor-pointer text-center"
               >
-                Issue Another Invite
+                Send Another Invite
               </button>
             </div>
           </div>
@@ -330,7 +328,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 className="px-4 py-1.5 sm:py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{isSubmitting ? 'Sending Email & Issuing...' : 'Send Invitation Email'}</span>
+                <span>{isSubmitting ? 'Sending...' : 'Send Invitation'}</span>
               </button>
             </div>
           </form>

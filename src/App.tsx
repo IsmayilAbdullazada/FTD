@@ -54,31 +54,33 @@ export default function App() {
       setCurrentUser(userRes.user);
       setAllPersonas(userRes.allPersonas);
 
-      // Respect URL parameters on initial load
-      const searchParams = new URLSearchParams(window.location.search);
-      const urlTab = searchParams.get('tab');
-      const urlPost = searchParams.get('post');
-      const tokenParam = searchParams.get('token') || (window.location.pathname.startsWith('/register') ? searchParams.get('token') : null);
+      // Respect URL parameters on initial cold load only
+      if (!asUserId) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlTab = searchParams.get('tab');
+        const urlPost = searchParams.get('post');
+        const tokenParam = searchParams.get('token') || (window.location.pathname.startsWith('/register') ? searchParams.get('token') : null);
 
-      if (tokenParam) {
-        setAuthInviteToken(tokenParam);
-        setAuthMode('register');
-        setIsAuthOpen(true);
-      } else if (urlTab === 'login') {
-        setAuthMode('login');
-        setIsAuthOpen(true);
-      } else if (urlTab === 'forgot-password' || urlTab === 'reset-password') {
-        setAuthMode('forgot-password');
-        setIsAuthOpen(true);
-      } else if (urlPost) {
-        setTargetDiscussionId(urlPost);
-        setActiveTab('feed');
-      } else if (urlTab) {
-        setActiveTab(urlTab);
-      } else if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
-        setActiveTab('moderation');
-      } else {
-        setActiveTab('feed');
+        if (tokenParam) {
+          setAuthInviteToken(tokenParam);
+          setAuthMode('register');
+          setIsAuthOpen(true);
+        } else if (urlTab === 'login') {
+          setAuthMode('login');
+          setIsAuthOpen(true);
+        } else if (urlTab === 'forgot-password' || urlTab === 'reset-password') {
+          setAuthMode('forgot-password');
+          setIsAuthOpen(true);
+        } else if (urlPost) {
+          setTargetDiscussionId(urlPost);
+          setActiveTab('feed');
+        } else if (urlTab) {
+          setActiveTab(urlTab);
+        } else if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
+          setActiveTab('moderation');
+        } else {
+          setActiveTab('feed');
+        }
       }
 
       const cohortsRes = await api.getCohorts({ userId: userRes.user.id, role: userRes.user.role });
@@ -133,15 +135,22 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = async (user: CurrentUser) => {
-    setCurrentUser(user);
-    setIsAuthOpen(false);
+    // 1. Immediately clean browser URL: set pathname to '/', remove ?token=..., set ?tab=nextTab
     const nextTab = user.role === 'CLINICIAN_MODERATOR' || user.role === 'SYSTEM_ADMIN' ? 'moderation' : 'feed';
-    setActiveTab(nextTab);
-    await loadUserAndData(user.id);
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', nextTab);
+    url.pathname = '/';
     url.searchParams.delete('token');
-    window.history.pushState({ tab: nextTab }, '', url.toString());
+    url.searchParams.set('tab', nextTab);
+    window.history.replaceState({ tab: nextTab }, '', url.toString());
+
+    // 2. Clear auth modal state and update active user
+    setAuthInviteToken(undefined);
+    setIsAuthOpen(false);
+    setCurrentUser(user);
+    setActiveTab(nextTab);
+
+    // 3. Load user's data without re-reading the old URL token
+    await loadUserAndData(user.id);
   };
 
   const handleSignOut = () => {

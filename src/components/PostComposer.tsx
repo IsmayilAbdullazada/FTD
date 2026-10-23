@@ -860,11 +860,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              <span>Your post will be shared with</span>
-              <AudienceBadge condition={currentUser.condition} />
-              <span>care partners</span>
-            </div>
+            <></>
           )}
 
           {/* Clear, well-placed action button */}

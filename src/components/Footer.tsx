@@ -106,9 +106,9 @@ export const Footer: React.FC<FooterProps> = () => {
 
   return (
     <>
-      <footer className="bg-[#001D4A] dark:bg-[#030611] border-t-2 border-[#002D72] dark:border-slate-800 text-slate-300 dark:text-slate-400 py-5 sm:py-4 pb-28 md:pb-5 text-xs font-sans transition-colors shadow-inner">
+      <footer className="bg-[#001D4A] dark:bg-[#030611] border-t-2 border-[#002D72] dark:border-slate-800 text-slate-300 dark:text-slate-400 pt-5 sm:pt-5 pb-32 sm:pb-32 md:pb-36 xl:pt-5 xl:pb-5 text-xs font-sans transition-colors shadow-inner relative z-10">
         <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-6 text-center lg:text-left">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-6 text-center md:text-left">
             {/* Institutional Attribution Group */}
             <div className="space-y-1 min-w-0">
               <p className="text-[11px] sm:text-xs text-white dark:text-slate-200 font-medium leading-normal">

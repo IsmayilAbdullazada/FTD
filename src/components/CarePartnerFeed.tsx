@@ -77,16 +77,59 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
     };
   }, [isFilterMenuOpen]);
 
-  // If directed to a specific discussion from deflection
+  // Popstate listener to handle browser / phone back button navigation
   useEffect(() => {
-    if (targetDiscussionId && posts.length > 0) {
-      const match = posts.find((p) => p.id === targetDiscussionId);
+    const handlePopState = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const postId = params.get('post');
+      if (!postId) {
+        setSelectedPost(null);
+      } else if (selectedPost?.id !== postId) {
+        const found = posts.find((p) => p.id === postId);
+        if (found) {
+          setSelectedPost(found);
+        } else {
+          try {
+            const details = await api.getPostDetails(postId, currentUser.role, currentUser.id);
+            if (details.post) {
+              setSelectedPost(details.post);
+            }
+          } catch (err) {
+            console.error('Failed to load deep-linked post:', err);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [posts, selectedPost, currentUser.role, currentUser.id]);
+
+  // Deep-linking or target discussion navigation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlPostId = params.get('post');
+    const effectiveTargetId = targetDiscussionId || urlPostId;
+
+    if (effectiveTargetId) {
+      const match = posts.find((p) => p.id === effectiveTargetId);
       if (match) {
         setSelectedPost(match);
         if (onClearTargetDiscussion) onClearTargetDiscussion();
+      } else if (!loading) {
+        api.getPostDetails(effectiveTargetId, currentUser.role, currentUser.id)
+          .then((res) => {
+            if (res.post) {
+              setSelectedPost(res.post);
+              if (onClearTargetDiscussion) onClearTargetDiscussion();
+            }
+          })
+          .catch((err) => console.error('Failed to load target post:', err));
       }
+    } else if (!urlPostId && !targetDiscussionId) {
+      setSelectedPost(null);
     }
-  }, [targetDiscussionId, posts, onClearTargetDiscussion]);
+  }, [targetDiscussionId, posts, loading, onClearTargetDiscussion, currentUser.role, currentUser.id]);
 
   // Editing pending post
   const [editingPost, setEditingPost] = useState<Post | null>(null);
@@ -116,6 +159,25 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
     }
   }, [resetKey]);
 
+  const handleOpenDiscussion = (post: Post) => {
+    setSelectedPost(post);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'feed');
+    url.searchParams.set('post', post.id);
+    window.history.pushState({ tab: 'feed', post: post.id }, '', url.toString());
+  };
+
+  const handleBackToFeed = () => {
+    setSelectedPost(null);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('post')) {
+      url.searchParams.delete('post');
+      window.history.pushState({ tab: 'feed', post: null }, '', url.toString());
+    }
+    if (onClearTargetDiscussion) onClearTargetDiscussion();
+    loadFeed(selectedGroupTab);
+  };
+
   const loadFeed = async (groupId?: string) => {
     setLoading(true);
     try {
@@ -131,6 +193,15 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         feedPosts = feedPosts.filter((p) => p.status === 'APPROVED');
       }
       setPosts(feedPosts);
+
+      // Sync upvote states from server
+      const initialLikes: Record<string, boolean> = {};
+      feedPosts.forEach((p) => {
+        if (p.isUpvoted !== undefined) {
+          initialLikes[p.id] = p.isUpvoted;
+        }
+      });
+      setLikedPosts((prev) => ({ ...initialLikes, ...prev }));
     } catch (err) {
       console.error('Failed to load feed:', err);
     } finally {
@@ -232,10 +303,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       <DiscussionDetail
         post={selectedPost}
         currentUser={currentUser}
-        onBack={() => {
-          setSelectedPost(null);
-          loadFeed(selectedGroupTab);
-        }}
+        onBack={handleBackToFeed}
         onPostUpdated={(updatedPost) => {
           setSelectedPost(updatedPost);
           setPosts((prev) => prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)));
@@ -662,14 +730,14 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                         tabIndex={0}
                         role="button"
                         aria-label={`Open discussion: ${post.title}`}
-                        onClick={() => setSelectedPost(post)}
+                        onClick={() => handleOpenDiscussion(post)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) {
                               return;
                             }
                             e.preventDefault();
-                            setSelectedPost(post);
+                            handleOpenDiscussion(post);
                           }
                         }}
                         className={`rounded-2xl border p-5 sm:p-6 space-y-3.5 transition-all cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
@@ -795,9 +863,14 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                   })
                 )}
 
-                {/* PAGINATION CONTROLS */}
+                {/* PAGINATION CONTROLS (Responsive on all mobile and tablet viewports) */}
                 {!loading && totalPages > 1 && (
-                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+                  <nav
+                    role="navigation"
+                    aria-label="Discussions pagination"
+                    className="pt-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 max-w-full overflow-hidden"
+                  >
+                    {/* Previous Button */}
                     <button
                       type="button"
                       onClick={() => {
@@ -805,13 +878,21 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       disabled={validCurrentPage === 1}
-                      className="min-h-11 px-4 py-2 text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500"
+                      aria-label="Previous Page"
+                      className="min-h-11 px-3 sm:px-4 py-2 text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 shrink-0"
                     >
-                      <ChevronLeft className="w-4 h-4" />
-                      <span>Previous</span>
+                      <ChevronLeft className="w-4 h-4 shrink-0" />
+                      <span className="hidden sm:inline">Previous</span>
+                      <span className="sm:hidden inline">Prev</span>
                     </button>
 
-                    <div className="flex items-center gap-1 sm:gap-1.5">
+                    {/* Mobile Compact Page Indicator (< sm) */}
+                    <div className="flex sm:hidden items-center justify-center px-2 text-sm font-semibold text-slate-700 dark:text-slate-300 tabular-nums select-none">
+                      Page {validCurrentPage} of {totalPages}
+                    </div>
+
+                    {/* Desktop & Tablet Page Number Buttons (>= sm) */}
+                    <div className="hidden sm:flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <button
                           key={page}
@@ -820,9 +901,11 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                             setCurrentPage(page);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
+                          aria-label={`Go to page ${page}`}
+                          aria-current={validCurrentPage === page ? 'page' : undefined}
                           className={`min-w-11 h-11 px-3 text-sm font-semibold rounded-xl transition cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 ${
                             validCurrentPage === page
-                              ? 'bg-[#002D72] dark:bg-blue-600 text-white shadow-2xs'
+                              ? 'bg-[#002D72] dark:bg-blue-600 text-white shadow-2xs font-bold'
                               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
@@ -831,6 +914,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                       ))}
                     </div>
 
+                    {/* Next Button */}
                     <button
                       type="button"
                       onClick={() => {
@@ -838,12 +922,14 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       disabled={validCurrentPage === totalPages}
-                      className="min-h-11 px-4 py-2 text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500"
+                      aria-label="Next Page"
+                      className="min-h-11 px-3 sm:px-4 py-2 text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition shadow-2xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 shrink-0"
                     >
-                      <span>Next</span>
-                      <ChevronRight className="w-4 h-4" />
+                      <span className="hidden sm:inline">Next</span>
+                      <span className="sm:hidden inline">Next</span>
+                      <ChevronRight className="w-4 h-4 shrink-0" />
                     </button>
-                  </div>
+                  </nav>
                 )}
               </div>
             </>

@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   Plus,
+  X,
 } from 'lucide-react';
 import { CurrentUser, PersonaOption, DirectMessage } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -67,8 +68,8 @@ export const Header: React.FC<HeaderProps> = ({
               />
               <div className="leading-tight shrink-0">
                 <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight whitespace-nowrap block">
-                  <span className="xl:hidden">Hopkins Connect</span>
-                  <span className="hidden xl:inline">Hopkins Care Partner Connect</span>
+                  <span className="sm:hidden">Hopkins Connect</span>
+                  <span className="hidden sm:inline">Hopkins Care Partner Connect</span>
                 </span>
                 <span className="hidden 2xl:block text-xs text-slate-500 dark:text-slate-400 font-normal whitespace-nowrap">
                   Johns Hopkins Medicine
@@ -76,11 +77,11 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </button>
 
-            {/* Subtle Divider between brand and nav on large screens */}
+            {/* Subtle Divider between brand and nav on large desktop screens */}
             <div className="hidden xl:block h-5 w-px bg-slate-200 dark:bg-slate-800 shrink-0" />
 
-            {/* Standard Desktop & Tablet Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 lg:gap-1.5 shrink-0">
+            {/* Standard Desktop Navigation Links (>= 1280px only; Mobile & Tablet portrait/landscape use bottom bar) */}
+            <nav className="hidden xl:flex items-center gap-1 xl:gap-1.5 shrink-0">
               {/* Clinician / CS Admin Dashboard */}
               {(isClinician || isAdmin) && (
                 <button
@@ -153,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* RIGHT: Quick Clinic Contact, Theme Toggle, Notification Center & User Profile */}
           <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0 z-10 relative">
-            {/* Responsive Clinic Phone Contact Button & Popover (Accessible at every viewport size) */}
+            {/* Direct Clinic Phone Contact Button */}
             <div className="relative shrink-0">
               <button
                 type="button"
@@ -167,74 +168,116 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Call Clinic</span>
               </button>
 
-              {/* Call Directory Popover */}
+              {/* Call Directory Modal Dialog (Accessible & Non-overflowing on Mobile View) */}
               {showCallMenu && (
-                <>
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 animate-in fade-in duration-150"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Direct Clinic Phone Lines"
+                >
+                  {/* Backdrop */}
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs"
                     onClick={() => setShowCallMenu(false)}
                   />
-                  <div
-                    role="dialog"
-                    aria-label="Direct Clinic Phone Lines"
-                    className="absolute right-0 mt-2 w-80 sm:w-92 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 z-50 animate-in fade-in zoom-in-95"
-                  >
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+
+                  {/* Modal Window Container */}
+                  <div className="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 z-10 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+                    <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
                       <div>
-                        <h3 className="font-bold text-slate-900 dark:text-white text-base">Direct Clinic Lines</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Johns Hopkins FTD & Memory Care</p>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-serif font-bold text-slate-900 dark:text-white text-base sm:text-lg">
+                            Direct Clinic Lines
+                          </h3>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                            Mon–Fri 8:30–5 ET
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Johns Hopkins FTD &amp; Memory Care Center
+                        </p>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-                        Mon–Fri 8:30–5 ET
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCallMenu(false)}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer min-w-8 min-h-8 flex items-center justify-center"
+                        aria-label="Close dialog"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
 
-                    <div className="mt-3 space-y-2.5">
+                    <div className="mt-3.5 space-y-2.5">
                       {/* Clinic Appointment & Nursing Line */}
                       <a
                         href="tel:4109555147"
-                        className="min-h-12 w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
+                        className="min-h-12 w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
                             <Phone className="w-4 h-4" />
                           </div>
-                          <div>
-                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Main Clinic Line (Option 2)</div>
-                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition">
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+                              Main Clinic Line (Option 2)
+                            </div>
+                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition break-all">
                               (410) 955-5147
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs font-semibold text-[#002D72] dark:text-sky-400">Call</span>
+                        <span className="shrink-0 px-3 py-1 bg-[#002D72] dark:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
+                          Call
+                        </span>
                       </a>
 
                       {/* Care Partner Support Coordinator */}
                       <a
                         href="tel:4105024163"
-                        className="min-h-12 w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
+                        className="min-h-12 w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
                             <Phone className="w-4 h-4" />
                           </div>
-                          <div>
-                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Care Partner Support Line</div>
-                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+                              Care Partner Support Line
+                            </div>
+                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition break-all">
                               (410) 502-4163
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Call</span>
+                        <span className="shrink-0 px-3 py-1 bg-emerald-700 dark:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
+                          Call
+                        </span>
                       </a>
                     </div>
 
-                    <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-1.5 leading-snug">
-                      <span className="font-bold">Emergency:</span>
-                      <span>If you or your loved one are facing immediate danger, call 911 or go to the nearest emergency department.</span>
+                    <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2 leading-relaxed bg-rose-50/70 dark:bg-rose-950/30 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
+                      <span className="font-bold shrink-0">Emergency:</span>
+                      <span className="flex-1">
+                        If you or your loved one are facing immediate danger or medical crisis, call{' '}
+                        <a href="tel:911" className="font-bold underline text-rose-700 dark:text-rose-300">
+                          911
+                        </a>{' '}
+                        or go to the nearest emergency department.
+                      </span>
+                    </div>
+
+                    <div className="mt-3.5 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowCallMenu(false)}
+                        className="min-h-11 px-5 py-2 text-sm font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                      >
+                        Close
+                      </button>
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
 
@@ -415,9 +458,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </header>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR (Raised prominent '+' button centered between Guides and Updates) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.5)] safe-bottom transition-colors">
-        <div className="max-w-md mx-auto flex items-center justify-between h-16 px-1 relative">
+      {/* MOBILE & TABLET BOTTOM NAVIGATION BAR (Covers Mobile, Portrait Tablet & Landscape Tablet < 1280px) */}
+      <nav className="xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.5)] safe-bottom transition-colors">
+        <div className="max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto flex items-center justify-between h-16 px-1 sm:px-3 lg:px-6 relative">
           {/* Left Navigation Group (Discussions & Guides, plus Dashboard if Clinician) */}
           <div className="flex-1 flex items-center justify-around min-w-0">
             {(isClinician || isAdmin) && (
@@ -461,7 +504,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Centered Raised '+' Action Button (Larger & Raised Outside Upper Bound of Tray) */}
-          <div className="shrink-0 px-2 flex flex-col items-center justify-center relative">
+          <div className="shrink-0 px-2 sm:px-4 flex flex-col items-center justify-center relative">
             <button
               type="button"
               onClick={() => setActiveTab('compose')}

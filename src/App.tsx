@@ -50,8 +50,17 @@ export default function App() {
       setCurrentUser(userRes.user);
       setAllPersonas(userRes.allPersonas);
 
-      // If user is Dr. Seema (Clinician), default directly to Dashboard
-      if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
+      // Respect URL parameters on initial load
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlTab = searchParams.get('tab');
+      const urlPost = searchParams.get('post');
+
+      if (urlPost) {
+        setTargetDiscussionId(urlPost);
+        setActiveTab('feed');
+      } else if (urlTab) {
+        setActiveTab(urlTab);
+      } else if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
         setActiveTab('moderation');
       } else {
         setActiveTab('feed');
@@ -77,9 +86,20 @@ export default function App() {
     }
   };
 
-
   useEffect(() => {
     loadUserAndData();
+
+    // Listen for browser back / forward navigation
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') || 'feed';
+      const postParam = params.get('post') || null;
+      setActiveTab(tabParam);
+      setTargetDiscussionId(postParam);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const handleSwitchPersona = (userId: string) => {
@@ -87,11 +107,15 @@ export default function App() {
     setFeedResetKey((prev) => prev + 1);
     setTargetDiscussionId(null);
     const targetPersona = allPersonas.find((p) => p.id === userId);
+    let nextTab = 'feed';
     if (targetPersona?.role === 'CLINICIAN_MODERATOR' || targetPersona?.role === 'SYSTEM_ADMIN') {
-      setActiveTab('moderation');
-    } else {
-      setActiveTab('feed');
+      nextTab = 'moderation';
     }
+    setActiveTab(nextTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', nextTab);
+    url.searchParams.delete('post');
+    window.history.pushState({ tab: nextTab, post: null }, '', url.toString());
   };
 
 
@@ -119,6 +143,10 @@ export default function App() {
   const handleOpenResourceFromDeflection = (resourceId: string) => {
     setInspectedResourceId(resourceId);
     setActiveTab('knowledge');
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'knowledge');
+    url.searchParams.delete('post');
+    window.history.pushState({ tab: 'knowledge', post: null }, '', url.toString());
   };
 
   if (!currentUser) {
@@ -137,6 +165,11 @@ export default function App() {
       setFeedResetKey((prev) => prev + 1);
     }
     setActiveTab(tab);
+    setTargetDiscussionId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    url.searchParams.delete('post');
+    window.history.pushState({ tab, post: null }, '', url.toString());
   };
 
   return (
@@ -154,7 +187,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-6 md:pb-8">
+      <main className="flex-1 pb-10 md:pb-12 xl:pb-8">
         {activeTab === 'feed' && (
           <CarePartnerFeed
             currentUser={currentUser}
@@ -188,6 +221,10 @@ export default function App() {
               setComposerInitialTitle('');
               setTargetDiscussionId(postId);
               setActiveTab('feed');
+              const url = new URL(window.location.href);
+              url.searchParams.set('tab', 'feed');
+              url.searchParams.set('post', postId);
+              window.history.pushState({ tab: 'feed', post: postId }, '', url.toString());
             }}
           />
         )}
@@ -206,6 +243,10 @@ export default function App() {
             onOpenDiscussion={(postId) => {
               setTargetDiscussionId(postId);
               setActiveTab('feed');
+              const url = new URL(window.location.href);
+              url.searchParams.set('tab', 'feed');
+              url.searchParams.set('post', postId);
+              window.history.pushState({ tab: 'feed', post: postId }, '', url.toString());
             }}
           />
         )}

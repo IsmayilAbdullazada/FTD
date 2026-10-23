@@ -173,8 +173,6 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     const previousComments = [...comments];
     // Optimistic removal from display immediately
     setComments((prev) => prev.filter((c) => c.id !== commId));
-    setReplySuccessMessage('Reply withdrawn successfully.');
-    setTimeout(() => setReplySuccessMessage(null), 3500);
 
     try {
       await api.deleteComment(post.id, commId);
@@ -184,6 +182,8 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           commentCount: Math.max(0, post.commentCount - 1),
         });
       }
+      setReplySuccessMessage('Reply withdrawn successfully.');
+      setTimeout(() => setReplySuccessMessage(null), 3500);
     } catch (err) {
       // Rollback to previous state on error
       setComments(previousComments);

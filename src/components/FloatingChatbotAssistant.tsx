@@ -264,7 +264,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       {/* ------------------------------------------------------------- */}
       {/* 1. FLOATING CHATBOT TRIGGER BUTTON (56px size, 44px+ tap target) */}
       {/* ------------------------------------------------------------- */}
-      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto">
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto">
         <button
           ref={triggerRef}
           onClick={onToggle}

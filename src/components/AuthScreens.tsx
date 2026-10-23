@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { CurrentUser, Condition } from '../types';
 import { api } from '../services/api';
-import { AudienceBadge } from './AudienceBadge';
 
 interface AuthScreensProps {
   onLoginSuccess: (user: CurrentUser, token?: string) => void;
@@ -68,7 +67,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   } | null>(null);
   const [loadingInvite, setLoadingInvite] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
-  const [registerHandle, setRegisterHandle] = useState('');
+  const [registerHandle, setRegisterHandle] = useState(() => `CarePartner-${Math.floor(1000 + Math.random() * 9000)}`);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -87,9 +86,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
     try {
       const res = await api.getInvitation(token);
       setInviteData(res.invitation);
-      // Auto-suggest an anonymous handle
-      const num = Math.floor(100 + Math.random() * 900);
-      setRegisterHandle(`CarePartner-${num}`);
+      // Auto-assign random anonymous handle
+      setRegisterHandle((prev) => prev || `CarePartner-${Math.floor(1000 + Math.random() * 9000)}`);
     } catch (err: any) {
       console.error('Failed to load invitation:', err);
       setRegisterError(err.message || 'Invitation not found or expired.');
@@ -647,23 +645,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                 </div>
               )}
 
-              {/* Verified Token Header */}
-              {inviteData ? (
-                <div className="p-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#002D72] dark:text-blue-300 uppercase tracking-wider">
-                      Verified Caregiver Invite
-                    </span>
-                    <AudienceBadge condition={inviteData.condition} />
-                  </div>
-                  <div className="text-xs text-slate-800 dark:text-slate-200 font-semibold">
-                    Recipient: {inviteData.email}
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Assigned Community: <strong>{inviteData.condition === 'FTD' ? 'Frontotemporal Dementia' : "Alzheimer's Disease"}</strong>
-                  </div>
-                </div>
-              ) : (
+              {!inviteData && (
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Invitation Security Token
@@ -673,7 +655,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       type="text"
                       value={inviteToken}
                       onChange={(e) => setInviteToken(e.target.value.trim())}
-                      placeholder="e.g. jh-token-abc1234"
+                      placeholder="Enter invitation link or token"
                       className="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72]"
                     />
                     <button
@@ -690,31 +672,20 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
               {inviteData && (
                 <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Choose Your Anonymous Community Handle
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        required
-                        value={registerHandle}
-                        onChange={(e) => setRegisterHandle(e.target.value)}
-                        placeholder="e.g. CarePartner-882"
-                        className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setRegisterHandle(`CarePartner-${Math.floor(100 + Math.random() * 900)}`)}
-                        title="Generate random handle"
-                        className="px-2.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
+                  {/* Automatically assigned random anonymous handle */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        Anonymous Community Handle
+                      </div>
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                        <span>{registerHandle}</span>
+                      </div>
                     </div>
-                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1">
-                      Other care partners will only see this handle to protect your family's identity.
-                    </p>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">
+                      Auto-assigned
+                    </span>
                   </div>
 
                   <div>
@@ -740,12 +711,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                     {isRegistering ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Registering account...</span>
+                        <span>Creating account...</span>
                       </>
                     ) : (
                       <>
                         <ShieldCheck className="w-4 h-4" />
-                        <span>Complete Registration & Enter</span>
+                        <span>Join Community</span>
                       </>
                     )}
                   </button>

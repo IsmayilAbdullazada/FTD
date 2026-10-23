@@ -128,7 +128,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 <span>Invitation Issued & Email Dispatched</span>
               </div>
               <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                An official Johns Hopkins invitation email was dispatched to <strong>{generatedInvite.recipientEmail}</strong> for the <strong>{condition}</strong> community.
+                An official Johns Hopkins invitation email was dispatched to <strong>{generatedInvite.recipientEmail}</strong>.
               </p>
               <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-400 pt-0.5">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -177,9 +177,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               <a
                 href={`mailto:${generatedInvite.recipientEmail}?subject=${encodeURIComponent(
-                  `Invitation to Johns Hopkins Care Partner Connect (${condition} Community)`
+                  'Invitation to Johns Hopkins Care Partner Connect'
                 )}&body=${encodeURIComponent(
-                  `Hello,\n\nYou have been invited to join Johns Hopkins Care Partner Connect for the ${condition} community.\n\nRegister securely here: ${generatedInvite.url}\n\nSecurity Token: ${generatedInvite.token}\n\nJohns Hopkins Memory and Alzheimer's Treatment Center`
+                  `Hello,\n\nYou have been invited to join Johns Hopkins Care Partner Connect.\n\nTo accept your invitation, please click your secure link:\n${generatedInvite.url}\n\nJohns Hopkins Memory and Alzheimer's Treatment Center`
                 )}`}
                 className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 transition"
               >

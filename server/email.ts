@@ -71,13 +71,9 @@ async function getTransporter(): Promise<Transporter> {
 }
 
 export async function sendInvitationEmail(params: SendInvitationParams): Promise<EmailResult> {
-  const { toEmail, recipientName = 'Care Partner', condition, cohortName = 'Regional Support Group', inviteToken, registrationUrl, appUrl } = params;
+  const { toEmail, recipientName = 'Care Partner', registrationUrl, appUrl } = params;
   const fullRegistrationUrl = registrationUrl.startsWith('http') ? registrationUrl : `${appUrl.replace(/\/$/, '')}${registrationUrl}`;
   const messageId = `msg-inv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-
-  const conditionLabel = condition === 'FTD'
-    ? 'Frontotemporal Dementia (FTD)'
-    : "Alzheimer's Disease (AD)";
 
   const html = `<!DOCTYPE html>
 <html>
@@ -121,24 +117,11 @@ export async function sendInvitationEmail(params: SendInvitationParams): Promise
               </h1>
 
               <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 16px 0;">
-                Dr. Seema Gulyani and the clinical care team at the Johns Hopkins Memory and Alzheimer's Treatment Center have issued you a secure, verified invitation to join <strong>Care Partner Connect</strong>.
+                Dr. Seema Gulyani and the clinical care team at the Johns Hopkins Memory and Alzheimer's Treatment Center have issued you a secure invitation to join <strong>Care Partner Connect</strong>.
               </p>
 
-              <!-- Cohort & Condition Capsule -->
-              <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #002D72; border-radius: 6px; padding: 14px 18px; margin-bottom: 24px;">
-                <div style="font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Community Assignment
-                </div>
-                <div style="font-size: 15px; font-weight: 700; color: #002D72; margin-top: 2px;">
-                  ${conditionLabel}
-                </div>
-                <div style="font-size: 13px; color: #475569; margin-top: 2px;">
-                  Regional Cohort: <strong>${cohortName}</strong>
-                </div>
-              </div>
-
               <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 24px 0;">
-                Care Partner Connect is a private, HIPAA-conscious community where family caregivers can connect with peers in their region, access verified institutional clinical guides, and ask non-emergent questions reviewed directly by clinic staff.
+                Care Partner Connect is a private, HIPAA-conscious community where family caregivers can connect with peers in their region, access verified institutional clinical care guides, and ask non-emergent questions reviewed directly by clinic staff.
               </p>
 
               <!-- CTA Button -->
@@ -146,17 +129,15 @@ export async function sendInvitationEmail(params: SendInvitationParams): Promise
                 <tr>
                   <td align="center">
                     <a href="${fullRegistrationUrl}" style="display: inline-block; background-color: #002D72; color: #FFFFFF; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 45, 114, 0.25);">
-                      Complete Your Secure Registration
+                      Accept Invitation & Join
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <!-- Single-Use Token Notice -->
-              <div style="font-size: 12px; line-height: 1.5; color: #64748B; background-color: #F1F5F9; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-                <strong>Single-Use Security Token:</strong> <code style="font-family: monospace; color: #002D72; font-size: 13px;">${inviteToken}</code><br>
-                This invitation link will expire in <strong>72 hours</strong>. If you did not expect this invitation or have questions, please reach out directly to the clinic support desk.
-              </div>
+              <p style="font-size: 12px; line-height: 1.5; color: #64748B; margin: 0 0 12px 0;">
+                This private invitation link is personalized for your email address and will expire in <strong>72 hours</strong>.
+              </p>
 
               <p style="font-size: 12px; line-height: 1.5; color: #94A3B8; margin: 0 0 4px 0;">
                 If the button above does not open, copy and paste this link into your browser:
@@ -183,13 +164,13 @@ export async function sendInvitationEmail(params: SendInvitationParams): Promise
 </body>
 </html>`;
 
-  const text = `Welcome to Johns Hopkins Care Partner Connect.\n\nDr. Seema Gulyani and the clinical team invite you to join the ${conditionLabel} community.\n\nTo accept your invitation and complete your secure registration, visit:\n${fullRegistrationUrl}\n\nSecurity Token: ${inviteToken} (Expires in 72 hours)\n\nJohns Hopkins Memory and Alzheimer's Treatment Center\nPhone: (410) 955-5147`;
+  const text = `Welcome to Johns Hopkins Care Partner Connect.\n\nDr. Seema Gulyani and the clinical care team at Johns Hopkins Medicine invite you to join Care Partner Connect.\n\nTo accept your invitation and complete your registration, visit:\n${fullRegistrationUrl}\n\nThis private invitation link is valid for 72 hours.\n\nJohns Hopkins Memory and Alzheimer's Treatment Center\nPhone: (410) 955-5147`;
 
   // Store in sent emails ledger
   sentEmailsStore.unshift({
     id: messageId,
     to: toEmail,
-    subject: `Invitation: Johns Hopkins Care Partner Connect (${condition} Community)`,
+    subject: 'Invitation to Johns Hopkins Care Partner Connect',
     html,
     text,
     sentAt: new Date().toISOString(),
@@ -202,7 +183,7 @@ export async function sendInvitationEmail(params: SendInvitationParams): Promise
     await transporter.sendMail({
       from: '"Johns Hopkins Care Partner Connect" <no-reply@jhmi.edu>',
       to: toEmail,
-      subject: `Invitation: Johns Hopkins Care Partner Connect (${condition} Community)`,
+      subject: 'Invitation to Johns Hopkins Care Partner Connect',
       text,
       html,
     });

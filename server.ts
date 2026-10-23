@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { PDFParse } from 'pdf-parse';
@@ -3077,7 +3078,7 @@ app.post('/api/v1/auth/forgot-password', async (req, res) => {
 
   // Generate 6-digit verification code and reset token
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const token = `reset-${Math.random().toString(36).substring(2, 10)}`;
+  const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
 
   passwordResets.unshift({
@@ -3160,7 +3161,7 @@ app.post('/api/v1/auth/invitations', async (req, res) => {
     return res.status(400).json({ error: 'Condition (FTD or AD) is required' });
   }
 
-  const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
+  const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
   const newInvitation: Invitation = {

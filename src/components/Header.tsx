@@ -42,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isAdmin = currentUser.role === 'SYSTEM_ADMIN';
 
   const [showPersonaMenu, setShowPersonaMenu] = useState(false);
+  const [showCallMenu, setShowCallMenu] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const reviewAlertsCount = isClinician || isAdmin ? pendingTriageCount : 0;
   const totalNotificationBadge = unreadCount + reviewAlertsCount;
@@ -69,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="xl:hidden">Hopkins Connect</span>
                   <span className="hidden xl:inline">Hopkins Care Partner Connect</span>
                 </span>
-                <span className="hidden 2xl:block text-[11px] text-slate-500 dark:text-slate-400 font-normal whitespace-nowrap">
+                <span className="hidden 2xl:block text-xs text-slate-500 dark:text-slate-400 font-normal whitespace-nowrap">
                   Johns Hopkins Medicine
                 </span>
               </div>
@@ -84,16 +85,16 @@ export const Header: React.FC<HeaderProps> = ({
               {(isClinician || isAdmin) && (
                 <button
                   onClick={() => setActiveTab('moderation')}
-                  className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                  className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                     activeTab === 'moderation'
-                      ? 'bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400 font-semibold'
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <Shield className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                  <Shield className="w-4 h-4 shrink-0" />
                   <span>Dashboard</span>
                   {pendingTriageCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] lg:text-[11px] font-bold tabular-nums shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold tabular-nums shrink-0">
                       {pendingTriageCount}
                     </span>
                   )}
@@ -102,49 +103,49 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => setActiveTab('feed')}
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                   activeTab === 'feed'
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <MessageSquare className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                <MessageSquare className="w-4 h-4 shrink-0" />
                 <span>Discussions</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('knowledge')}
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                   activeTab === 'knowledge'
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                <BookOpen className="w-4 h-4 shrink-0" />
                 <span>Guides</span>
               </button>
 
               <button 
                 onClick={() => setActiveTab('updates')} 
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                   activeTab === 'updates'
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <Stethoscope className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                <Stethoscope className="w-4 h-4 shrink-0" />
                 <span>Updates</span>
               </button>
 
               <button 
                 onClick={() => setActiveTab('calendar')} 
-                className={`px-2 lg:px-2.5 py-1.5 rounded-lg text-xs lg:text-sm font-medium flex items-center gap-1 lg:gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                   activeTab === 'calendar'
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <CalendarDays className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                <CalendarDays className="w-4 h-4 shrink-0" />
                 <span>Events</span>
               </button>
             </nav>
@@ -152,62 +153,110 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* RIGHT: Quick Clinic Contact, Theme Toggle, Notification Center & User Profile */}
           <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0 z-10 relative">
-            {/* Direct Clinic Support Line: shown for Care Partners on extra-wide laptop/desktop (hidden on moderator side) */}
-            {!isClinician && !isAdmin && (
-              <>
-                <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shrink-0 whitespace-nowrap">
-                  <Phone className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
-                  <div className="flex items-center gap-1.5">
-                    <a
-                      href="tel:4109555147"
-                      className="hover:text-[#002D72] dark:hover:text-sky-400 transition"
-                      title="Hopkins Clinic: (410) 955-5147, option 2"
-                    >
-                      <span className="text-slate-500 dark:text-slate-400">Clinic: </span>
-                      <span className="text-[#002D72] dark:text-sky-400 font-semibold">(410) 955-5147</span>
-                    </a>
-                    <span className="text-slate-300 dark:text-slate-600">|</span>
-                    <a
-                      href="tel:4105024163"
-                      className="hover:text-emerald-700 dark:hover:text-emerald-400 transition"
-                      title="Care Partner Support Line: (410) 502-4163"
-                    >
-                      <span className="text-slate-500 dark:text-slate-400">Support: </span>
-                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold">(410) 502-4163</span>
-                    </a>
+            {/* Responsive Clinic Phone Contact Button & Popover (Accessible at every viewport size) */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowCallMenu(!showCallMenu)}
+                className="min-h-11 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#002D72] dark:text-sky-300 bg-blue-50/80 hover:bg-blue-100/90 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
+                aria-label="Direct Clinic Contact & Support Lines"
+                aria-expanded={showCallMenu}
+                title="Direct Clinic & Support Phone Numbers"
+              >
+                <Phone className="w-4 h-4 text-[#002D72] dark:text-sky-400 shrink-0" />
+                <span className="hidden sm:inline">Call Clinic</span>
+              </button>
+
+              {/* Call Directory Popover */}
+              {showCallMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowCallMenu(false)}
+                  />
+                  <div
+                    role="dialog"
+                    aria-label="Direct Clinic Phone Lines"
+                    className="absolute right-0 mt-2 w-80 sm:w-92 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-4 z-50 animate-in fade-in zoom-in-95"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-base">Direct Clinic Lines</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Johns Hopkins FTD & Memory Care</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                        Mon–Fri 8:30–5 ET
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-2.5">
+                      {/* Clinic Appointment & Nursing Line */}
+                      <a
+                        href="tel:4109555147"
+                        className="min-h-12 w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Main Clinic Line (Option 2)</div>
+                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition">
+                              (410) 955-5147
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-[#002D72] dark:text-sky-400">Call</span>
+                      </a>
+
+                      {/* Care Partner Support Coordinator */}
+                      <a
+                        href="tel:4105024163"
+                        className="min-h-12 w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Care Partner Support Line</div>
+                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">
+                              (410) 502-4163
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Call</span>
+                      </a>
+                    </div>
+
+                    <div className="mt-3.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-1.5 leading-snug">
+                      <span className="font-bold">Emergency:</span>
+                      <span>If you or your loved one are facing immediate danger, call 911 or go to the nearest emergency department.</span>
+                    </div>
                   </div>
-                </div>
+                </>
+              )}
+            </div>
 
-                <a
-                  href="tel:4109555147"
-                  className="hidden xl:flex 2xl:hidden items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[#002D72] dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0"
-                  title="Hopkins Clinic: (410) 955-5147"
-                >
-                  <Phone className="w-3.5 h-3.5 shrink-0" />
-                  <span className="font-medium">(410) 955-5147</span>
-                </a>
-              </>
-            )}
-
-            {/* DARK / LIGHT MODE TOGGLE BUTTON */}
+            {/* DARK / LIGHT MODE TOGGLE BUTTON (44px min tap target) */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              className="w-11 h-11 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400 transition-transform hover:rotate-45" />
+                <Sun className="w-5 h-5 text-amber-400 transition-transform hover:rotate-45" />
               ) : (
-                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300 transition-transform hover:-rotate-12" />
+                <Moon className="w-5 h-5 text-slate-600 dark:text-slate-300 transition-transform hover:-rotate-12" />
               )}
             </button>
 
-            {/* Notification Bell */}
+            {/* Notification Bell (44px min tap target) */}
             <button
               onClick={onOpenNotifications}
-              className="relative w-8 h-8 sm:w-8.5 sm:h-8.5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              className="relative w-11 h-11 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
               aria-label="Notifications"
               title={
                 totalNotificationBadge > 0
@@ -215,9 +264,9 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'Notifications'
               }
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-5 h-5" />
               {totalNotificationBadge > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-[#002D72] dark:bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center tabular-nums ring-1 ring-white dark:ring-slate-900">
+                <span className="absolute top-1 right-1 min-w-5 h-5 px-1.5 bg-[#002D72] dark:bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center tabular-nums ring-2 ring-white dark:ring-slate-900">
                   {totalNotificationBadge}
                 </span>
               )}
@@ -368,46 +417,46 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* MOBILE BOTTOM NAVIGATION BAR (Raised prominent '+' button centered between Guides and Updates) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.5)] safe-bottom transition-colors">
-        <div className="max-w-md mx-auto flex items-center justify-between h-15 px-1 relative">
+        <div className="max-w-md mx-auto flex items-center justify-between h-16 px-1 relative">
           {/* Left Navigation Group (Discussions & Guides, plus Dashboard if Clinician) */}
           <div className="flex-1 flex items-center justify-around min-w-0">
             {(isClinician || isAdmin) && (
               <button
                 onClick={() => setActiveTab('moderation')}
-                className={`flex flex-col items-center justify-center py-1 transition relative cursor-pointer min-w-0 flex-1 ${
+                className={`flex flex-col items-center justify-center py-1.5 transition relative cursor-pointer min-w-0 flex-1 min-h-12 ${
                   activeTab === 'moderation' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 <div className="relative">
                   <Shield className="w-5 h-5" />
                   {pendingTriageCount > 0 && (
-                    <span className="absolute -top-1 -right-1.5 px-1 min-w-3.5 h-3.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
+                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
                       {pendingTriageCount}
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Dashboard</span>
+                <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Dashboard</span>
               </button>
             )}
 
             <button
               onClick={() => setActiveTab('feed')}
-              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+              className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'feed' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <MessageSquare className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Discussions</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Discussions</span>
             </button>
 
             <button
               onClick={() => setActiveTab('knowledge')}
-              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+              className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'knowledge' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <BookOpen className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Guides</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Guides</span>
             </button>
           </div>
 
@@ -432,22 +481,22 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex-1 flex items-center justify-around min-w-0">
             <button
               onClick={() => setActiveTab('updates')}
-              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+              className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'updates' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <Stethoscope className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Updates</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Updates</span>
             </button>
 
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`flex flex-col items-center justify-center py-1 transition cursor-pointer min-w-0 flex-1 ${
+              className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'calendar' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <CalendarDays className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-0.5 truncate max-w-full px-0.5">Events</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Events</span>
             </button>
           </div>
         </div>

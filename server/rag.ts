@@ -489,8 +489,21 @@ export async function answerRagQuery(
     };
   }
 
+  // Standalone retrieval query: if conversation history exists, combine last user question with current inquiry
+  let retrievalQuery = query;
+  if (conversationHistory && conversationHistory.length > 0) {
+    const userTurns = conversationHistory.filter(
+      (m) => (m.role === 'user' || m.role === 'caregiver') && (m.content || m.text)
+    );
+    const lastUserTurn = userTurns[userTurns.length - 1];
+    const prevText = (lastUserTurn?.content || lastUserTurn?.text || '').trim();
+    if (prevText && prevText.toLowerCase() !== query.trim().toLowerCase()) {
+      retrievalQuery = `${prevText} ${query}`.trim();
+    }
+  }
+
   // Retrieve top chunks using vector similarity filtered by condition
-  const { chunks, bestScore, passesCutoff } = await retrieveRelevantChunks(query, ai, 5, conditionFilter);
+  const { chunks, bestScore, passesCutoff } = await retrieveRelevantChunks(retrievalQuery, ai, 5, conditionFilter);
 
   const retrievedChunksPayload = chunks.map((r) => ({
     guideTitle: r.chunk.title,
@@ -530,21 +543,18 @@ export async function answerRagQuery(
     .map((msg) => `${msg.role === 'model' || msg.role === 'assistant' ? 'Assistant' : 'Care Partner'}: ${msg.content || msg.text || ''}`)
     .join('\n');
 
-  const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Frontotemporal Dementia (FTD) clinic, speaking directly with family care partners.
+  const systemInstruction = `You are Dr. Seema Gulyani's Clinical Assistant for the Johns Hopkins Memory and Alzheimer's Treatment Center and Frontotemporal Dementia (FTD) clinic, speaking directly with family care partners.
 
 CRITICAL GROUNDING REQUIREMENTS:
 1. Answer strictly and only from the provided numbered source excerpts below.
-2. Cite sources inline using bracketed numbers like [1], [2] when providing clinical guidance.
-3. If the provided excerpts do not directly contain information to address the scenario, state that our current clinical notes do not cover this topic and direct the care partner to contact the Johns Hopkins clinic at (410) 955-5147 (option 2).
-4. Under NO circumstances recommend or discuss specific drug dosages.
+2. Cite sources inline using bracketed numbers like [1], [2] corresponding directly to the numbered sources above when providing recommendations or clinical facts.
+3. If the provided excerpts do not directly contain information to address the scenario, state clearly that our current clinical care guides do not cover this topic and direct the care partner to contact the Johns Hopkins clinic at (410) 955-5147 (option 2).
+4. Under NO circumstances recommend or discuss specific drug dosages or adjust prescription regimens.
 
 STRUCTURE & VOICE:
-- Speak warmly and empathetically in plain, everyday language suitable for stressed care partners.
-- Format with clear sections:
-  - Warm opening validation.
-  - ### Understanding What Is Happening
-  - ### Practical Steps (numbered steps with bold action titles and inline citations like [1])
-  - ### What to Keep in Mind
+- Speak warmly, clearly, and empathetically in plain, everyday language suitable for stressed care partners.
+- Answer in simple, clean Markdown with clear headings, bulleted or numbered action steps with bold titles, and inline source citations like [1].
+- Do not output raw HTML.
 
 VERIFIED CLINICAL SOURCES:
 ${contextSections}`;
@@ -593,22 +603,18 @@ ${contextSections}`;
     answerText = synthesizeGroundedClinicalAnswer(query, chunks);
   }
 
-  // Map numbered citations back to guide and page
+  // Send every source that passed the cutoff so UI labels [1], [2], etc. match 1:1
   const citedMap = new Map<string, { id: string; title: string; fileName: string; page: number; url: string }>();
-  chunks.forEach((r, idx) => {
-    const num = idx + 1;
-    // Include if cited inline [num] or top 2 chunks
-    if (answerText.includes(`[${num}]`) || idx < 2) {
-      const key = `${r.chunk.guideId}-p${r.chunk.page}`;
-      if (!citedMap.has(key)) {
-        citedMap.set(key, {
-          id: `${r.chunk.guideId}-p${r.chunk.page}`,
-          title: r.chunk.title,
-          fileName: r.chunk.fileName,
-          page: r.chunk.page,
-          url: `/resources/${r.chunk.fileName}#page=${r.chunk.page}`,
-        });
-      }
+  chunks.forEach((r) => {
+    const key = `${r.chunk.guideId}-p${r.chunk.page}`;
+    if (!citedMap.has(key)) {
+      citedMap.set(key, {
+        id: `${r.chunk.guideId}-p${r.chunk.page}`,
+        title: r.chunk.title,
+        fileName: r.chunk.fileName,
+        page: r.chunk.page,
+        url: `/resources/${r.chunk.fileName}#page=${r.chunk.page}`,
+      });
     }
   });
 

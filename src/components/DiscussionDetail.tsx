@@ -38,7 +38,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   const [loadingComments, setLoadingComments] = useState(true);
   const [replyText, setReplyText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(() => Boolean(initialPost.isUpvoted));
   const [replySuccessMessage, setReplySuccessMessage] = useState<string | null>(null);
   const [replyErrorMessage, setReplyErrorMessage] = useState<string | null>(null);
 
@@ -72,13 +72,17 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     (post.author.userId === currentUser.id || post.author.anonymousHandle === currentUser.anonymousHandle);
 
   const regionName = getProperGroupName(post.assignedGroups[0]);
-  const currentLikes = post.upvotes + (isLiked ? 1 : 0);
+  const currentLikes = post.upvotes;
 
   const loadComments = async () => {
     setLoadingComments(true);
     try {
       const res = await api.getPostDetails(post.id, currentUser.role, currentUser.id);
       setComments(res.comments || []);
+      if (res.post) {
+        setPost(res.post);
+        setIsLiked(Boolean(res.post.isUpvoted));
+      }
     } catch (err) {
       console.error('Failed to load discussion comments:', err);
     } finally {
@@ -165,6 +169,8 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   };
 
   const handleDeleteComment = async (commId: string) => {
+    // Store backup for rollback if network request fails
+    const previousComments = [...comments];
     // Optimistic removal from display immediately
     setComments((prev) => prev.filter((c) => c.id !== commId));
     setReplySuccessMessage('Reply withdrawn successfully.');
@@ -179,6 +185,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
         });
       }
     } catch (err) {
+      // Rollback to previous state on error
+      setComments(previousComments);
+      setReplyErrorMessage('Unable to withdraw reply. Please try again.');
+      setTimeout(() => setReplyErrorMessage(null), 4000);
       console.error('Failed to delete comment:', err);
     }
   };
@@ -340,25 +350,45 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
     }
   };
 
-  const handleToggleLike = () => {
-    setIsLiked((prev) => !prev);
+  const handleToggleLike = async () => {
+    const wasLiked = isLiked;
+    const newLiked = !wasLiked;
+    setIsLiked(newLiked);
+    const newUpvotes = Math.max(0, post.upvotes + (newLiked ? 1 : -1));
+    const updatedPost = { ...post, upvotes: newUpvotes, isUpvoted: newLiked };
+    setPost(updatedPost);
+    if (onPostUpdated) onPostUpdated(updatedPost);
+
+    try {
+      const res = await api.togglePostUpvote(post.id, currentUser.id);
+      const syncedPost = { ...post, upvotes: res.upvotes, isUpvoted: res.isUpvoted };
+      setPost(syncedPost);
+      setIsLiked(res.isUpvoted);
+      if (onPostUpdated) onPostUpdated(syncedPost);
+    } catch (err) {
+      console.error('Failed to upvote post:', err);
+    }
   };
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* FLOATING TOP CONFIRMATION BANNER (Always on top of viewport, regardless of scroll) */}
       {replySuccessMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 pointer-events-none animate-in slide-in-from-top-4 fade-in duration-300">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 pointer-events-none animate-in slide-in-from-top-4 fade-in duration-300"
+        >
           <div className="bg-slate-900/95 text-white backdrop-blur-md p-3.5 sm:p-4 rounded-2xl shadow-2xl border border-slate-700/50 flex items-center justify-between gap-3 pointer-events-auto">
             <div className="flex items-center gap-2.5 min-w-0">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-              <span className="text-xs sm:text-sm font-medium leading-snug text-slate-100">
+              <span className="text-sm font-medium leading-snug text-slate-100">
                 {replySuccessMessage}
               </span>
             </div>
             <button
               onClick={() => setReplySuccessMessage(null)}
-              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition shrink-0"
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition shrink-0 min-w-9 min-h-9 flex items-center justify-center cursor-pointer"
               aria-label="Dismiss message"
             >
               <X className="w-4 h-4" />
@@ -371,7 +401,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
       <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 transition-colors">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+          className="min-h-11 px-3 py-2 -ml-3 flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to discussions</span>
@@ -436,10 +466,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 type="button"
                 disabled={isTogglingClose}
                 onClick={handleToggleCloseDiscussion}
-                className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                className="min-h-11 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                 title="Reopen discussion to allow new replies"
               >
-                <LockOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <LockOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Reopen Discussion</span>
               </button>
             ) : (
@@ -447,10 +477,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 type="button"
                 disabled={isTogglingClose}
                 onClick={() => setShowConfirmCloseModal(true)}
-                className="px-3.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                className="min-h-11 px-3.5 py-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                 title="Close discussion to prevent new replies while preserving existing comments"
               >
-                <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <Lock className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 <span>Close Discussion</span>
               </button>
             )}
@@ -485,14 +515,14 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             {post.isClosed && (
               <>
                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded-full">
-                  <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-0.5 rounded-full">
+                  <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                   <span>Closed</span>
                 </span>
               </>
             )}
           </div>
-          <span className="text-slate-400 dark:text-slate-500 text-xs shrink-0 pl-2">
+          <span className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0 pl-2">
             {new Date(post.createdAt).toLocaleDateString([], {
               month: 'short',
               day: 'numeric',
@@ -512,7 +542,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 type="text"
                 value={mainPostTitle}
                 onChange={(e) => setMainPostTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 text-base font-semibold"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 text-base font-semibold"
                 required
               />
             </div>
@@ -524,7 +554,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 rows={4}
                 value={mainPostContent}
                 onChange={(e) => setMainPostContent(e.target.value)}
-                className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 leading-relaxed text-sm"
+                className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 leading-relaxed text-base"
                 required
               />
             </div>
@@ -532,14 +562,14 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEditingMainPost(false)}
-                className="px-3.5 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                className="min-h-11 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer font-medium"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSavingMainPost || !mainPostTitle.trim() || !mainPostContent.trim()}
-                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="min-h-11 px-5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition cursor-pointer"
               >
                 {isSavingMainPost ? 'Saving...' : 'Save Updates'}
               </button>
@@ -558,9 +588,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
 
         {/* Bottom Actions Row: If pending, show Edit & Cancel buttons instead of replies/helpful! */}
         {isMainPostPending ? (
-          <div className="pt-4 border-t border-amber-200/80 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="pt-4 border-t border-amber-200/80 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-3 text-sm">
             <span className="text-amber-800 dark:text-amber-300 font-medium flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+              <Clock className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
               <span>This question is currently awaiting Dr. Seema's clinical safety verification</span>
             </span>
 
@@ -569,17 +599,17 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditingMainPost(true)}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-amber-100/50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  className="min-h-11 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-amber-100/50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                 >
-                  <Pencil className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                  <Pencil className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                   <span>Edit Question</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowWithdrawPostModal(true)}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  className="min-h-11 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                  <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   <span>Cancel Submission</span>
                 </button>
               </div>
@@ -587,14 +617,14 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </div>
         ) : (
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium text-sm">
               <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               <span>{comments.length} {comments.length === 1 ? 'reply' : 'replies'}</span>
             </div>
 
             <button
               onClick={handleToggleLike}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+              className={`min-h-11 flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-sm transition cursor-pointer ${
                 isLiked
                   ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold'
                   : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
@@ -673,13 +703,13 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                         rows={3}
                         value={editCommentText}
                         onChange={(e) => setEditCommentText(e.target.value)}
-                        className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                        className="w-full p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 text-base bg-white dark:bg-slate-800 text-slate-900 dark:text-white leading-relaxed"
                       />
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setEditingCommentId(null)}
-                          className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                          className="min-h-11 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer font-medium"
                         >
                           Cancel
                         </button>
@@ -687,14 +717,14 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                           type="button"
                           onClick={() => handleSaveComment(comm.id)}
                           disabled={isSavingComment || !editCommentText.trim()}
-                          className="px-4 py-1.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                          className="min-h-11 px-5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition cursor-pointer"
                         >
                           {isSavingComment ? 'Saving...' : 'Save'}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm sm:text-[15px] text-slate-700 dark:text-slate-300 leading-relaxed font-sans whitespace-pre-line select-text">
+                    <p className="text-base text-slate-700 dark:text-slate-300 leading-relaxed font-sans whitespace-pre-line select-text">
                       {comm.content}
                     </p>
                   )}
@@ -703,10 +733,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                   {((isPending && isAuthor && !isEditingThis) ||
                     (isClinician && (post.allowUnmoderatedReplies || comm.status === 'APPROVED'))) && (
                     <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
                         {post.allowUnmoderatedReplies && !isPending && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50">
-                            <Sparkles className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50">
+                            <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             <span>Unmoderated reply</span>
                           </span>
                         )}
@@ -719,17 +749,17 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                             <button
                               type="button"
                               onClick={() => handleStartEditComment(comm)}
-                              className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-amber-100/50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-medium flex items-center gap-1 transition cursor-pointer"
+                              className="min-h-11 px-3.5 py-2 text-sm bg-white dark:bg-slate-800 hover:bg-amber-100/50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg font-semibold flex items-center gap-1.5 transition cursor-pointer"
                             >
-                              <Pencil className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                              <Pencil className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                               <span>Edit reply</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteComment(comm.id)}
-                              className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-medium flex items-center gap-1 transition cursor-pointer"
+                              className="min-h-11 px-3.5 py-2 text-sm bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1.5 transition cursor-pointer"
                             >
-                              <Trash2 className="w-3 h-3 text-rose-500 dark:text-rose-400" />
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
                               <span>Cancel reply</span>
                             </button>
                           </>
@@ -741,10 +771,10 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                             type="button"
                             onClick={() => handleOpenRemoveReplyModal(comm)}
                             disabled={deletingCommentId === comm.id}
-                            className="px-2.5 py-1 text-xs bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                            className="min-h-11 px-3.5 py-2 text-sm bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                             title="Remove inappropriate reply from discussion"
                           >
-                            <Trash2 className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                             <span>Remove reply</span>
                           </button>
                         )}
@@ -767,7 +797,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <h3 className="font-serif font-semibold text-slate-900 dark:text-white text-base">
                 This discussion has been closed
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
                 New replies are disabled because this discussion was closed by Dr. Seema{post.closedAt ? ` on ${new Date(post.closedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}. All {comments.length} existing replies above are preserved for community reference.
               </p>
             </div>
@@ -778,27 +808,27 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             onSubmit={handleSendReply}
             className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 space-y-3.5 shadow-xs transition-colors"
           >
-            <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Add your reply</span>
-              <span>Replying as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.anonymousHandle}</strong></span>
+            <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Add your reply</span>
+              <span>Replying as: <strong className="text-slate-900 dark:text-slate-100">{currentUser.anonymousHandle}</strong></span>
             </div>
 
             {post.condition === 'BOTH' && (
-              <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+              <div className="text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
                 This discussion is shared with both FTD and Alzheimer's care partners. Your reply will be visible to both groups.
               </div>
             )}
 
             {/* Moderation Mode Info Callout */}
             {post.allowUnmoderatedReplies ? (
-              <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-200">
+              <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 rounded-xl p-3.5 flex items-start sm:items-center gap-2.5 text-sm text-emerald-900 dark:text-emerald-200">
                 <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
                 <span>
                   <strong>Unmoderated replies enabled for this post:</strong> Your reply will be visible immediately to peer care partners without moderation delay.
                 </span>
               </div>
             ) : (
-              <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-xs text-blue-900 dark:text-blue-200">
+              <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-3.5 flex items-start sm:items-center gap-2.5 text-sm text-blue-900 dark:text-blue-200">
                 <ShieldCheck className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
                 <span>
                   <strong>Moderated:</strong> New replies to this post are reviewed by Dr. Seema before being published.
@@ -808,7 +838,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
 
             {/* Inline Error Notice */}
             {replyErrorMessage && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 p-3.5 rounded-xl flex items-center gap-2.5 text-xs sm:text-sm animate-in fade-in">
+              <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200 p-3.5 rounded-xl flex items-center gap-2.5 text-sm animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>{replyErrorMessage}</span>
               </div>
@@ -819,26 +849,26 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Share helpful advice, words of encouragement, or practical tips..."
-              className="w-full p-3.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans leading-relaxed"
+              className="w-full p-3.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans leading-relaxed"
               required
             />
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
               {post.allowUnmoderatedReplies ? (
-                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-sm text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 shrink-0" />
                   <span>Open discussion: replies appear immediately for everyone.</span>
                 </span>
               ) : (
-                <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#002D72] dark:text-blue-400 shrink-0" />
+                <span className="text-sm text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
                   <span>Reviewed by Dr. Seema to preserve privacy and clinical safety.</span>
                 </span>
               )}
               <button
                 type="submit"
                 disabled={!replyText.trim() || isSubmitting}
-                className="px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+                className="min-h-11 px-5 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl text-base font-semibold flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
@@ -864,6 +894,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Close Discussion Confirmation"
             onClick={(e) => e.stopPropagation()}
             className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
           >
@@ -875,13 +908,13 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
                   Close Discussion?
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   Moderator Action
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
               <p>
                 Closing this discussion will <strong>prevent new replies</strong> from being posted by care partners.
               </p>
@@ -894,7 +927,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowConfirmCloseModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                className="min-h-11 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Keep Open
               </button>
@@ -902,9 +935,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 type="button"
                 disabled={isTogglingClose}
                 onClick={handleToggleCloseDiscussion}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="min-h-11 px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 text-white rounded-xl text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-4 h-4" />
                 <span>{isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}</span>
               </button>
             </div>
@@ -919,6 +952,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Withdraw Question Confirmation"
             onClick={(e) => e.stopPropagation()}
             className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
           >
@@ -930,13 +966,13 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
                   Withdraw Question?
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   This will remove your question from clinical review.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium line-clamp-2">
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-300 font-medium line-clamp-2">
               "{post.title}"
             </div>
 
@@ -944,7 +980,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setShowWithdrawPostModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                className="min-h-11 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Keep Question
               </button>
@@ -952,9 +988,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 type="button"
                 disabled={isWithdrawingPost}
                 onClick={handleConfirmWithdrawPost}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                className="min-h-11 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
                 <span>{isWithdrawingPost ? 'Withdrawing...' : 'Yes, Withdraw Question'}</span>
               </button>
             </div>
@@ -969,6 +1005,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Remove Inappropriate Reply Confirmation"
             onClick={(e) => e.stopPropagation()}
             className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
           >
@@ -980,14 +1019,14 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
                   Remove Inappropriate Reply?
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   As clinician moderator, this reply will be removed from the discussion immediately.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-sans space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-300 font-sans space-y-1">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Author: {commentToDelete.author.anonymousHandle}
               </div>
               <p className="line-clamp-3 italic">"{commentToDelete.content}"</p>
@@ -997,7 +1036,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <button
                 type="button"
                 onClick={() => setCommentToDelete(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                className="min-h-11 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Keep Reply
               </button>
@@ -1005,9 +1044,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 type="button"
                 disabled={deletingCommentId !== null}
                 onClick={handleConfirmModeratorRemoveReply}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="min-h-11 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
                 <span>{deletingCommentId ? 'Removing...' : 'Remove Reply'}</span>
               </button>
             </div>

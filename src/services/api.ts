@@ -496,6 +496,27 @@ export const api = {
     );
   },
 
+  togglePostUpvote: async (postId: string, userId: string): Promise<{ success: boolean; upvotes: number; isUpvoted: boolean }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}/upvote`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      },
+      () => {
+        const post = localPosts.find((p) => p.id === postId);
+        if (post) {
+          const isCurrentlyUpvoted = Boolean(post.isUpvoted);
+          post.isUpvoted = !isCurrentlyUpvoted;
+          post.upvotes = isCurrentlyUpvoted ? Math.max(0, post.upvotes - 1) : post.upvotes + 1;
+          return { success: true, upvotes: post.upvotes, isUpvoted: post.isUpvoted };
+        }
+        return { success: true, upvotes: 1, isUpvoted: true };
+      }
+    );
+  },
+
   updatePost: async (postId: string, payload: { title?: string; content?: string; targetCohortId?: string }): Promise<{ post: Post; message: string }> => {
     return safeFetchJson(
       `/api/v1/posts/${postId}`,

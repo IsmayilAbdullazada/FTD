@@ -241,7 +241,7 @@ function findRealtimeKeywordMatches(
   pool: DiscussionSearchItem[]
 ): RealtimeMatchItem[] {
   const trimmed = inputText.trim();
-  if (trimmed.length < 2) return [];
+  if (trimmed.length < 4) return [];
 
   const lowerInput = trimmed.toLowerCase();
   const candidateTerms: string[] = [];
@@ -263,9 +263,9 @@ function findRealtimeKeywordMatches(
     }
   });
 
-  // 3. Current active word being typed (even 2 chars like 'ftd')
+  // 3. Current active word being typed (if >= 3 chars)
   const lastWordMatch = lowerInput.match(/([a-z0-9'-]+)$/);
-  if (lastWordMatch && lastWordMatch[1].length >= 2) {
+  if (lastWordMatch && lastWordMatch[1].length >= 3) {
     const lastWord = lastWordMatch[1];
     if (!STOP_WORDS.has(lastWord) && !candidateTerms.includes(lastWord)) {
       candidateTerms.push(lastWord);
@@ -404,15 +404,15 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
       <div className="bg-slate-50/90 dark:bg-slate-800/90 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Search className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
-          <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">Posts that may be similar</span>
-          <span className="text-[11px] font-semibold text-blue-800 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-950/80 border border-transparent dark:border-blue-800/60 px-2 py-0.5 rounded-full">
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Posts that may be similar</span>
+          <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-950/80 border border-transparent dark:border-blue-800/60 px-2 py-0.5 rounded-full">
             {matches.length}
           </span>
         </div>
         <button
           type="button"
           onClick={onDismiss}
-          className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer"
+          className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 min-w-9 min-h-9 flex items-center justify-center rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer"
           title="Dismiss suggestions"
         >
           <X className="w-4 h-4" />
@@ -426,11 +426,10 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
             className="p-3.5 rounded-xl hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition text-left space-y-2 border border-slate-100 dark:border-slate-800/80 hover:border-blue-100 dark:hover:border-blue-900/50"
           >
             <div className="flex items-start justify-between gap-3">
-              {/* Clickable headline of post - NO arrow sign ->, NO quotes, NO 'Open Discussion' button */}
               <button
                 type="button"
                 onClick={() => onOpenDiscussion(item.postId)}
-                className="text-sm sm:text-base font-semibold text-[#002D72] dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline text-left cursor-pointer transition min-w-0 flex-1 leading-snug"
+                className="text-base font-semibold text-[#002D72] dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline text-left cursor-pointer transition min-w-0 flex-1 leading-snug py-1"
               >
                 {highlightTitleText(item.postTitle, item.matchedTerms)}
               </button>
@@ -438,22 +437,21 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
               <button
                 type="button"
                 onClick={() => onPreview(item.postId)}
-                className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition font-medium flex items-center gap-1 shrink-0 cursor-pointer border border-slate-200/60 dark:border-slate-700"
+                className="min-h-11 px-3.5 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer border border-slate-200/60 dark:border-slate-700"
                 title="Preview discussion answers"
               >
-                <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 <span>Preview</span>
               </button>
             </div>
 
             {/* If content or replies matched, show sentence snippet(s) with ... and bolding the matching substring */}
-            {/* If only title matched, snippets is empty so the title is not repeated below itself */}
             {item.snippets.length > 0 && (
               <div className="space-y-1.5 pt-0.5">
                 {item.snippets.map((snippet, sIdx) => (
                   <div
                     key={sIdx}
-                    className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-lg p-2.5 text-xs sm:text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed font-sans"
+                    className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans"
                   >
                     {snippet.hasLeadingEllipsis && <span className="text-slate-400 dark:text-slate-500 font-bold">... </span>}
                     <span>{snippet.beforeMatch}</span>
@@ -470,12 +468,13 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
         ))}
       </div>
 
-      <div className="bg-slate-50 dark:bg-slate-800/90 px-3.5 py-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-sans">
+      <div className="bg-slate-50 dark:bg-slate-800/90 px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-sans">
         <span>💡 Tip: Click any post headline above to read the discussion, or continue writing your question below.</span>
       </div>
     </div>
   );
 };
+
 
 export const PostComposer: React.FC<PostComposerProps> = ({
   currentUser,
@@ -544,18 +543,24 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     };
   }, [currentUser.id]);
 
-  // Real-time keyword matching: computed synchronously on every keystroke
-  const titleMatches = useMemo(() => {
-    return findRealtimeKeywordMatches(title, discussionsPool);
-  }, [title, discussionsPool]);
+  // Debounced search query (300ms debounce across title & content, starting at 4 characters)
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
-  const contentMatches = useMemo(() => {
-    return findRealtimeKeywordMatches(content, discussionsPool);
-  }, [content, discussionsPool]);
+  useEffect(() => {
+    const text = title.trim().length >= 4 ? title.trim() : content.trim().length >= 4 ? content.trim() : '';
+    const timer = setTimeout(() => {
+      setDebouncedQuery(text);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [title, content]);
+
+  const similarMatches = useMemo(() => {
+    if (debouncedQuery.length < 4) return [];
+    return findRealtimeKeywordMatches(debouncedQuery, discussionsPool);
+  }, [debouncedQuery, discussionsPool]);
 
   // In-flow matching suggestions visibility
-  const [titleDismissed, setTitleDismissed] = useState(false);
-  const [contentDismissed, setContentDismissed] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const [previewPostId, setPreviewPostId] = useState<string | null>(null);
   const [solvedByDeflection, setSolvedByDeflection] = useState(false);
 
@@ -567,8 +572,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setTitleDismissed(true);
-        setContentDismissed(true);
+        setSuggestionsDismissed(true);
         setPreviewPostId(null);
       }
     };
@@ -578,17 +582,6 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
-
-  // Auto fadeout confirmation after 3.5 seconds
-  useEffect(() => {
-    if (!submittedPostData) return;
-
-    const timer = setTimeout(() => {
-      onPostSubmitted();
-    }, 3500);
-
-    return () => clearTimeout(timer);
-  }, [submittedPostData, onPostSubmitted]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -713,10 +706,6 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               Ask Another Question
             </button>
           </div>
-
-          <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">
-            Returning to discussions automatically in 3 seconds...
-          </p>
         </div>
       ) : solvedByDeflection ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-2 shadow-xs animate-in fade-in transition-colors">
@@ -761,7 +750,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                 <span>This platform is not for urgent messages</span>
               </div>
-              <p className="text-xs sm:text-sm leading-relaxed font-sans">
+              <p className="text-sm leading-relaxed font-sans">
                 This platform is not intended for urgent messages to your clinician. If you need to reach your
                 clinician, please call your clinic at{' '}
                 <a href="tel:4109555147" className="font-bold text-[#002D72] dark:text-sky-400 underline">
@@ -769,23 +758,23 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 </a>{' '}
                 or send a message through EPIC.
               </p>
-              <p className="text-xs sm:text-sm leading-relaxed font-sans">
+              <p className="text-sm leading-relaxed font-sans">
                 Please do not share any confidential information through the portal. Submitted posts are
                 reviewed once every 24 hours.
               </p>
             </div>
           </div>
 
-          {/* Question or Topic Input with Real-Time Keystroke Matching */}
+          {/* Question or Topic Input with Debounced Real-Time Matching */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
                 Question or Topic
               </label>
-              {title.trim().length >= 2 && titleMatches.length > 0 && !titleDismissed && (
-                <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>{titleMatches.length} similar {titleMatches.length === 1 ? 'discussion' : 'discussions'} found</span>
+              {similarMatches.length > 0 && !suggestionsDismissed && (
+                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{similarMatches.length} similar {similarMatches.length === 1 ? 'discussion' : 'discussions'} found</span>
                 </span>
               )}
             </div>
@@ -794,58 +783,40 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                setTitleDismissed(false);
+                setSuggestionsDismissed(false);
               }}
               placeholder="e.g. Managing resistance when bathing"
               className="w-full px-4 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shadow-2xs"
               required
             />
 
-            {/* In-flow matching discussions box for Question/Topic - shifts elements below down */}
-            {title.trim().length >= 2 && titleMatches.length > 0 && !titleDismissed && (
+            {/* Single Unified in-flow matching discussions box under Title */}
+            {similarMatches.length > 0 && !suggestionsDismissed && (
               <SimilarDiscussionsBox
-                matches={titleMatches}
-                onDismiss={() => setTitleDismissed(true)}
+                matches={similarMatches}
+                onDismiss={() => setSuggestionsDismissed(true)}
                 onOpenDiscussion={onOpenDiscussion}
                 onPreview={(id) => setPreviewPostId(id)}
               />
             )}
           </div>
 
-          {/* Description Textarea with Real-Time Keystroke Matching */}
+          {/* Description Textarea */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
-                Details
-              </label>
-              {content.trim().length >= 2 && contentMatches.length > 0 && !contentDismissed && (
-                <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>{contentMatches.length} similar {contentMatches.length === 1 ? 'discussion' : 'discussions'} found</span>
-                </span>
-              )}
-            </div>
+            <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Details
+            </label>
             <textarea
               rows={5}
               value={content}
               onChange={(e) => {
                 setContent(e.target.value);
-                setContentDismissed(false);
+                setSuggestionsDismissed(false);
               }}
               placeholder="Share what is happening, what strategies you've tried, or what advice would be helpful..."
               className="w-full p-4 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 leading-relaxed font-sans transition shadow-2xs"
               required
             />
-
-            {/* In-flow matching discussions box for Details - shifts elements below down */}
-            {content.trim().length >= 3 && contentMatches.length > 0 && !contentDismissed && (
-              <SimilarDiscussionsBox
-                matches={contentMatches}
-                onDismiss={() => setContentDismissed(true)}
-                onOpenDiscussion={onOpenDiscussion}
-                onPreview={(id) => setPreviewPostId(id)}
-              />
-            )}
           </div>
 
           {/* Audience selection */}
@@ -856,7 +827,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <select
               value={selectedCohortId}
               onChange={(e) => setSelectedCohortId(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition"
+              className="w-full px-4 py-2.5 text-base min-h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition cursor-pointer"
             >
               {cohorts.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -877,7 +848,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                     key={value}
                     type="button"
                     onClick={() => setAudience(value)}
-                    className={`px-3 py-2.5 rounded-xl text-sm font-semibold border transition cursor-pointer ${
+                    className={`min-h-11 px-3 py-2.5 rounded-xl text-sm font-semibold border transition cursor-pointer ${
                       audience === value
                         ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-slate-400'
@@ -889,7 +860,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               <span>Your post will be shared with</span>
               <AudienceBadge condition={currentUser.condition} />
               <span>care partners</span>
@@ -901,7 +872,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || isSubmitting}
-              className="w-full py-3 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              className="w-full min-h-12 py-3 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-base font-semibold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
               <span>{isSubmitting ? 'Submitting...' : 'Submit Question'}</span>
@@ -913,7 +884,12 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       {/* QUICK PREVIEW MODAL FOR ANSWERED DISCUSSIONS */}
       {activePreviewPost && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 text-slate-800 dark:text-slate-100">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Existing Answered Discussion"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 text-slate-800 dark:text-slate-100"
+          >
             <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
               <div className="space-y-0.5 min-w-0 pr-3">
                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
@@ -927,7 +903,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <button
                 type="button"
                 onClick={() => setPreviewPostId(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                className="min-w-9 min-h-9 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                aria-label="Close preview"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -939,7 +916,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                   <span>Original question by <strong className="text-slate-800 dark:text-slate-200">{activePreviewPost.authorHandle}</strong></span>
                   <span>{activePreviewPost.cohortName}</span>
                 </div>
-                <p className="text-slate-800 dark:text-slate-200 leading-relaxed">
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm sm:text-base">
                   {activePreviewPost.content}
                 </p>
               </div>
@@ -952,7 +929,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 </div>
 
                 {activePreviewPost.replies.length === 0 ? (
-                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No replies yet for this question.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 italic">No replies yet for this question.</p>
                 ) : (
                   <div className="space-y-2.5">
                     {activePreviewPost.replies.map((reply) => {
@@ -960,7 +937,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                       return (
                         <div
                           key={reply.id}
-                          className={`p-3.5 rounded-xl border text-xs sm:text-sm leading-relaxed space-y-1.5 ${
+                          className={`p-3.5 rounded-xl border text-sm leading-relaxed space-y-1.5 ${
                             isDrSeema
                               ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100'
                               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
@@ -971,12 +948,12 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                               {reply.authorHandle} {isDrSeema && '⭐'}
                             </span>
                             {reply.authorBadge && (
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                              <span className="text-xs text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-medium">
                                 {reply.authorBadge}
                               </span>
                             )}
                           </div>
-                          <p>{reply.content}</p>
+                          <p className="text-sm sm:text-base leading-relaxed">{reply.content}</p>
                         </div>
                       );
                     })}
@@ -989,16 +966,16 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <button
                 type="button"
                 onClick={handleDiscardDraft}
-                className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full sm:w-auto min-h-11 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Check className="w-3.5 h-3.5" />
+                <Check className="w-4 h-4" />
                 <span>✓ This answers my question</span>
               </button>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setPreviewPostId(null)}
-                  className="w-full sm:w-auto px-3.5 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 text-xs font-medium transition cursor-pointer"
+                  className="w-full sm:w-auto min-h-11 px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 text-sm font-semibold transition cursor-pointer"
                 >
                   Keep Writing
                 </button>
@@ -1009,10 +986,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                     setPreviewPostId(null);
                     onOpenDiscussion(id);
                   }}
-                  className="w-full sm:w-auto px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                  className="w-full sm:w-auto min-h-11 px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                 >
                   <span>Go to Full Discussion</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>

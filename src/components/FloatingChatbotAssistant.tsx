@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   Send,
   X,
@@ -46,163 +47,102 @@ interface ChatMessage {
   timestamp: string;
 }
 
-const renderInlineFormatted = (rawText: string) => {
-  const parts = rawText.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={idx} className="font-semibold text-slate-900 dark:text-white">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return (
-        <em key={idx} className="italic text-slate-800 dark:text-slate-200">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    return part;
-  });
-};
-
 const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
-  const hasMarkdownSections = text.includes('###');
-
-  if (!hasMarkdownSections) {
-    const paragraphs = text.split(/\n\n+/);
-    return (
-      <div className="space-y-1.5 select-text font-sans">
-        {paragraphs.map((p, pIdx) => {
-          const lines = p.split(/\n/);
-          return (
-            <p key={pIdx} className="leading-relaxed text-xs sm:text-[12.5px] text-slate-800 dark:text-slate-200">
-              {lines.map((line, lIdx) => (
-                <React.Fragment key={lIdx}>
-                  {lIdx > 0 && <br />}
-                  {renderInlineFormatted(line)}
-                </React.Fragment>
-              ))}
-            </p>
-          );
-        })}
-      </div>
-    );
-  }
-
-  const rawSections = text.split(/(?=###\s+)/g).filter((s) => s.trim().length > 0);
-
   return (
-    <div className="space-y-2.5 select-text text-xs sm:text-[12.5px] leading-relaxed font-sans">
-      {rawSections.map((sec, secIdx) => {
-        const trimmed = sec.trim();
-        const headerMatch = trimmed.match(/^###\s+([^\n]+)/);
-        const headerTitle = headerMatch ? headerMatch[1].trim() : '';
-        const bodyContent = headerMatch ? trimmed.slice(headerMatch[0].length).trim() : trimmed;
-
-        if (headerTitle.toLowerCase().includes('understanding') || headerTitle.toLowerCase().includes('happening')) {
-          const paragraphs = bodyContent.split(/\n\n+/);
-          return (
-            <div key={secIdx} className="space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#002D72] dark:text-sky-400">
-                <Heart className="w-3 h-3 text-rose-500 shrink-0" />
-                <span>{headerTitle}</span>
-              </div>
-              <div className="space-y-1 text-slate-700 dark:text-slate-200 pl-0.5">
-                {paragraphs.map((para, pIdx) => (
-                  <p key={pIdx} className="leading-relaxed">
-                    {renderInlineFormatted(para)}
-                  </p>
-                ))}
-              </div>
-            </div>
-          );
-        }
-
-        if (headerTitle.toLowerCase().includes('practical') || headerTitle.toLowerCase().includes('steps')) {
-          const stepBlocks = bodyContent.split(/\n(?=\d+\.\s+)/).map((s) => s.trim()).filter(Boolean);
-
-          return (
-            <div key={secIdx} className="space-y-1.5 pt-0.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#002D72] dark:text-sky-400">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>{headerTitle}</span>
-              </div>
-              <div className="space-y-1.5">
-                {stepBlocks.map((step, sIdx) => {
-                  const numMatch = step.match(/^(\d+)\.\s*(.*)$/s);
-                  const stepNumber = numMatch ? numMatch[1] : `${sIdx + 1}`;
-                  const stepText = numMatch ? numMatch[2] : step;
-
-                  return (
-                    <div
-                      key={sIdx}
-                      className="flex items-start gap-2 p-2 rounded-lg bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750/70"
-                    >
-                      <span className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-[#002D72] dark:text-sky-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                        {stepNumber}
-                      </span>
-                      <div className="flex-1 text-slate-700 dark:text-slate-200 text-xs leading-snug">
-                        {renderInlineFormatted(stepText)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        }
-
-        if (
-          headerTitle.toLowerCase().includes('reminder') ||
-          headerTitle.toLowerCase().includes('mind') ||
-          headerTitle.toLowerCase().includes('takeaway')
-        ) {
-          const bulletLines = bodyContent
-            .split(/\n/)
-            .map((b) => b.trim())
-            .filter((b) => b.length > 0);
-
-          return (
-            <div
-              key={secIdx}
-              className="p-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/40 text-amber-950 dark:text-amber-100 space-y-1"
-            >
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900 dark:text-amber-300">
-                <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span>{headerTitle}</span>
-              </div>
-              <ul className="space-y-1 text-[11.5px] text-amber-900/90 dark:text-amber-200/90">
-                {bulletLines.map((bullet, bIdx) => {
-                  const cleanedBullet = bullet.replace(/^[•\-\*]\s*/, '');
-                  return (
-                    <li key={bIdx} className="flex items-start gap-1.5 leading-snug">
-                      <span className="w-1 h-1 rounded-full bg-amber-500 dark:bg-amber-400 shrink-0 mt-1.5" />
-                      <span>{renderInlineFormatted(cleanedBullet)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        }
-
-        return (
-          <div key={secIdx} className="space-y-1">
-            {headerTitle && (
-              <h4 className="font-semibold text-xs text-[#002D72] dark:text-sky-400">
-                {headerTitle}
-              </h4>
-            )}
-            <div className="text-slate-700 dark:text-slate-200">
-              {renderInlineFormatted(bodyContent)}
-            </div>
-          </div>
-        );
-      })}
+    <div className="select-text text-base leading-relaxed font-sans text-slate-800 dark:text-slate-200">
+      <ReactMarkdown
+        components={{
+          h1: ({ children }) => (
+            <h3 className="font-serif font-bold text-lg text-[#002D72] dark:text-sky-400 mt-3 mb-1.5 first:mt-0">
+              {children}
+            </h3>
+          ),
+          h2: ({ children }) => (
+            <h3 className="font-serif font-bold text-base text-[#002D72] dark:text-sky-400 mt-3 mb-1.5 first:mt-0">
+              {children}
+            </h3>
+          ),
+          h3: ({ children }) => (
+            <h4 className="font-sans font-bold text-base text-[#002D72] dark:text-sky-400 mt-2.5 mb-1 first:mt-0">
+              {children}
+            </h4>
+          ),
+          h4: ({ children }) => (
+            <h5 className="font-sans font-semibold text-sm text-[#002D72] dark:text-sky-400 mt-2 mb-1 first:mt-0">
+              {children}
+            </h5>
+          ),
+          p: ({ children }) => (
+            <p className="mb-2.5 last:mb-0 leading-relaxed text-base text-slate-800 dark:text-slate-200">
+              {children}
+            </p>
+          ),
+          ul: ({ children }) => (
+            <ul className="space-y-1.5 my-2.5 list-disc list-outside pl-5 text-base text-slate-800 dark:text-slate-200">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="space-y-1.5 my-2.5 list-decimal list-outside pl-5 text-base text-slate-800 dark:text-slate-200">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="leading-relaxed text-base pl-0.5">
+              {children}
+            </li>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-slate-900 dark:text-white">
+              {children}
+            </strong>
+          ),
+          em: ({ children }) => (
+            <em className="italic text-slate-800 dark:text-slate-200">
+              {children}
+            </em>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-3 border-[#002D72] dark:border-sky-400 pl-3 py-1 my-2 italic text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/40 rounded-r-lg">
+              {children}
+            </blockquote>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
     </div>
   );
+};
+
+const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
+  const isAD = user?.condition === 'AD';
+
+  const defaultSuggestedQuestions = isAD
+    ? [
+        'How to manage sundowning and evening confusion?',
+        'Managing repetitive questions with calm reassurance?',
+        'Communication strategies for progressive memory loss?',
+        'Home safety modifications to prevent wandering?',
+      ]
+    : [
+        'How to handle resistance during bathing?',
+        'Why blunt or rude remarks happen in bvFTD?',
+        'How to transition away from driving safely?',
+        'Managing sweet cravings & overeating?',
+      ];
+
+  const conditionDescription = isAD
+    ? "Alzheimer's and memory care"
+    : "Frontotemporal Dementia (FTD)";
+
+  return {
+    id: `msg-welcome-${Date.now()}`,
+    sender: 'assistant',
+    text: `Hello! I am Dr. Seema's AI Clinical Assistant for Johns Hopkins care partners supporting loved ones with ${conditionDescription}.\n\nI can help answer day-to-day caregiving questions based on verified Johns Hopkins clinical care guides, behavioral protocols, and family newsletters.\n\nHow can I support you today?`,
+    timestamp: 'Now',
+    suggestedQuestions: defaultSuggestedQuestions,
+  };
 };
 
 export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> = ({
@@ -220,46 +160,23 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   const windowRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'msg-welcome',
-      sender: 'assistant',
-      text: `Hello! I'm Dr. Seema's Clinical Assistant for Johns Hopkins care partners.\n\nYou can ask me daily caregiving questions—like managing bathing resistance, blunt remarks, driving retirement, sweet cravings, or memory care planning.\n\nHow can I support you today?`,
-      timestamp: 'Now',
-      suggestedQuestions: [
-        'How to handle resistance during bathing?',
-        'Why blunt or rude remarks happen in bvFTD?',
-        'How to transition away from driving safely?',
-        'Managing sweet cravings & overeating?',
-      ],
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(currentUser)]);
 
-  // Click-outside listener & escape key
+  // Reset conversation context when switching persona/condition
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!isOpen) return;
-      const target = event.target as Node;
-      if (
-        windowRef.current &&
-        !windowRef.current.contains(target) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(target)
-      ) {
-        onClose();
-      }
-    };
+    setMessages([createWelcomeMessage(currentUser)]);
+  }, [currentUser?.id, currentUser?.condition]);
 
+  // Keyboard shortcut listener to close on Escape (removed click-outside to prevent accidental closures)
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
         onClose();
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -297,10 +214,13 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     setInputQuery('');
     setLoading(true);
 
-    const historyPayload = messages.slice(-6).map((m) => ({
-      role: m.sender === 'assistant' ? 'model' : 'user',
-      text: m.text,
-    }));
+    const historyPayload = messages
+      .filter((m) => m.id !== 'msg-welcome' && !m.id.startsWith('msg-welcome'))
+      .slice(-6)
+      .map((m) => ({
+        role: m.sender === 'assistant' ? 'assistant' : 'user',
+        text: m.text,
+      }));
 
     try {
       const res = await api.chatWithAssistant(
@@ -336,26 +256,13 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   };
 
   const handleResetChat = () => {
-    setMessages([
-      {
-        id: `welcome-${Date.now()}`,
-        sender: 'assistant',
-        text: `Chat reset. I am here to help you with caregiving questions or practical steps. How can I support you today?`,
-        timestamp: 'Now',
-        suggestedQuestions: [
-          'How to handle resistance during bathing?',
-          'Why blunt or rude remarks happen in bvFTD?',
-          'How to transition away from driving safely?',
-          'Managing sweet cravings & overeating?',
-        ],
-      },
-    ]);
+    setMessages([createWelcomeMessage(currentUser)]);
   };
 
   return (
     <>
       {/* ------------------------------------------------------------- */}
-      {/* 1. FLOATING CHATBOT TRIGGER BUTTON */}
+      {/* 1. FLOATING CHATBOT TRIGGER BUTTON (56px size, 44px+ tap target) */}
       {/* ------------------------------------------------------------- */}
       <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto">
         <button
@@ -363,95 +270,96 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           onClick={onToggle}
           type="button"
           aria-label={isOpen ? 'Close Care Assistant' : 'Open Care Assistant'}
-          title={isOpen ? 'Close Care Assistant' : 'Ask Dr. Seema’s Clinical Assistant'}
-          className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 ${
+          title={isOpen ? 'Close Care Assistant' : 'Ask Dr. Seema’s AI Assistant'}
+          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 ${
             isOpen
               ? 'bg-slate-800 dark:bg-slate-700 text-white'
               : 'bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
           }`}
         >
           {isOpen ? (
-            <X className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200" />
+            <X className="w-6 h-6 transition-transform duration-200" />
           ) : (
             <>
               <div className="relative flex items-center justify-center">
-                <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
-                <Sparkles className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-amber-300 absolute -top-1 -right-1" />
+                <MessageSquare className="w-6 h-6" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 absolute -top-1.5 -right-1.5 animate-pulse" />
               </div>
-              <span className="absolute top-0.5 right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+              <span className="absolute top-1 right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
             </>
           )}
         </button>
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. CHATBOT FLOATING WINDOW (Compact on mobile, balanced on desktop) */}
+      {/* 2. CHATBOT WINDOW (Full-screen mobile, balanced flyout desktop) */}
       {/* ------------------------------------------------------------- */}
       {isOpen && (
         <div
           ref={windowRef}
           role="dialog"
-          aria-label="Clinical Care Assistant"
-          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+3rem)] sm:bottom-20 right-3 sm:right-6 w-[min(300px,calc(100vw-1.5rem))] sm:w-[350px] md:w-[360px] max-w-[300px] sm:max-w-[360px] h-[340px] sm:h-[480px] max-h-[calc(100dvh-8rem)] sm:max-h-[calc(100dvh-6.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/90 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 transition-colors"
+          aria-modal="true"
+          aria-label="Dr. Seema's Clinical Assistant (AI)"
+          className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 w-full sm:w-[420px] md:w-[440px] h-[100dvh] sm:h-[620px] sm:max-h-[calc(100dvh-7.5rem)] bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200/90 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in duration-200 transition-colors"
         >
-          {/* Header - Compact & refined */}
-          <div className="px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
-            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          {/* Header - Explicitly Labeled AI Assistant */}
+          <div className="px-4 py-3 sm:px-4 sm:py-3.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative shrink-0">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-[10px] sm:text-xs shadow-xs">
+                <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-serif font-bold text-sm shadow-xs">
                   SG
                 </div>
-                <span className="absolute bottom-0 right-0 w-1.5 h-1.5 bg-emerald-400 border border-[#002D72] dark:border-slate-900 rounded-full" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#002D72] dark:border-slate-900 rounded-full" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <h2 className="font-serif font-semibold text-[11.5px] sm:text-sm text-white truncate">
-                    Dr. Seema’s Assistant
+                <div className="flex items-center gap-1.5">
+                  <h2 className="font-serif font-bold text-sm sm:text-base text-white truncate">
+                    Dr. Seema’s Assistant (AI)
                   </h2>
                   <span title="Verified Clinical Knowledge" className="inline-flex items-center">
-                    <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                   </span>
                 </div>
-                <p className="text-[9px] sm:text-[10px] text-blue-200 dark:text-slate-400 truncate">
-                  Care Partner Support · Johns Hopkins
+                <p className="text-xs text-blue-200 dark:text-slate-400 truncate">
+                  Automated Educational Guidance · Johns Hopkins
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={handleResetChat}
                 title="Restart chat"
                 aria-label="Restart chat"
-                className="p-1 sm:p-1.5 text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="min-w-10 min-h-10 flex items-center justify-center text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <RotateCcw className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={onClose}
                 title="Close assistant"
                 aria-label="Close assistant"
-                className="p-1 sm:p-1.5 text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="min-w-10 min-h-10 flex items-center justify-center text-blue-200 hover:text-white dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-white/10 dark:hover:bg-slate-800 transition cursor-pointer"
               >
-                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          {/* EMERGENCY BANNER: Slim emergency strip with expandable details */}
-          <div className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200/80 dark:border-amber-900/50 flex items-center justify-between text-[10px] sm:text-[11px] text-amber-950 dark:text-amber-200 shrink-0">
-            <div className="flex items-center gap-1.5 truncate">
-              <Phone className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-rose-600 dark:text-rose-400 shrink-0" />
-              <span className="truncate text-[10px] sm:text-[11px]">
+          {/* EMERGENCY BANNER: 12-14px readable emergency strip */}
+          <div className="px-3.5 py-2 sm:px-4 sm:py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200/80 dark:border-amber-900/50 flex items-center justify-between text-xs sm:text-sm text-amber-950 dark:text-amber-200 shrink-0">
+            <div className="flex items-center gap-2 truncate">
+              <Phone className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              <span className="truncate">
                 Emergency: <a href="tel:911" className="font-bold underline text-rose-700 dark:text-rose-400 hover:text-rose-800">911</a> · Clinic: <a href="tel:4109555147" className="font-semibold underline">(410) 955-5147</a>
               </span>
             </div>
             <button
               type="button"
               onClick={() => setShowUrgentNotice((prev) => !prev)}
-              className="text-[9px] sm:text-[9.5px] font-medium text-amber-800 dark:text-amber-300 hover:underline shrink-0 ml-1 cursor-pointer"
+              className="text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline shrink-0 ml-1.5 cursor-pointer"
               title="Clinical disclaimer"
             >
               {showUrgentNotice ? 'Hide' : 'Notice'}
@@ -459,21 +367,25 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           </div>
 
           {showUrgentNotice && (
-            <div className="p-2 bg-amber-100/90 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800/60 text-[10px] leading-snug text-amber-950 dark:text-amber-100 shrink-0 animate-in fade-in duration-150">
-              <strong className="font-semibold block">Not for urgent messages:</strong>
-              Provides educational guidance only. For emergencies, message in EPIC or call clinic line directly.
+            <div className="p-3 bg-amber-100/90 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800/60 text-xs sm:text-sm leading-relaxed text-amber-950 dark:text-amber-100 shrink-0 animate-in fade-in duration-150">
+              <strong className="font-semibold block">Not for emergency messages:</strong>
+              This AI assistant provides educational guidance based on Johns Hopkins care guides. For emergencies, message through EPIC or dial 911 directly.
             </div>
           )}
 
           {/* Chat Message Stream */}
-          <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 text-[11.5px] sm:text-[12.5px] min-h-0 bg-slate-50/70 dark:bg-slate-950">
+          <div
+            role="log"
+            aria-live="polite"
+            className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 min-h-0 bg-slate-50/70 dark:bg-slate-950"
+          >
             {messages.map((msg) => {
               const isUser = msg.sender === 'user';
 
               return (
                 <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                   <div
-                    className={`max-w-[90%] sm:max-w-[85%] rounded-2xl p-2 sm:p-2.5 leading-relaxed space-y-1.5 font-sans ${
+                    className={`max-w-[92%] sm:max-w-[88%] rounded-2xl p-3 sm:p-3.5 leading-relaxed space-y-2 font-sans ${
                       isUser
                         ? 'bg-[#002D72] dark:bg-blue-600 text-white rounded-br-xs shadow-xs'
                         : msg.isMedicationRefusal
@@ -483,7 +395,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                   >
                     {/* Message Body */}
                     {isUser ? (
-                      <div className="whitespace-pre-line select-text text-[11.5px] sm:text-[12.5px] leading-relaxed font-sans">
+                      <div className="whitespace-pre-line select-text text-base leading-relaxed font-sans">
                         {msg.text}
                       </div>
                     ) : (
@@ -492,19 +404,19 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
                     {/* Medication Refusal Emergency Contacts */}
                     {msg.isMedicationRefusal && (
-                      <div className="pt-1.5 flex flex-col gap-1.5">
+                      <div className="pt-2 flex flex-col gap-2">
                         <a
                           href="tel:4109555147"
-                          className="inline-flex items-center justify-center gap-1 bg-rose-600 hover:bg-rose-700 text-white font-medium px-2 py-1 rounded-lg text-[10.5px] sm:text-xs transition"
+                          className="min-h-11 inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-2 rounded-xl text-sm transition"
                         >
-                          <Phone className="w-3 h-3" />
+                          <Phone className="w-4 h-4" />
                           <span>Clinic: (410) 955-5147 (opt. 2)</span>
                         </a>
                         <a
                           href="tel:4105024163"
-                          className="inline-flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-900 text-white font-medium px-2 py-1 rounded-lg text-[10.5px] sm:text-xs transition"
+                          className="min-h-11 inline-flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-2 rounded-xl text-sm transition"
                         >
-                          <Phone className="w-3 h-3" />
+                          <Phone className="w-4 h-4" />
                           <span>Support Line: (410) 502-4163</span>
                         </a>
                       </div>
@@ -512,12 +424,12 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
                     {/* Institutional Grounded Guide Citation */}
                     {!isUser && (msg.matchedGuide || (msg.citedResources && msg.citedResources.length > 0)) && (
-                      <div className="pt-2 pb-0.5 border-t border-slate-100 dark:border-slate-800 space-y-1 text-[10px]">
-                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[9px]">
-                          <FileText className="w-3 h-3 text-[#002D72] dark:text-sky-400 shrink-0" />
+                      <div className="pt-2.5 pb-0.5 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
+                          <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
                           <span>Clinical Sources:</span>
                         </div>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
                           {(msg.citedResources && msg.citedResources.length > 0
                             ? msg.citedResources
                             : msg.matchedGuide
@@ -530,9 +442,9 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                               }]
                             : []
                           ).map((res, cIdx) => (
-                            <div key={`${res.id || 'res'}-p${res.page ?? ''}-${cIdx}`} className="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-1 px-1.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
-                              <span className="truncate text-slate-700 dark:text-slate-300">
-                                <span className="font-semibold text-[#002D72] dark:text-sky-300 mr-1">[{cIdx + 1}]</span>
+                            <div key={`${res.id || 'res'}-p${res.page ?? ''}-${cIdx}`} className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 p-1.5 px-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                              <span className="truncate text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
+                                <span className="font-semibold text-[#002D72] dark:text-sky-300 mr-1.5">[{cIdx + 1}]</span>
                                 {res.title}
                                 {res.page ? ` (Page ${res.page})` : ''}
                               </span>
@@ -541,11 +453,11 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                                   href={res.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-0.5 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-medium ml-1"
+                                  className="inline-flex items-center gap-1 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-semibold text-xs ml-1"
                                   title="Open institutional guide PDF at page"
                                 >
                                   <span>PDF</span>
-                                  <ExternalLink className="w-2.5 h-2.5" />
+                                  <ExternalLink className="w-3 h-3" />
                                 </a>
                               )}
                             </div>
@@ -556,20 +468,20 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
                     {/* Related Follow-Up Topics */}
                     {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
-                      <div className="pt-1 border-t border-slate-100 dark:border-slate-800 space-y-1">
-                        <span className="text-[8.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                           Suggested Questions:
                         </span>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
                           {msg.suggestedQuestions.map((q, idx) => (
                             <button
                               key={idx}
                               type="button"
                               onClick={() => handleSend(q)}
-                              className="text-left text-[10.5px] sm:text-[11px] bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 text-slate-700 dark:text-slate-200 p-1 px-1.5 rounded-lg border border-slate-200/70 dark:border-slate-700/70 transition cursor-pointer flex items-center justify-between gap-1 leading-snug group"
+                              className="text-left text-sm bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 text-slate-700 dark:text-slate-200 p-2.5 sm:p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70 transition cursor-pointer flex items-center justify-between gap-2 leading-snug group min-h-11"
                             >
                               <span className="line-clamp-2">{q}</span>
-                              <ChevronRight className="w-3 h-3 shrink-0 text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-300 transition-colors" />
+                              <ChevronRight className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-300 transition-colors" />
                             </button>
                           ))}
                         </div>
@@ -577,7 +489,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                     )}
 
                     <div
-                      className={`text-[8.5px] sm:text-[9px] pt-0.5 ${
+                      className={`text-xs pt-1 ${
                         isUser ? 'text-blue-200 text-right' : 'text-slate-400 dark:text-slate-500'
                       }`}
                     >
@@ -589,8 +501,8 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             })}
 
             {loading && (
-              <div className="flex items-center gap-1.5 p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-[85%] text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 shadow-2xs">
-                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              <div className="flex items-center gap-2 p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 max-w-[85%] text-xs sm:text-sm text-slate-600 dark:text-slate-300 shadow-2xs">
+                <div className="w-3.5 h-3.5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
                 <span>Searching care protocols...</span>
               </div>
             )}
@@ -598,73 +510,73 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           </div>
 
           {/* Quick Topic Starter Pills */}
-          <div className="px-2 py-1 sm:px-2.5 sm:py-1.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-1 no-scrollbar shrink-0">
+          <div className="px-3 py-2 sm:px-3.5 sm:py-2.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-1.5 no-scrollbar shrink-0">
             <button
               type="button"
               onClick={() => handleSend('How do I de-escalate aggressive outbursts or agitation?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Aggression & agitation
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle sudden incontinence and toileting resistance?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Incontinence routine
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle severe apathy and lack of motivation?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Apathy & motivation
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I manage night wakefulness, sleep issues, and wandering?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Sleep & night pacing
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I manage compulsive behaviors and rituals?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Compulsive rituals
             </button>
             <button
               type="button"
               onClick={() => handleSend('What should family care partners know about hospice and comfort care in FTD?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Hospice & comfort care
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle bathing and shower resistance?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Bathing resistance
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle driving retirement safely?')}
-              className="text-[9.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Driving retirement
             </button>
           </div>
 
-          {/* Chat Input Bar - Streamlined, ergonomic & uncluttered */}
-          <div className="p-1.5 sm:p-2 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+          {/* Chat Input Bar - 16px text-base (iOS zoom protection) + 48px target */}
+          <div className="p-2.5 sm:p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-center gap-1 sm:gap-1.5"
+              className="flex items-center gap-2"
             >
               <input
                 ref={inputRef}
@@ -672,21 +584,21 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 placeholder="Ask caregiving question..."
-                className="flex-1 h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-[13px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans"
+                className="flex-1 h-12 px-3.5 sm:px-4 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans"
               />
               <button
                 type="submit"
                 disabled={!inputQuery.trim() || loading}
-                className="w-8 h-8 sm:w-9 sm:h-9 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-600 rounded-xl transition shrink-0 flex items-center justify-center shadow-xs cursor-pointer"
+                className="w-12 h-12 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-600 rounded-xl transition shrink-0 flex items-center justify-center shadow-xs cursor-pointer"
                 aria-label="Send message"
               >
-                <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <Send className="w-5 h-5" />
               </button>
             </form>
 
-            <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] text-slate-400 dark:text-slate-500 pt-0.5 px-0.5">
-              <span>Hopkins Care Partner Connect</span>
-              <span>Crisis: <a href="tel:911" className="underline hover:text-rose-600">911</a></span>
+            <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-1 px-1">
+              <span>Hopkins Care Partner Connect (AI)</span>
+              <span>Crisis: <a href="tel:911" className="underline hover:text-rose-600 font-semibold">911</a></span>
             </div>
           </div>
         </div>

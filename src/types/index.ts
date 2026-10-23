@@ -102,6 +102,7 @@ export interface Post {
   createdAt: string;
   commentCount: number;
   upvotes: number;
+  isUpvoted?: boolean;
   phiAlerts?: PhiAlert[];
   condition?: Audience;
 }

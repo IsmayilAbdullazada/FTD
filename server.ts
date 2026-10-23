@@ -19,7 +19,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 
 type Condition = 'FTD' | 'AD';
 type Audience = Condition | 'BOTH';
@@ -2065,6 +2065,42 @@ app.post('/api/v1/cohorts', (req, res) => {
   res.status(201).json(newCohort);
 });
 
+// In-memory persistent upvote tracker per post and user
+const postUpvotes = new Map<string, Set<string>>();
+
+// Upvote / Toggle Helpful on Post
+app.post('/api/v1/posts/:id/upvote', (req, res) => {
+  const post = posts.find((p) => p.id === req.params.id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  const requester = getRequester(req);
+  const userId = req.body.userId || requester?.id || 'user-care-1';
+
+  if (!postUpvotes.has(post.id)) {
+    postUpvotes.set(post.id, new Set());
+  }
+  const userSet = postUpvotes.get(post.id)!;
+
+  let isUpvoted = false;
+  if (userSet.has(userId)) {
+    userSet.delete(userId);
+    post.upvotes = Math.max(0, post.upvotes - 1);
+    isUpvoted = false;
+  } else {
+    userSet.add(userId);
+    post.upvotes += 1;
+    isUpvoted = true;
+  }
+
+  res.json({
+    success: true,
+    upvotes: post.upvotes,
+    isUpvoted,
+  });
+});
+
 // Feed: Browse Posts (Strict Regional Isolation & RBAC)
 app.get('/api/v1/posts', (req, res) => {
   const requester = getRequester(req);
@@ -2131,6 +2167,7 @@ app.get('/api/v1/posts', (req, res) => {
       createdAt: p.createdAt,
       commentCount: comments.filter((c) => c.postId === p.id && c.status === 'APPROVED').length,
       upvotes: p.upvotes,
+      isUpvoted: postUpvotes.get(p.id)?.has(currentUserId) ?? false,
       allowUnmoderatedReplies: p.allowUnmoderatedReplies ?? false,
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? p.phiAlerts : undefined,
     };
@@ -2205,6 +2242,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
       createdAt: post.createdAt,
       commentCount: postComments.filter((c) => c.status === 'APPROVED').length,
       upvotes: post.upvotes,
+      isUpvoted: postUpvotes.get(post.id)?.has(currentUserId) ?? false,
       allowUnmoderatedReplies: post.allowUnmoderatedReplies ?? false,
     },
     comments: postComments,

@@ -109,9 +109,13 @@ export const Footer: React.FC<FooterProps> = () => {
       <footer data-site-footer className="relative z-10 bg-[#001D4A] dark:bg-[#030611] border-t-2 border-[#002D72] dark:border-slate-800 text-slate-200 font-sans mb-[calc(4rem+1px+env(safe-area-inset-bottom,0px))] xl:mb-0">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="grid gap-5 lg:grid-cols-2 lg:gap-10">
-            <div className="space-y-2">
-              <p className="text-lg leading-snug font-semibold text-white">Hopkins Care Partner Connect</p>
-              <p className="text-sm leading-relaxed text-blue-100">Department of Neurology · Division of Cognitive Neurology · Baltimore, MD</p>
+            <div className="flex items-start gap-4 sm:gap-5 min-w-0">
+              <img src="/website_logo.png" alt="Hopkins Care Partner Connect logo"
+                width={96} height={96} className="h-18 w-18 sm:h-24 sm:w-24 object-contain shrink-0" />
+              <div className="space-y-2 min-w-0">
+                <p className="text-lg leading-snug font-semibold text-white">Hopkins Care Partner Connect</p>
+                <p className="text-sm leading-relaxed text-blue-100">Department of Neurology · Division of Cognitive Neurology · Baltimore, MD</p>
+              </div>
             </div>
             <nav aria-label="Policies and patient rights" className="grid grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-1 content-start">
               {([

@@ -1333,7 +1333,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Left Column: Post list */}
               <div className="lg:col-span-4 space-y-2">
-                <div className="space-y-2 max-h-[65vh] overflow-y-auto overscroll-contain p-1">
+                <div className="space-y-2 p-1">
                   {queuePage.items.map((item, pageIndex) => {
                     const idx = queuePage.start + pageIndex;
                     const isSelected = idx === selectedIndex;

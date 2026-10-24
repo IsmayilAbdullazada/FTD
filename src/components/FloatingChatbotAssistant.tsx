@@ -32,7 +32,6 @@ interface ChatMessage {
   text: string;
   isMedicationRefusal?: boolean;
   discussionDraft?: { title: string; content: string };
-  suggestedQuestions?: string[];
   matchedGuide?: {
     id: string;
     title: string;
@@ -119,32 +118,20 @@ const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
 };
 
 const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
-  const isAD = user?.condition === 'AD';
-
-  const defaultSuggestedQuestions = isAD
-    ? [
-        'How to manage sundowning and evening confusion?',
-        'Managing repetitive questions with calm reassurance?',
-        'Communication strategies for progressive memory loss?',
-        'Home safety modifications to prevent wandering?',
-      ]
-    : [
-        'How to handle resistance during bathing?',
-        'Why blunt or rude remarks happen in bvFTD?',
-        'How to transition away from driving safely?',
-        'Managing sweet cravings & overeating?',
-      ];
-
-  const conditionDescription = isAD
-    ? "Alzheimer's and memory care"
-    : "Frontotemporal Dementia (FTD)";
+  const conditionDescription = user?.condition === 'AD'
+    ? "Alzheimer's disease (AD)"
+    : user?.condition === 'FTD'
+    ? 'Frontotemporal Dementia (FTD)'
+    : null;
+  const openingLine = conditionDescription
+    ? `Hello! I am your Care Companion, here to support you as a care partner supporting a loved one with ${conditionDescription}.`
+    : 'Hello! I am your Care Companion, here to support you as a care partner.';
 
   return {
     id: `msg-welcome-${Date.now()}`,
     sender: 'assistant',
-    text: `Hello! I am your Care Companion, here to support you 24/7 as a care partner supporting a loved one with ${conditionDescription}.\n\nI can find verified care guides and link you to the relevant pages. If no guide matches, I can help you prepare a discussion post.\n\nWhat is on your mind today?`,
+    text: `${openingLine}\n\nI can find verified care guides and link you to the relevant pages. If no guide matches, I can help you prepare a discussion post.\n\nWhat is on your mind today?`,
     timestamp: 'Now',
-    suggestedQuestions: defaultSuggestedQuestions,
   };
 };
 
@@ -289,7 +276,6 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         sender: 'assistant',
         text: res.answer,
         isMedicationRefusal: res.isMedicationRefusal,
-        suggestedQuestions: res.suggestedQuestions || [],
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,
         discussionDraft: res.discussionDraft,
@@ -526,7 +512,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
                     {/* Institutional Grounded Guide Citation */}
                     {!isUser && (msg.matchedGuide || (msg.citedResources && msg.citedResources.length > 0)) && (
-                      <div className="pt-2.5 pb-0.5 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+                      <div className="pt-2.5 pb-0.5 space-y-1.5 text-xs">
                         <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
                           <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
                           <span>Care Sources:</span>
@@ -568,28 +554,6 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       </div>
                     )}
 
-                    {/* Related Follow-Up Topics */}
-                    {msg.suggestedQuestions && msg.suggestedQuestions.length > 0 && (
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                          Suggested Questions:
-                        </span>
-                        <div className="flex flex-col gap-1.5">
-                          {msg.suggestedQuestions.map((q, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleSend(q)}
-                              className="text-left text-sm bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 text-slate-700 dark:text-slate-200 p-2.5 sm:p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70 transition cursor-pointer flex items-center justify-between gap-2 leading-snug group min-h-11"
-                            >
-                              <span className="line-clamp-2">{q}</span>
-                              <ChevronRight className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-300 transition-colors" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     <div
                       className={`text-xs pt-1 ${
                         isUser ? 'text-blue-200 text-right' : 'text-slate-400 dark:text-slate-500'
@@ -609,66 +573,6 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               </div>
             )}
             <div ref={messagesEndRef} />
-          </div>
-
-          {/* Quick Topic Starter Pills */}
-          <div className="px-3 py-2 sm:px-3.5 sm:py-2.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto flex items-center gap-1.5 no-scrollbar shrink-0">
-            <button
-              type="button"
-              onClick={() => handleSend('How do I de-escalate aggressive outbursts or agitation?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Aggression & agitation
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How do I handle sudden incontinence and toileting resistance?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Incontinence routine
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How do I handle severe apathy and lack of motivation?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Apathy & motivation
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How do I manage night wakefulness, sleep issues, and wandering?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Sleep & night pacing
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How do I manage compulsive behaviors and rituals?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Compulsive rituals
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('What should family care partners know about hospice and comfort care in FTD?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Hospice & comfort care
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How do I handle bathing and shower resistance?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Bathing resistance
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSend('How do I handle driving retirement safely?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
-            >
-              Driving retirement
-            </button>
           </div>
 
           {/* Chat Input Bar - 16px text-base (iOS zoom protection) + 48px target */}

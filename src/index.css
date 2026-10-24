@@ -197,3 +197,12 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* A brief introduction highlight; never animate when reduced motion is requested. */
+@keyframes companion-attention {
+  0% { box-shadow: 0 0 0 0 rgb(59 130 246 / 35%); }
+  100% { box-shadow: 0 0 0 10px rgb(59 130 246 / 0%); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .companion-attention { animation: companion-attention 2s ease-out 2; }
+}

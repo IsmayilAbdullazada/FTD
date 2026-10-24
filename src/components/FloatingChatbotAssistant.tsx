@@ -14,6 +14,7 @@ import {
   FileText,
   ExternalLink,
   HeartHandshake,
+  MessageCircleHeart,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrentUser } from '../types';
@@ -152,47 +153,41 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   const inputRef = useRef<HTMLInputElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const hintDismissedRef = useRef(false);
+  const wasOpenRef = useRef(isOpen);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(currentUser)]);
 
-  // Show gentle hint after 1.2s on page load if user hasn't dismissed it this session and chat is closed
-  useEffect(() => {
-    let timer: any;
-    try {
-      const dismissed = sessionStorage.getItem('jh_companion_hint_dismissed');
-      if (!dismissed && !isOpen) {
-        timer = setTimeout(() => {
-          setShowHint(true);
-        }, 1200);
-      }
-    } catch {
-      if (!isOpen) {
-        timer = setTimeout(() => setShowHint(true), 1200);
-      }
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
-
-  // Dismiss hint when user opens the chat
+  // Introduce the companion once per session, without interrupting moderators.
   useEffect(() => {
     if (isOpen) {
+      hintDismissedRef.current = true;
       setShowHint(false);
+      try { sessionStorage.setItem('jh_companion_hint_dismissed', 'true'); } catch {}
+      return;
     }
+    if (currentUser?.role !== 'CARE_PARTNER') { setShowHint(false); return; }
+    if (hintDismissedRef.current) return;
+    try {
+      if (sessionStorage.getItem('jh_companion_hint_dismissed')) return;
+    } catch {}
+    const timer = setTimeout(() => setShowHint(true), 1800);
+    return () => clearTimeout(timer);
+  }, [isOpen, currentUser?.role]);
+
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) triggerRef.current?.focus();
+    wasOpenRef.current = isOpen;
   }, [isOpen]);
 
-  // Auto-dismiss hint after 20 seconds so it doesn't linger forever
   useEffect(() => {
-    if (showHint) {
-      const autoDismiss = setTimeout(() => {
-        setShowHint(false);
-      }, 20000);
-      return () => clearTimeout(autoDismiss);
-    }
+    if (!showHint) return;
+    const timer = setTimeout(() => handleDismissHint(), 20000);
+    return () => clearTimeout(timer);
   }, [showHint]);
 
   const handleDismissHint = () => {
+    hintDismissedRef.current = true;
     setShowHint(false);
     try {
       sessionStorage.setItem('jh_companion_hint_dismissed', 'true');
@@ -214,8 +209,9 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   // Keyboard shortcut listener to close on Escape (removed click-outside to prevent accidental closures)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
-        onClose();
+      if (event.key === 'Escape') {
+        if (isOpen) onClose();
+        else if (showHint) { handleDismissHint(); triggerRef.current?.focus(); }
       }
     };
 
@@ -223,7 +219,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showHint]);
 
   // Scroll to bottom when messages update
   useEffect(() => {
@@ -311,54 +307,35 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       {/* 1. FLOATING CHATBOT TRIGGER BUTTON & HINT CALLOUT */}
       {/* ------------------------------------------------------------- */}
       <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto flex items-end justify-end">
-        {/* Friendly Inactivity / First-Visit Hint Speech Bubble */}
         {showHint && !isOpen && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="absolute bottom-16 right-0 sm:bottom-1 sm:right-16 sm:mr-3 w-[270px] sm:w-[290px] bg-white dark:bg-slate-900 border border-blue-200/90 dark:border-blue-900/80 rounded-2xl shadow-2xl p-3.5 text-slate-800 dark:text-slate-100 z-50 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          <aside
+            aria-label="Care Companion introduction"
+            className="absolute bottom-full mb-3 right-0 w-[min(320px,calc(100vw-1.5rem))] rounded-2xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-xl text-slate-800 dark:text-slate-100"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div
-                onClick={handleOpenFromHint}
-                className="flex-1 cursor-pointer group"
-              >
-                <div className="flex items-center gap-1.5 text-[#002D72] dark:text-sky-400 font-semibold text-xs mb-1">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-500 animate-pulse" />
-                  <span>Care Companion</span>
-                </div>
-                <p className="text-xs font-semibold text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-sky-300 transition-colors">
-                  Have a question on your mind?
-                </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                  Find care guide pages or ask the community a question.
-                </p>
-                <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#002D72] dark:text-sky-400 group-hover:underline">
-                  <span>Ask a question</span>
-                  <ChevronRight className="w-3 h-3" />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDismissHint();
-                }}
-                title="Dismiss hint"
-                aria-label="Dismiss hint"
-                className="w-6 h-6 -mr-1 -mt-1 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Speech bubble pointer arrow */}
-            {/* Desktop: arrow points right to button */}
-            <div className="hidden sm:block absolute top-1/2 -right-2 -translate-y-1/2 w-0 h-0 border-y-8 border-y-transparent border-l-8 border-l-white dark:border-l-slate-900" />
-            {/* Mobile: arrow points down to button */}
-            <div className="sm:hidden absolute -bottom-2 right-6 w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-white dark:border-t-slate-900" />
-          </div>
+            <button
+              type="button"
+              onClick={() => { handleDismissHint(); triggerRef.current?.focus(); }}
+              title="Dismiss introduction"
+              aria-label="Dismiss Care Companion introduction"
+              className="absolute top-1 right-1 min-w-11 min-h-11 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <p className="pr-8 text-base font-semibold text-[#002D72] dark:text-sky-300">
+              Have a caregiving question?
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              Ask Care Companion first. Find helpful guide pages and community discussions before starting a new post.
+            </p>
+            <button
+              type="button"
+              onClick={handleOpenFromHint}
+              className="mt-3 min-h-11 inline-flex items-center gap-2 rounded-lg bg-[#002D72] dark:bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            >
+              Ask Care Companion <ChevronRight className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <span aria-hidden="true" className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 border-b border-r border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
+          </aside>
         )}
 
         <button
@@ -366,22 +343,20 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           onClick={onToggle}
           type="button"
           aria-label={isOpen ? 'Close Care Companion' : 'Open Care Companion'}
-          title={isOpen ? 'Close Care Companion' : 'Open Care Companion · 24/7 Support'}
-          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 ${
+          aria-expanded={isOpen}
+          aria-controls="care-companion-dialog"
+          title={isOpen ? 'Close Care Companion' : 'Ask Care Companion'}
+          className={`relative min-h-14 inline-flex items-center justify-center gap-2.5 rounded-2xl shadow-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:focus-visible:ring-blue-800 ${
             isOpen
-              ? 'bg-slate-800 dark:bg-slate-700 text-white'
-              : 'bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
+              ? 'w-14 bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700'
+              : 'pl-4 pr-5 bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
           }`}
         >
-          {isOpen ? (
-            <X className="w-6 h-6 transition-transform duration-200" />
-          ) : (
+          {isOpen ? <X className="w-6 h-6" aria-hidden="true" /> : (
             <>
-              <div className="relative flex items-center justify-center">
-                <MessageSquare className="w-6 h-6" />
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 absolute -top-1.5 -right-1.5 animate-pulse" />
-              </div>
-              <span className="absolute top-1 right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+              {showHint && <span aria-hidden="true" className="companion-attention absolute inset-0 rounded-2xl pointer-events-none" />}
+              <MessageCircleHeart className="w-7 h-7 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+              <span className="text-sm font-semibold whitespace-nowrap">Ask Care Companion</span>
             </>
           )}
         </button>
@@ -393,10 +368,11 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       {isOpen && (
         <div
           ref={windowRef}
+          id="care-companion-dialog"
           role="dialog"
           aria-modal="true"
           aria-label="Care Companion (Johns Hopkins)"
-          className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 w-full sm:w-[420px] md:w-[440px] h-[100dvh] sm:h-[620px] sm:max-h-[calc(100dvh-7.5rem)] bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200/90 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in duration-200 transition-colors"
+          className="fixed inset-0 sm:inset-auto sm:bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] xl:bottom-24 sm:right-6 w-full sm:w-[420px] md:w-[440px] h-[100dvh] sm:h-[620px] sm:max-h-[calc(100dvh-10rem)] xl:max-h-[calc(100dvh-7.5rem)] bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200/90 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in duration-200 transition-colors"
         >
           {/* Header - Care Companion */}
           <div className="px-4 py-3 sm:px-4 sm:py-3.5 bg-[#002D72] dark:bg-slate-900 text-white border-b border-blue-900/50 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-xs">

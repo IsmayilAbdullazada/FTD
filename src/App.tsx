@@ -41,6 +41,7 @@ export default function App() {
 
   // Modals
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [assistantPrefill, setAssistantPrefill] = useState<{ query: string } | null>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAuditOpen, setIsAuditOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -316,6 +317,10 @@ export default function App() {
             cohorts={cohorts}
             initialTitle={composerInitialTitle}
             initialContent={composerInitialContent}
+            onOpenAssistant={(query) => {
+              setAssistantPrefill({ query });
+              setIsAssistantOpen(true);
+            }}
             onPostSubmitted={() => {
               setComposerInitialTitle('');
               setComposerInitialContent('');
@@ -403,6 +408,7 @@ export default function App() {
       <FloatingChatbotAssistant
         currentUser={currentUser}
         isOpen={isAssistantOpen}
+        prefillRequest={assistantPrefill}
         onToggle={() => setIsAssistantOpen((prev) => !prev)}
         onClose={() => setIsAssistantOpen(false)}
         onCreateDiscussion={(draft) => {

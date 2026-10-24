@@ -25,6 +25,7 @@ interface FloatingChatbotAssistantProps {
   isOpen: boolean;
   onToggle: () => void;
   onClose: () => void;
+  prefillRequest?: { query: string } | null;
   onCreateDiscussion: (draft: { title: string; content: string }) => void;
 }
 
@@ -144,6 +145,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   onToggle,
   onClose,
   onCreateDiscussion,
+  prefillRequest,
 }) => {
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -208,6 +210,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   useEffect(() => {
     setMessages([createWelcomeMessage(currentUser)]);
   }, [currentUser?.id, currentUser?.condition]);
+
+  useEffect(() => {
+    if (prefillRequest) setInputQuery(prefillRequest.query);
+  }, [prefillRequest]);
 
   // Keyboard shortcut listener to close on Escape (removed click-outside to prevent accidental closures)
   useEffect(() => {
@@ -352,14 +358,13 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           className={`relative min-h-14 inline-flex items-center justify-center gap-2.5 rounded-2xl shadow-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:focus-visible:ring-blue-800 ${
             isOpen
               ? 'w-14 bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700'
-              : 'w-14 sm:w-auto sm:pl-4 sm:pr-5 bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
+              : 'w-14 bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
           }`}
         >
           {isOpen ? <X className="w-6 h-6" aria-hidden="true" /> : (
             <>
               {showHint && <span aria-hidden="true" className="companion-attention absolute inset-0 rounded-2xl pointer-events-none" />}
               <MessageCircleHeart className="w-7 h-7 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-              <span className="hidden sm:inline text-sm font-semibold whitespace-nowrap">Ask Care Companion</span>
             </>
           )}
         </button>

@@ -10,6 +10,7 @@ import {
   ArrowRight,
   ShieldCheck,
   MessageSquare,
+  MessageCircleHeart,
   AlertTriangle,
   Search,
   Phone,
@@ -31,6 +32,7 @@ interface PostComposerProps {
   onCancel: () => void;
   onOpenResource: (resourceId: string) => void;
   onOpenDiscussion: (postId: string) => void;
+  onOpenAssistant: (query: string) => void;
 }
 
 export interface DiscussionSearchItem {
@@ -486,6 +488,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   onCancel,
   onOpenResource,
   onOpenDiscussion,
+  onOpenAssistant,
 }) => {
   const [title, setTitle] = useState(initialTitle || '');
   const [content, setContent] = useState(initialContent || '');
@@ -819,6 +822,23 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               required
             />
           </div>
+
+          <aside aria-label="Try Care Companion before posting"
+            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 p-4">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <MessageCircleHeart aria-hidden="true" className="w-6 h-6 shrink-0 text-[#002D72] dark:text-sky-400 mt-0.5" />
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-[#002D72] dark:text-sky-300">Before you post, try Care Companion</h2>
+                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                  Find guide pages and discussions that may help. Your post draft will stay here while you look.
+                </p>
+              </div>
+            </div>
+            <button type="button" onClick={() => onOpenAssistant([title.trim(), content.trim()].filter(Boolean).join(' — ').replace(/\s+/g, ' '))}
+              className="min-h-11 shrink-0 rounded-lg bg-[#002D72] dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+              Try Care Companion
+            </button>
+          </aside>
 
           {/* Audience selection */}
           <div className="space-y-1.5">

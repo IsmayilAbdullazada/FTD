@@ -106,53 +106,31 @@ export const Footer: React.FC<FooterProps> = () => {
 
   return (
     <>
-      <footer className="bg-[#001D4A] dark:bg-[#030611] border-t-2 border-[#002D72] dark:border-slate-800 text-slate-300 dark:text-slate-400 pt-5 sm:pt-5 pb-32 sm:pb-32 md:pb-36 xl:pt-5 xl:pb-5 text-xs font-sans transition-colors shadow-inner relative z-10">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-6 text-center md:text-left">
-            {/* Institutional Attribution Group */}
-            <div className="space-y-1 min-w-0">
-              <p className="text-[11px] sm:text-xs text-white dark:text-slate-200 font-medium leading-normal">
-                © 2026 The Johns Hopkins University, The Johns Hopkins Hospital, and Johns Hopkins Health System. All rights reserved.
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-blue-200/80 dark:text-slate-400 leading-normal">
-                Department of Neurology · Division of Cognitive Neurology · Baltimore, MD
-              </p>
+      <footer data-site-footer className="relative z-10 bg-[#001D4A] dark:bg-[#030611] border-t-2 border-[#002D72] dark:border-slate-800 text-slate-200 font-sans mb-[calc(4rem+1px+env(safe-area-inset-bottom,0px))] xl:mb-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="grid gap-5 lg:grid-cols-2 lg:gap-10">
+            <div className="space-y-2">
+              <p className="text-lg leading-snug font-semibold text-white">Hopkins Care Partner Connect</p>
+              <p className="text-sm leading-relaxed text-blue-100">Department of Neurology · Division of Cognitive Neurology · Baltimore, MD</p>
             </div>
-
-            {/* Legal & Compliance Links Group */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-end gap-x-2.5 sm:gap-x-3 gap-y-1 text-[11px] text-slate-300 dark:text-slate-400 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActivePolicy('privacy')}
-                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
-              >
-                Privacy Policy
-              </button>
-              <span className="text-blue-300/40 dark:text-slate-700 select-none" aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => setActivePolicy('npp')}
-                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
-              >
-                Notice of Privacy Practices
-              </button>
-              <span className="text-blue-300/40 dark:text-slate-700 select-none" aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => setActivePolicy('nondiscrimination')}
-                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
-              >
-                Non-Discrimination Policy
-              </button>
-              <span className="text-blue-300/40 dark:text-slate-700 select-none" aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => setActivePolicy('rights')}
-                className="hover:text-white dark:hover:text-sky-300 transition cursor-pointer underline-offset-2 hover:underline focus:outline-hidden focus-visible:underline"
-              >
-                Patient Rights
-              </button>
-            </div>
+            <nav aria-label="Policies and patient rights" className="grid grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-1 content-start">
+              {([
+                ['privacy', 'Privacy Policy'],
+                ['npp', 'Notice of Privacy Practices'],
+                ['nondiscrimination', 'Non-Discrimination Policy'],
+                ['rights', 'Patient Rights'],
+              ] as [Exclude<PolicyKey, null>, string][]).map(([key, label]) => (
+                <button key={key} type="button" onClick={() => setActivePolicy(key)}
+                  className="min-h-11 flex items-start py-2 text-left text-base leading-normal text-blue-100 hover:text-white underline underline-offset-4 decoration-blue-300/50 hover:decoration-white rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#001D4A]">
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="mt-5 sm:mt-6 border-t border-blue-200/20 pt-4">
+            <p className="text-sm leading-relaxed text-blue-100/90">
+              © 2026 The Johns Hopkins University, The Johns Hopkins Hospital, and Johns Hopkins Health System. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

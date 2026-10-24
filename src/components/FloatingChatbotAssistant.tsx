@@ -17,6 +17,7 @@ import {
   MessageCircleHeart,
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useFooterClearance } from '../hooks/useFooterClearance';
 import { CurrentUser } from '../types';
 
 interface FloatingChatbotAssistantProps {
@@ -153,6 +154,8 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   const inputRef = useRef<HTMLInputElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const launcherRef = useRef<HTMLDivElement>(null);
+  const footerOffset = useFooterClearance(launcherRef);
   const hintDismissedRef = useRef(false);
   const wasOpenRef = useRef(isOpen);
 
@@ -306,8 +309,8 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       {/* ------------------------------------------------------------- */}
       {/* 1. FLOATING CHATBOT TRIGGER BUTTON & HINT CALLOUT */}
       {/* ------------------------------------------------------------- */}
-      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto flex items-end justify-end">
-        {showHint && !isOpen && (
+      <div ref={launcherRef} style={{ transform: `translateY(-${footerOffset}px)` }} className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto flex items-end justify-end">
+        {showHint && !isOpen && footerOffset === 0 && (
           <aside
             aria-label="Care Companion introduction"
             className="absolute bottom-full mb-3 right-0 w-[min(320px,calc(100vw-1.5rem))] rounded-2xl border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-xl text-slate-800 dark:text-slate-100"
@@ -349,14 +352,14 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           className={`relative min-h-14 inline-flex items-center justify-center gap-2.5 rounded-2xl shadow-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300 dark:focus-visible:ring-blue-800 ${
             isOpen
               ? 'w-14 bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700'
-              : 'pl-4 pr-5 bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
+              : 'w-14 sm:w-auto sm:pl-4 sm:pr-5 bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
           }`}
         >
           {isOpen ? <X className="w-6 h-6" aria-hidden="true" /> : (
             <>
               {showHint && <span aria-hidden="true" className="companion-attention absolute inset-0 rounded-2xl pointer-events-none" />}
               <MessageCircleHeart className="w-7 h-7 shrink-0" strokeWidth={1.8} aria-hidden="true" />
-              <span className="text-sm font-semibold whitespace-nowrap">Ask Care Companion</span>
+              <span className="hidden sm:inline text-sm font-semibold whitespace-nowrap">Ask Care Companion</span>
             </>
           )}
         </button>

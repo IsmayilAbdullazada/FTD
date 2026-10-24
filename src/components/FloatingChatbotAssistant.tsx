@@ -278,7 +278,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         isMedicationRefusal: res.isMedicationRefusal,
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,
-        discussionDraft: res.discussionDraft,
+        discussionDraft: res.discussionDraft || { title: '', content: q.trim() },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
@@ -496,23 +496,12 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       <FormattedMessageText text={msg.text} />
                     ) : null}
 
-                    {msg.discussionDraft && (
-                      <a
-                        href="?tab=compose"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          onCreateDiscussion(msg.discussionDraft!);
-                        }}
-                        className="inline-flex items-center gap-2 min-h-11 px-3 py-2 rounded-lg bg-[#002D72] text-white font-semibold text-sm hover:bg-[#001D4A]"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        Create a discussion post
-                      </a>
-                    )}
-
                     {/* Institutional Grounded Guide Citation */}
                     {!isUser && (msg.matchedGuide || (msg.citedResources && msg.citedResources.length > 0)) && (
                       <div className="pt-2.5 pb-0.5 space-y-1.5 text-xs">
+                        <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
+                          You may find what you're looking for on these guide pages.
+                        </p>
                         <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
                           <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
                           <span>Care Sources:</span>
@@ -552,6 +541,26 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {msg.discussionDraft && (msg.citedResources?.length || msg.matchedGuide) && (
+                      <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                        Still haven't found what you need? Ask the community by creating a discussion post.
+                      </p>
+                    )}
+
+                    {msg.discussionDraft && (
+                      <a
+                        href="?tab=compose"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onCreateDiscussion(msg.discussionDraft!);
+                        }}
+                        className="inline-flex items-center gap-2 min-h-11 px-3 py-2 rounded-lg bg-[#002D72] text-white font-semibold text-sm hover:bg-[#001D4A]"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Create a discussion post
+                      </a>
                     )}
 
                     <div

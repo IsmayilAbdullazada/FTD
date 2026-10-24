@@ -405,7 +405,7 @@ const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
         <div className="flex items-center gap-2">
           <Search className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
           <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Posts that may be similar</span>
-          <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-950/80 border border-transparent dark:border-blue-800/60 px-2 py-0.5 rounded-full">
+          <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-950/80 border border-transparent dark:border-blue-800/60 px-2 py-0.5 rounded-md">
             {matches.length}
           </span>
         </div>
@@ -652,16 +652,16 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
       {submittedPostData ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-9 text-center space-y-5 shadow-xs animate-in fade-in transition-colors">
-          <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/60 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-2xs">
+          <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/60 rounded-2xl flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-2xs">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div className="space-y-2">
             <h2 className="font-serif text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
-              Question Submitted for Clinical Review
+              Question Submitted for Review
             </h2>
             <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base max-w-md mx-auto leading-relaxed font-sans">
-              Thank you, {currentUser.firstName}. Your question has been safely received by Dr. Seema Gulyani.
+              Thank you, {currentUser.firstName}. Your question has been safely received and is now in review.
             </p>
           </div>
 
@@ -679,7 +679,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             </div>
             <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-emerald-800 dark:text-emerald-400 text-xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Personal details are automatically verified & clinical safety checked</span>
+              <span>Personal details are verified and privacy protected before publishing</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
               <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
@@ -724,7 +724,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               Ask a Question
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Connect with fellow care partners and receive guidance verified by Dr. Seema Gulyani.
+              Connect with fellow care partners and receive safe, verified guidance.
             </p>
           </div>
 
@@ -920,7 +920,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Community & Clinical Guidance ({activePreviewPost.replies.length})
+                    Community & Moderator Guidance ({activePreviewPost.replies.length})
                   </h4>
                 </div>
 
@@ -929,19 +929,19 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 ) : (
                   <div className="space-y-2.5">
                     {activePreviewPost.replies.map((reply) => {
-                      const isDrSeema = reply.authorHandle.includes('Dr. Seema') || reply.authorBadge?.includes('Clinician');
+                      const isModerator = reply.authorHandle.includes('Moderator') || reply.authorHandle.includes('Dr. Seema') || reply.authorBadge?.includes('Moderator') || reply.authorBadge?.includes('Clinician');
                       return (
                         <div
                           key={reply.id}
                           className={`p-3.5 rounded-xl border text-sm leading-relaxed space-y-1.5 ${
-                            isDrSeema
+                            isModerator
                               ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100'
                               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
                           }`}
                         >
                           <div className="flex items-center justify-between text-xs">
-                            <span className={`font-semibold ${isDrSeema ? 'text-[#002D72] dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                              {reply.authorHandle} {isDrSeema && '⭐'}
+                            <span className={`font-semibold ${isModerator ? 'text-[#002D72] dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {reply.authorHandle} {isModerator && '⭐'}
                             </span>
                             {reply.authorBadge && (
                               <span className="text-xs text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-medium">

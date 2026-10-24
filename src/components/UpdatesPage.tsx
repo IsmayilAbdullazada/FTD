@@ -122,10 +122,10 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
-            Updates (Clinical or Scientific)
+            Updates (Research &amp; Science)
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-            Clinical trials, newly approved medications, scientific discoveries, and announcements from the clinic.
+            Research studies, newly approved medications, scientific discoveries, and announcements from the clinic.
           </p>
         </div>
         {canEdit && (
@@ -205,7 +205,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${meta.badge}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-semibold ${meta.badge}`}>
                       <meta.Icon className="w-3.5 h-3.5" />
                       {meta.label}
                     </span>
@@ -241,7 +241,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
                     <span className="text-slate-500 dark:text-slate-400 font-medium">{CONDITION_LABEL[u.condition]}</span>
                     {u.category === 'CLINICAL_TRIAL' && u.trialStatus && (
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
                           u.trialStatus === 'RECRUITING'
                             ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
@@ -344,7 +344,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({ currentUse
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Add Clinical or Scientific Update</h3>
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Add Research or Medical Update</h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Visible to the selected group once published.</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition">

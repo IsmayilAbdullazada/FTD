@@ -222,7 +222,7 @@ export const INITIAL_RESOURCES: ClinicalResource[] = [
 
 Care partners can use this resource to better understand aggressive behavior, recognize situations in which it occurs, and consider how to respond in a calm and safety-conscious way. When documenting difficult episodes, it may help to note what happened before the behavior, the surrounding environment, and how the situation was resolved.
 
-Behavior changes that are new, severe, or pose a safety risk should be discussed with an appropriate healthcare professional. This resource is intended to support understanding and caregiving, not replace individualized clinical guidance.`,
+Behavior changes that are new, severe, or pose a safety risk should be discussed with an appropriate healthcare professional. This resource is intended to support understanding and caregiving, not replace individualized professional guidance.`,
     fileAttachmentUrl: '/resources/Managing-Aggressive-Behavior.pdf',
     diseaseDomain: 'FTD',
     category: 'BEHAVIORAL_AGITATION',
@@ -433,7 +433,7 @@ When a behavior raises concerns, discuss the situation with a qualified healthca
       'FTD-related changes in judgment and impulse control may affect social boundaries.',
       'Approach sensitive situations with attention to dignity, consent, and safety.',
       'Avoid assuming that a behavior has a single cause without professional assessment.',
-      'Seek individualized clinical guidance when behavior creates distress or risk.'
+      'Seek individualized professional guidance when behavior creates distress or risk.'
     ],
     createdAt: '2026-10-22T12:00:00Z'
   },
@@ -795,7 +795,7 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-1',
     postId: 'post-1',
-    content: 'Seema Gulyani: Remember the "Towel Bathing" protocol listed in our clinical resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
+    content: 'Seema Gulyani: Remember the "Towel Bathing" protocol listed in our care resources. Water spraying directly on the face triggers an involuntary fight-or-flight reflex in frontal lobe damage.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
@@ -951,7 +951,7 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-13',
     postId: 'post-6',
-    content: 'Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified clinical guidance for reference).',
+    content: 'Seema Gulyani: Excellent peer strategies. Frontal lobe anosognosia (lack of insight) means logic will not convince the patient. Blame the doctor or the state MVA, remove keys, and disable the vehicle physically. (Closing thread to preserve verified care guidance for reference).',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',
@@ -1029,7 +1029,7 @@ export const INITIAL_COMMENTS: Comment[] = [
   {
     id: 'comm-19',
     postId: 'post-9',
-    content: 'Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is clinically proven to de-escalate anxiety.',
+    content: 'Seema Gulyani: Repetitive questioning is an auditory perseveration caused by loss of memory-updating circuits. Responding verbally reinforces the loop. The visual whiteboard technique mentioned is proven to de-escalate anxiety.',
     status: 'APPROVED',
     author: {
       userId: 'user-clinician-1',

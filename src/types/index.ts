@@ -86,6 +86,15 @@ export interface PhiAlert {
   explanation: string;
 }
 
+export interface ModeratorPrivateNote {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  message: string;
+  createdAt: string;
+}
+
 export interface Post {
   id: string;
   title: string;
@@ -105,6 +114,7 @@ export interface Post {
   isUpvoted?: boolean;
   phiAlerts?: PhiAlert[];
   condition?: Audience;
+  moderatorPrivateNotes?: ModeratorPrivateNote[];
 }
 
 export interface Comment {
@@ -139,6 +149,7 @@ export interface QueueItem {
   allowUnmoderatedReplies?: boolean;
   phiAlerts: PhiAlert[];
   createdAt: string;
+  moderatorPrivateNotes?: ModeratorPrivateNote[];
 }
 
 export interface ClinicalResource {

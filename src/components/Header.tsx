@@ -28,6 +28,7 @@ interface HeaderProps {
   pendingTriageCount: number;
   notifications: DirectMessage[];
   onOpenNotifications: () => void;
+  onOpenMyPosts?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -40,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   pendingTriageCount,
   notifications,
   onOpenNotifications,
+  onOpenMyPosts,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const isClinician = currentUser.role === 'CLINICIAN_MODERATOR';
@@ -170,118 +172,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <Phone className="w-4 h-4 text-[#002D72] dark:text-sky-400 shrink-0" />
                 <span className="hidden sm:inline">Call Clinic</span>
               </button>
-
-              {/* Call Directory Modal Dialog (Accessible & Non-overflowing on Mobile View) */}
-              {showCallMenu && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 animate-in fade-in duration-150"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="Direct Clinic Phone Lines"
-                >
-                  {/* Backdrop */}
-                  <div
-                    className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs"
-                    onClick={() => setShowCallMenu(false)}
-                  />
-
-                  {/* Modal Window Container */}
-                  <div className="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 z-10 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
-                    <div className="flex items-start justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-serif font-bold text-slate-900 dark:text-white text-base sm:text-lg">
-                            Direct Clinic Lines
-                          </h3>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-                            Mon–Fri 8:30–5 ET
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          Johns Hopkins FTD &amp; Memory Care Center
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowCallMenu(false)}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer min-w-8 min-h-8 flex items-center justify-center"
-                        aria-label="Close dialog"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="mt-3.5 space-y-2.5">
-                      {/* Clinic Appointment & Nursing Line */}
-                      <a
-                        href="tel:4109555147"
-                        className="min-h-12 w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
-                            <Phone className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
-                              Main Clinic Line (Option 2)
-                            </div>
-                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition break-all">
-                              (410) 955-5147
-                            </div>
-                          </div>
-                        </div>
-                        <span className="shrink-0 px-3 py-1 bg-[#002D72] dark:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
-                          Call
-                        </span>
-                      </a>
-
-                      {/* Care Partner Support Coordinator */}
-                      <a
-                        href="tel:4105024163"
-                        className="min-h-12 w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                            <Phone className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
-                              Care Partner Support Line
-                            </div>
-                            <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition break-all">
-                              (410) 502-4163
-                            </div>
-                          </div>
-                        </div>
-                        <span className="shrink-0 px-3 py-1 bg-emerald-700 dark:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
-                          Call
-                        </span>
-                      </a>
-                    </div>
-
-                    <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-600 dark:text-rose-400 flex items-start gap-2 leading-relaxed bg-rose-50/70 dark:bg-rose-950/30 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
-                      <span className="font-bold shrink-0">Emergency:</span>
-                      <span className="flex-1">
-                        If you or your loved one are facing immediate danger or medical crisis, call{' '}
-                        <a href="tel:911" className="font-bold underline text-rose-700 dark:text-rose-300">
-                          911
-                        </a>{' '}
-                        or go to the nearest emergency department.
-                      </span>
-                    </div>
-
-                    <div className="mt-3.5 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setShowCallMenu(false)}
-                        className="min-h-11 px-5 py-2 text-sm font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* DARK / LIGHT MODE TOGGLE BUTTON (44px min tap target) */}
@@ -365,11 +255,35 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                         {isAdmin
-                          ? 'System Administrator (JHU CS Lead)'
+                          ? 'System Administrator'
                           : isClinician
-                          ? 'Dr. Seema Gulyani (Clinician Moderator)'
+                          ? 'Community Moderator'
                           : currentUser.anonymousHandle}
                       </div>
+                    </div>
+
+                    {/* Direct Quick Link: My Posts */}
+                    <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPersonaMenu(false);
+                          if (onOpenMyPosts) {
+                            onOpenMyPosts();
+                          } else {
+                            setActiveTab('feed');
+                          }
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
+                          <span className="font-semibold text-xs">My Posts</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
+                          Track your posts →
+                        </span>
+                      </button>
                     </div>
 
                     {/* Dedicated Appearance / Theme Switcher in the Dropdown */}
@@ -564,6 +478,110 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </nav>
+
+      {/* CALL CLINIC MODAL: Rendered at root level outside <header> so backdrop-filter doesn't trap position:fixed */}
+      {showCallMenu && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Direct Clinic Phone Lines"
+          onClick={() => setShowCallMenu(false)}
+        >
+          {/* Compact Modal Container */}
+          <div
+            className="relative w-full max-w-[360px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 z-10 animate-in zoom-in-95 duration-150 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-serif font-bold text-slate-900 dark:text-white text-base">
+                    Direct Clinic Lines
+                  </h3>
+                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60">
+                    Mon–Fri 8:30–5 ET
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Johns Hopkins FTD &amp; Memory Care Center
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCallMenu(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Direct Line Cards */}
+            <div className="space-y-2">
+              {/* Option 2: Main Clinic Line */}
+              <a
+                href="tel:4109555147"
+                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
+                    <Phone className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                      Main Clinic Line (Option 2)
+                    </div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition">
+                      (410) 955-5147
+                    </div>
+                  </div>
+                </div>
+                <span className="shrink-0 px-2.5 py-1 bg-[#002D72] hover:bg-blue-900 dark:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
+                  Call
+                </span>
+              </a>
+
+              {/* Care Partner Support Line */}
+              <a
+                href="tel:4105024163"
+                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Phone className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                      Care Partner Support Line
+                    </div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">
+                      (410) 502-4163
+                    </div>
+                  </div>
+                </div>
+                <span className="shrink-0 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
+                  Call
+                </span>
+              </a>
+            </div>
+
+            {/* Emergency Info Notice */}
+            <div className="pt-1 text-[11px] text-rose-700 dark:text-rose-400 flex items-center justify-between leading-snug bg-rose-50/70 dark:bg-rose-950/30 p-2 rounded-xl border border-rose-100 dark:border-rose-900/50">
+              <span className="text-slate-600 dark:text-slate-300">
+                Facing medical emergency?
+              </span>
+              <a
+                href="tel:911"
+                className="font-bold underline text-rose-700 dark:text-rose-300 hover:text-rose-900 shrink-0 ml-1.5"
+              >
+                Call 911 immediately
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

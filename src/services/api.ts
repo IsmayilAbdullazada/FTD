@@ -21,6 +21,7 @@ import {
   ChatbotGuideTestResult,
   GuideCondition,
   GuidePageData,
+  ModeratorPrivateNote,
 } from '../types';
 import {
   INITIAL_USERS,
@@ -127,7 +128,7 @@ let localUpdates: ClinicUpdate[] = [
     title: 'Sample: Newly Approved Medication Notice',
     summary: 'Placeholder entry showing how medication news will appear.',
     body:
-      'SAMPLE ENTRY: replace with verified information.\n\nWhat was approved and for which condition: [details]\nWhat it may mean for families: [plain-language summary]\n\nPlease do not start, stop, or change any medication based on this post. Discuss all medication questions with your clinical team.',
+      'SAMPLE ENTRY: replace with verified information.\n\nWhat was approved and for which condition: [details]\nWhat it may mean for families: [plain-language summary]\n\nPlease do not start, stop, or change any medication based on this post. Discuss all medication questions with your care team.',
     category: 'MEDICATION',
     condition: 'BOTH',
     authorId: 'user-clinician-1',
@@ -513,7 +514,7 @@ export const api = {
           post: post || localPosts[0],
           message: allowUnmoderated
             ? 'Post updated: Anyone can now reply without moderation.'
-            : 'Post updated: All new replies now require clinical moderation.',
+            : 'Post updated: All new replies now require moderation.',
         };
       }
     );
@@ -692,8 +693,8 @@ export const api = {
           localDirectMessages.unshift({
             id: `dm-${Date.now()}`,
             recipientUserId: item.author.userId,
-            title: 'Medical Inquiry Diverted to Clinical Support Line',
-            message: 'Prescription medications, acute medical symptoms, and clinical questions cannot be addressed on public peer boards. Please contact the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.',
+            title: 'Medical Inquiry Diverted to Care Support Line',
+            message: 'Prescription medications, acute medical symptoms, and direct medical questions cannot be addressed on public peer boards. Please contact the clinic direct line at (410) 955-5147 (option 2) or the care partner support line at (410) 502-4163. For emergencies, call 911.',
             type: 'CLINICAL_ESCALATION',
             createdAt: new Date().toISOString(),
             read: false,
@@ -704,6 +705,67 @@ export const api = {
           status: 'SUCCESS',
           newEntityStatus: 'CLINICAL_REDIRECT',
           message: 'Diverted to clinic caregiver support line.',
+        };
+      }
+    );
+  },
+
+  sendPostPrivateNote: async (
+    postId: string,
+    payload: { message: string; action?: 'KEEP_PENDING' | 'PUBLISH'; senderId?: string }
+  ): Promise<{
+    success: boolean;
+    note: ModeratorPrivateNote;
+    postStatus: string;
+    notes: ModeratorPrivateNote[];
+    message: string;
+  }> => {
+    return safeFetchJson(
+      `/api/v1/posts/${postId}/private-note`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...payload,
+          userId: payload.senderId,
+          senderId: payload.senderId,
+        }),
+      },
+      () => {
+        const post = localPosts.find((p) => p.id === postId);
+        const queueItem = localQueue.find((q) => q.id === postId);
+        const now = new Date().toISOString();
+        const isClinician =
+          payload.senderId === 'user-clinician-1' ||
+          payload.senderId === 'user-admin-1' ||
+          !payload.senderId?.startsWith('user-care');
+        const note: ModeratorPrivateNote = {
+          id: `pnote-${Date.now()}`,
+          senderId: payload.senderId || (isClinician ? 'user-clinician-1' : post?.author?.userId || 'user-care-1'),
+          senderName: isClinician ? 'Moderator' : 'Care Partner',
+          senderRole: isClinician ? 'CLINICIAN_MODERATOR' : 'CARE_PARTNER',
+          message: payload.message,
+          createdAt: now,
+        };
+        if (post) {
+          if (!post.moderatorPrivateNotes) post.moderatorPrivateNotes = [];
+          post.moderatorPrivateNotes.push(note);
+          if (payload.action === 'PUBLISH') post.status = 'APPROVED';
+        }
+        if (queueItem) {
+          if (!queueItem.moderatorPrivateNotes) queueItem.moderatorPrivateNotes = [];
+          queueItem.moderatorPrivateNotes.push(note);
+          if (payload.action === 'PUBLISH') {
+            const idx = localQueue.indexOf(queueItem);
+            if (idx >= 0) localQueue.splice(idx, 1);
+          }
+        }
+        return {
+          success: true,
+          note,
+          postStatus: post?.status || (payload.action === 'PUBLISH' ? 'APPROVED' : 'PENDING_MODERATION'),
+          notes: post?.moderatorPrivateNotes || [note],
+          message: payload.action === 'PUBLISH' ? 'Private message sent and post published!' : 'Private message sent to care partner.',
         };
       }
     );

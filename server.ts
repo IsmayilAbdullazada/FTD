@@ -129,6 +129,15 @@ interface PhiAlert {
   explanation: string;
 }
 
+interface ModeratorPrivateNote {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'CARE_PARTNER' | 'CLINICIAN_MODERATOR' | 'SYSTEM_ADMIN';
+  message: string;
+  createdAt: string;
+}
+
 interface Post {
   id: string;
   authorId: string;
@@ -143,7 +152,7 @@ interface Post {
   moderatedBy?: string;
   moderatedAt?: string;
   rejectionCode?: 'CLINICAL_MEDICATION_QUERY' | 'UNVERIFIED_TREATMENT' | 'FAMILY_DYNAMICS_OUT_OF_SCOPE' | 'INAPPROPRIATE_LANGUAGE' | 'POTENTIAL_PHI_EXPOSURE' | 'OTHER';
-  moderatorPrivateNotes?: string;
+  moderatorPrivateNotes?: ModeratorPrivateNote[];
   isUrgentClinical?: boolean;
   assignedGroupIds: string[];
   suggestedCohortId?: string;
@@ -461,6 +470,7 @@ function getRequester(req: express.Request): User | undefined {
   const id =
     (req.query.userId as string) ||
     (req.body?.userId as string) ||
+    (req.body?.senderId as string) ||
     (req.body?.authorId as string) ||
     '';
   return users.find((u) => u.id === id);
@@ -1377,8 +1387,18 @@ const posts: Post[] = [
     assignedGroupIds: ['group-central-maryland'],
     suggestedCohortId: 'group-central-maryland',
     phiAlerts: [],
+    moderatorPrivateNotes: [
+      {
+        id: 'note-1',
+        senderId: 'user-clinician-1',
+        senderName: 'Clinical Moderator',
+        senderRole: 'CLINICIAN_MODERATOR',
+        message: 'Sarah, please do NOT increase his Seroquel dosage without consulting his neurologist. For immediate overnight wandering safety, ensure the back stair safety gate is latched and call our 24/7 on-call clinic line at (410) 955-5147.',
+        createdAt: '2026-09-28T10:15:00Z',
+      },
+    ],
     createdAt: '2026-09-28T09:45:00Z',
-    updatedAt: '2026-09-28T09:45:00Z',
+    updatedAt: '2026-09-28T10:15:00Z',
     commentCount: 0,
     upvotes: 0,
   },
@@ -2123,7 +2143,7 @@ app.get('/api/v1/posts', (req, res) => {
   // If Care Partner, show APPROVED posts plus the current user's own submitted posts
   if (role === 'CARE_PARTNER') {
     filtered = filtered.filter(
-      (p) => p.status === 'APPROVED' || (currentUserId && p.authorId === currentUserId && p.status === 'PENDING_MODERATION')
+      (p) => p.status === 'APPROVED' || (currentUserId && p.authorId === currentUserId)
     );
 
     // STRICT REGIONAL BOUNDARY: Care Partners can only see posts in General Forum or their assigned regional cohort
@@ -2177,6 +2197,10 @@ app.get('/api/v1/posts', (req, res) => {
       isUpvoted: postUpvotes.get(p.id)?.has(currentUserId) ?? false,
       allowUnmoderatedReplies: p.allowUnmoderatedReplies ?? false,
       phiAlerts: role === 'CLINICIAN_MODERATOR' ? p.phiAlerts : undefined,
+      moderatorPrivateNotes:
+        role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN' || p.authorId === currentUserId
+          ? p.moderatorPrivateNotes
+          : undefined,
     };
   });
 
@@ -2251,6 +2275,10 @@ app.get('/api/v1/posts/:id', (req, res) => {
       upvotes: post.upvotes,
       isUpvoted: postUpvotes.get(post.id)?.has(currentUserId) ?? false,
       allowUnmoderatedReplies: post.allowUnmoderatedReplies ?? false,
+      moderatorPrivateNotes:
+        role === 'CLINICIAN_MODERATOR' || role === 'SYSTEM_ADMIN' || post.authorId === currentUserId
+          ? post.moderatorPrivateNotes
+          : undefined,
     },
     comments: postComments,
   });
@@ -2650,6 +2678,7 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
       isUrgentClinical: p.isUrgentClinical,
       phiAlerts: p.phiAlerts || [],
       createdAt: p.createdAt,
+      moderatorPrivateNotes: p.moderatorPrivateNotes || [],
     };
   });
 
@@ -2787,6 +2816,116 @@ app.post('/api/v1/moderation/action', (req, res) => {
   }
 
   res.status(400).json({ error: 'Invalid action' });
+});
+
+// Private reply on pending or published post (Moderator <-> Care Partner)
+app.post('/api/v1/posts/:id/private-note', (req, res) => {
+  const requester = getRequester(req);
+  const post = posts.find((p) => p.id === req.params.id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+
+  const { message, action = 'KEEP_PENDING' } = req.body;
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Private message cannot be empty.' });
+  }
+
+  const now = new Date().toISOString();
+  if (!Array.isArray(post.moderatorPrivateNotes)) {
+    post.moderatorPrivateNotes = [];
+  }
+
+  const explicitSenderId = req.body?.senderId || req.body?.userId;
+  const resolvedUser = users.find((u) => u.id === explicitSenderId) || requester;
+  const isModerator =
+    resolvedUser?.role === 'CLINICIAN_MODERATOR' ||
+    resolvedUser?.role === 'SYSTEM_ADMIN' ||
+    explicitSenderId === 'user-clinician-1' ||
+    explicitSenderId === 'user-admin-1';
+
+  const senderId = resolvedUser?.id || (isModerator ? 'user-clinician-1' : post.authorId);
+  const senderName = isModerator
+    ? 'Clinical Moderator'
+    : (resolvedUser?.anonymousHandle || 'Care Partner');
+  const senderRole: 'CLINICIAN_MODERATOR' | 'CARE_PARTNER' = isModerator
+    ? 'CLINICIAN_MODERATOR'
+    : 'CARE_PARTNER';
+
+  // Fix any previously seeded or created notes with misassigned role
+  post.moderatorPrivateNotes.forEach((n) => {
+    if (
+      n.senderId === 'user-clinician-1' ||
+      n.senderId === 'user-admin-1' ||
+      n.senderName === 'Clinical Moderator' ||
+      (n.senderId && n.senderId !== post.authorId)
+    ) {
+      n.senderRole = 'CLINICIAN_MODERATOR';
+      n.senderName = 'Clinical Moderator';
+    }
+  });
+
+  const newNote: ModeratorPrivateNote = {
+    id: `pnote-${Date.now()}`,
+    senderId,
+    senderName,
+    senderRole,
+    message: message.trim(),
+    createdAt: now,
+  };
+
+  post.moderatorPrivateNotes.push(newNote);
+
+  if (isModerator) {
+    // Notify care partner
+    directMessages.unshift({
+      id: `dm-${Date.now()}`,
+      recipientUserId: post.authorId,
+      title: `Private message regarding: "${post.title.slice(0, 40)}..."`,
+      message: message.trim(),
+      type: 'CLINICAL_ESCALATION',
+      createdAt: now,
+      read: false,
+    });
+
+    if (action === 'PUBLISH') {
+      post.status = 'APPROVED';
+      post.moderatedBy = senderId;
+      post.moderatedAt = now;
+    }
+
+    auditEvents.unshift({
+      id: `audit-${Date.now()}`,
+      moderatorId: senderId,
+      moderatorName: senderName,
+      entityType: 'POST',
+      entityId: post.id,
+      actionTaken: action === 'PUBLISH' ? 'REPLIED_PRIVATELY_AND_PUBLISHED' : 'REPLIED_PRIVATELY_PENDING',
+      notes: `Sent private note to care partner on post "${post.title}": "${message.trim().slice(0, 80)}"`,
+      createdAt: now,
+    });
+  } else {
+    // Care partner replied back, notify clinician moderator
+    directMessages.unshift({
+      id: `dm-${Date.now()}`,
+      recipientUserId: 'user-clinician-1',
+      title: `Care partner replied to private note on: "${post.title.slice(0, 40)}..."`,
+      message: `${senderName}: ${message.trim()}`,
+      type: 'CLINICAL_ESCALATION',
+      createdAt: now,
+      read: false,
+    });
+  }
+
+  res.status(201).json({
+    success: true,
+    note: newNote,
+    postStatus: post.status,
+    notes: post.moderatorPrivateNotes,
+    message: isModerator
+      ? (action === 'PUBLISH' ? 'Private message sent and post published to community.' : 'Private message sent to care partner.')
+      : 'Reply sent to the clinical moderation team.',
+  });
 });
 
 // Notifications / Direct Messages for Care Partner

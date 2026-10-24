@@ -286,7 +286,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       {/* RESOURCES LIST */}
       {loading ? (
         <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-sm">
-          Loading clinical protocols...
+          Loading care guides &amp; protocols...
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400 text-sm space-y-2">
@@ -403,7 +403,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             {/* Scrollable Body */}
             <div className="p-5 sm:p-7 overflow-y-auto space-y-5 text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-300">
               <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 space-y-1.5">
-                <div className="font-semibold text-[#002D72] dark:text-blue-400 text-xs uppercase tracking-wider">Clinical Overview</div>
+                <div className="font-semibold text-[#002D72] dark:text-blue-400 text-xs uppercase tracking-wider">Care Overview</div>
                 <p className="leading-relaxed">{activeResource.summary}</p>
               </div>
 
@@ -475,7 +475,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               {activeResource.keyTakeaways && activeResource.keyTakeaways.length > 0 && (
                 <div className="space-y-2.5">
                   <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
-                    Key Clinical Recommendations
+                    Key Care Recommendations
                   </div>
                   <ul className="space-y-2 text-sm">
                     {activeResource.keyTakeaways.map((point, idx) => (
@@ -534,7 +534,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <div>
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                  Add Clinical Source / Protocol
+                  Add Care Source / Protocol
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Publish verified guidance to the caregiver knowledge base and assistant.
@@ -600,7 +600,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Full Clinical Protocol Content
+                  Full Care Protocol Content
                 </label>
                 <textarea
                   rows={6}

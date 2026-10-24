@@ -36,6 +36,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
+  Send,
 } from 'lucide-react';
 import {
   CurrentUser,
@@ -193,6 +195,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [rejectionCode, setRejectionCode] = useState<RejectionReason>('CLINICAL_MEDICATION_QUERY');
   const [customRejectionText, setCustomRejectionText] = useState('');
   const [actionSuccessNotice, setActionSuccessNotice] = useState<string | null>(null);
+
+  // Private reply modal
+  const [showPrivateReplyModal, setShowPrivateReplyModal] = useState(false);
+  const [privateReplyMessage, setPrivateReplyMessage] = useState('');
+  const [privateReplyAction, setPrivateReplyAction] = useState<'KEEP_PENDING' | 'PUBLISH'>('KEEP_PENDING');
+  const [isSendingPrivateReply, setIsSendingPrivateReply] = useState(false);
 
   const activeItem = queueItems[selectedIndex] || null;
 
@@ -839,6 +847,57 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
+  // Send private note to care partner
+  const handleSendPrivateReply = async () => {
+    if (!activeItem || !privateReplyMessage.trim() || isSendingPrivateReply) return;
+
+    setIsSendingPrivateReply(true);
+    try {
+      const res = await api.sendPostPrivateNote(activeItem.id, {
+        message: privateReplyMessage.trim(),
+        action: privateReplyAction,
+        senderId: currentUser.id,
+      });
+
+      setShowPrivateReplyModal(false);
+      setPrivateReplyMessage('');
+      setActionSuccessNotice(res.message || 'Private message sent to care partner.');
+      setTimeout(() => setActionSuccessNotice(null), 3500);
+
+      const addedNote = res.note || {
+        id: `pnote-${Date.now()}`,
+        senderId: currentUser.id,
+        senderName: 'Clinical Moderator',
+        senderRole: 'CLINICIAN_MODERATOR',
+        message: privateReplyMessage.trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      setQueueItems((prev) =>
+        prev.map((item) =>
+          item.id === activeItem.id
+            ? {
+                ...item,
+                moderatorPrivateNotes: [...(item.moderatorPrivateNotes || []), addedNote],
+              }
+            : item
+        )
+      );
+
+      onQueueUpdated();
+      await loadQueue();
+      if (privateReplyAction === 'PUBLISH') {
+        await loadPublishedPosts();
+      }
+    } catch (err: any) {
+      console.error('Failed to send private reply:', err);
+      setActionSuccessNotice(err.message || 'Error sending private message.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
+    } finally {
+      setIsSendingPrivateReply(false);
+    }
+  };
+
   // Helper to escape regex special characters
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -1411,14 +1470,82 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </div>
                   </div>
 
+                  {/* Existing Private Notes History */}
+                  {activeItem.moderatorPrivateNotes && activeItem.moderatorPrivateNotes.length > 0 && (
+                    <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-semibold text-[#002D72] dark:text-sky-300">
+                        <span className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                          <span>Private Clinical Dialogue ({activeItem.moderatorPrivateNotes.length})</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-normal">Private to author only</span>
+                      </div>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {activeItem.moderatorPrivateNotes.map((note) => {
+                          const isFromModerator =
+                            note.senderRole === 'CLINICIAN_MODERATOR' ||
+                            note.senderId === 'user-clinician-1' ||
+                            note.senderId === 'user-admin-1' ||
+                            note.senderName === 'Clinical Moderator' ||
+                            (Boolean(note.senderId) && note.senderId !== activeItem.author.userId);
+
+                          return (
+                            <div
+                              key={note.id}
+                              className={`p-2.5 rounded-lg border text-xs space-y-1 ${
+                                isFromModerator
+                                  ? 'bg-blue-50/90 dark:bg-blue-950/50 border-blue-200 dark:border-blue-900/60'
+                                  : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-900/50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                                <span
+                                  className={`font-semibold ${
+                                    isFromModerator
+                                      ? 'text-[#002D72] dark:text-blue-300'
+                                      : 'text-amber-800 dark:text-amber-300'
+                                  }`}
+                                >
+                                  {isFromModerator
+                                    ? 'Clinical Moderator (You)'
+                                    : `${note.senderName && note.senderName !== 'Clinical Moderator' ? note.senderName : activeItem.author.realName} (Care Partner)`}
+                                </span>
+                                <span>
+                                  {new Date(note.createdAt).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    month: 'short',
+                                    day: 'numeric',
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed font-sans">
+                                {note.message}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Buttons */}
-                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
                     <button
                       onClick={handlePublish}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                     >
                       <Check className="w-4 h-4" />
                       <span>Publish</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivateReplyModal(true)}
+                      className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                    >
+                      <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
+                      <span>Reply Privately</span>
                     </button>
 
                     <button
@@ -2592,7 +2719,140 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         </div>
       )}
 
-      {/* MODAL: CONFIRM CLOSE DISCUSSION (From Discussions tab) */}
+      {/* MODAL: PRIVATE REPLY TO AUTHOR */}
+      {showPrivateReplyModal && activeItem && (
+        <div
+          onClick={() => !isSendingPrivateReply && setShowPrivateReplyModal(false)}
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer overflow-y-auto"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-5 sm:p-6 space-y-4 cursor-default transition-colors my-auto animate-in fade-in zoom-in-95"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">
+                    Reply Privately to Author
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    To {activeItem.author.realName} ({activeItem.author.anonymousHandle})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrivateReplyModal(false)}
+                disabled={isSendingPrivateReply}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/50 rounded-xl text-xs text-blue-900 dark:text-blue-200 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Confidential Clinical Communication</span>
+              </div>
+              <p className="text-[11.5px] leading-relaxed text-blue-800 dark:text-blue-300">
+                This message is delivered directly to the author's post card in their feed with an unmistakable private badge. Only the author and clinical moderators can view this conversation.
+              </p>
+            </div>
+
+            {/* Post Snippet */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-750 text-xs space-y-1">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Regarding Post</span>
+              <div className="font-semibold text-slate-900 dark:text-white line-clamp-1">{activeItem.title}</div>
+              <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">{activeItem.rawContent}</p>
+            </div>
+
+            {/* Action selector */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Queue Status After Sending
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrivateReplyAction('KEEP_PENDING')}
+                  className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer ${
+                    privateReplyAction === 'KEEP_PENDING'
+                      ? 'border-[#002D72] dark:border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-[#002D72] dark:text-blue-300 font-semibold ring-1 ring-[#002D72] dark:ring-blue-500'
+                      : 'border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+                  }`}
+                >
+                  <div className="font-semibold">Keep in Review</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                    Hold pending while awaiting clarification
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrivateReplyAction('PUBLISH')}
+                  className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer ${
+                    privateReplyAction === 'PUBLISH'
+                      ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-semibold ring-1 ring-emerald-600 dark:ring-emerald-500'
+                      : 'border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
+                  }`}
+                >
+                  <div className="font-semibold">Publish Post Now</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                    Approve for community & send private guidance
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Note input */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Private Message to Care Partner <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={4}
+                value={privateReplyMessage}
+                onChange={(e) => setPrivateReplyMessage(e.target.value)}
+                placeholder="Write your private message or clinical guidance here. The care partner will be able to read this on their post and reply back directly..."
+                className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 leading-relaxed"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowPrivateReplyModal(false)}
+                disabled={isSendingPrivateReply}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendPrivateReply}
+                disabled={!privateReplyMessage.trim() || isSendingPrivateReply}
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSendingPrivateReply ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send Private Reply</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {postToClose && (
         <div
           onClick={() => setPostToClose(null)}
@@ -2603,7 +2863,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
                 <Lock className="w-5 h-5" />
               </div>
               <div>

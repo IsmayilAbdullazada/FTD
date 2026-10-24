@@ -28,6 +28,7 @@ export default function App() {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [feedResetKey, setFeedResetKey] = useState<number>(0);
   const [targetDiscussionId, setTargetDiscussionId] = useState<string | null>(null);
+  const [feedSection, setFeedSection] = useState<'all' | 'my-posts'>('all');
 
   // Auto-fade submission notice after 3.5 seconds
   useEffect(() => {
@@ -264,6 +265,15 @@ export default function App() {
         pendingTriageCount={pendingTriageCount}
         notifications={notifications}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenMyPosts={() => {
+          setActiveTab('feed');
+          setFeedSection('my-posts');
+          setTargetDiscussionId(null);
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', 'feed');
+          url.searchParams.delete('post');
+          window.history.pushState({ tab: 'feed', post: null }, '', url.toString());
+        }}
       />
 
       {/* Main Content Area */}
@@ -278,6 +288,8 @@ export default function App() {
             recentNotice={feedNotice}
             onDismissNotice={() => setFeedNotice(null)}
             onOpenComposer={() => setActiveTab('compose')}
+            initialSection={feedSection}
+            onSectionChange={(sec) => setFeedSection(sec)}
           />
         )}
 
@@ -288,7 +300,8 @@ export default function App() {
             initialTitle={composerInitialTitle}
             onPostSubmitted={() => {
               setComposerInitialTitle('');
-              setFeedNotice('Your question has been submitted and is currently being reviewed by Dr. Seema.');
+              setFeedNotice('Your post has been submitted and is currently under review.');
+              setFeedSection('my-posts');
               setActiveTab('feed');
               handleQueueUpdated();
             }}

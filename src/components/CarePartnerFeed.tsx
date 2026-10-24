@@ -17,6 +17,10 @@ import {
   ChevronDown,
   Users,
   RotateCcw,
+  ShieldCheck,
+  Send,
+  User,
+  HelpCircle,
 } from 'lucide-react';
 import { Post, CommunityGroup, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';
@@ -32,6 +36,8 @@ interface CarePartnerFeedProps {
   recentNotice?: string | null;
   onDismissNotice?: () => void;
   onOpenComposer: () => void;
+  initialSection?: 'all' | 'my-posts';
+  onSectionChange?: (section: 'all' | 'my-posts') => void;
 }
 
 export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
@@ -43,9 +49,12 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   recentNotice,
   onDismissNotice,
   onOpenComposer,
+  initialSection,
+  onSectionChange,
 }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewSection, setViewSection] = useState<'all' | 'my-posts'>(initialSection || 'all');
   const [selectedGroupTab, setSelectedGroupTab] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,8 +63,23 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
+  // Sync viewSection when initialSection prop changes (e.g. from header profile dropdown or post submit)
+  useEffect(() => {
+    if (initialSection) {
+      setViewSection(initialSection);
+      setCurrentPage(1);
+    }
+  }, [initialSection]);
+
+  const handleSectionChange = (sec: 'all' | 'my-posts') => {
+    setViewSection(sec);
+    setCurrentPage(1);
+    if (onSectionChange) onSectionChange(sec);
+  };
+
   // Check user role
   const isStaff = currentUser.role !== 'CARE_PARTNER';
+  const isCarePartner = currentUser.role === 'CARE_PARTNER';
   const [selectedCondition, setSelectedCondition] = useState<'all' | 'FTD' | 'AD'>('all');
 
   // Filter Popover Menu State
@@ -142,6 +166,11 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   // In-UI cancellation confirmation modal
   const [confirmDeletePost, setConfirmDeletePost] = useState<Post | null>(null);
   const [isDeletingPost, setIsDeletingPost] = useState(false);
+
+  // Care partner private replies to clinical moderators
+  const [carePartnerReplyText, setCarePartnerReplyText] = useState<Record<string, string>>({});
+  const [isSendingCareReply, setIsSendingCareReply] = useState<Record<string, boolean>>({});
+  const [careReplyExpanded, setCareReplyExpanded] = useState<Record<string, boolean>>({});
 
   // Auto-fade action notice after 3.5 seconds
   useEffect(() => {
@@ -261,7 +290,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       });
       setEditingPost(null);
       if (onDismissNotice) onDismissNotice();
-      setActionNotice('Your question was updated and remains in clinical review.');
+      setActionNotice('Your question was updated and remains under review.');
       await loadFeed(selectedGroupTab);
     } catch (err) {
       console.error('Failed to update post:', err);
@@ -283,7 +312,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
 
     // 2. Clear any prior notices and show immediate confirmation toast
     if (onDismissNotice) onDismissNotice();
-    setActionNotice('Your question has been withdrawn from clinical review.');
+    setActionNotice('Your question has been withdrawn.');
 
     // 3. Delete on server
     try {
@@ -294,6 +323,39 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       setActionNotice('Unable to withdraw question. Please try again.');
     } finally {
       setIsDeletingPost(false);
+    }
+  };
+
+  const handleSendPrivateCareReply = async (postId: string) => {
+    const message = carePartnerReplyText[postId]?.trim();
+    if (!message || isSendingCareReply[postId]) return;
+
+    setIsSendingCareReply((prev) => ({ ...prev, [postId]: true }));
+    try {
+      const res = await api.sendPostPrivateNote(postId, {
+        message,
+        senderId: currentUser.id,
+        action: 'KEEP_PENDING',
+      });
+
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                moderatorPrivateNotes: [...(p.moderatorPrivateNotes || []), res.note],
+              }
+            : p
+        )
+      );
+
+      setCarePartnerReplyText((prev) => ({ ...prev, [postId]: '' }));
+      setActionNotice('Your private reply was sent to the moderator.');
+    } catch (err: any) {
+      console.error('Failed to send private reply:', err);
+      setActionNotice(err.message || 'Could not send reply. Please try again.');
+    } finally {
+      setIsSendingCareReply((prev) => ({ ...prev, [postId]: false }));
     }
   };
 
@@ -311,6 +373,14 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       />
     );
   }
+
+  const myPosts = posts.filter(
+    (p) =>
+      p.author.userId === currentUser.id ||
+      p.author.anonymousHandle === currentUser.anonymousHandle ||
+      (p.author as any).id === currentUser.id
+  );
+  const myPendingCount = myPosts.filter((p) => p.status === 'PENDING_MODERATION').length;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-5">
@@ -359,6 +429,54 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         </button>
       </div>
 
+      {/* REASSURING BANNER: For caregivers with posts under review */}
+      {isCarePartner && myPendingCount > 0 && viewSection === 'all' && (
+        <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+          <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+            <Clock className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+            <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
+              You have {myPendingCount} post{myPendingCount > 1 ? 's' : ''} currently under review.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSectionChange('my-posts')}
+            className="text-xs sm:text-sm font-semibold text-amber-900 dark:text-amber-200 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+          >
+            <span>View My Posts</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* MY POSTS DEDICATED HEADER */}
+      {isCarePartner && viewSection === 'my-posts' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5 animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => handleSectionChange('all')}
+              className="text-xs sm:text-sm font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back to Discussions</span>
+            </button>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-900/60">
+              {myPosts.length} Total {myPosts.length === 1 ? 'Post' : 'Posts'}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="font-serif font-semibold text-xl sm:text-2xl text-slate-900 dark:text-white">
+              My Posts
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+              View and track all your submitted posts, review real-time moderation status, read private notes from the moderator, and edit or cancel anytime.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* INTUITIVE COMPACT GROUP SELECTOR */}
       {/* SEARCH AND UNIFIED FILTER BAR */}
       <div className="space-y-2.5 pb-2 border-b border-slate-200 dark:border-slate-800 transition-colors">
@@ -373,7 +491,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Search discussions by topic, symptoms, or keyword..."
+              placeholder={viewSection === 'my-posts' ? "Search your posts by title or keyword..." : "Search discussions by topic, symptoms, or keyword..."}
               className="w-full pl-9.5 pr-8 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shadow-2xs"
             />
             {searchQuery && (
@@ -635,8 +753,19 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
 
         {/* Count & Reset Active Filters */}
         {(() => {
-          // Filter by status and search query
+          // Filter by section (all community discussions vs my posts only), status, and search query
           const filteredPosts = posts.filter((post) => {
+            if (viewSection === 'my-posts') {
+              const isMine =
+                post.author.userId === currentUser.id ||
+                post.author.anonymousHandle === currentUser.anonymousHandle ||
+                (post.author as any).id === currentUser.id;
+              if (!isMine) return false;
+            } else {
+              // Community Discussions MUST only show published, approved posts
+              if (post.status !== 'APPROVED') return false;
+            }
+
             if (selectedStatusFilter === 'open' && post.isClosed) return false;
             if (selectedStatusFilter === 'closed' && !post.isClosed) return false;
 
@@ -658,19 +787,34 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
             return true;
           });
 
-          const totalFilteredCount = filteredPosts.length;
+          // Sort logic: in My Posts, items Under Review (PENDING_MODERATION) MUST always be pinned to the top!
+          const sortedPosts = [...filteredPosts].sort((a, b) => {
+            if (viewSection === 'my-posts') {
+              const aPending = a.status === 'PENDING_MODERATION';
+              const bPending = b.status === 'PENDING_MODERATION';
+              if (aPending && !bPending) return -1;
+              if (!aPending && bPending) return 1;
+            }
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+
+          const totalFilteredCount = sortedPosts.length;
           const totalPages = Math.max(1, Math.ceil(totalFilteredCount / POSTS_PER_PAGE));
           const validCurrentPage = Math.min(currentPage, totalPages);
           const startIndex = (validCurrentPage - 1) * POSTS_PER_PAGE;
-          const paginatedPosts = filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+          const paginatedPosts = sortedPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
 
           return (
             <>
               <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400 px-0.5 font-medium">
                 <span>
                   {totalFilteredCount === 0
-                    ? '0 discussions found'
-                    : `Showing ${startIndex + 1}–${Math.min(startIndex + POSTS_PER_PAGE, totalFilteredCount)} of ${totalFilteredCount} discussions`}
+                    ? viewSection === 'my-posts'
+                      ? '0 posts found'
+                      : '0 discussions found'
+                    : `Showing ${startIndex + 1}–${Math.min(startIndex + POSTS_PER_PAGE, totalFilteredCount)} of ${totalFilteredCount} ${
+                        viewSection === 'my-posts' ? 'posts' : 'discussions'
+                      }`}
                 </span>
               </div>
 
@@ -681,15 +825,19 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                     Loading discussions...
                   </div>
                 ) : filteredPosts.length === 0 ? (
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400 text-base space-y-3 shadow-xs">
-                    <div className="font-serif font-semibold text-lg text-slate-800 dark:text-slate-200">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center text-slate-500 dark:text-slate-400 text-base space-y-3 shadow-xs">
+                    <div className="font-serif font-semibold text-lg sm:text-xl text-slate-800 dark:text-slate-200">
                       {searchQuery
-                        ? `No discussions matching "${searchQuery}"`
+                        ? `No ${viewSection === 'my-posts' ? 'posts' : 'discussions'} matching "${searchQuery}"`
+                        : viewSection === 'my-posts'
+                        ? "You haven't submitted any posts yet."
                         : 'No discussions found in this channel.'}
                     </div>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
                       {searchQuery
                         ? 'Try adjusting your search terms or resetting filters.'
+                        : viewSection === 'my-posts'
+                        ? 'When you share a question or care advice, your post will appear here with its real-time review status and any private responses from the moderator.'
                         : 'You can start the first conversation or check the Guides for guidance.'}
                     </p>
                     {searchQuery ? (
@@ -708,9 +856,10 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                       <button
                         type="button"
                         onClick={onOpenComposer}
-                        className="text-[#002D72] dark:text-blue-400 font-semibold hover:underline text-sm inline-block pt-1 cursor-pointer"
+                        className="inline-flex items-center gap-2 px-4.5 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition cursor-pointer shadow-xs"
                       >
-                        Start the first discussion
+                        <Plus className="w-4 h-4" />
+                        <span>{viewSection === 'my-posts' ? 'Create a Post' : 'Start the first discussion'}</span>
                       </button>
                     )}
                   </div>
@@ -758,7 +907,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                                 <span className="text-slate-500 dark:text-slate-400 truncate">{regionName}</span>
                               </>
                             )}
-                            {(isStaff || post.condition === 'BOTH') && (
+                            {isStaff && post.condition && post.condition !== 'BOTH' && (
                               <>
                                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
                                 <AudienceBadge condition={post.condition} />
@@ -771,6 +920,22 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                                   <Lock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                                   <span>Closed</span>
                                 </span>
+                              </>
+                            )}
+                            {viewSection === 'my-posts' && (
+                              <>
+                                <span aria-hidden="true" className="text-slate-300 dark:text-slate-700 shrink-0">·</span>
+                                {isPending ? (
+                                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300/80 dark:border-amber-800/80 px-2.5 py-0.5 rounded-full">
+                                    <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                    <span>Under Review</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span>Published</span>
+                                  </span>
+                                )}
                               </>
                             )}
                           </div>
@@ -794,7 +959,121 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
 
                         {isPending && (
                           <div className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl p-3.5 border border-amber-200/80 dark:border-amber-900/60 leading-relaxed font-sans">
-                            Your question was received and is currently under clinical safety review by Dr. Seema before being shared clinic-wide.
+                            Your question was received and is currently under review before being shared with the community.
+                          </div>
+                        )}
+
+                        {/* Confidential Moderator Guidance Card */}
+                        {post.moderatorPrivateNotes && post.moderatorPrivateNotes.length > 0 && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-4 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/70 space-y-3 cursor-default shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5 font-bold text-[#002D72] dark:text-blue-300">
+                                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span>Private Response from Moderator</span>
+                              </div>
+                              <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-800">
+                                Only visible to you
+                              </span>
+                            </div>
+
+                            {/* Dialogue Messages */}
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                              {post.moderatorPrivateNotes.map((note) => {
+                                const isFromCarePartner =
+                                  note.senderRole !== 'CLINICIAN_MODERATOR' &&
+                                  note.senderName !== 'Clinical Moderator' &&
+                                  note.senderName !== 'Moderator' &&
+                                  note.senderId !== 'user-clinician-1' &&
+                                  note.senderId !== 'user-admin-1' &&
+                                  (note.senderRole === 'CARE_PARTNER' || note.senderId === post.author.userId || note.senderId === currentUser.id);
+                                return (
+                                  <div
+                                    key={note.id}
+                                    className={`p-3 rounded-xl border text-xs sm:text-[13px] leading-relaxed ${
+                                      isFromCarePartner
+                                        ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/60 text-slate-800 dark:text-slate-200 ml-4'
+                                        : 'bg-white dark:bg-slate-900 border-blue-200/80 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 mr-2 shadow-2xs'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                                      <span className={isFromCarePartner ? 'text-amber-800 dark:text-amber-300 font-semibold' : 'text-[#002D72] dark:text-blue-300 font-semibold'}>
+                                        {isFromCarePartner ? 'You (Care Partner)' : 'Moderator'}
+                                      </span>
+                                      <span>
+                                        {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                    <p className="whitespace-pre-line">{note.message}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Reply directly back to moderator */}
+                            <div className="pt-2 border-t border-blue-200/70 dark:border-blue-900/60">
+                              {!careReplyExpanded[post.id] ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCareReplyExpanded((prev) => ({ ...prev, [post.id]: true }));
+                                  }}
+                                  className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer py-1"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>Reply to Moderator</span>
+                                </button>
+                              ) : (
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleSendPrivateCareReply(post.id);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="space-y-2 pt-1"
+                                >
+                                  <textarea
+                                    rows={2}
+                                    value={carePartnerReplyText[post.id] || ''}
+                                    onChange={(e) =>
+                                      setCarePartnerReplyText((prev) => ({ ...prev, [post.id]: e.target.value }))
+                                    }
+                                    placeholder="Write your response to the moderator..."
+                                    className="w-full p-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setCareReplyExpanded((prev) => ({ ...prev, [post.id]: false }))
+                                      }
+                                      className="px-2.5 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="submit"
+                                      disabled={!carePartnerReplyText[post.id]?.trim() || isSendingCareReply[post.id]}
+                                      className="px-3.5 py-1.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                                    >
+                                      {isSendingCareReply[post.id] ? (
+                                        <span>Sending...</span>
+                                      ) : (
+                                        <>
+                                          <Send className="w-3 h-3" />
+                                          <span>Send Reply</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </form>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -806,7 +1085,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
                           >
                             <div className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300 font-medium">
                               <Clock className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                              <span>Pending review by Dr. Seema</span>
+                              <span>Under Review</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <button

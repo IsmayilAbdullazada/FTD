@@ -140,7 +140,7 @@ const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
   return {
     id: `msg-welcome-${Date.now()}`,
     sender: 'assistant',
-    text: `Hello! I am your Care Companion, here to support you 24/7 as a care partner supporting a loved one with ${conditionDescription}.\n\nI can help answer day-to-day caregiving questions based on verified Johns Hopkins clinical care guides, behavioral routines, and family resources.\n\nWhat is on your mind today?`,
+    text: `Hello! I am your Care Companion, here to support you 24/7 as a care partner supporting a loved one with ${conditionDescription}.\n\nI can help answer day-to-day caregiving questions based on verified Johns Hopkins care guides, behavioral routines, and family resources.\n\nWhat is on your mind today?`,
     timestamp: 'Now',
     suggestedQuestions: defaultSuggestedQuestions,
   };
@@ -293,13 +293,13 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      console.error('Clinical assistant error:', err);
+      console.error('Care companion error:', err);
       setMessages((prev) => [
         ...prev,
         {
           id: `bot-err-${Date.now()}`,
           sender: 'assistant',
-          text: 'Unable to reach the clinical knowledge base right now. For clinical triage, please call the Johns Hopkins clinic line at (410) 955-5147 (option 2) or support line at (410) 502-4163. For emergencies, call 911.',
+          text: 'Unable to reach the care knowledge base right now. For urgent triage, please call the Johns Hopkins clinic line at (410) 955-5147 (option 2) or support line at (410) 502-4163. For emergencies, call 911.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -419,7 +419,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                   <h2 className="font-serif font-bold text-sm sm:text-base text-white truncate">
                     Care Companion
                   </h2>
-                  <span title="Verified Clinical Knowledge" className="inline-flex items-center">
+                  <span title="Verified Care Knowledge" className="inline-flex items-center">
                     <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                   </span>
                 </div>
@@ -463,7 +463,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               type="button"
               onClick={() => setShowUrgentNotice((prev) => !prev)}
               className="text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline shrink-0 ml-1.5 cursor-pointer"
-              title="Clinical disclaimer"
+              title="Medical disclaimer"
             >
               {showUrgentNotice ? 'Hide' : 'Notice'}
             </button>
@@ -530,7 +530,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       <div className="pt-2.5 pb-0.5 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
                         <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
                           <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
-                          <span>Clinical Sources:</span>
+                          <span>Care Sources:</span>
                         </div>
                         <div className="flex flex-col gap-1.5">
                           {(msg.citedResources && msg.citedResources.length > 0
@@ -617,56 +617,56 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             <button
               type="button"
               onClick={() => handleSend('How do I de-escalate aggressive outbursts or agitation?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Aggression & agitation
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle sudden incontinence and toileting resistance?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Incontinence routine
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle severe apathy and lack of motivation?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Apathy & motivation
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I manage night wakefulness, sleep issues, and wandering?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Sleep & night pacing
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I manage compulsive behaviors and rituals?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Compulsive rituals
             </button>
             <button
               type="button"
               onClick={() => handleSend('What should family care partners know about hospice and comfort care in FTD?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Hospice & comfort care
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle bathing and shower resistance?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Bathing resistance
             </button>
             <button
               type="button"
               onClick={() => handleSend('How do I handle driving retirement safely?')}
-              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-full whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
+              className="text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 hover:text-[#002D72] dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 px-3 py-1.5 rounded-lg whitespace-nowrap transition shrink-0 font-medium cursor-pointer min-h-9"
             >
               Driving retirement
             </button>

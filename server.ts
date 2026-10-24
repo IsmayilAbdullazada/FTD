@@ -1,4 +1,5 @@
 import express from 'express';
+import { isVisibleReplyParent } from './server/replyParent.ts';
 import { findDiscussionAnswers } from './server/discussionSearch.ts';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -2252,6 +2253,7 @@ app.get('/api/v1/posts/:id', (req, res) => {
     .map((c) => ({
       id: c.id,
       postId: c.postId,
+      parentCommentId: c.parentCommentId,
       content: c.sanitizedContent || c.rawContent,
       author: projectAuthor(c.authorId, role),
       status: c.status,
@@ -2455,7 +2457,7 @@ app.post('/api/v1/posts', (req, res) => {
 
 // Add comment to post
 app.post('/api/v1/posts/:id/comments', (req, res) => {
-  const { content, authorId = 'user-care-1' } = req.body;
+  const { content, authorId = 'user-care-1', parentCommentId } = req.body;
   const post = posts.find((p) => p.id === req.params.id);
 
   if (!post) {
@@ -2475,14 +2477,27 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
 
   const author = users.find((u) => u.id === authorId);
   const isClinician = author?.role === 'CLINICIAN_MODERATOR' || author?.role === 'SYSTEM_ADMIN';
+  if (typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ error: 'Reply text is required.' });
+  }
+  const allowedGroups = getUserAllowedGroups(authorId, author?.role ?? 'CARE_PARTNER');
+  if (!isClinician && (post.status !== 'APPROVED' && post.authorId !== authorId ||
+      !post.assignedGroupIds.some((id) => allowedGroups.includes(id)) && post.authorId !== authorId)) {
+    return res.status(403).json({ error: 'You do not have access to this discussion.' });
+  }
+  if (parentCommentId !== undefined && (typeof parentCommentId !== 'string' ||
+      !isVisibleReplyParent(comments.find((c) => c.id === parentCommentId), post.id, authorId, isClinician))) {
+    return res.status(400).json({ error: 'The reply you are responding to is unavailable.' });
+  }
   const isUnmoderated = post.allowUnmoderatedReplies === true;
 
   const newComment: Comment = {
-    id: `comm-${Date.now()}`,
+    id: `comm-${crypto.randomUUID()}`,
     postId: post.id,
+    parentCommentId,
     authorId,
-    rawContent: content,
-    sanitizedContent: content,
+    rawContent: content.trim(),
+    sanitizedContent: content.trim(),
     status: isClinician || isUnmoderated ? 'APPROVED' : 'PENDING_MODERATION',
     createdAt: new Date().toISOString(),
   };
@@ -2495,6 +2510,7 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
   res.status(201).json({
     comment: {
       ...newComment,
+      content: newComment.sanitizedContent,
       author: projectAuthor(authorId, isClinician ? 'CLINICIAN_MODERATOR' : 'CARE_PARTNER'),
     },
     message: isClinician || isUnmoderated ? 'Comment published immediately.' : 'Comment submitted for moderation review.',

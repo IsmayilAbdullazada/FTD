@@ -421,13 +421,13 @@ export const api = {
     );
   },
 
-  addComment: async (postId: string, content: string, authorId: string): Promise<{ comment: Comment; message: string }> => {
+  addComment: async (postId: string, content: string, authorId: string, parentCommentId?: string): Promise<{ comment: Comment; message: string }> => {
     return safeFetchJson(
       `/api/v1/posts/${postId}/comments`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, authorId }),
+        body: JSON.stringify({ content, authorId, parentCommentId }),
       },
       () => {
         const post = localPosts.find((p) => p.id === postId);
@@ -443,6 +443,7 @@ export const api = {
         const newComm: Comment = {
           id: `comm-${Date.now()}`,
           postId,
+          parentCommentId,
           content,
           author: {
             userId: author.id,

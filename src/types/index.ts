@@ -119,6 +119,7 @@ export interface Post {
 
 export interface Comment {
   id: string;
+  parentCommentId?: string;
   postId?: string;
   content: string;
   author: AuthorProjection;

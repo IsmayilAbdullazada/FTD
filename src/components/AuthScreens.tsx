@@ -70,7 +70,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   } | null>(null);
   const [loadingInvite, setLoadingInvite] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
-  const [registerHandle, setRegisterHandle] = useState(() => `CarePartner-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [registerHandle, setRegisterHandle] = useState(() => `User-${Math.floor(1000 + Math.random() * 9000)}`);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -90,7 +90,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       const res = await api.getInvitation(token);
       setInviteData(res.invitation);
       // Auto-assign random anonymous handle
-      setRegisterHandle((prev) => prev || `CarePartner-${Math.floor(1000 + Math.random() * 9000)}`);
+      setRegisterHandle((prev) => prev || `User-${Math.floor(1000 + Math.random() * 9000)}`);
     } catch (err: any) {
       console.error('Failed to load invitation:', err);
       setRegisterError(err.message || 'Invitation not found or expired.');

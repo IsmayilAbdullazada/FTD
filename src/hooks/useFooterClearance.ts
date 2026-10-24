@@ -1,6 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react';
 
-/** Reserve the full footer height while visible, so scrolling never moves the launcher. */
+/** Stay fixed in the viewport until the launcher reaches the content/footer boundary. */
 export function useFooterClearance(anchor: RefObject<HTMLElement | null>, gap = 16) {
   const [offset, setOffset] = useState(0);
   useEffect(() => {
@@ -13,9 +13,9 @@ export function useFooterClearance(anchor: RefObject<HTMLElement | null>, gap = 
       if (!element) return;
       const baseline = parseFloat(getComputedStyle(element).bottom) || 0;
       const bounds = footer.getBoundingClientRect();
-      const visible = bounds.top < window.innerHeight && bounds.bottom > 0;
-      const navigationClearance = parseFloat(getComputedStyle(footer).marginBottom) || 0;
-      const next = visible ? Math.max(0, bounds.height + navigationClearance + gap - baseline) : 0;
+      // Clamp only at the actual boundary, never when the footer first enters view.
+      // Once clamped, the launcher stays at the same position in the document.
+      const next = Math.max(0, window.innerHeight - bounds.top + gap - baseline);
       setOffset(previous => Math.abs(previous - next) < 0.5 ? previous : next);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };

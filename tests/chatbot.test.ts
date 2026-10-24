@@ -146,7 +146,7 @@ test('a high vector similarity cannot bypass the answerability check', async () 
     models: {
       embedContent: async () => ({ embeddings: [{ values: [1, 0] }] }),
       generateContent: async (request: any) => {
-        if (request.config.systemInstruction.startsWith('Select only guide excerpts')) {
+        if (request.config.systemInstruction.startsWith('Select only source excerpts')) {
           classified = true;
           return { text: '{"matches":[]}' };
         }

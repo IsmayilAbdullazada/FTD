@@ -1,4 +1,5 @@
 import express from 'express';
+import { findDiscussionAnswers } from './server/discussionSearch.ts';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -4054,13 +4055,18 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   const approvedActiveGuides = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
 
   const aiClient = getAiClient();
-  if (approvedActiveGuides.length === 0) {
-    return res.json(await noGuideResult(query, aiClient));
-  }
-
   try {
-    const result = await answerRagQuery(query, conversationHistory, aiClient, conditionFilter, approvedActiveGuides);
-    return res.json(result);
+    const [result, discussions] = await Promise.all([
+      approvedActiveGuides.length === 0
+        ? noGuideResult(query, aiClient)
+        : answerRagQuery(query, conversationHistory, aiClient, conditionFilter, approvedActiveGuides),
+      findDiscussionAnswers(query, posts, comments, chatRequester,
+        getUserAllowedGroups(chatRequester?.id ?? '', chatRequester?.role ?? 'CARE_PARTNER'), aiClient),
+    ]);
+    return res.json({
+      ...result, discussions,
+      answer: discussions.length && !result.citedResources.length ? '' : result.answer,
+    });
   } catch (err: any) {
     console.error('Error retrieving guide pages:', err);
     const result = await noGuideResult(query, aiClient);

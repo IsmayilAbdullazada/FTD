@@ -1105,6 +1105,7 @@ export const api = {
     isDisabled?: boolean;
     isMedicationRefusal?: boolean;
     discussionDraft?: { title: string; content: string };
+    discussions?: { id: string; title: string; url: string; replyCount: number }[];
     citedResources?: Array<{
       id: string;
       title: string;

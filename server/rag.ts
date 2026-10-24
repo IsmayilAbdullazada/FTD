@@ -215,7 +215,7 @@ export async function verifyRelevantChunks(
       }),
       config: {
         httpOptions: { timeout: 10000 },
-        systemInstruction: `Select only guide excerpts that directly address the user's actual question.
+        systemInstruction: `Select only source excerpts that directly address the user's actual question.
 A shared topic, diagnosis, or keyword is not sufficient. Important constraints (location, provider type, device, treatment, eligibility, numbers) must be addressed in the excerpt.
 For "where to find a local elder care attorney", general hospice or financial safety advice is NOT an answer; the excerpt must provide a way to locate that kind of attorney.
 For questions about a specific treatment, device or combination of conditions, general caregiving tips are NOT sufficient.

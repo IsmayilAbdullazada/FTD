@@ -32,6 +32,7 @@ interface ChatMessage {
   text: string;
   isMedicationRefusal?: boolean;
   discussionDraft?: { title: string; content: string };
+  discussions?: { id: string; title: string; url: string; replyCount: number }[];
   matchedGuide?: {
     id: string;
     title: string;
@@ -278,6 +279,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         isMedicationRefusal: res.isMedicationRefusal,
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,
+        discussions: res.discussions,
         discussionDraft: res.discussionDraft || { title: '', content: q.trim() },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
@@ -543,7 +545,22 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       </div>
                     )}
 
-                    {msg.discussionDraft && (msg.citedResources?.length || msg.matchedGuide) && (
+                    {!!msg.discussions?.length && (
+                      <div className="space-y-2">
+                        <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
+                          You may also find helpful replies in these discussions.
+                        </p>
+                        {msg.discussions.map((discussion) => (
+                          <a key={discussion.id} href={discussion.url}
+                            className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-[#002D72] dark:text-sky-400 hover:underline">
+                            <MessageSquare className="w-4 h-4 shrink-0" />
+                            <span>{discussion.title} <span className="text-xs">({discussion.replyCount} {discussion.replyCount === 1 ? 'reply' : 'replies'})</span></span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
+                    {msg.discussionDraft && (msg.citedResources?.length || msg.matchedGuide || !!msg.discussions?.length) && (
                       <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                         Still haven't found what you need? Ask the community by creating a discussion post.
                       </p>

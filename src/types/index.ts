@@ -130,6 +130,10 @@ export interface Comment {
 export interface QueueItem {
   id: string;
   type: 'POST' | 'COMMENT';
+  postId?: string;
+  postContent?: string;
+  parentCommentId?: string;
+  parentContent?: string;
   author: {
     userId: string;
     realName: string;

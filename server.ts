@@ -2670,7 +2670,7 @@ app.delete('/api/v1/posts/:postId/comments/:commentId', (req, res) => {
 app.get('/api/v1/moderation/queue', (_req, res) => {
   const pendingPosts = posts.filter((p) => p.status === 'PENDING_MODERATION');
 
-  const items = pendingPosts.map((p) => {
+  const projectQueuePost = (p: Post) => {
     const author = users.find((u) => u.id === p.authorId);
     const suggestedCohort = communityGroups.find((g) => g.id === p.suggestedCohortId);
 
@@ -2698,7 +2698,25 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
       createdAt: p.createdAt,
       moderatorPrivateNotes: p.moderatorPrivateNotes || [],
     };
-  });
+  };
+
+  const items: Array<ReturnType<typeof projectQueuePost> & { postId?: string; postContent?: string; parentCommentId?: string; parentContent?: string }> = pendingPosts.map(projectQueuePost);
+  for (const comment of comments.filter((c) => c.status === 'PENDING_MODERATION')) {
+    const post = posts.find((p) => p.id === comment.postId);
+    if (!post) continue;
+    const parent = comments.find((c) => c.id === comment.parentCommentId && c.postId === post.id);
+    items.push({
+      ...projectQueuePost({ ...post, authorId: comment.authorId }),
+      id: comment.id, type: 'COMMENT', title: post.title,
+      postId: post.id, postContent: post.sanitizedContent ?? post.rawContent,
+      parentCommentId: comment.parentCommentId,
+      parentContent: parent ? (parent.sanitizedContent ?? parent.rawContent) : undefined,
+      rawContent: comment.rawContent, sanitizedContent: comment.sanitizedContent ?? comment.rawContent,
+      phiAlerts: scanForPhi(comment.rawContent), createdAt: comment.createdAt,
+      moderatorPrivateNotes: [],
+    });
+  }
+  items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
   res.json({
     totalPending: items.length,
@@ -2709,6 +2727,35 @@ app.get('/api/v1/moderation/queue', (_req, res) => {
 // Moderation Action (Approve / Reject / Clinical Escalate)
 app.post('/api/v1/moderation/action', (req, res) => {
   const { entityId, action, assignedGroupIds, sanitizedContent, allowUnmoderatedReplies, rejectionCode, rejectionMessage, moderatorNotes } = req.body;
+
+  if (req.body.entityType === 'COMMENT') {
+    const comment = comments.find((c) => c.id === entityId);
+    const discussion = comment && posts.find((p) => p.id === comment.postId);
+    if (!comment || !discussion) return res.status(404).json({ error: 'Reply not found' });
+    if (!['APPROVE', 'REJECT'].includes(action)) return res.status(400).json({ error: 'Invalid reply moderation action' });
+    if (comment.status !== 'PENDING_MODERATION') return res.status(409).json({ error: 'This reply has already been reviewed.' });
+    const publicText = typeof sanitizedContent === 'string' ? sanitizedContent.trim() : comment.sanitizedContent ?? comment.rawContent;
+    if (action === 'APPROVE' && !publicText.trim()) return res.status(400).json({ error: 'Reply text is required.' });
+    const now = new Date().toISOString();
+    comment.status = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    comment.moderatedBy = 'user-clinician-1';
+    comment.moderatedAt = now;
+    if (action === 'APPROVE') comment.sanitizedContent = publicText;
+    discussion.commentCount = comments.filter((c) => c.postId === discussion.id && c.status === 'APPROVED').length;
+    directMessages.unshift({
+      id: `dm-${crypto.randomUUID()}`, recipientUserId: comment.authorId,
+      title: action === 'APPROVE' ? 'Your reply was approved' : 'Update regarding your reply',
+      message: action === 'APPROVE' ? `Your reply in "${discussion.title}" is now visible to the community.` : rejectionMessage || 'Your reply could not be published. Please review the moderator feedback.',
+      type: action === 'APPROVE' ? 'APPROVAL' : 'REJECTION', createdAt: now, read: false,
+    });
+    auditEvents.unshift({
+      id: `audit-${crypto.randomUUID()}`, moderatorId: 'user-clinician-1', moderatorName: 'Seema Gulyani',
+      entityType: 'COMMENT', entityId: comment.id, actionTaken: action,
+      reason: action === 'REJECT' ? rejectionCode : undefined, notes: moderatorNotes, createdAt: now,
+    });
+    return res.json({ status: 'SUCCESS', newEntityStatus: comment.status,
+      message: action === 'APPROVE' ? 'Reply approved and published.' : 'Reply rejected and feedback sent to the author.' });
+  }
 
   const post = posts.find((p) => p.id === entityId);
   if (!post) {

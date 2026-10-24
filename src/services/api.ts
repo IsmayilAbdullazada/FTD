@@ -614,10 +614,24 @@ export const api = {
 
   // Moderation Queue & Triage
   getModerationQueue: async (): Promise<{ totalPending: number; items: QueueItem[] }> => {
-    return safeFetchJson('/api/v1/moderation/queue', undefined, () => ({
-      totalPending: localQueue.length,
-      items: localQueue,
-    }));
+    return safeFetchJson('/api/v1/moderation/queue', undefined, () => {
+      const replies: QueueItem[] = localComments.filter((c) => c.status === 'PENDING_MODERATION').flatMap((c) => {
+        const post = localPosts.find((p) => p.id === c.postId);
+        const author = localUsers.find((u) => u.id === c.author.userId);
+        if (!post || !author) return [];
+        return [{ id: c.id, type: 'COMMENT', postId: post.id, title: post.title,
+          postContent: post.content, parentCommentId: c.parentCommentId,
+          parentContent: localComments.find((parent) => parent.id === c.parentCommentId)?.content,
+          author: { userId: author.id, realName: `${author.firstName} ${author.lastName}`,
+            email: author.email, phone: '', clinicPatientId: '', condition: author.condition,
+            anonymousHandle: author.anonymousHandle, avatarColor: author.avatarColor },
+          rawContent: c.content, sanitizedContent: c.content, condition: post.condition,
+          suggestedCohort: post.assignedGroups[0] || localCohorts[0],
+          assignedGroupIds: post.assignedGroups.map((g) => g.id), phiAlerts: [], createdAt: c.createdAt }];
+      });
+      const items = [...localQueue.filter((q) => q.type !== 'COMMENT'), ...replies];
+      return { totalPending: items.length, items };
+    });
   },
 
   performModerationAction: async (payload: {
@@ -645,6 +659,17 @@ export const api = {
         body: JSON.stringify(payload),
       },
       () => {
+        if (payload.entityType === 'COMMENT') {
+          const comment = localComments.find((c) => c.id === payload.entityId);
+          if (!comment || comment.status !== 'PENDING_MODERATION') throw new Error('Pending reply not found.');
+          if (payload.action !== 'APPROVE' && payload.action !== 'REJECT') throw new Error('Invalid reply action.');
+          comment.status = payload.action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+          if (payload.action === 'APPROVE') comment.content = payload.sanitizedContent ?? comment.content;
+          const post = localPosts.find((p) => p.id === comment.postId);
+          if (post) post.commentCount = localComments.filter((c) => c.postId === post.id && c.status === 'APPROVED').length;
+          return { status: 'SUCCESS', newEntityStatus: comment.status,
+            message: payload.action === 'APPROVE' ? 'Reply approved and published.' : 'Reply rejected.' };
+        }
         const queueIdx = localQueue.findIndex((q) => q.id === payload.entityId);
         const item = queueIdx >= 0 ? localQueue[queueIdx] : null;
 

@@ -301,7 +301,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             const author = memberRes.find(
               (m) => m.userId === item.author.userId
             );
-            return author?.condition === audienceFilter;
+            return (item.condition ?? author?.condition) === audienceFilter || item.condition === 'BOTH';
           });
 
       setQueueItems(filteredItems);
@@ -380,6 +380,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   useEffect(() => {
     loadPublishedPosts();
   }, [audienceFilter]);
+
+  const previousTab = useRef(activeTab);
+  useEffect(() => {
+    if (activeTab === 'queue' && previousTab.current !== 'queue') loadQueue();
+    previousTab.current = activeTab;
+  }, [activeTab]);
 
   const handleToggleGuide = async (guide: ChatbotGuideFile) => {
     try {
@@ -731,7 +737,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     try {
       const res = await api.performModerationAction({
         entityId: activeItem.id,
-        entityType: 'POST',
+        entityType: activeItem.type,
         action: 'APPROVE',
         assignedGroupIds: selectedGroupIds,
         condition: approveAudience,
@@ -824,12 +830,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     try {
       const res = await api.performModerationAction({
         entityId: activeItem.id,
-        entityType: 'POST',
+        entityType: activeItem.type,
         action: 'REJECT',
         rejectionCode,
         rejectionMessage:
           customRejectionText.trim() ||
-          'Your post could not be shared publicly. Please review the note from Dr. Seema.',
+          `Your ${activeItem.type === 'COMMENT' ? 'reply' : 'post'} could not be shared publicly. Please review the moderator feedback.`,
         moderatorNotes,
       });
 
@@ -1182,7 +1188,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <span>Pending Posts</span>
+            <span>Pending Posts & Replies</span>
             {queueItems.length > 0 && (
               <span className="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold tabular-nums">
                 {queueItems.length}
@@ -1251,9 +1257,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {/* TAB 1: PENDING POSTS */}
       {activeTab === 'queue' && (
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <button type="button" disabled={loadingQueue} onClick={() => { loadQueue(); onQueueUpdated(); }}
+              className="min-h-11 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-[#002D72] dark:text-sky-400 disabled:opacity-50">Refresh queue</button>
+          </div>
           {loadingQueue ? (
             <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-xs">
-              Loading posts...
+              Loading submissions...
             </div>
           ) : queueItems.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3 transition-colors">
@@ -1261,10 +1271,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 <Check className="w-5 h-5" />
               </div>
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-                No posts waiting
+                No submissions waiting
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                All caregiver submissions have been reviewed and published.
+                There are no questions or replies awaiting review.
               </p>
             </div>
           ) : (
@@ -1272,7 +1282,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               {/* Left Column: Post list */}
               <div className="lg:col-span-4 space-y-2">
                 <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-1">
-                  Posts to review ({queueItems.length})
+                  Submissions to review ({queueItems.length})
                 </div>
 
                 <div className="space-y-2">
@@ -1295,6 +1305,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                           </span>
                         </div>
 
+                        <span className="inline-flex rounded px-2 py-0.5 text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {item.type === 'POST' ? 'Question' : item.parentCommentId ? 'Nested reply' : 'Reply to question'}
+                        </span>
                         <div className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
                           {item.title}
                         </div>
@@ -1348,10 +1361,22 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     )}
                   </div>
 
+                  {activeItem.type === 'COMMENT' && (
+                    <div className="space-y-2 p-3.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900 text-sm">
+                      <p className="font-semibold text-[#002D72] dark:text-sky-400">{activeItem.parentCommentId ? 'Review nested reply' : 'Review reply to question'}</p>
+                      <a href={`/?tab=feed&post=${encodeURIComponent(activeItem.postId || '')}`} className="font-semibold hover:underline">{activeItem.title}</a>
+                      <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line">{activeItem.postContent}</p>
+                      {activeItem.parentCommentId && <div className="border-l-2 border-blue-200 dark:border-blue-800 pl-3">
+                        <p className="text-xs font-semibold text-slate-500">Replying to</p>
+                        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line">{activeItem.parentContent || 'This parent reply is no longer available.'}</p>
+                      </div>}
+                      <p className="text-xs text-slate-500">Published replies keep the discussion’s groups, audience, and thread position.</p>
+                    </div>
+                  )}
                   {/* Original Question */}
                   <div className="space-y-2">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Original post
+                      {activeItem.type === 'COMMENT' ? 'Submitted reply' : 'Original post'}
                     </label>
                     <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5 text-xs">
                       <div className="font-semibold text-slate-900 dark:text-white text-sm">
@@ -1393,7 +1418,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <label className="font-semibold text-slate-700 dark:text-slate-300">
-                        Public post text
+                        {activeItem.type === 'COMMENT' ? 'Public reply text' : 'Public post text'}
                       </label>
                       <span className="text-[11px] text-slate-400 dark:text-slate-500">
                         Community will see this text
@@ -1407,6 +1432,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     />
                   </div>
 
+                  {activeItem.type === 'POST' && (<>
                   {/* Group */}
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -1469,6 +1495,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       </label>
                     </div>
                   </div>
+
+                  </>)}
 
                   {/* Existing Private Notes History */}
                   {activeItem.moderatorPrivateNotes && activeItem.moderatorPrivateNotes.length > 0 && (
@@ -1539,6 +1567,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       <span>Publish</span>
                     </button>
 
+                    {activeItem.type === 'POST' && (
                     <button
                       type="button"
                       onClick={() => setShowPrivateReplyModal(true)}
@@ -1547,6 +1576,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                       <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
                       <span>Reply Privately</span>
                     </button>
+                    )}
 
                     <button
                       onClick={() => setShowRejectModal(true)}
@@ -2650,7 +2680,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           >
             <div>
               <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                Reject Post
+                Reject {activeItem.type === 'COMMENT' ? 'Reply' : 'Post'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 The author will receive a private explanation.
@@ -2712,7 +2742,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                 onClick={handleConfirmReject}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
               >
-                Reject Post
+                Reject {activeItem.type === 'COMMENT' ? 'Reply' : 'Post'}
               </button>
             </div>
           </div>

@@ -33,6 +33,7 @@ import {
   ToggleRight,
   Play,
   RotateCcw,
+  RefreshCw,
   ExternalLink,
   ChevronDown,
   ChevronUp,
@@ -58,6 +59,8 @@ import {
 } from '../types';
 import { AudienceBadge } from './AudienceBadge';
 import { api } from '../services/api';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from './Pagination';
 import { cleanPdfText } from '../utils/cleanPdfText';
 
 export const INSTITUTIONAL_RESOURCE_FILES = [
@@ -305,10 +308,12 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           });
 
       setQueueItems(filteredItems);
-      setSelectedIndex(0);
+      const page = Math.min(queuePage.page, Math.max(1, Math.ceil(filteredItems.length / queuePage.pageSize)));
+      const index = (page - 1) * queuePage.pageSize;
+      setSelectedIndex(index);
 
       if (filteredItems.length > 0) {
-        initItemState(filteredItems[0]);
+        initItemState(filteredItems[index]);
       }
     } catch (err) {
       console.error(err);
@@ -1000,6 +1005,49 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     return matchesSearch && matchesGroup && matchesCondition;
   });
 
+  const filteredDiscussions = publishedPosts.filter((p) => {
+    if (postsPolicyFilter === 'moderated' && (p.allowUnmoderatedReplies || p.isClosed)) return false;
+    if (postsPolicyFilter === 'unmoderated' && (!p.allowUnmoderatedReplies || p.isClosed)) return false;
+    if (postsPolicyFilter === 'closed' && !p.isClosed) return false;
+    if (searchPostsQuery.trim()) {
+      const q = searchPostsQuery.toLowerCase();
+      return (
+        p.title.toLowerCase().includes(q) ||
+        p.content.toLowerCase().includes(q) ||
+        p.author.anonymousHandle.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+  const filteredGuides = chatbotGuides
+    .filter((g) => {
+      if (guideStatusFilter === 'DRAFT') return g.status === 'DRAFT';
+      if (guideStatusFilter === 'APPROVED') return g.status === 'APPROVED' || !g.status;
+      return true;
+    })
+    .filter((g) => {
+      const q = guideSearchFilter.toLowerCase();
+      return (
+        !q ||
+        g.title.toLowerCase().includes(q) ||
+        g.fileName.toLowerCase().includes(q) ||
+        (g.publisher && g.publisher.toLowerCase().includes(q)) ||
+        (g.year && g.year.toLowerCase().includes(q)) ||
+        g.content.toLowerCase().includes(q)
+      );
+    });
+  const queuePage = usePagination(queueItems, 6, audienceFilter);
+  const discussionPage = usePagination(filteredDiscussions, 10, JSON.stringify([audienceFilter, postsPolicyFilter, searchPostsQuery]));
+  const groupPage = usePagination(cohorts, 12);
+  const memberPage = usePagination(filteredMembers, 15, JSON.stringify([audienceFilter, selectedCohortFilter, searchMemberQuery]));
+  const guidePage = usePagination(filteredGuides, 10, JSON.stringify([guideStatusFilter, guideSearchFilter]));
+  const changeQueuePage = (page: number) => {
+    queuePage.setPage(page);
+    const index = (page - 1) * queuePage.pageSize;
+    setSelectedIndex(index);
+    if (queueItems[index]) initItemState(queueItems[index]);
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-3.5 sm:px-4 py-3.5 sm:py-6 space-y-4 sm:space-y-5 transition-colors">
       {/* TOP HEADER */}
@@ -1257,9 +1305,13 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       {/* TAB 1: PENDING POSTS */}
       {activeTab === 'queue' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <button type="button" disabled={loadingQueue} onClick={() => { loadQueue(); onQueueUpdated(); }}
-              className="min-h-11 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-[#002D72] dark:text-sky-400 disabled:opacity-50">Refresh queue</button>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Submissions to review ({queueItems.length})</h2>
+            <button type="button" aria-label="Refresh queue" title="Refresh queue" disabled={loadingQueue}
+              onClick={() => { loadQueue(); onQueueUpdated(); }}
+              className="min-h-11 min-w-11 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[#002D72] dark:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+              <RefreshCw aria-hidden="true" className={`w-4 h-4 ${loadingQueue ? 'animate-spin' : ''}`} />
+            </button>
           </div>
           {loadingQueue ? (
             <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-xs">
@@ -1281,12 +1333,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Left Column: Post list */}
               <div className="lg:col-span-4 space-y-2">
-                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 px-1">
-                  Submissions to review ({queueItems.length})
-                </div>
-
-                <div className="space-y-2">
-                  {queueItems.map((item, idx) => {
+                <div className="space-y-2 max-h-[65vh] overflow-y-auto overscroll-contain p-1">
+                  {queuePage.items.map((item, pageIndex) => {
+                    const idx = queuePage.start + pageIndex;
                     const isSelected = idx === selectedIndex;
                     const hasPhi = item.phiAlerts && item.phiAlerts.length > 0;
                     return (
@@ -1331,6 +1380,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     );
                   })}
                 </div>
+                <Pagination label="Queue" {...queuePage} setPage={changeQueuePage} />
               </div>
 
               {/* Right Column: Review details */}
@@ -1696,20 +1746,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             </div>
           ) : (
             (() => {
-              const filtered = publishedPosts.filter((p) => {
-                if (postsPolicyFilter === 'moderated' && (p.allowUnmoderatedReplies || p.isClosed)) return false;
-                if (postsPolicyFilter === 'unmoderated' && (!p.allowUnmoderatedReplies || p.isClosed)) return false;
-                if (postsPolicyFilter === 'closed' && !p.isClosed) return false;
-                if (searchPostsQuery.trim()) {
-                  const q = searchPostsQuery.toLowerCase();
-                  return (
-                    p.title.toLowerCase().includes(q) ||
-                    p.content.toLowerCase().includes(q) ||
-                    p.author.anonymousHandle.toLowerCase().includes(q)
-                  );
-                }
-                return true;
-              });
+              const filtered = filteredDiscussions;
 
               if (filtered.length === 0) {
                 return (
@@ -1722,7 +1759,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
               return (
                 <div className="space-y-3">
-                  {filtered.map((post) => {
+                  {discussionPage.items.map((post) => {
                     const isUnmoderated = post.allowUnmoderatedReplies === true;
                     const groupName = getProperGroupName(post.assignedGroups[0]);
 
@@ -1848,6 +1885,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               );
             })()
           )}
+          {!loadingPosts && <Pagination label="Discussions" {...discussionPage} />}
         </div>
       )}
 
@@ -1882,7 +1920,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {cohorts.map((cohort) => {
+              {groupPage.items.map((cohort) => {
                 const assignedCount = members.filter((m) => m.primaryGroupId === cohort.id).length;
                 return (
                   <div
@@ -1927,6 +1965,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               })}
             </div>
           </div>
+          <Pagination label="Groups" {...groupPage} />
         </div>
       )}
 
@@ -2015,7 +2054,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                    {filteredMembers.map((m) => (
+                    {memberPage.items.map((m) => (
                       <tr key={m.userId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                         <td className="py-3 px-3 whitespace-nowrap">
                           <div className="font-semibold text-slate-900 dark:text-white">{m.realName}</div>
@@ -2061,6 +2100,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               </div>
             )}
           </div>
+          {!loadingMembers && <Pagination label="Members" {...memberPage} />}
         </div>
       )}
 
@@ -2193,23 +2233,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {chatbotGuides
-                  .filter((g) => {
-                    if (guideStatusFilter === 'DRAFT') return g.status === 'DRAFT';
-                    if (guideStatusFilter === 'APPROVED') return g.status === 'APPROVED' || !g.status;
-                    return true;
-                  })
-                  .filter((g) => {
-                    const q = guideSearchFilter.toLowerCase();
-                    return (
-                      !q ||
-                      g.title.toLowerCase().includes(q) ||
-                      g.fileName.toLowerCase().includes(q) ||
-                      (g.publisher && g.publisher.toLowerCase().includes(q)) ||
-                      (g.year && g.year.toLowerCase().includes(q)) ||
-                      g.content.toLowerCase().includes(q)
-                    );
-                  })
+                {guidePage.items
                   .map((guide, idx) => {
                     const isDraft = guide.status === 'DRAFT';
                     return (
@@ -2336,6 +2360,8 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
               </div>
             )}
           </div>
+
+          {!loadingGuides && <Pagination label="Guides" {...guidePage} />}
 
           {/* Test Assistant Guidance */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-4">

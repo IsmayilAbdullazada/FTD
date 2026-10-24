@@ -11,6 +11,7 @@ import {
   ingestGuide,
   deleteGuideChunks,
   answerRagQuery,
+  noGuideResult,
   getLoadedChunksCount,
 } from './server/rag.ts';
 import {
@@ -4052,36 +4053,20 @@ app.post('/api/v1/knowledge/chat', async (req, res) => {
   chatbotGuidesStore = loadChatbotGuidesFromDb();
   const approvedActiveGuides = chatbotGuidesStore.filter((g) => g.isActive && (g.status === 'APPROVED' || !g.status));
 
-  // Disable the chat endpoint until verified guides are uploaded and approved
+  const aiClient = getAiClient();
   if (approvedActiveGuides.length === 0) {
-    return res.json({
-      answer: `The Johns Hopkins Care Companion is currently offline while the clinical care team reviews, extracts, and approves institutional care guides.\n\nPlease consult the Guides library directly or contact the Johns Hopkins Memory and Alzheimer's Treatment Center clinic at (410) 955-5147 (option 2) for clinical inquiries. For life-threatening emergencies, please call 911 immediately.`,
-      isOffline: true,
-      isDisabled: true,
-      retrievedChunks: [],
-      citedResources: [],
-      suggestedQuestions: [],
-      isUploadedGuideSourced: false,
-    });
+    return res.json(await noGuideResult(query, aiClient));
   }
 
-  const aiClient = getAiClient();
-
   try {
-    const result = await answerRagQuery(query, conversationHistory, aiClient, conditionFilter);
+    const result = await answerRagQuery(query, conversationHistory, aiClient, conditionFilter, approvedActiveGuides);
     return res.json(result);
   } catch (err: any) {
-    console.error('Error answering RAG query:', err);
+    console.error('Error retrieving guide pages:', err);
+    const result = await noGuideResult(query, aiClient);
     return res.json({
-      answer: `Our clinical knowledge assistant encountered a temporary processing delay. Please consult your Johns Hopkins neurology team directly at (410) 955-5147 (option 2) for guidance. For immediate emergencies, call 911.`,
-      retrievedChunks: [],
-      citedResources: [],
-      suggestedQuestions: [
-        'How do I handle violent resistance during showers and bathing?',
-        'How do I stop my loved one from driving safely?',
-        'Why are they constantly craving sweets and overeating?',
-      ],
-      isUploadedGuideSourced: false,
+      ...result,
+      answer: 'Unable to search the guides right now. You can try again or create a discussion post.',
     });
   }
 });

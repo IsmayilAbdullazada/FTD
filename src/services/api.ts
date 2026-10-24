@@ -1104,6 +1104,7 @@ export const api = {
     isOffline?: boolean;
     isDisabled?: boolean;
     isMedicationRefusal?: boolean;
+    discussionDraft?: { title: string; content: string };
     citedResources?: Array<{
       id: string;
       title: string;

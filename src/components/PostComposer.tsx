@@ -26,6 +26,7 @@ interface PostComposerProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
   initialTitle?: string;
+  initialContent?: string;
   onPostSubmitted: () => void;
   onCancel: () => void;
   onOpenResource: (resourceId: string) => void;
@@ -480,13 +481,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   currentUser,
   cohorts,
   initialTitle,
+  initialContent,
   onPostSubmitted,
   onCancel,
   onOpenResource,
   onOpenDiscussion,
 }) => {
   const [title, setTitle] = useState(initialTitle || '');
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(initialContent || '');
   const [selectedCohortId, setSelectedCohortId] = useState(
     cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || ''
   );
@@ -498,10 +500,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    if (initialTitle) {
-      setTitle(initialTitle);
-    }
-  }, [initialTitle]);
+    setTitle(initialTitle || '');
+    setContent(initialContent || '');
+  }, [initialTitle, initialContent]);
 
   const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
     user.role !== 'CARE_PARTNER' || audience === 'BOTH' || audience === user.condition;

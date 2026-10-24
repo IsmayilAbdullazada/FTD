@@ -46,6 +46,7 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [inspectedResourceId, setInspectedResourceId] = useState<string | null>(null);
   const [composerInitialTitle, setComposerInitialTitle] = useState<string>('');
+  const [composerInitialContent, setComposerInitialContent] = useState<string>('');
   const [authMode, setAuthMode] = useState<'login' | 'forgot-password' | 'register'>('login');
   const [authInviteToken, setAuthInviteToken] = useState<string | undefined>(undefined);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -78,6 +79,10 @@ export default function App() {
           setTargetDiscussionId(urlPost);
           setActiveTab('feed');
         } else if (urlTab) {
+          if (urlTab === 'compose' && window.history.state?.discussionDraft) {
+            setComposerInitialTitle(window.history.state.discussionDraft.title || '');
+            setComposerInitialContent(window.history.state.discussionDraft.content || '');
+          }
           setActiveTab(urlTab);
         } else if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
           setActiveTab('moderation');
@@ -128,6 +133,10 @@ export default function App() {
         setIsAuthOpen(true);
       } else {
         setIsAuthOpen(false);
+        if (tabParam === 'compose') {
+          setComposerInitialTitle(window.history.state?.discussionDraft?.title || '');
+          setComposerInitialContent(window.history.state?.discussionDraft?.content || '');
+        }
         setActiveTab(tabParam);
         setTargetDiscussionId(postParam);
       }
@@ -168,6 +177,8 @@ export default function App() {
   };
 
   const handleSignOut = (notice?: string) => {
+    setComposerInitialTitle('');
+    setComposerInitialContent('');
     localStorage.removeItem('jh_user_id');
     localStorage.removeItem('jh_session_token');
     setCurrentUser(null);
@@ -182,6 +193,8 @@ export default function App() {
   };
 
   const handleSwitchPersona = (userId: string) => {
+    setComposerInitialTitle('');
+    setComposerInitialContent('');
     loadUserAndData(userId);
     setFeedResetKey((prev) => prev + 1);
     setTargetDiscussionId(null);
@@ -287,7 +300,11 @@ export default function App() {
             onClearTargetDiscussion={() => setTargetDiscussionId(null)}
             recentNotice={feedNotice}
             onDismissNotice={() => setFeedNotice(null)}
-            onOpenComposer={() => setActiveTab('compose')}
+            onOpenComposer={() => {
+              setComposerInitialTitle('');
+              setComposerInitialContent('');
+              handleSelectTab('compose');
+            }}
             initialSection={feedSection}
             onSectionChange={(sec) => setFeedSection(sec)}
           />
@@ -298,20 +315,24 @@ export default function App() {
             currentUser={currentUser}
             cohorts={cohorts}
             initialTitle={composerInitialTitle}
+            initialContent={composerInitialContent}
             onPostSubmitted={() => {
               setComposerInitialTitle('');
+              setComposerInitialContent('');
               setFeedNotice('Your post has been submitted and is currently under review.');
               setFeedSection('my-posts');
-              setActiveTab('feed');
+              handleSelectTab('feed');
               handleQueueUpdated();
             }}
             onCancel={() => {
               setComposerInitialTitle('');
-              setActiveTab('feed');
+              setComposerInitialContent('');
+              handleSelectTab('feed');
             }}
             onOpenResource={handleOpenResourceFromDeflection}
             onOpenDiscussion={(postId) => {
               setComposerInitialTitle('');
+              setComposerInitialContent('');
               setTargetDiscussionId(postId);
               setActiveTab('feed');
               const url = new URL(window.location.href);
@@ -384,6 +405,16 @@ export default function App() {
         isOpen={isAssistantOpen}
         onToggle={() => setIsAssistantOpen((prev) => !prev)}
         onClose={() => setIsAssistantOpen(false)}
+        onCreateDiscussion={(draft) => {
+          setComposerInitialTitle(draft.title);
+          setComposerInitialContent(draft.content);
+          setActiveTab('compose');
+          setIsAssistantOpen(false);
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', 'compose');
+          url.searchParams.delete('post');
+          window.history.pushState({ tab: 'compose', discussionDraft: draft }, '', url.toString());
+        }}
       />
 
       <InvitationModal

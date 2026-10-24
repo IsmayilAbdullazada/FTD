@@ -23,6 +23,7 @@ interface FloatingChatbotAssistantProps {
   isOpen: boolean;
   onToggle: () => void;
   onClose: () => void;
+  onCreateDiscussion: (draft: { title: string; content: string }) => void;
 }
 
 interface ChatMessage {
@@ -30,6 +31,7 @@ interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   isMedicationRefusal?: boolean;
+  discussionDraft?: { title: string; content: string };
   suggestedQuestions?: string[];
   matchedGuide?: {
     id: string;
@@ -140,7 +142,7 @@ const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
   return {
     id: `msg-welcome-${Date.now()}`,
     sender: 'assistant',
-    text: `Hello! I am your Care Companion, here to support you 24/7 as a care partner supporting a loved one with ${conditionDescription}.\n\nI can help answer day-to-day caregiving questions based on verified Johns Hopkins care guides, behavioral routines, and family resources.\n\nWhat is on your mind today?`,
+    text: `Hello! I am your Care Companion, here to support you 24/7 as a care partner supporting a loved one with ${conditionDescription}.\n\nI can find verified care guides and link you to the relevant pages. If no guide matches, I can help you prepare a discussion post.\n\nWhat is on your mind today?`,
     timestamp: 'Now',
     suggestedQuestions: defaultSuggestedQuestions,
   };
@@ -151,6 +153,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   isOpen,
   onToggle,
   onClose,
+  onCreateDiscussion,
 }) => {
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -289,6 +292,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         suggestedQuestions: res.suggestedQuestions || [],
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,
+        discussionDraft: res.discussionDraft,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
@@ -299,7 +303,8 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         {
           id: `bot-err-${Date.now()}`,
           sender: 'assistant',
-          text: 'Unable to reach the care knowledge base right now. For urgent triage, please call the Johns Hopkins clinic line at (410) 955-5147 (option 2) or support line at (410) 502-4163. For emergencies, call 911.',
+          text: 'Unable to search the guides right now. You can try again or create a discussion post.',
+          discussionDraft: { title: '', content: q.trim() },
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -338,7 +343,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                   Have a question on your mind?
                 </p>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                  I'm here to help 24/7 with caregiving routines, behavioral tips, and answers.
+                  Find care guide pages or ask the community a question.
                 </p>
                 <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#002D72] dark:text-sky-400 group-hover:underline">
                   <span>Ask a question</span>
@@ -472,7 +477,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           {showUrgentNotice && (
             <div className="p-3 bg-amber-100/90 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800/60 text-xs sm:text-sm leading-relaxed text-amber-950 dark:text-amber-100 shrink-0 animate-in fade-in duration-150">
               <strong className="font-semibold block">Not for emergency messages:</strong>
-              This AI assistant provides educational guidance based on Johns Hopkins care guides. For emergencies, message through EPIC or dial 911 directly.
+              This assistant finds relevant pages in approved care guides. It does not provide personalized medical advice.
             </div>
           )}
 
@@ -501,28 +506,22 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                       <div className="whitespace-pre-line select-text text-base leading-relaxed font-sans">
                         {msg.text}
                       </div>
-                    ) : (
+                    ) : msg.text ? (
                       <FormattedMessageText text={msg.text} />
-                    )}
+                    ) : null}
 
-                    {/* Medication Refusal Emergency Contacts */}
-                    {msg.isMedicationRefusal && (
-                      <div className="pt-2 flex flex-col gap-2">
-                        <a
-                          href="tel:4109555147"
-                          className="min-h-11 inline-flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-2 rounded-xl text-sm transition"
-                        >
-                          <Phone className="w-4 h-4" />
-                          <span>Clinic: (410) 955-5147 (opt. 2)</span>
-                        </a>
-                        <a
-                          href="tel:4105024163"
-                          className="min-h-11 inline-flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-2 rounded-xl text-sm transition"
-                        >
-                          <Phone className="w-4 h-4" />
-                          <span>Support Line: (410) 502-4163</span>
-                        </a>
-                      </div>
+                    {msg.discussionDraft && (
+                      <a
+                        href="?tab=compose"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onCreateDiscussion(msg.discussionDraft!);
+                        }}
+                        className="inline-flex items-center gap-2 min-h-11 px-3 py-2 rounded-lg bg-[#002D72] text-white font-semibold text-sm hover:bg-[#001D4A]"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Create a discussion post
+                      </a>
                     )}
 
                     {/* Institutional Grounded Guide Citation */}

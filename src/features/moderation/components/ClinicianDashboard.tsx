@@ -12,11 +12,9 @@ import {
   X,
   Sparkles,
   UserPlus,
-  ArrowRight,
   MessageSquare,
   Clock,
   Lock,
-  LockOpen,
   Bot,
   FileText,
   UploadCloud,
@@ -39,114 +37,24 @@ import {
   Audience,
   Condition,
   QueueItem,
-  Post,
   CommunityGroup,
   RejectionReason,
-  GroupMember,
   getProperGroupName,
   getFullGroupName,
-  ChatbotGuideFile,
-  ChatbotGuideTestResult,
   GuideCondition,
-  GuidePageData,
 } from '@/types';
 import { communityApi } from '@/features/community/api/communityApi';
-import { discussionApi } from '@/features/discussions/api/discussionApi';
-import { guideApi } from '@/features/knowledge/api/guideApi';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import { Pagination } from '@/shared/components/Pagination';
 import { usePagination } from '@/shared/hooks/usePagination';
-import { cleanPdfText } from '@/shared/lib/cleanPdfText';
-
-export const INSTITUTIONAL_RESOURCE_FILES = [
-  { fileName: 'Managing-Aggressive-Behavior.pdf', label: 'Managing Aggressive Behavior' },
-  { fileName: 'SleepIssuesFTD-090623.pdf', label: 'Sleep Issues in FTD' },
-  { fileName: 'PinFTDcare_Newsletter_Fall_2016.pdf', label: 'Partners in FTD Care - Fall 2016' },
-  { fileName: 'PinFTDcare_Newsletter_Winter_2018.pdf', label: 'Partners in FTD Care - Winter 2018' },
-  { fileName: 'PinFTDcare_Newsletter_Winter_2019.pdf', label: 'Partners in FTD Care - Winter 2019' },
-  { fileName: 'PinFTDcare_sprng_2020.pdf', label: 'Partners in FTD Care - Spring 2020' },
-  { fileName: 'January-2014.pdf', label: 'Partners in FTD Care - January 2014' },
-  { fileName: 'July-2012.pdf', label: 'Partners in FTD Care - July 2012' },
-  { fileName: 'PiC-fall-2014-WTDA.pdf', label: 'Partners in FTD Care - Fall 2014' },
-  { fileName: 'Summer-2014-Newsletter_Final.pdf', label: 'Partners in FTD Care - Summer 2014' },
-];
-
-export function suggestGuideTitle(fileName: string, firstPageText?: string): string {
-  if (!fileName) return '';
-
-  // 1. Direct match from known institutional library resources
-  const match = INSTITUTIONAL_RESOURCE_FILES.find(
-    (f) => f.fileName.toLowerCase() === fileName.toLowerCase()
-  );
-  if (match) return match.label;
-
-  // 2. Check first page text for a clean, human clinical title line
-  if (firstPageText) {
-    const lines = firstPageText
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-    for (const rawLine of lines.slice(0, 6)) {
-      const line = rawLine.replace(/^[#*\-•\s]+/, '').trim();
-      if (
-        line.length >= 8 &&
-        line.length <= 80 &&
-        !/^page\s+\d+/i.test(line) &&
-        !/^\d+$/.test(line) &&
-        !/^www\./i.test(line) &&
-        !/^https?:/i.test(line) &&
-        !/^vol(ume)?\.?\s*\d+/i.test(line)
-      ) {
-        if (
-          line.includes('FTD') ||
-          line.includes('Partners') ||
-          line.includes('Behavior') ||
-          line.includes('Care') ||
-          line.includes('Sleep') ||
-          line.includes('Dementia') ||
-          line.includes('Guide') ||
-          line.includes('Managing')
-        ) {
-          return line;
-        }
-      }
-    }
-  }
-
-  // 3. Fallback: Parse filename patterns
-  let name = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
-
-  // Pattern: PinFTDcare_Newsletter_Winter_2019
-  const p1 = name.match(/^PinFTDcare_Newsletter_([A-Za-z]+)_(\d{4})/i);
-  if (p1) return `Partners in FTD Care - ${p1[1]} ${p1[2]}`;
-
-  // Pattern: PinFTDcare_sprng_2020
-  const p2 = name.match(/^PinFTDcare_([A-Za-z]+)_(\d{4})/i);
-  if (p2) {
-    const season = p2[1].toLowerCase() === 'sprng' ? 'Spring' : p2[1];
-    return `Partners in FTD Care - ${season} ${p2[2]}`;
-  }
-
-  // Pattern: PiC-fall-2014-WTDA
-  const p3 = name.match(/^PiC-([A-Za-z]+)-(\d{4})/i);
-  if (p3) return `Partners in FTD Care - ${p3[1]} ${p3[2]}`;
-
-  // Pattern: Month-Year, e.g. January-2014
-  const p4 = name.match(/^([A-Za-z]+)-(\d{4})$/i);
-  if (p4) return `Partners in FTD Care - ${p4[1]} ${p4[2]}`;
-
-  // Beautify underscores and dashes
-  name = name
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  return name
-    .split(' ')
-    .map((w) => (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
+import { useGuideManagement } from '@/features/moderation/hooks/useGuideManagement';
+import { useMemberManagement } from '@/features/moderation/hooks/useMemberManagement';
+import { useDiscussionManagement } from '@/features/moderation/hooks/useDiscussionManagement';
+import { INSTITUTIONAL_RESOURCE_FILES } from '@/features/moderation/lib/guideTitle';
+import { CohortsTab } from '@/features/moderation/components/dashboard/CohortsTab';
+import { MembersTab } from '@/features/moderation/components/dashboard/MembersTab';
+import { DiscussionsTab } from '@/features/moderation/components/dashboard/DiscussionsTab';
 
 interface ClinicianDashboardProps {
   currentUser: CurrentUser;
@@ -181,19 +89,76 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [allowUnmoderatedReplies, setAllowUnmoderatedReplies] = useState(false);
   const [moderatorNotes, setModeratorNotes] = useState('');
 
-  // Discussions & Reply Policy State
-  const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [searchPostsQuery, setSearchPostsQuery] = useState('');
-  const [postsPolicyFilter, setPostsPolicyFilter] = useState<'all' | 'moderated' | 'unmoderated' | 'closed'>('all');
-  const [postToClose, setPostToClose] = useState<Post | null>(null);
-  const [isTogglingClose, setIsTogglingClose] = useState(false);
-
   // Rejection modal
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionCode, setRejectionCode] = useState<RejectionReason>('CLINICAL_MEDICATION_QUERY');
   const [customRejectionText, setCustomRejectionText] = useState('');
   const [actionSuccessNotice, setActionSuccessNotice] = useState<string | null>(null);
+
+  const {
+    publishedPosts,
+    filteredDiscussions,
+    loadingPosts,
+    searchPostsQuery,
+    setSearchPostsQuery,
+    postsPolicyFilter,
+    setPostsPolicyFilter,
+    postToClose,
+    setPostToClose,
+    isTogglingClose,
+    showNewPostModal,
+    setShowNewPostModal,
+    npTitle,
+    setNpTitle,
+    npContent,
+    setNpContent,
+    npGroupId,
+    setNpGroupId,
+    npAudience,
+    setNpAudience,
+    isSubmittingPost,
+    loadPublishedPosts,
+    handleCreatePost,
+    handleTogglePostRepliesMode,
+    handleTogglePostClose,
+  } = useDiscussionManagement({
+    currentUser,
+    audienceFilter,
+    onAudienceReset: () => setAudienceFilter('all'),
+    onPostCreated: () => setActiveTab('discussions'),
+    onQueueUpdated,
+    setActionSuccessNotice,
+  });
+
+  const {
+    members,
+    filteredMembers,
+    selectedCohortFilter,
+    setSelectedCohortFilter,
+    searchMemberQuery,
+    setSearchMemberQuery,
+    loadingMembers,
+    reassigningUser,
+    setReassigningUser,
+    targetNewGroupId,
+    setTargetNewGroupId,
+    showCreateGroupModal,
+    setShowCreateGroupModal,
+    newGroupName,
+    setNewGroupName,
+    newGroupRegion,
+    setNewGroupRegion,
+    newGroupDescription,
+    setNewGroupDescription,
+    isSubmittingGroup,
+    loadMembers,
+    handleConfirmReassign,
+    handleCreateGroup,
+  } = useMemberManagement({
+    audienceFilter,
+    onCohortCreated,
+    setActionSuccessNotice,
+  });
 
   // Private reply modal
   const [showPrivateReplyModal, setShowPrivateReplyModal] = useState(false);
@@ -203,81 +168,69 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
   const activeItem = queueItems[selectedIndex] || null;
 
-  // Groups and Members State
-  const [members, setMembers] = useState<GroupMember[]>([]);
-  const [selectedCohortFilter, setSelectedCohortFilter] = useState('all');
-  const [searchMemberQuery, setSearchMemberQuery] = useState('');
-  const [loadingMembers, setLoadingMembers] = useState(false);
-  const [reassigningUser, setReassigningUser] = useState<GroupMember | null>(null);
-  const [targetNewGroupId, setTargetNewGroupId] = useState('');
-
-  // Create Group Modal State
-  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupRegion, setNewGroupRegion] = useState('');
-  const newGroupRadius = '35';
-  const [newGroupDescription, setNewGroupDescription] = useState('');
-  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
-  const [showNewPostModal, setShowNewPostModal] = useState(false);
-  const [npTitle, setNpTitle] = useState('');
-  const [npContent, setNpContent] = useState('');
-  const [npGroupId, setNpGroupId] = useState('');
-  const [npAudience, setNpAudience] = useState<Audience | ''>('');
-  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
-
-  // Chatbot Knowledge Management State
-  const [chatbotGuides, setChatbotGuides] = useState<ChatbotGuideFile[]>([]);
-  const [loadingGuides, setLoadingGuides] = useState(false);
-  const [guideSearchFilter, setGuideSearchFilter] = useState('');
-  const [showUploadGuideModal, setShowUploadGuideModal] = useState(false);
-  const [inspectGuideModal, setInspectGuideModal] = useState<ChatbotGuideFile | null>(null);
-  const [guideToDelete, setGuideToDelete] = useState<ChatbotGuideFile | null>(null);
-  const [isDeletingGuide, setIsDeletingGuide] = useState(false);
-  const [guideStatusFilter, setGuideStatusFilter] = useState<'ALL' | 'DRAFT' | 'APPROVED'>('ALL');
-
-  // Upload Guide Form State (Condition, Title, Topic Tag, Page-by-Page Extraction)
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(null);
-  const [uploadTopicTag, setUploadTopicTag] = useState('');
-  const [uploadFileName, setUploadFileName] = useState('');
-  const [uploadContent, setUploadContent] = useState('');
-  const [uploadPages, setUploadPages] = useState<GuidePageData[]>([]);
-  const [showExtractedInspector, setShowExtractedInspector] = useState(false);
-  const [selectedInspectPage, setSelectedInspectPage] = useState<number>(1);
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [showTechDetails, setShowTechDetails] = useState(false);
-  const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(null);
-  const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
-  const [isUploadingGuide, setIsUploadingGuide] = useState(false);
-  const [isExtractingPdf, setIsExtractingPdf] = useState(false);
-  const [extractedPdfStats, setExtractedPdfStats] = useState<{ pages: number; words: number } | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Live Chatbot Test Simulator State
-  const [testQuery, setTestQuery] = useState('');
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<ChatbotGuideTestResult | null>(null);
-  const [copiedInspect, setCopiedInspect] = useState(false);
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleProcessFile(e.dataTransfer.files[0]);
-    }
-  };
+  const {
+    chatbotGuides,
+    loadingGuides,
+    guideSearchFilter,
+    setGuideSearchFilter,
+    showUploadGuideModal,
+    setShowUploadGuideModal,
+    inspectGuideModal,
+    setInspectGuideModal,
+    guideToDelete,
+    setGuideToDelete,
+    isDeletingGuide,
+    guideStatusFilter,
+    setGuideStatusFilter,
+    uploadTitle,
+    setUploadTitle,
+    uploadCondition,
+    setUploadCondition,
+    uploadTopicTag,
+    setUploadTopicTag,
+    uploadFileName,
+    uploadContent,
+    uploadPages,
+    showExtractedInspector,
+    setShowExtractedInspector,
+    selectedInspectPage,
+    setSelectedInspectPage,
+    showMoreOptions,
+    setShowMoreOptions,
+    showTechDetails,
+    setShowTechDetails,
+    uploadPdfPreviewUrl,
+    editingGuideId,
+    isUploadingGuide,
+    isExtractingPdf,
+    extractedPdfStats,
+    dragActive,
+    fileInputRef,
+    testQuery,
+    setTestQuery,
+    isTesting,
+    testResult,
+    copiedInspect,
+    setCopiedInspect,
+    filteredGuides,
+    handleDrag,
+    handleDrop,
+    loadChatbotGuides,
+    handleToggleGuide,
+    handleRequestDeleteGuide,
+    handleConfirmDeleteGuide,
+    resetUploadModal,
+    handleOpenReviewModal,
+    handleQuickApprove,
+    handleLoadResourceFile,
+    handleProcessFile,
+    handleSaveGuide,
+    handleRunTestQuery,
+  } = useGuideManagement({
+    currentUser,
+    onQueueUpdated,
+    setActionSuccessNotice,
+  });
 
   const loadQueue = async () => {
     setLoadingQueue(true);
@@ -312,58 +265,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     }
   };
 
-  const loadMembers = async (groupId?: string) => {
-    setLoadingMembers(true);
-    try {
-      const res = await communityApi.getGroupMembers(groupId);
-      const filtered = audienceFilter === 'all'
-        ? res
-        : res.filter((member) => member.condition === audienceFilter);
-      setMembers(filtered);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
-
-  const loadPublishedPosts = async () => {
-    setLoadingPosts(true);
-    try {
-      const res = await discussionApi.getPosts({
-        role: currentUser.role,
-        userId: currentUser.id,
-        condition: audienceFilter === 'all' ? undefined : audienceFilter,
-      });
-      setPublishedPosts(res.posts || []);
-    } catch (err) {
-      console.error('Failed to load published posts:', err);
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
-
-  const loadChatbotGuides = async () => {
-    setLoadingGuides(true);
-    try {
-      const res = await guideApi.getChatbotGuides();
-      const rawGuides = res.guides || [];
-      const seen = new Set<string>();
-      const deduped: ChatbotGuideFile[] = [];
-      for (const g of rawGuides) {
-        if (!seen.has(g.id)) {
-          seen.add(g.id);
-          deduped.push(g);
-        }
-      }
-      setChatbotGuides(deduped);
-    } catch (err) {
-      console.error('Failed to load chatbot guides:', err);
-    } finally {
-      setLoadingGuides(false);
-    }
-  };
-
   useEffect(() => {
     loadQueue();
     loadMembers();
@@ -376,299 +277,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     if (activeTab === 'queue' && previousTab.current !== 'queue') loadQueue();
     previousTab.current = activeTab;
   }, [activeTab]);
-
-  const handleToggleGuide = async (guide: ChatbotGuideFile) => {
-    try {
-      const res = await guideApi.toggleChatbotGuide(guide.id);
-      setChatbotGuides((prev) =>
-        prev.map((g) => (g.id === guide.id ? { ...g, isActive: res.guide.isActive } : g))
-      );
-      setActionSuccessNotice(
-        res.guide.isActive
-          ? `Guide "${guide.title}" activated. Assistant will now use this document.`
-          : `Guide "${guide.title}" paused. Assistant will not use this document.`
-      );
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-      loadChatbotGuides();
-    } catch (err) {
-      console.error('Failed to toggle guide:', err);
-      setActionSuccessNotice('Could not update guide status.');
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-    }
-  };
-
-  const handleRequestDeleteGuide = (guide: ChatbotGuideFile) => {
-    setGuideToDelete(guide);
-  };
-
-  const handleConfirmDeleteGuide = async () => {
-    if (!guideToDelete || isDeletingGuide) return;
-    setIsDeletingGuide(true);
-    try {
-      await guideApi.deleteChatbotGuide(guideToDelete.id);
-      setChatbotGuides((prev) => prev.filter((g) => g.id !== guideToDelete.id));
-      setActionSuccessNotice(`Guide "${guideToDelete.title}" successfully removed.`);
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-      setGuideToDelete(null);
-      await loadChatbotGuides();
-      onQueueUpdated();
-    } catch (err) {
-      console.error('Failed to delete guide:', err);
-      setActionSuccessNotice('Could not delete guide. Please try again.');
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-    } finally {
-      setIsDeletingGuide(false);
-    }
-  };
-
-  const resetUploadModal = () => {
-    setShowUploadGuideModal(false);
-    setUploadTitle('');
-    setUploadCondition(null);
-    setUploadTopicTag('');
-    setUploadFileName('');
-    setUploadContent('');
-    setUploadPages([]);
-    setShowExtractedInspector(false);
-    setSelectedInspectPage(1);
-    setShowMoreOptions(false);
-    setShowTechDetails(false);
-    setUploadPdfPreviewUrl(null);
-    setEditingGuideId(null);
-    setExtractedPdfStats(null);
-  };
-
-  const handleOpenReviewModal = (guide: ChatbotGuideFile) => {
-    setEditingGuideId(guide.id);
-    setUploadTitle(guide.title);
-    setUploadCondition(guide.condition || null);
-    setUploadTopicTag(guide.topicTag || guide.category || '');
-    setUploadContent(guide.content);
-    setUploadFileName(guide.fileName);
-    setShowExtractedInspector(false);
-    setSelectedInspectPage(1);
-    setShowMoreOptions(false);
-    setShowTechDetails(false);
-
-    if (guide.pages && guide.pages.length > 0) {
-      setUploadPages(guide.pages);
-      setExtractedPdfStats({ pages: guide.pages.length, words: guide.wordCount || 0 });
-    } else {
-      // Reconstruct pages if older guide record didn't save page array
-      const rawPages = guide.content.split(/(?=^##\s+)/m).filter(Boolean);
-      const builtPages: GuidePageData[] = rawPages.map((sec, idx) => {
-        const words = sec.trim().split(/\s+/).filter(Boolean).length;
-        return {
-          pageNumber: idx + 1,
-          text: sec,
-          wordCount: words,
-          chunkCount: Math.max(1, Math.ceil(words / 340)),
-        };
-      });
-      setUploadPages(builtPages.length > 0 ? builtPages : [{ pageNumber: 1, text: guide.content, wordCount: guide.wordCount || 0, chunkCount: 1 }]);
-      setExtractedPdfStats({ pages: builtPages.length || 1, words: guide.wordCount || 0 });
-    }
-
-    setUploadPdfPreviewUrl(guide.pdfUrl || `/resources/${guide.fileName}`);
-    setShowUploadGuideModal(true);
-  };
-
-  const handleQuickApprove = async (guide: ChatbotGuideFile) => {
-    try {
-      await guideApi.approveChatbotGuide(guide.id);
-      setActionSuccessNotice(`Approved "${guide.title}" for chatbot!`);
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-      loadChatbotGuides();
-    } catch (err) {
-      console.error('Failed to approve guide:', err);
-      setActionSuccessNotice('Could not approve guide.');
-      setTimeout(() => setActionSuccessNotice(null), 3000);
-    }
-  };
-
-  const handleLoadResourceFile = async (resourceFileName: string) => {
-    try {
-      setIsExtractingPdf(true);
-      setUploadFileName(resourceFileName);
-      setUploadTitle(suggestGuideTitle(resourceFileName));
-      setUploadCondition(null); // Never preselect FTD!
-      setUploadTopicTag('');
-      setUploadPages([]);
-      setShowExtractedInspector(false);
-      setSelectedInspectPage(1);
-      setUploadPdfPreviewUrl(`/resources/${resourceFileName}`);
-
-      const res = await fetch(`/resources/${resourceFileName}`);
-      const blob = await res.blob();
-      const file = new File([blob], resourceFileName, { type: 'application/pdf' });
-      handleProcessFile(file);
-    } catch (err) {
-      console.error('Failed to load resource file:', err);
-      setIsExtractingPdf(false);
-      setActionSuccessNotice('Could not load library PDF file.');
-      setTimeout(() => setActionSuccessNotice(null), 3000);
-    }
-  };
-
-  const handleProcessFile = (file: File) => {
-    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
-    setUploadFileName(file.name);
-    // Suggest title immediately from filename or known library entry
-    setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name)));
-    setUploadCondition(null); // Start with NOTHING selected so reviewer must make a deliberate choice
-    setUploadTopicTag('');
-    setUploadPages([]);
-    setShowExtractedInspector(false);
-    setSelectedInspectPage(1);
-
-    if (isPdf) {
-      // Do NOT set temporary blob URL (causes broken viewer in iframes); show extraction spinner until server returns stable path
-      setUploadPdfPreviewUrl(null);
-      setIsExtractingPdf(true);
-      setExtractedPdfStats(null);
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const arrayBuffer = e.target?.result as ArrayBuffer;
-          const bytes = new Uint8Array(arrayBuffer);
-          let binary = '';
-          const len = bytes.byteLength;
-          const chunkSize = 8192;
-          for (let i = 0; i < len; i += chunkSize) {
-            const sub = bytes.subarray(i, Math.min(i + chunkSize, len));
-            binary += String.fromCharCode.apply(null, sub as unknown as number[]);
-          }
-          const base64 = btoa(binary);
-
-          const result = await guideApi.extractPdfText({
-            fileName: file.name,
-            fileBase64: base64,
-          });
-
-          // Text and pages returned cleanly from server
-          setUploadContent(result.text);
-          setUploadPages(result.pages || []);
-          if (result.pdfUrl) {
-            setUploadPdfPreviewUrl(result.pdfUrl);
-          } else {
-            setUploadPdfPreviewUrl(`/resources/${file.name}`);
-          }
-          setExtractedPdfStats({ pages: result.pageCount, words: result.wordCount });
-          // If title was empty, refine from page 1 text
-          setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name, result.pages?.[0]?.text)));
-          setActionSuccessNotice(`Extracted ${result.pageCount} pages (${result.wordCount.toLocaleString()} words) from "${file.name}".`);
-          setTimeout(() => setActionSuccessNotice(null), 3500);
-        } catch (err) {
-          console.error('PDF extraction failed:', err);
-          setActionSuccessNotice('Failed to extract PDF text. Please check the file.');
-          setTimeout(() => setActionSuccessNotice(null), 3500);
-        } finally {
-          setIsExtractingPdf(false);
-        }
-      };
-      reader.onerror = () => {
-        setIsExtractingPdf(false);
-        setActionSuccessNotice('Could not read PDF file.');
-        setTimeout(() => setActionSuccessNotice(null), 3500);
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      setIsExtractingPdf(false);
-      setExtractedPdfStats(null);
-      setUploadPdfPreviewUrl(null);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = (e.target?.result as string) || '';
-        const cleaned = cleanPdfText(text);
-        setUploadContent(cleaned);
-        const words = cleaned.trim().split(/\s+/).filter(Boolean).length;
-        setUploadPages([{ pageNumber: 1, text: cleaned, wordCount: words, chunkCount: Math.max(1, Math.ceil(words / 340)) }]);
-        setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name, cleaned)));
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleSaveGuide = async (statusToSet: 'DRAFT' | 'APPROVED') => {
-    if (!uploadCondition) {
-      setActionSuccessNotice('Please select a Target Condition (FTD, AD, or General) before saving.');
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-      return;
-    }
-    if (!uploadTitle.trim() || isUploadingGuide) return;
-    const finalContent = uploadContent.trim() || uploadPages.map((p) => p.text).join('\n\n');
-    if (!finalContent && uploadPages.length === 0) return;
-
-    setIsUploadingGuide(true);
-    try {
-      const isApproved = statusToSet === 'APPROVED';
-      const totalChunksCalc = uploadPages.reduce((acc, p) => acc + p.chunkCount, 0);
-
-      if (editingGuideId) {
-        await guideApi.updateChatbotGuide(editingGuideId, {
-          title: uploadTitle.trim(),
-          condition: uploadCondition,
-          topicTag: uploadTopicTag.trim() || undefined,
-          content: finalContent,
-          pages: uploadPages,
-          totalChunks: totalChunksCalc,
-          status: statusToSet,
-          pdfUrl: uploadPdfPreviewUrl || undefined,
-        });
-        setActionSuccessNotice(
-          isApproved
-            ? `Guide "${uploadTitle}" approved for chatbot!`
-            : `Guide "${uploadTitle}" draft updated.`
-        );
-      } else {
-        const res = await guideApi.uploadChatbotGuide({
-          title: uploadTitle.trim(),
-          condition: uploadCondition,
-          topicTag: uploadTopicTag.trim() || undefined,
-          fileName: uploadFileName.trim() || `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
-          content: finalContent,
-          pages: uploadPages,
-          totalChunks: totalChunksCalc,
-          status: statusToSet,
-          pdfUrl: uploadPdfPreviewUrl || undefined,
-          mimeType: uploadFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain',
-          uploadedBy: currentUser.id,
-          uploadedByName: `${currentUser.firstName} ${currentUser.lastName}`,
-        });
-        setActionSuccessNotice(
-          isApproved
-            ? `Guide "${res.title}" approved for chatbot!`
-            : `Guide "${res.title}" saved as draft.`
-        );
-      }
-      resetUploadModal();
-      setTimeout(() => setActionSuccessNotice(null), 4500);
-      loadChatbotGuides();
-    } catch (err) {
-      console.error('Failed to save guide:', err);
-      setActionSuccessNotice('Could not save guide document. Please try again.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    } finally {
-      setIsUploadingGuide(false);
-    }
-  };
-
-  const handleRunTestQuery = async (queryToRun?: string) => {
-    const q = (queryToRun ?? testQuery).trim();
-    if (!q || isTesting) return;
-    setTestQuery(q);
-    setIsTesting(true);
-    try {
-      const res = await guideApi.testChatbotGuideRetrieval(q);
-      setTestResult(res);
-    } catch (err) {
-      console.error('Test query failed:', err);
-      setActionSuccessNotice('Test query failed.');
-      setTimeout(() => setActionSuccessNotice(null), 3000);
-    } finally {
-      setIsTesting(false);
-    }
-  };
 
   const initItemState = (item: QueueItem) => {
     setApproveAudience(item.condition ?? 'FTD'); // default the approved audience to the author's group
@@ -685,34 +293,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const handleSelectItem = (idx: number) => {
     setSelectedIndex(idx);
     initItemState(queueItems[idx]);
-  };
-
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience || isSubmittingPost) return;
-    setIsSubmittingPost(true);
-    try {
-      await discussionApi.createPost({
-        title: npTitle.trim(),
-        content: npContent.trim(),
-        targetCohortId: npGroupId,
-        authorId: currentUser.id,
-        condition: npAudience,
-      });
-      setShowNewPostModal(false);
-      setNpTitle(''); setNpContent(''); setNpGroupId(''); setNpAudience('');
-      setAudienceFilter('all');
-      await loadPublishedPosts();
-      setActiveTab('discussions');
-      setActionSuccessNotice('Post published.');
-      setTimeout(() => setActionSuccessNotice(null), 3500);
-    } catch (err) {
-      console.error('Failed to create post:', err);
-      setActionSuccessNotice('Could not publish post. Please try again.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    } finally {
-      setIsSubmittingPost(false);
-    }
   };
 
   // Publish post
@@ -741,70 +321,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       console.error('Failed to publish:', err);
       setActionSuccessNotice('Error publishing post. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
-    }
-  };
-
-  // Toggle reply moderation policy for a post
-  const handleTogglePostRepliesMode = async (post: Post) => {
-    const newAllowUnmoderated = !post.allowUnmoderatedReplies;
-
-    // Immediate state update so toggle switches immediately without waiting
-    setPublishedPosts((prev) =>
-      prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: newAllowUnmoderated } : p))
-    );
-
-    try {
-      await discussionApi.togglePostUnmoderatedReplies(post.id, newAllowUnmoderated);
-      setActionSuccessNotice(
-        newAllowUnmoderated
-          ? `Replies for "${post.title.slice(0, 32)}..." are now unmoderated (open to all).`
-          : `Replies for "${post.title.slice(0, 32)}..." now require clinical moderation.`
-      );
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-      onQueueUpdated();
-    } catch (err) {
-      console.error('Failed to update reply moderation policy:', err);
-      // Revert if error
-      setPublishedPosts((prev) =>
-        prev.map((p) => (p.id === post.id ? { ...p, allowUnmoderatedReplies: !newAllowUnmoderated } : p))
-      );
-      setActionSuccessNotice('Failed to update reply moderation policy.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    }
-  };
-
-  // Toggle discussion close state for a post
-  const handleTogglePostClose = async (post: Post) => {
-    setIsTogglingClose(true);
-    const targetClosed = !post.isClosed;
-    try {
-      const res = await discussionApi.closePost(post.id, targetClosed, currentUser.id);
-      setPublishedPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id
-            ? {
-                ...p,
-                isClosed: res.post.isClosed,
-                closedAt: res.post.closedAt,
-                closedBy: res.post.closedBy,
-              }
-            : p
-        )
-      );
-      setActionSuccessNotice(
-        targetClosed
-          ? `Discussion "${post.title.slice(0, 32)}..." closed. New replies are now disabled.`
-          : `Discussion "${post.title.slice(0, 32)}..." reopened. Care partners can reply again.`
-      );
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-      onQueueUpdated();
-      setPostToClose(null);
-    } catch (err) {
-      console.error('Failed to toggle post closed state:', err);
-      setActionSuccessNotice('Failed to update discussion status.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    } finally {
-      setIsTogglingClose(false);
     }
   };
 
@@ -916,106 +432,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setTimeout(() => setActionSuccessNotice(null), 3000);
   };
 
-  // Reassign Group
-  const handleConfirmReassign = async () => {
-    if (!reassigningUser || !targetNewGroupId) return;
-    try {
-      await communityApi.updateMemberGroup(reassigningUser.userId, targetNewGroupId);
-      setReassigningUser(null);
-      setTargetNewGroupId('');
-      setActionSuccessNotice(`Member moved to new group.`);
-      setTimeout(() => setActionSuccessNotice(null), 3000);
-      loadMembers(selectedCohortFilter);
-    } catch (err) {
-      console.error(err);
-      setActionSuccessNotice('Failed to update member group. Please try again.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    }
-  };
-
-  // Create Group Handler
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroupName.trim() || isSubmittingGroup) return;
-
-    setIsSubmittingGroup(true);
-    try {
-      const slug = newGroupName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-
-      await communityApi.createCohort({
-        name: newGroupName.trim(),
-        slug,
-        description: newGroupDescription.trim() || `Local group for ${newGroupRegion.trim() || newGroupName.trim()} caregivers.`,
-        geographicRegion: newGroupRegion.trim() || 'Local Area',
-        radiusMiles: Number(newGroupRadius) || 35,
-        tag: 'GEO_CUSTOM',
-      });
-
-      setShowCreateGroupModal(false);
-      setNewGroupName('');
-      setNewGroupRegion('');
-      setNewGroupDescription('');
-      setActionSuccessNotice(`Group "${newGroupName}" created.`);
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-
-      if (onCohortCreated) onCohortCreated();
-      loadMembers();
-    } catch (err) {
-      console.error('Failed to create group:', err);
-      setActionSuccessNotice('Could not create group. Please check inputs and try again.');
-      setTimeout(() => setActionSuccessNotice(null), 4000);
-    } finally {
-      setIsSubmittingGroup(false);
-    }
-  };
-
-  const filteredMembers = members.filter((m) => {
-    const q = searchMemberQuery.toLowerCase();
-    const matchesSearch =
-      m.realName.toLowerCase().includes(q) ||
-      m.anonymousHandle.toLowerCase().includes(q) ||
-      (m.email || '').toLowerCase().includes(q) ||
-      (m.phone || '').toLowerCase().includes(q);
-    const matchesGroup =
-      selectedCohortFilter === 'all' || m.primaryGroupId === selectedCohortFilter;
-    const matchesCondition = audienceFilter === 'all' || m.condition === audienceFilter;
-    return matchesSearch && matchesGroup && matchesCondition;
-  });
-
-  const filteredDiscussions = publishedPosts.filter((p) => {
-    if (postsPolicyFilter === 'moderated' && (p.allowUnmoderatedReplies || p.isClosed)) return false;
-    if (postsPolicyFilter === 'unmoderated' && (!p.allowUnmoderatedReplies || p.isClosed)) return false;
-    if (postsPolicyFilter === 'closed' && !p.isClosed) return false;
-    if (searchPostsQuery.trim()) {
-      const q = searchPostsQuery.toLowerCase();
-      return (
-        p.title.toLowerCase().includes(q) ||
-        p.content.toLowerCase().includes(q) ||
-        p.author.anonymousHandle.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-  const filteredGuides = chatbotGuides
-    .filter((g) => {
-      if (guideStatusFilter === 'DRAFT') return g.status === 'DRAFT';
-      if (guideStatusFilter === 'APPROVED') return g.status === 'APPROVED' || !g.status;
-      return true;
-    })
-    .filter((g) => {
-      const q = guideSearchFilter.toLowerCase();
-      return (
-        !q ||
-        g.title.toLowerCase().includes(q) ||
-        g.fileName.toLowerCase().includes(q) ||
-        (g.publisher && g.publisher.toLowerCase().includes(q)) ||
-        (g.year && g.year.toLowerCase().includes(q)) ||
-        g.content.toLowerCase().includes(q)
-      );
-    });
   const queuePage = usePagination(queueItems, 6, audienceFilter);
   const discussionPage = usePagination(filteredDiscussions, 10, JSON.stringify([audienceFilter, postsPolicyFilter, searchPostsQuery]));
   const groupPage = usePagination(cohorts, 12);
@@ -1626,463 +1042,52 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* TAB: DISCUSSIONS & REPLY POLICIES */}
       {activeTab === 'discussions' && (
-        <div className="space-y-3.5 sm:space-y-4">
-          {/* Header Description Card */}
-          <div className="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                Discussions & Reply Policies
-              </h2>
-              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] sm:text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                {publishedPosts.length} published
-              </span>
-            </div>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">
-              Manage reply moderation mode for discussions one by one. By default, all replies to posts are moderated. Turn on unmoderated mode to allow everyone to reply immediately, with moderator removal controls.
-            </p>
-          </div>
-
-          {/* Filter & Search Toolbar */}
-          <div className="space-y-2">
-            {/* Filter by Policy: Dedicated full-width bar with smooth horizontal scroll safety */}
-            <div className="w-full overflow-x-auto no-scrollbar py-0.5">
-              <div className="inline-flex w-full min-w-full sm:w-auto sm:min-w-0 items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-xl text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setPostsPolicyFilter('all')}
-                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
-                    postsPolicyFilter === 'all'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <span>All</span>
-                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">({publishedPosts.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPostsPolicyFilter('moderated')}
-                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
-                    postsPolicyFilter === 'moderated'
-                      ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-2xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span>Moderated</span>
-                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">
-                    ({publishedPosts.filter((p) => !p.allowUnmoderatedReplies && !p.isClosed).length})
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPostsPolicyFilter('unmoderated')}
-                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
-                    postsPolicyFilter === 'unmoderated'
-                      ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>Unmoderated</span>
-                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">
-                    ({publishedPosts.filter((p) => p.allowUnmoderatedReplies && !p.isClosed).length})
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPostsPolicyFilter('closed')}
-                  className={`flex-1 sm:flex-initial py-1.5 px-2 sm:px-3 rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 text-[11px] sm:text-xs ${
-                    postsPolicyFilter === 'closed'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-                  <span>Closed</span>
-                  <span className="text-[10px] sm:text-[11px] opacity-75 tabular-nums">
-                    ({publishedPosts.filter((p) => p.isClosed).length})
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchPostsQuery}
-                onChange={(e) => setSearchPostsQuery(e.target.value)}
-                placeholder="Search discussions by title, author handle, or keywords..."
-                className="w-full pl-8.5 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* List of discussions */}
-          {loadingPosts ? (
-            <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-xs">
-              Loading discussions...
-            </div>
-          ) : (
-            (() => {
-              const filtered = filteredDiscussions;
-
-              if (filtered.length === 0) {
-                return (
-                  <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 text-xs space-y-1">
-                    <p className="font-semibold text-slate-700 dark:text-slate-300">No discussions match filter.</p>
-                    <p>Try modifying your search or policy filter above.</p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="space-y-3">
-                  {discussionPage.items.map((post) => {
-                    const isUnmoderated = post.allowUnmoderatedReplies === true;
-                    const groupName = getProperGroupName(post.assignedGroups[0]);
-
-                    return (
-                      <div
-                        key={post.id}
-                        onClick={() => onOpenDiscussion?.(post.id)}
-                        className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 transition-all hover:border-[#002D72]/40 dark:hover:border-blue-500/50 hover:shadow-xs cursor-pointer"
-                      >
-                        <div className="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
-                            <span className="font-semibold text-slate-900 dark:text-white truncate">
-                              {post.author.anonymousHandle}
-                            </span>
-                            <span className="text-slate-300 dark:text-slate-700">·</span>
-                            <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] truncate">
-                              {groupName}
-                            </span>
-                            <span className="text-slate-300 dark:text-slate-700">·</span>
-                            <AudienceBadge condition={post.condition} />
-                            <span className="text-slate-400 dark:text-slate-500 text-[10px] sm:text-[11px]">
-                              {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
-                            </span>
-                          </div>
-
-                          <h3 className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-[#002D72] dark:group-hover:text-blue-400 text-xs sm:text-sm leading-snug transition-colors">
-                            {post.title}
-                          </h3>
-
-                          <p className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs line-clamp-2 leading-relaxed">
-                            {post.content}
-                          </p>
-
-                          {/* Status Badge */}
-                          <div className="pt-0.5 sm:pt-1 flex flex-wrap items-center gap-2 text-xs">
-                            {post.isClosed ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-200/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg">
-                                <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-600 dark:text-slate-400" />
-                                <span>Discussion Closed</span>
-                              </span>
-                            ) : isUnmoderated ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg">
-                                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span>Unmoderated</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg">
-                                <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400" />
-                                <span>Moderated</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Actions for this post: Toggle Allow open replies and Button below it for closing/reopening */}
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 flex flex-col items-stretch sm:items-end gap-1.5 sm:gap-2 w-full sm:w-auto"
-                        >
-                          <div
-                            className={`inline-flex items-center justify-between sm:justify-start gap-2.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition-all ${
-                              post.isClosed ? 'opacity-60' : ''
-                            }`}
-                          >
-                            <label
-                              onClick={(e) => e.stopPropagation()}
-                              className={`inline-flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto ${
-                                post.isClosed ? 'cursor-not-allowed' : 'cursor-pointer'
-                              } select-none`}
-                            >
-                              <span className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                Allow open replies
-                              </span>
-                              <div className="relative inline-flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={isUnmoderated}
-                                  disabled={post.isClosed}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handleTogglePostRepliesMode(post);
-                                  }}
-                                  className="sr-only peer"
-                                />
-                                <div className="w-8 h-4.5 sm:w-9 sm:h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 sm:after:h-4 sm:after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                              </div>
-                            </label>
-                          </div>
-
-                          {/* Button below Allow open replies: Close Discussion / Reopen Discussion */}
-                          {post.isClosed ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleTogglePostClose(post);
-                              }}
-                              className="w-full sm:w-auto px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
-                              title="Reopen discussion to allow new replies"
-                            >
-                              <LockOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span>Reopen Discussion</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPostToClose(post);
-                              }}
-                              className="w-full sm:w-auto px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
-                              title="Close discussion to prevent new replies while preserving existing comments"
-                            >
-                              <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500 dark:text-slate-400" />
-                              <span>Close Discussion</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()
-          )}
-          {!loadingPosts && <Pagination label="Discussions" {...discussionPage} />}
-        </div>
+        <DiscussionsTab
+          publishedPosts={publishedPosts}
+          filteredDiscussions={filteredDiscussions}
+          loadingPosts={loadingPosts}
+          searchPostsQuery={searchPostsQuery}
+          postsPolicyFilter={postsPolicyFilter}
+          discussionPage={discussionPage}
+          setSearchPostsQuery={setSearchPostsQuery}
+          setPostsPolicyFilter={setPostsPolicyFilter}
+          setPostToClose={setPostToClose}
+          handleTogglePostRepliesMode={handleTogglePostRepliesMode}
+          handleTogglePostClose={handleTogglePostClose}
+          onOpenDiscussion={onOpenDiscussion}
+        />
       )}
 
       {/* TAB: GROUPS */}
       {activeTab === 'cohorts' && (
-        <div className="space-y-5">
-          {/* Header Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Community Groups
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Regional and clinic-wide support cohorts. Click any group card to view its enrolled members.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowCreateGroupModal(true)}
-              className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Group</span>
-            </button>
-          </div>
-
-          {/* GROUPS CARDS */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">All Groups ({cohorts.length})</span>
-              <span className="text-slate-400 dark:text-slate-500">Click a card to filter members</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {groupPage.items.map((cohort) => {
-                const assignedCount = members.filter((m) => m.primaryGroupId === cohort.id).length;
-                return (
-                  <div
-                    key={cohort.id}
-                    onClick={() => {
-                      setSelectedCohortFilter(cohort.id);
-                      setActiveTab('members');
-                    }}
-                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-3.5 flex flex-col justify-between cursor-pointer group hover:border-[#002D72] dark:hover:border-blue-500 hover:shadow-xs transition-all text-left"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-serif font-semibold text-slate-900 dark:text-white text-base group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                          {getProperGroupName(cohort)}
-                        </span>
-                        <span className="shrink-0 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                          {assignedCount} {assignedCount === 1 ? 'member' : 'members'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="font-medium text-slate-700 dark:text-slate-300">{getFullGroupName(cohort)}</span>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">
-                        {cohort.description}
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                      <span className="text-xs text-slate-400 dark:text-slate-500">Click to view members</span>
-                      <span className="font-semibold text-xs flex items-center gap-1">
-                        <span>View members</span>
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <Pagination label="Groups" {...groupPage} />
-        </div>
+        <CohortsTab
+          cohorts={cohorts}
+          members={members}
+          pagination={groupPage}
+          onCreateGroup={() => setShowCreateGroupModal(true)}
+          onSelectCohort={(cohortId) => {
+            setSelectedCohortFilter(cohortId);
+            setActiveTab('members');
+          }}
+        />
       )}
 
       {/* TAB 3: MEMBERS */}
       {activeTab === 'members' && (
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 transition-colors">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Caregiver Members ({filteredMembers.length})
-                  </h2>
-                  {selectedCohortFilter !== 'all' && (
-                    <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-100 dark:border-blue-900/60 text-xs font-medium flex items-center gap-1">
-                      <span>Group: {getProperGroupName(cohorts.find((c) => c.id === selectedCohortFilter))}</span>
-                      <button
-                        onClick={() => setSelectedCohortFilter('all')}
-                        className="hover:text-rose-600 dark:hover:text-rose-400 p-0.5 ml-0.5 cursor-pointer"
-                        title="Clear group filter"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Verified care partners enrolled across Johns Hopkins cohorts.
-                </p>
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                  <input
-                    type="text"
-                    value={searchMemberQuery}
-                    onChange={(e) => setSearchMemberQuery(e.target.value)}
-                    placeholder="Search by name, handle, or contact..."
-                    className="w-full sm:w-64 pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
-                  />
-                </div>
-
-                <select
-                  value={selectedCohortFilter}
-                  onChange={(e) => setSelectedCohortFilter(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
-                >
-                  <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">All Groups</option>
-                  {cohorts.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                      {getProperGroupName(c)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {loadingMembers ? (
-              <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs">
-                Loading members...
-              </div>
-            ) : filteredMembers.length === 0 ? (
-              <div className="py-12 text-center space-y-2">
-                <p className="text-slate-500 dark:text-slate-400 text-xs">No members found matching your search or filter.</p>
-                {selectedCohortFilter !== 'all' && (
-                  <button
-                    onClick={() => setSelectedCohortFilter('all')}
-                    className="text-xs text-[#002D72] dark:text-blue-400 hover:underline font-semibold cursor-pointer"
-                  >
-                    Clear group filter and show all
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-xs whitespace-nowrap">
-                      <th className="py-2.5 px-3">Caregiver</th>
-                      <th className="py-2.5 px-3">Contact</th>
-                      <th className="py-2.5 px-3">Assigned Group</th>
-                      <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                    {memberPage.items.map((m) => (
-                      <tr key={m.userId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <div className="font-semibold text-slate-900 dark:text-white">{m.realName}</div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{m.anonymousHandle}</div>
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          {m.phone ? (
-                            <a href={`tel:${m.phone.replace(/[^\d+]/g, '')}`} className="text-[#002D72] dark:text-blue-400 hover:underline font-medium">
-                              {m.phone}
-                            </a>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-500">No phone on file</span>
-                          )}
-                          <div>
-                            <a href={`mailto:${m.email}`} className="text-xs text-[#002D72] dark:text-blue-400 hover:underline">
-                              {m.email}
-                            </a>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <AudienceBadge condition={m.condition} />
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-100 dark:border-emerald-900/60">
-                            Active
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 whitespace-nowrap">
-                          <button
-                            onClick={() => {
-                              setReassigningUser(m);
-                              setTargetNewGroupId(m.primaryGroupId);
-                            }}
-                            className="px-2.5 py-1 text-xs text-[#002D72] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-700 rounded-lg font-semibold transition cursor-pointer"
-                          >
-                            Move group
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-          {!loadingMembers && <Pagination label="Members" {...memberPage} />}
-        </div>
+        <MembersTab
+          cohorts={cohorts}
+          filteredMembers={filteredMembers}
+          selectedCohortFilter={selectedCohortFilter}
+          searchMemberQuery={searchMemberQuery}
+          loadingMembers={loadingMembers}
+          pagination={memberPage}
+          onCohortFilterChange={setSelectedCohortFilter}
+          onSearchChange={setSearchMemberQuery}
+          onReassign={(member) => {
+            setReassigningUser(member);
+            setTargetNewGroupId(member.primaryGroupId);
+          }}
+        />
       )}
 
       {/* TAB 5: CHATBOT KNOWLEDGE MANAGEMENT */}

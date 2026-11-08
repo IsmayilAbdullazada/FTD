@@ -56,9 +56,11 @@ code imports only the adapters it actually uses.
 - Extracted API-backed app data, view state, browser location handling, and orchestration from `App.tsx` into `app`.
 - Reorganized the frontend around feature ownership, public feature entry points, and a small cross-feature `shared` layer.
 - Replaced browser-readable JWT storage with HttpOnly cookie sessions.
+- Split clinician guide, discussion, and member/cohort behavior into feature hooks.
+- Split the clinician discussions, cohorts, and members views into focused tab components while preserving their markup and styling.
 
 ## Next safe extractions
 
-1. Extract stateful feature hooks from `ClinicianDashboard.tsx` without moving presentation markup in the same change.
-2. Split large presentation files along existing modal and tab boundaries after behavior is isolated.
+1. Continue splitting `ClinicianDashboard.tsx` along its existing queue, guide, and modal boundaries.
+2. Move feature-local contracts out of the shared `types` package as ownership becomes clear.
 3. Add route-level lazy loading to reduce the main bundle after visual parity is established.

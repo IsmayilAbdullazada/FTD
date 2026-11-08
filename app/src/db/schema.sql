@@ -19,11 +19,13 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_color TEXT NOT NULL DEFAULT '#475569',
   badge_label TEXT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  session_version INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique ON users (LOWER(email));
 CREATE UNIQUE INDEX IF NOT EXISTS users_clinic_patient_id_unique ON users (clinic_patient_id) WHERE clinic_patient_id IS NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS cohorts (
   id TEXT PRIMARY KEY,

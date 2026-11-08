@@ -10,6 +10,7 @@ import { currentUser } from "../../lib/serializers.js";
 import { readPreview, sendEmail } from "../../services/email.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
 import { authLimiter } from "../../middleware/rateLimiter.js";
+import { clearSessionCookie, setSessionCookie } from "../../lib/session.js";
 
 const router = Router();
 const sha256 = (value: string) =>
@@ -24,7 +25,12 @@ const escapeHtml = (value: string) =>
   );
 const tokenFor = (user: any) =>
   jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      sessionVersion: user.session_version,
+    },
     env.JWT_SECRET,
     {
       algorithm: "HS256",
@@ -38,10 +44,11 @@ router.post(
   "/login",
   authLimiter,
   asyncHandler(async (req, res) => {
-    const { identifier, password } = z
+    const { identifier, password, rememberMe } = z
       .object({
         identifier: z.string().trim().min(1),
         password: z.string().min(1),
+        rememberMe: z.boolean().default(false),
       })
       .parse(req.body);
     const result = await query(
@@ -51,9 +58,20 @@ router.post(
     const user = result.rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash)))
       throw new HttpError(401, "Invalid email, Clinic Patient ID, or password");
-    res.json({ success: true, token: tokenFor(user), user: currentUser(user) });
+    const token = tokenFor(user);
+    setSessionCookie(res, token, rememberMe);
+    res.json({
+      success: true,
+      ...(env.NODE_ENV === "test" ? { token } : {}),
+      user: currentUser(user),
+    });
   }),
 );
+
+router.post("/logout", (_req, res) => {
+  clearSessionCookie(res);
+  res.json({ success: true });
+});
 
 router.post(
   "/invitations",
@@ -190,9 +208,13 @@ router.post(
       );
       return inserted.rows[0];
     });
-    res
-      .status(201)
-      .json({ success: true, token: tokenFor(user), user: currentUser(user) });
+    const token = tokenFor(user);
+    setSessionCookie(res, token, true);
+    res.status(201).json({
+      success: true,
+      ...(env.NODE_ENV === "test" ? { token } : {}),
+      user: currentUser(user),
+    });
   }),
 );
 
@@ -215,6 +237,7 @@ router.post(
     }
     const resetToken = crypto.randomBytes(32).toString("base64url");
     const code = String(crypto.randomInt(100000, 1_000_000));
+    const resetUrl = `${env.APP_URL.replace(/\/$/, "")}/?tab=reset-password&email=${encodeURIComponent(email)}&resetToken=${encodeURIComponent(resetToken)}`;
     await query(
       `DELETE FROM password_resets WHERE user_id=$1 AND consumed_at IS NULL`,
       [found.rows[0].id],
@@ -226,13 +249,19 @@ router.post(
     const delivery = await sendEmail({
       to: email,
       subject: "Hopkins Care Partner Connect password reset",
-      text: `Your password reset code is ${code}. It expires in 20 minutes.`,
-      html: `<p>Your password reset code is <strong>${escapeHtml(code)}</strong>.</p><p>It expires in 20 minutes.</p>`,
+      text: `Open this password reset link: ${resetUrl}\n\nYour verification code is ${code}. Both expire in 20 minutes.`,
+      html: `<p><a href="${escapeHtml(resetUrl)}">Reset your password</a></p><p>Your verification code is <strong>${escapeHtml(code)}</strong>.</p><p>Both expire in 20 minutes.</p>`,
     });
     res.json(
       env.NODE_ENV === "production"
-        ? generic
-        : { ...generic, ...delivery, resetToken, testCode: code },
+        ? { ...generic, requiresEmailLink: true }
+        : {
+            ...generic,
+            ...delivery,
+            resetToken,
+            testCode: code,
+            requiresEmailLink: false,
+          },
     );
   }),
 );
@@ -259,7 +288,7 @@ router.post(
       throw new HttpError(400, "Reset code is invalid or expired");
     await transaction(async (client) => {
       await client.query(
-        `UPDATE users SET password_hash=$1,updated_at=NOW() WHERE id=$2`,
+        `UPDATE users SET password_hash=$1,session_version=session_version+1,updated_at=NOW() WHERE id=$2`,
         [await bcrypt.hash(input.newPassword, 12), record.user_id],
       );
       await client.query(

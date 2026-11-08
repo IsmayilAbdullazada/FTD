@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { pool, transaction } from "../config/db.js";
+import { env } from "../config/env.js";
 
 const users = [
   [
@@ -132,6 +133,11 @@ const cohorts = [
 ] as const;
 
 async function seed() {
+  if (env.NODE_ENV === "production" && env.ALLOW_PRODUCTION_SEED !== "true") {
+    throw new Error(
+      "Production seed is disabled. Set ALLOW_PRODUCTION_SEED=true only for an intentional bootstrap.",
+    );
+  }
   const passwordHash = await bcrypt.hash("Hopkins2026!", 12);
   await transaction(async (client) => {
     for (const c of cohorts)

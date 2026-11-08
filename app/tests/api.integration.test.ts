@@ -16,7 +16,7 @@ const cleanup: Array<() => Promise<unknown>> = [];
 async function request(path: string, init: RequestInit = {}) {
   const response = await fetch(baseUrl + path, init);
   const body = await response.json().catch(() => ({}));
-  return { status: response.status, body };
+  return { status: response.status, body, headers: response.headers };
 }
 const json = (
   token: string | undefined,
@@ -79,6 +79,10 @@ test("care partner and clinician authenticate with the frontend contract", async
   );
   assert.equal(care.status, 200);
   assert.equal(clinician.status, 200);
+  assert.match(
+    care.headers.get("set-cookie") ?? "",
+    /^jh_session=.*HttpOnly.*SameSite=Strict/i,
+  );
   careToken = care.body.token;
   clinicianToken = clinician.body.token;
   assert.equal(care.body.user.role, "CARE_PARTNER");
@@ -92,6 +96,42 @@ test("care partner and clinician authenticate with the frontend contract", async
   );
   assert.equal(admin.status, 200);
   adminToken = admin.body.token;
+});
+
+test("logout clears the HttpOnly session cookie", async () => {
+  const login = await request(
+    "/api/v1/auth/login",
+    json(undefined, {
+      identifier: "sarah.smith@example.com",
+      password: "Hopkins2026!",
+      rememberMe: true,
+    }),
+  );
+  const sessionCookie = (login.headers.get("set-cookie") ?? "").split(";")[0];
+  assert.ok(sessionCookie.startsWith("jh_session="));
+  assert.equal(
+    (
+      await request("/api/v1/users/me", {
+        headers: { cookie: sessionCookie },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request("/api/v1/auth/logout", {
+        method: "POST",
+        headers: { cookie: sessionCookie },
+      })
+    ).status,
+    403,
+  );
+  const logout = await request("/api/v1/auth/logout", {
+    method: "POST",
+    headers: { cookie: sessionCookie, origin: "http://localhost:5173" },
+  });
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get("set-cookie") ?? "", /jh_session=;/);
 });
 
 test("condition and cohort boundaries apply to direct access, interactions, and search", async () => {
@@ -338,6 +378,28 @@ test("frontend collection endpoints return their expected top-level shapes", asy
 });
 
 test("staff content, invitation, guide retrieval, and admin contracts use PostgreSQL", async () => {
+  const unsafeResource = await request(
+    "/api/v1/resources",
+    json(clinicianToken, {
+      title: "Unsafe resource URL",
+      summary: "This request must be rejected.",
+      contentBody: "The URL protocol is not safe for browser navigation.",
+      category: "DAILY_CARE",
+      diseaseDomain: "FTD",
+      externalUrl: "javascript:alert(1)",
+    }),
+  );
+  assert.equal(unsafeResource.status, 400);
+
+  const invalidPdf = await request(
+    "/api/v1/chatbot/extract-pdf",
+    json(clinicianToken, {
+      fileName: "invalid.pdf",
+      fileBase64: Buffer.from("This is not a PDF document.").toString("base64"),
+    }),
+  );
+  assert.equal(invalidPdf.status, 400);
+
   const resource = await request(
     "/api/v1/resources",
     json(clinicianToken, {
@@ -458,6 +520,15 @@ test("staff content, invitation, guide retrieval, and admin contracts use Postgr
   });
   assert.equal(status.status, 200);
   assert.equal(typeof status.body.counts.users, "number");
+  assert.equal(
+    (
+      await request(
+        "/api/v1/admin/reset-database",
+        json(adminToken, { mode: "clean" }),
+      )
+    ).status,
+    404,
+  );
 });
 
 test("password reset creates a private development preview without account enumeration", async () => {
@@ -473,6 +544,24 @@ test("password reset creates a private development preview without account enume
   assert.equal(unknown.status, 200);
   assert.equal(known.body.message, unknown.body.message);
   assert.equal((await request(known.body.previewUrl)).status, 200);
+  const reset = await request(
+    "/api/v1/auth/reset-password",
+    json(undefined, {
+      email: "sarah.smith@example.com",
+      code: known.body.testCode,
+      token: known.body.resetToken,
+      newPassword: "Hopkins2026!",
+    }),
+  );
+  assert.equal(reset.status, 200);
+  assert.equal(
+    (
+      await request("/api/v1/users/me", {
+        headers: { authorization: `Bearer ${careToken}` },
+      })
+    ).status,
+    401,
+  );
   cleanup.push(() =>
     pool.query("DELETE FROM password_resets WHERE user_id=$1", ["user-care-1"]),
   );

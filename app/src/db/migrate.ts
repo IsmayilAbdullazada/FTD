@@ -88,6 +88,9 @@ async function runMigration() {
     await client.query(
       "INSERT INTO schema_migrations(version) VALUES('003_content_safety') ON CONFLICT DO NOTHING",
     );
+    await client.query(
+      "INSERT INTO schema_migrations(version) VALUES('004_secure_sessions') ON CONFLICT DO NOTHING",
+    );
     await client.query("COMMIT");
     console.log("[Migration] Schema applied successfully.");
   } catch (err) {

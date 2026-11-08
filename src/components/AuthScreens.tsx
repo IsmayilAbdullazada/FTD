@@ -20,7 +20,7 @@ import { CurrentUser, Condition } from '../types';
 import { api } from '../services/api';
 
 interface AuthScreensProps {
-  onLoginSuccess: (user: CurrentUser, token?: string) => void;
+  onLoginSuccess: (user: CurrentUser) => void;
   initialMode?: 'login' | 'forgot-password' | 'register';
   initialToken?: string;
   onCancel?: () => void;
@@ -70,6 +70,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   const [registerHandle, setRegisterHandle] = useState(() => `User-${Math.floor(1000 + Math.random() * 9000)}`);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const quickLoginEnabled =
+    import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_LOGIN !== 'false';
 
   // If initialToken was provided, switch to register mode and load invitation
   useEffect(() => {
@@ -79,6 +81,22 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       loadInvitation(initialToken);
     }
   }, [initialToken]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resetTokenParam = params.get('resetToken');
+    const resetEmailParam = params.get('email');
+    if (!resetTokenParam || !resetEmailParam) return;
+    setMode('forgot-password');
+    setForgotStep('verify');
+    setForgotEmail(resetEmailParam);
+    setResetToken(resetTokenParam);
+    setResetSuccessMessage('Enter the 6-digit verification code from your email.');
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('resetToken');
+    cleanUrl.searchParams.delete('email');
+    window.history.replaceState(window.history.state, '', cleanUrl.toString());
+  }, []);
 
   const loadInvitation = async (token: string) => {
     setLoadingInvite(true);
@@ -109,13 +127,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       const res = await api.login({
         identifier: loginIdentifier.trim(),
         password: loginPassword,
+        rememberMe,
       });
-
-      if (rememberMe) {
-        localStorage.setItem('jh_user_id', res.user.id);
-        if (res.token) localStorage.setItem('jh_session_token', res.token);
-      }
-      onLoginSuccess(res.user, res.token);
+      onLoginSuccess(res.user);
     } catch (err: any) {
       console.error('Login error:', err);
       setLoginError(err.message || 'Invalid credentials. Please verify your email/ID and password.');
@@ -156,8 +170,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       if (res.previewUrl) {
         setEmailPreviewUrl(res.previewUrl);
       }
-      setResetSuccessMessage(`A 6-digit verification code has been dispatched to ${forgotEmail.trim()}.`);
-      setForgotStep('verify');
+      if (res.resetToken) {
+        setResetSuccessMessage(`A 6-digit verification code has been dispatched to ${forgotEmail.trim()}.`);
+        setForgotStep('verify');
+      } else {
+        setResetSuccessMessage('If the account exists, open the password reset link sent by email.');
+      }
     } catch (err: any) {
       console.error('Password reset request failed:', err);
       setResetError(err.message || 'Could not send recovery email. Please check the address.');
@@ -172,8 +190,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       setResetError('Please enter the 6-digit verification code.');
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      setResetError('Password must be at least 6 characters long.');
+    if (!newPassword || newPassword.length < 8) {
+      setResetError('Password must be at least 8 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -213,8 +231,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       setRegisterError('Invitation token is required.');
       return;
     }
-    if (!registerPassword || registerPassword.length < 6) {
-      setRegisterError('Please choose a password with at least 6 characters.');
+    if (!registerPassword || registerPassword.length < 8) {
+      setRegisterError('Please choose a password with at least 8 characters.');
       return;
     }
 
@@ -229,12 +247,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         lastName: inviteData?.lastName,
       });
 
-      localStorage.setItem('jh_user_id', res.user.id);
-      if (res.token) localStorage.setItem('jh_session_token', res.token);
       setInviteData(null);
       setInviteToken('');
       setRegisterError(null);
-      onLoginSuccess(res.user, res.token);
+      onLoginSuccess(res.user);
     } catch (err: any) {
       console.error('Registration failed:', err);
       setRegisterError(err.message || 'Could not complete registration. Token may be invalid.');
@@ -269,7 +285,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-slate-900 py-6 px-4 shadow-xl border border-slate-200 dark:border-slate-800 rounded-2xl sm:px-8 transition-colors">
-          
+
           {/* ========================================================= */}
           {/* SCREEN 1: LOGIN */}
           {/* ========================================================= */}
@@ -392,48 +408,50 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               </form>
 
               {/* 1-Click Persona Access Buttons for Fast Verification */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 text-center">
-                  Quick test accounts:
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('user-clinician-1')}
-                    className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-750 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 text-[11px] transition cursor-pointer"
-                  >
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                      <Stethoscope className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                      <span>Dr. Seema</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Moderator</div>
-                  </button>
+              {quickLoginEnabled && (
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 text-center">
+                    Quick test accounts:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemoLogin('user-clinician-1')}
+                      className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-750 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 text-[11px] transition cursor-pointer"
+                    >
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                        <Stethoscope className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span>Dr. Seema</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Moderator</div>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('user-care-1')}
-                    className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-750 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 text-[11px] transition cursor-pointer"
-                  >
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                      <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                      <span>Sarah S.</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">FTD Partner</div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemoLogin('user-care-1')}
+                      className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-750 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 text-[11px] transition cursor-pointer"
+                    >
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                        <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                        <span>Sarah S.</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">FTD Partner</div>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('user-care-2')}
-                    className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-750 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 text-[11px] transition cursor-pointer"
-                  >
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                      <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>Marcus V.</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">FTD Partner</div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDemoLogin('user-care-2')}
+                      className="p-2 text-left rounded-lg border border-slate-200 dark:border-slate-750 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 text-[11px] transition cursor-pointer"
+                    >
+                      <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                        <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        <span>Marcus V.</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">FTD Partner</div>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Invitation Acceptance Notice */}
               <div className="pt-2 text-center">

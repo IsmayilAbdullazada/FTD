@@ -31,8 +31,10 @@ import {
   INITIAL_COMMENTS,
   INITIAL_QUEUE_ITEMS,
 } from '../data/clinicalStore';
+import { authApi } from './authApi';
+import { apiFetch, safeFetchJson } from './httpClient';
 
-// In-memory local state fallback so app NEVER fails even if dev server returns HTML fallback
+// Explicit development-only fallback data, enabled with VITE_ENABLE_API_FALLBACK=true.
 let localUsers = [...INITIAL_USERS];
 let localCohorts = [...INITIAL_GROUPS];
 let localResources = [...INITIAL_RESOURCES];
@@ -156,50 +158,8 @@ let localEvents: CalendarEvent[] = [
   { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
 ];
 
-const fallbackEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_API_FALLBACK === 'true';
-
-async function apiFetch(input: RequestInfo | URL, options?: RequestInit): Promise<Response> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('jh_session_token') : null;
-  const headers = new Headers(options?.headers);
-  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
-  return fetch(input, { ...options, headers });
-}
-
-async function safeFetchJson<T>(
-  url: string,
-  options: RequestInit | undefined,
-  fallback: () => T
-): Promise<T> {
-  let res: Response;
-  try {
-    res = await apiFetch(url, options);
-  } catch {
-    if (fallbackEnabled) return fallback();
-    throw new Error('The backend is unavailable. Please try again.');
-  }
-
-  if (res.status === 401) {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('jh:session-expired', {
-          detail: { reason: 'Your session has expired. Please sign in again.' },
-        })
-      );
-    }
-  }
-
-  const contentType = res.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const data = await res.json();
-    if (res.ok) return data;
-    // The server answered with a real error (403/404/etc.). Surface it, don't mask it.
-    throw new Error(data?.error || `Request failed (${res.status})`);
-  }
-  if (fallbackEnabled) return fallback();
-  throw new Error(`Backend returned an invalid response (${res.status})`);
-}
-
 export const api = {
+  ...authApi,
   // Current user persona
   getCurrentUser: async (asUserId?: string): Promise<{ user: CurrentUser; allPersonas: PersonaOption[] }> => {
     const query = asUserId ? `?asUser=${asUserId}` : '';
@@ -1337,75 +1297,6 @@ export const api = {
         };
       }
     );
-  },
-
-  // Authentication API Methods
-  login: async (payload: { identifier: string; password?: string }): Promise<{ success: boolean; token: string; user: CurrentUser }> => {
-    const res = await apiFetch('/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to authenticate.');
-    }
-    return res.json();
-  },
-
-  forgotPassword: async (email: string): Promise<{ success: boolean; message: string; emailSent?: boolean; previewUrl?: string; resetToken?: string; testCode?: string }> => {
-    const res = await apiFetch('/api/v1/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to request password reset.');
-    }
-    return res.json();
-  },
-
-  resetPassword: async (payload: { email?: string; code?: string; token?: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
-    const res = await apiFetch('/api/v1/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to update password.');
-    }
-    return res.json();
-  },
-
-  getInvitation: async (token: string): Promise<{ valid: boolean; invitation: any }> => {
-    const res = await apiFetch(`/api/v1/auth/invitations/${encodeURIComponent(token)}`);
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Invitation not found or expired.');
-    }
-    return res.json();
-  },
-
-  registerWithInvite: async (payload: {
-    token: string;
-    password?: string;
-    anonymousHandle?: string;
-    firstName?: string;
-    lastName?: string;
-    phoneNumber?: string;
-  }): Promise<{ success: boolean; token: string; user: CurrentUser }> => {
-    const res = await apiFetch('/api/v1/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || 'Registration failed.');
-    }
-    return res.json();
   },
 
   // Chatbot Guide Files & Knowledge Management

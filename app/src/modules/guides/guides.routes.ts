@@ -7,6 +7,7 @@ import { z } from "zod";
 import { query, transaction } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
+import { publicAssetUrl } from "../../lib/urlValidation.js";
 
 const router = Router();
 const repoRoot = path.resolve(
@@ -37,7 +38,7 @@ const guideInput = z.object({
   content: z.string(),
   pages: pagesSchema.optional(),
   status: z.enum(["DRAFT", "APPROVED"]).default("DRAFT"),
-  pdfUrl: z.string().optional(),
+  pdfUrl: publicAssetUrl.optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -274,7 +275,13 @@ router.delete(
 export const extractPdf = asyncHandler(async (req, res) => {
   const { fileName, fileBase64 } = z
     .object({
-      fileName: z.string().min(1),
+      fileName: z
+        .string()
+        .min(1)
+        .refine(
+          (value) => path.extname(value).toLowerCase() === ".pdf",
+          "Only PDF files are accepted",
+        ),
       fileBase64: z.string().min(16).max(20_000_000),
     })
     .parse(req.body);
@@ -285,6 +292,8 @@ export const extractPdf = asyncHandler(async (req, res) => {
   );
   if (buffer.length > 12 * 1024 * 1024)
     throw new HttpError(413, "PDF exceeds 12 MB limit");
+  if (buffer.subarray(0, 5).toString("ascii") !== "%PDF-")
+    throw new HttpError(400, "Uploaded file is not a valid PDF");
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
   const parsed = await parser.getText();
   await parser.destroy();

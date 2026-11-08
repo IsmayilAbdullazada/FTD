@@ -4,6 +4,7 @@ import { query } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
 import { resource } from "../../lib/serializers.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
+import { httpUrl, publicAssetUrl } from "../../lib/urlValidation.js";
 
 const router = Router();
 router.get(
@@ -34,10 +35,10 @@ router.post(
         contentBody: z.string().trim().min(3),
         category: z.string().trim().min(2),
         diseaseDomain: z.enum(["FTD", "AD", "BOTH"]).default("FTD"),
-        externalUrl: z.string().url().or(z.literal("")).optional(),
-        fileAttachmentUrl: z.string().optional(),
+        externalUrl: httpUrl.or(z.literal("")).optional(),
+        fileAttachmentUrl: publicAssetUrl.optional(),
         additionalLinks: z
-          .array(z.object({ label: z.string(), url: z.string().url() }))
+          .array(z.object({ label: z.string(), url: httpUrl }))
           .default([]),
         keyTakeaways: z.array(z.string()).default([]),
       })

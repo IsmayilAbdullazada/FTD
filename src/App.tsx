@@ -178,10 +178,9 @@ export default function App() {
   };
 
   const handleSignOut = (notice?: string) => {
+    void api.logout();
     setComposerInitialTitle('');
     setComposerInitialContent('');
-    localStorage.removeItem('jh_user_id');
-    localStorage.removeItem('jh_session_token');
     setCurrentUser(null);
     setSessionNotice(notice || null);
     setAuthMode('login');

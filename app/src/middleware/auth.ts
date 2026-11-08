@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { query } from "../config/db.js";
+import { sessionCookie } from "../lib/session.js";
 
 export type UserRole = "CARE_PARTNER" | "CLINICIAN_MODERATOR" | "SYSTEM_ADMIN";
 export interface AuthenticatedUser {
@@ -23,6 +24,10 @@ function bearer(req: Request): string | undefined {
   return scheme?.toLowerCase() === "bearer" && token ? token : undefined;
 }
 
+function sessionToken(req: Request): string | undefined {
+  return bearer(req) ?? sessionCookie(req);
+}
+
 async function authenticatedUser(token: string): Promise<AuthenticatedUser> {
   const payload = jwt.verify(token, env.JWT_SECRET, {
     algorithms: ["HS256"],
@@ -32,15 +37,17 @@ async function authenticatedUser(token: string): Promise<AuthenticatedUser> {
   if (
     typeof payload === "string" ||
     typeof payload.id !== "string" ||
-    typeof payload.email !== "string"
+    typeof payload.email !== "string" ||
+    typeof payload.sessionVersion !== "number"
   )
     throw new Error("Invalid session payload");
   const result = await query(
-    `SELECT id,email,role FROM users WHERE id=$1 AND is_active`,
+    `SELECT id,email,role,session_version FROM users WHERE id=$1 AND is_active`,
     [payload.id],
   );
   const user = result.rows[0];
-  if (!user) throw new Error("Session user is inactive");
+  if (!user || user.session_version !== payload.sessionVersion)
+    throw new Error("Session is no longer valid");
   return { id: user.id, email: user.email, role: user.role };
 }
 
@@ -49,7 +56,7 @@ export async function optionalAuthenticate(
   _res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const token = bearer(req);
+  const token = sessionToken(req);
   if (!token) return next();
   try {
     req.user = await authenticatedUser(token);
@@ -64,7 +71,7 @@ export async function authenticateToken(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const token = bearer(req);
+  const token = sessionToken(req);
   if (!token) {
     res.status(401).json({ error: "Authentication required" });
     return;

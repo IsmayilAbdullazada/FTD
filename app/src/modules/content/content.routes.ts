@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
+import { httpUrl } from "../../lib/urlValidation.js";
 
 const router = Router();
 router.get(
@@ -52,7 +53,7 @@ router.post(
         ]),
         condition: z.enum(["FTD", "AD", "BOTH"]),
         trialStatus: z.enum(["RECRUITING", "CLOSED"]).optional(),
-        externalUrl: z.string().url().or(z.literal("")).optional(),
+        externalUrl: httpUrl.or(z.literal("")).optional(),
       })
       .parse(req.body);
     const r = (

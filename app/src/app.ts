@@ -22,6 +22,8 @@ import deflectionRoutes from "./modules/knowledge/deflection.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import { authenticateToken, requireStaff } from "./middleware/auth.js";
 import { HttpError } from "./lib/http.js";
+import { isAllowedOrigin } from "./config/origins.js";
+import { protectCookieSession } from "./middleware/csrf.js";
 
 export const app = express();
 const repositoryRoot = path.resolve(
@@ -29,22 +31,31 @@ const repositoryRoot = path.resolve(
   "../..",
 );
 app.disable("x-powered-by");
-app.set("trust proxy", 1);
+app.set(
+  "trust proxy",
+  env.TRUST_PROXY_HOPS === 0 ? false : env.TRUST_PROXY_HOPS,
+);
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-const origins = env.CORS_ORIGIN.split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || origins.includes(origin)) return callback(null, true);
+      if (!origin || isAllowedOrigin(origin)) return callback(null, true);
       callback(new HttpError(403, "Origin is not allowed"));
     },
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "12mb" }));
-app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+app.use("/api", globalLimiter);
+app.use("/api", protectCookieSession);
+app.post(
+  "/api/v1/chatbot/extract-pdf",
+  express.json({ limit: "18mb" }),
+  authenticateToken,
+  requireStaff,
+  extractPdf,
+);
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 app.use(
   "/uploads/guides",
   express.static(path.join(repositoryRoot, "public", "uploads", "guides"), {
@@ -57,7 +68,6 @@ app.use(
     index: false,
   }),
 );
-app.use("/api", globalLimiter);
 
 const health = async (_req: express.Request, res: express.Response) => {
   try {
@@ -84,12 +94,6 @@ app.use("/api/v1/moderation", moderationRoutes);
 app.use("/api/v1", contentRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/chatbot/guides", guideRoutes);
-app.post(
-  "/api/v1/chatbot/extract-pdf",
-  authenticateToken,
-  requireStaff,
-  extractPdf,
-);
 app.use("/api/v1/knowledge", knowledgeRoutes);
 app.use("/api/v1/deflection", deflectionRoutes);
 app.use("/api/v1/admin", adminRoutes);

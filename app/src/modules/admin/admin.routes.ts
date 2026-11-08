@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { env } from "../../config/env.js";
 import { query, transaction } from "../../config/db.js";
-import { asyncHandler } from "../../lib/http.js";
+import { asyncHandler, HttpError } from "../../lib/http.js";
 import { authenticateToken, requireRole } from "../../middleware/auth.js";
 
 const router = Router();
@@ -52,6 +52,8 @@ router.get(
 router.post(
   "/reset-database",
   asyncHandler(async (req, res) => {
+    if (env.ENABLE_DATABASE_RESET !== "true")
+      throw new HttpError(404, "Database reset is disabled");
     const { mode } = z
       .object({ mode: z.enum(["clean", "demo"]) })
       .parse(req.body);

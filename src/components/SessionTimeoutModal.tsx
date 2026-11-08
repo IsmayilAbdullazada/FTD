@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Clock, ShieldAlert, LogOut, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Clock, LogOut, CheckCircle2 } from 'lucide-react';
 
 interface SessionTimeoutModalProps {
   isAuthenticated: boolean;
@@ -22,16 +22,6 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const lastActivityRef = useRef<number>(Date.now());
   const timerCheckIntervalRef = useRef<any>(null);
   const warningCountdownIntervalRef = useRef<any>(null);
-
-  // Reset activity timestamp
-  const recordActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
-    // If warning was active, hide it and reset
-    if (showWarning) {
-      setShowWarning(false);
-      setRemainingSeconds(warningSeconds);
-    }
-  }, [showWarning, warningSeconds]);
 
   // Keep session alive when user explicitly clicks "Stay Signed In"
   const handleStaySignedIn = () => {

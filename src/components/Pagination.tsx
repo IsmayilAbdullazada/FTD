@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface Props { label: string; page: number; pageCount: number; total: number; start: number; pageSize: number; setPage: (page: number) => void }
 export function Pagination({ label, page, pageCount, total, start, pageSize, setPage }: Props) {

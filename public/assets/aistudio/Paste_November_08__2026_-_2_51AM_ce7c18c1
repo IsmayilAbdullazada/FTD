@@ -1,0 +1,989 @@
+Here is a complete, production-grade overhaul for **Hopkins Care Partner Connect (FTD)**.
+
+This guide reorganizes your repository, builds a serious, modular **Node.js 24 + PostgreSQL 16** backend, connects your configuration file, and walks you through deploying it under your server layout:
+* `/var/www/ftdcare/html/` (Vite frontend production build)
+* `/var/www/ftdcare/app/` (Node.js 24 backend)
+* `/var/www/ftdcare/config/ftdcare.env` (Environment variables)
+
+---
+
+### 1. Server Folder Structure
+
+On your server (e.g., at `/var/www/ftdcare`), structure your folders as follows:
+
+```text
+/var/www/ftdcare/
+├── config/
+│   └── ftdcare.env                # Sensitive production credentials
+├── html/                          # Static frontend files (Vite build output)
+│   ├── index.html
+│   └── assets/
+└── app/                           # Production backend code
+    ├── package.json
+    ├── tsconfig.json
+    ├── src/
+    │   ├── config/
+    │   │   ├── env.ts             # Validated env loader
+    │   │   └── db.ts              # PostgreSQL 16 connection pool
+    │   ├── middleware/
+    │   │   ├── auth.ts            # JWT verification & role-based guards
+    │   │   ├── rateLimiter.ts     # IP-based rate limiting
+    │   │   └── errorHandler.ts    # Centralized error handler
+    │   ├── modules/
+    │   │   ├── auth/              # Login, register, me
+    │   │   ├── posts/             # Moderated knowledge exchange
+    │   │   ├── messages/          # Private clinician messaging (Dr. Seema Gulyani)
+    │   │   ├── cohorts/           # Regional & subtype support cohorts
+    │   │   └── resources/         # Clinician-verified guides & toolkits
+    │   ├── db/
+    │   │   ├── schema.sql         # Postgres 16 schema & indexes
+    │   │   ├── migrate.ts         # Automated migration runner
+    │   │   └── seed.ts            # Initial seed data
+    │   └── server.ts              # Express application entrypoint
+    └── dist/                      # Compiled JS
+```
+
+---
+
+### 2. Environment Configuration (`config/ftdcare.env`)
+
+Create this file outside web-accessible roots:
+
+```ini
+# /var/www/ftdcare/config/ftdcare.env
+NODE_ENV=production
+PORT=5000
+
+# Database Configuration (PostgreSQL 16)
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=ftdcare_db
+DB_USER=ftdcare_user
+DB_PASSWORD=YOUR_STRONG_POSTGRES_PASSWORD
+DB_POOL_MAX=20
+DB_SSL=false
+
+# Security & Secrets
+JWT_SECRET=generate_with_openssl_rand_hex_64
+JWT_EXPIRES_IN=7d
+CORS_ORIGIN=https://your-domain.com
+
+# Optional Integrations
+GEMINI_API_KEY=
+```
+
+---
+
+### 3. PostgreSQL 16 Database Schema (`app/src/db/schema.sql`)
+
+PostgreSQL 16 natively supports `gen_random_uuid()` and JSONB indexing. This schema handles care partners, clinician moderation, regional cohorts, and secure private messaging:
+
+```sql
+-- app/src/db/schema.sql
+
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(150) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'care_partner' CHECK (role IN ('care_partner', 'clinician', 'admin')),
+    specialty VARCHAR(150), -- e.g., "Behavioral Neurologist", "Clinical Neuropsychologist"
+    bio TEXT,
+    avatar_url VARCHAR(500),
+    is_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cohorts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    region VARCHAR(100), -- e.g., "Mid-Atlantic", "Northeast", "Global"
+    ftd_subtype VARCHAR(50) CHECK (ftd_subtype IN ('bvFTD', 'PPA-Semantic', 'PPA-Nonfluent', 'FTD-MND', 'General')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cohort_members (
+    cohort_id UUID REFERENCES cohorts(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (cohort_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cohort_id UUID REFERENCES cohorts(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(100) NOT NULL, -- "Daily Care", "Behavioral Strategies", "Speech & Language", "Legal & Financial", "Emotional Wellness"
+    tags TEXT[] DEFAULT '{}',
+    is_pinned BOOLEAN DEFAULT FALSE,
+    clinician_reviewed BOOLEAN DEFAULT FALSE,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS post_replies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    is_clinician_endorsed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS private_conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    care_partner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    clinician_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject VARCHAR(255) NOT NULL,
+    status VARCHAR(50) DEFAULT 'open' CHECK (status IN ('open', 'responded', 'closed')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS private_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES private_conversations(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS resources (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    summary TEXT NOT NULL,
+    content TEXT,
+    category VARCHAR(100) NOT NULL,
+    file_or_external_url VARCHAR(500),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_posts_cohort ON posts(cohort_id);
+CREATE INDEX IF NOT EXISTS idx_posts_category ON posts(category);
+CREATE INDEX IF NOT EXISTS idx_post_replies_post ON post_replies(post_id);
+CREATE INDEX IF NOT EXISTS idx_private_msgs_conv ON private_messages(conversation_id);
+```
+
+---
+
+### 4. Production Backend Implementation (`app/`)
+
+#### 4.1 Backend `package.json` (`app/package.json`)
+```json
+{
+  "name": "ftd-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --env-file=../config/ftdcare.env dist/server.js",
+    "migrate": "node --env-file=../config/ftdcare.env --loader ts-node/esm src/db/migrate.ts",
+    "seed": "node --env-file=../config/ftdcare.env --loader ts-node/esm src/db/seed.ts"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/node": "^22.13.0",
+    "@types/pg": "^8.11.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}
+```
+
+#### 4.2 TypeScript Configuration (`app/tsconfig.json`)
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"]
+}
+```
+
+#### 4.3 Database Connection Pool (`app/src/config/db.ts`)
+```typescript
+import pg from 'pg';
+
+const { Pool } = pg;
+
+export const pool = new Pool({
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '5432', 10),
+  database: process.env.DB_NAME || 'ftdcare_db',
+  user: process.env.DB_USER || 'ftdcare_user',
+  password: process.env.DB_PASSWORD,
+  max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('error', (err) => {
+  console.error('[Postgres Pool Error]', err);
+});
+
+export const query = (text: string, params?: any[]) => pool.query(text, params);
+```
+
+#### 4.4 Authentication Middleware (`app/src/middleware/auth.ts`)
+```typescript
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  role: 'care_partner' | 'clinician' | 'admin';
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthenticatedUser;
+    }
+  }
+}
+
+export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    res.status(401).json({ error: 'Access token required' });
+    return;
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    res.status(500).json({ error: 'JWT_SECRET is not configured' });
+    return;
+  }
+
+  jwt.verify(token, secret, (err, decoded) => {
+    if (err) {
+      res.status(403).json({ error: 'Invalid or expired token' });
+      return;
+    }
+    req.user = decoded as AuthenticatedUser;
+    next();
+  });
+};
+
+export const requireRole = (allowedRoles: Array<'care_partner' | 'clinician' | 'admin'>) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+      return;
+    }
+    next();
+  };
+};
+```
+
+#### 4.5 Central Error Handler (`app/src/middleware/errorHandler.ts`)
+```typescript
+import { Request, Response, NextFunction } from 'express';
+
+export const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunction): void => {
+  console.error('[Application Error]:', err.stack || err);
+
+  const statusCode = err.status || 500;
+  const message = process.env.NODE_ENV === 'production' && statusCode === 500 
+    ? 'Internal Server Error' 
+    : err.message || 'An unexpected error occurred';
+
+  res.status(statusCode).json({
+    success: false,
+    error: message,
+  });
+};
+```
+
+#### 4.6 Auth Controller & Routes (`app/src/modules/auth/auth.routes.ts`)
+```typescript
+import { Router, Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { authenticateToken } from '../../middleware/auth.js';
+
+const router = Router();
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  fullName: z.string().min(2),
+  role: z.enum(['care_partner', 'clinician']).default('care_partner'),
+  specialty: z.string().optional(),
+});
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+
+router.post('/register', async (req: Request, res: Response): Promise<void> => {
+  const parseResult = registerSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({ error: parseResult.error.errors[0].message });
+    return;
+  }
+
+  const { email, password, fullName, role, specialty } = parseResult.data;
+
+  const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
+  if (existing.rowCount && existing.rowCount > 0) {
+    res.status(409).json({ error: 'Email already registered' });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const result = await query(
+    `INSERT INTO users (email, password_hash, full_name, role, specialty)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, email, full_name, role, specialty, created_at`,
+    [email, passwordHash, fullName, role, specialty || null]
+  );
+
+  const newUser = result.rows[0];
+  const token = jwt.sign(
+    { id: newUser.id, email: newUser.email, role: newUser.role },
+    process.env.JWT_SECRET!,
+    { expiresIn: '7d' }
+  );
+
+  res.status(201).json({ user: newUser, token });
+});
+
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
+  const parseResult = loginSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Invalid email or password format' });
+    return;
+  }
+
+  const { email, password } = parseResult.data;
+  const userResult = await query(
+    `SELECT id, email, password_hash, full_name, role, specialty, is_verified 
+     FROM users WHERE email = $1`,
+    [email]
+  );
+
+  if (userResult.rowCount === 0) {
+    res.status(401).json({ error: 'Invalid email or password' });
+    return;
+  }
+
+  const user = userResult.rows[0];
+  const isValid = await bcrypt.compare(password, user.password_hash);
+  if (!isValid) {
+    res.status(401).json({ error: 'Invalid email or password' });
+    return;
+  }
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET!,
+    { expiresIn: '7d' }
+  );
+
+  delete user.password_hash;
+  res.json({ user, token });
+});
+
+router.get('/me', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const result = await query(
+    `SELECT id, email, full_name, role, specialty, is_verified, avatar_url, bio, created_at 
+     FROM users WHERE id = $1`,
+    [req.user!.id]
+  );
+  if (result.rowCount === 0) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  res.json({ user: result.rows[0] });
+});
+
+export default router;
+```
+
+#### 4.7 Posts & Clinician Moderation Routes (`app/src/modules/posts/posts.routes.ts`)
+```typescript
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { authenticateToken, requireRole } from '../../middleware/auth.js';
+
+const router = Router();
+
+const createPostSchema = z.object({
+  title: z.string().min(5),
+  content: z.string().min(10),
+  category: z.string(),
+  cohortId: z.string().uuid().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+// GET /api/posts - Feed with optional category filter
+router.get('/', async (req: Request, res: Response): Promise<void> => {
+  const { category, cohortId } = req.query;
+  let sql = `
+    SELECT p.*, u.full_name as author_name, u.role as author_role, u.is_verified as author_verified,
+           (SELECT COUNT(*) FROM post_replies r WHERE r.post_id = p.id)::int as reply_count
+    FROM posts p
+    JOIN users u ON p.author_id = u.id
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+
+  if (category) {
+    params.push(category);
+    sql += ` AND p.category = $${params.length}`;
+  }
+  if (cohortId) {
+    params.push(cohortId);
+    sql += ` AND p.cohort_id = $${params.length}`;
+  }
+
+  sql += ' ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT 50';
+
+  const result = await query(sql, params);
+  res.json({ posts: result.rows });
+});
+
+// POST /api/posts - Create a discussion post
+router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const parsed = createPostSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0].message });
+    return;
+  }
+
+  const { title, content, category, cohortId, tags } = parsed.data;
+  const result = await query(
+    `INSERT INTO posts (author_id, cohort_id, title, content, category, tags)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [req.user!.id, cohortId || null, title, content, category, tags || []]
+  );
+
+  res.status(201).json({ post: result.rows[0] });
+});
+
+// PATCH /api/posts/:id/verify - Clinician endorsement
+router.patch('/:id/verify', authenticateToken, requireRole(['clinician', 'admin']), async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const result = await query(
+    `UPDATE posts 
+     SET clinician_reviewed = TRUE, reviewed_by = $1, updated_at = NOW()
+     WHERE id = $2 RETURNING *`,
+    [req.user!.id, id]
+  );
+
+  if (result.rowCount === 0) {
+    res.status(404).json({ error: 'Post not found' });
+    return;
+  }
+
+  res.json({ post: result.rows[0], message: 'Clinician guidance applied' });
+});
+
+export default router;
+```
+
+#### 4.8 Private Clinician Messaging Routes (`app/src/modules/messages/messages.routes.ts`)
+```typescript
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { authenticateToken } from '../../middleware/auth.js';
+
+const router = Router();
+
+// GET /api/messages/conversations - List conversations for user
+router.get('/conversations', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const result = await query(
+    `SELECT c.*, 
+            cp.full_name as care_partner_name,
+            cl.full_name as clinician_name,
+            (SELECT body FROM private_messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
+            (SELECT created_at FROM private_messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at
+     FROM private_conversations c
+     JOIN users cp ON c.care_partner_id = cp.id
+     JOIN users cl ON c.clinician_id = cl.id
+     WHERE c.care_partner_id = $1 OR c.clinician_id = $1
+     ORDER BY c.updated_at DESC`,
+    [userId]
+  );
+
+  res.json({ conversations: result.rows });
+});
+
+// POST /api/messages/conversations - Start consultation with clinician (e.g., Dr. Seema Gulyani)
+router.post('/conversations', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const schema = z.object({
+    clinicianId: z.string().uuid(),
+    subject: z.string().min(3),
+    initialMessage: z.string().min(5),
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0].message });
+    return;
+  }
+
+  const { clinicianId, subject, initialMessage } = parsed.data;
+
+  // Insert conversation & initial message in transaction
+  const client = await (await import('../../config/db.js')).pool.connect();
+  try {
+    await client.query('BEGIN');
+    const convResult = await client.query(
+      `INSERT INTO private_conversations (care_partner_id, clinician_id, subject)
+       VALUES ($1, $2, $3) RETURNING id`,
+      [req.user!.id, clinicianId, subject]
+    );
+
+    const convId = convResult.rows[0].id;
+    await client.query(
+      `INSERT INTO private_messages (conversation_id, sender_id, body)
+       VALUES ($1, $2, $3)`,
+      [convId, req.user!.id, initialMessage]
+    );
+
+    await client.query('COMMIT');
+    res.status(201).json({ conversationId: convId });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+export default router;
+```
+
+#### 4.9 Main Server Entrypoint (`app/src/server.ts`)
+```typescript
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import { pool } from './config/db.js';
+import authRoutes from './modules/auth/auth.routes.js';
+import postRoutes from './modules/posts/posts.routes.js';
+import messageRoutes from './modules/messages/messages.routes.js';
+import { errorHandler } from './middleware/errorHandler.js';
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Security Middlewares
+app.use(helmet());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || '*',
+    credentials: true,
+  })
+);
+
+// Body parser
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Global Rate Limiting (100 req / 15 min per IP)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', limiter);
+
+// Health check endpoint
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', nodeVersion: process.version, database: 'connected' });
+  } catch (err: any) {
+    res.status(503).json({ status: 'unhealthy', error: err.message });
+  }
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/messages', messageRoutes);
+
+// Centralized error handling
+app.use(errorHandler);
+
+// Start server
+const server = app.listen(PORT, () => {
+  console.log(`[FTD Care Backend] Running on http://127.0.0.1:${PORT} (Node ${process.version})`);
+});
+
+// Graceful Shutdown
+const shutdown = async () => {
+  console.log('\n[FTD Care Backend] Shutting down gracefully...');
+  server.close(async () => {
+    await pool.end();
+    console.log('[FTD Care Backend] Database pool closed.');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+```
+
+#### 4.10 Migration Script (`app/src/db/migrate.ts`)
+```typescript
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { pool } from '../config/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function runMigration() {
+  const sqlPath = path.join(__dirname, 'schema.sql');
+  const sql = fs.readFileSync(sqlPath, 'utf-8');
+
+  console.log('[Migration] Running database schema migration...');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(sql);
+    await client.query('COMMIT');
+    console.log('[Migration] Schema applied successfully.');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Migration Error]', err);
+    process.exit(1);
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+runMigration();
+```
+
+#### 4.11 Seed Script (`app/src/db/seed.ts`)
+```typescript
+import bcrypt from 'bcrypt';
+import { pool } from '../config/db.js';
+
+async function seed() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Seed Clinician (Dr. Seema Gulyani)
+    const pwHash = await bcrypt.hash('DrSeemaGulyani2026!', 12);
+    const clinicianRes = await client.query(
+      `INSERT INTO users (email, password_hash, full_name, role, specialty, bio, is_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (email) DO NOTHING
+       RETURNING id`,
+      [
+        'sgulyani@hopkinsmedicine.org',
+        pwHash,
+        'Dr. Seema Gulyani',
+        'clinician',
+        'Frontotemporal Dementia Specialist',
+        'Lead clinician and research investigator at Hopkins Care Partner Connect.',
+        true,
+      ]
+    );
+
+    // 2. Seed Standard Support Cohorts
+    await client.query(`
+      INSERT INTO cohorts (name, description, region, ftd_subtype) VALUES
+      ('bvFTD Behavioral Support Circle', 'Peer cohort for families navigating behavioral and personality changes.', 'National', 'bvFTD'),
+      ('PPA Communication & Speech Guild', 'Strategies for primary progressive aphasia care partners.', 'National', 'PPA-Nonfluent'),
+      ('Mid-Atlantic Regional Care Alliance', 'Hopkins regional local meetup and caregiver respite network.', 'Mid-Atlantic', 'General')
+      ON CONFLICT DO NOTHING;
+    `);
+
+    await client.query('COMMIT');
+    console.log('[Seed] Default clinician and cohorts created successfully.');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Seed Error]', err);
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+seed();
+```
+
+---
+
+### 5. Deployment Step-by-Step on Web Server
+
+Log into your server via SSH:
+
+#### Step 5.1: Create Project Directories & Permissions
+```bash
+sudo mkdir -p /var/www/ftdcare/{html,app,config}
+sudo chown -R $USER:$USER /var/www/ftdcare
+```
+
+#### Step 5.2: Configure PostgreSQL 16
+```bash
+sudo -u postgres psql
+```
+In the `psql` console, run:
+```sql
+CREATE DATABASE ftdcare_db;
+CREATE USER ftdcare_user WITH ENCRYPTED PASSWORD 'YOUR_STRONG_POSTGRES_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE ftdcare_db TO ftdcare_user;
+ALTER DATABASE ftdcare_db OWNER TO ftdcare_user;
+\q
+```
+
+#### Step 5.3: Create `/var/www/ftdcare/config/ftdcare.env`
+```bash
+nano /var/www/ftdcare/config/ftdcare.env
+```
+Paste your configuration from **Section 2** and secure the permissions:
+```bash
+chmod 600 /var/www/ftdcare/config/ftdcare.env
+```
+
+#### Step 5.4: Build the Vite Frontend into `html/`
+Clone your repository into a temporary workspace or your home directory:
+```bash
+cd ~
+git clone https://github.com/IsmayilAbdullazada/FTD.git ftd-build
+cd ftd-build
+npm install
+```
+
+Build the Vite static assets:
+```bash
+npm run build
+```
+Copy the compiled distribution files to `/var/www/ftdcare/html/`:
+```bash
+cp -r dist/* /var/www/ftdcare/html/
+```
+
+#### Step 5.5: Deploy and Compile the Backend in `app/`
+Copy the backend code into `/var/www/ftdcare/app/`:
+```bash
+cd /var/www/ftdcare/app
+# Initialize files as structured in Section 4
+npm install
+npm run build
+
+# Run database migration and initial seeds
+npm run migrate
+npm run seed
+```
+
+#### Step 5.6: Manage Node.js with Systemd (Production Service)
+Create a systemd unit file using Node 24’s native `--env-file` parameter:
+
+```bash
+sudo nano /etc/systemd/system/ftdcare.service
+```
+
+Paste the following:
+```ini
+[Unit]
+Description=FTD Care Partner Connect Backend Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/ftdcare/app
+EnvironmentFile=/var/www/ftdcare/config/ftdcare.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=ftdcare-app
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Give `www-data` ownership of the application directory and start the service:
+```bash
+sudo chown -R www-data:www-data /var/www/ftdcare/app /var/www/ftdcare/html
+sudo chmod 640 /var/www/ftdcare/config/ftdcare.env
+
+sudo systemctl daemon-reload
+sudo systemctl enable ftdcare
+sudo systemctl start ftdcare
+sudo systemctl status ftdcare
+```
+
+---
+
+### 6. Production Nginx Configuration
+
+Configure Nginx to serve the static frontend from `/var/www/ftdcare/html` and forward API traffic to the Node.js backend on `127.0.0.1:5000`:
+
+```bash
+sudo nano /etc/nginx/sites-available/ftdcare.conf
+```
+
+Paste this configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com www.your-domain.com;
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com www.your-domain.com;
+
+    # SSL Certificates (managed via Let's Encrypt / Certbot)
+    # ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+
+    root /var/www/ftdcare/html;
+    index index.html;
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Gzip Compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+
+    # Static Assets with long cache
+    location ~* \.(?:ico|css|js|gif|jpe?g|png|woff2?|eot|ttf|svg)$ {
+        expires 6M;
+        access_log off;
+        add_header Cache-Control "public, max-age=15552000, immutable";
+        try_files $uri =404;
+    }
+
+    # API Reverse Proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # React Single Page Application (SPA) routing fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+Enable the configuration and reload Nginx:
+```bash
+sudo ln -s /etc/nginx/sites-available/ftdcare.conf /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+---
+
+### 7. Automated One-Command Deploy Script (`deploy.sh`)
+
+Place this script at `/var/www/ftdcare/deploy.sh` to handle future Git updates cleanly:
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== Deploying Hopkins Care Partner Connect ==="
+
+REPO_DIR="$HOME/ftd-source"
+HTML_DIR="/var/www/ftdcare/html"
+APP_DIR="/var/www/ftdcare/app"
+
+# 1. Pull latest git code
+if [ ! -d "$REPO_DIR" ]; then
+    git clone https://github.com/IsmayilAbdullazada/FTD.git "$REPO_DIR"
+fi
+cd "$REPO_DIR"
+git pull origin main
+
+# 2. Build Frontend and sync to html/
+echo "Building Vite frontend..."
+npm install
+npm run build
+rsync -av --delete dist/ "$HTML_DIR/"
+
+# 3. Build Backend and restart systemd service
+echo "Building Node.js backend..."
+cd "$APP_DIR"
+npm install --production=false
+npm run build
+npm run migrate
+
+echo "Restarting ftdcare.service..."
+sudo systemctl restart ftdcare
+
+echo "=== Deployment Complete ==="
+```
+
+Make it executable:
+```bash
+chmod +x /var/www/ftdcare/deploy.sh
+```
+
+Now whenever you make changes in GitHub, simply run `./deploy.sh` on your server. It will compile the frontend to `html/`, run any schema updates on PostgreSQL 16, and restart the backend in `app/`.

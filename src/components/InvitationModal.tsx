@@ -4,7 +4,6 @@ import {
   UserPlus,
   Copy,
   Check,
-  ShieldCheck,
   Clock,
   X,
   ExternalLink,

@@ -484,7 +484,7 @@ export async function noGuideResult(query: string, ai?: GoogleGenAI | null): Pro
 /** Retrieve guide pages only. The LLM is never used to generate a guide answer. */
 export async function answerRagQuery(
   query: string,
-  conversationHistory: Array<{ role: string; content?: string; text?: string }> = [],
+  _conversationHistory: Array<{ role: string; content?: string; text?: string }> = [],
   ai?: GoogleGenAI | null,
   conditionFilter?: 'FTD' | 'AD' | 'GENERAL' | 'BOTH',
   approvedGuides?: Array<{ id: string; pdfUrl?: string }>

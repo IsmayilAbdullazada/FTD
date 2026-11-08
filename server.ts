@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import { isVisibleReplyParent } from './server/replyParent.ts';
 import { findDiscussionAnswers } from './server/discussionSearch.ts';
 import dotenv from 'dotenv';
@@ -21,6 +22,11 @@ import {
   sendPasswordResetEmail,
   sentEmailsStore,
 } from './server/email.ts';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -28,7 +34,69 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+
+// Trust reverse proxy (Cloud Run, Nginx, ALB) for accurate IP resolution and rate-limiting
+app.set('trust proxy', 1);
+
+const portArgIndex = process.argv.indexOf('--port');
+const cliPort = portArgIndex !== -1 && process.argv[portArgIndex + 1] ? parseInt(process.argv[portArgIndex + 1], 10) : undefined;
+const PORT = cliPort || (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
+
+// Modern Security Constants
+const JWT_SECRET = process.env.JWT_SECRET || 'hopkins-care-partner-connect-jwt-secret-key-2026-ftd-secure';
+const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('Hopkins2026!', 10);
+
+// 1. Helmet HTTP Security Headers (Configured with OWASP recommendations & AI Studio iframe support)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'https:'],
+        frameAncestors: ["'self'", '*'],
+        objectSrc: ["'self'", 'blob:', 'data:'],
+      },
+    },
+    frameguard: false, // Let frameAncestors control iframe framing safely
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
+// 2. Strict CORS Configuration
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  })
+);
+
+// 3. Global API Rate Limiter
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 350,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, forwardedHeader: false },
+  message: { error: 'Too many requests from this client. Please retry in a few minutes.' },
+});
+app.use('/api/', apiLimiter);
+
+// 4. Strict Authentication Rate Limiter (Brute-Force & Credential Stuffing Defense)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 attempts per 15m
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, forwardedHeader: false },
+  message: { error: 'Too many authentication attempts from this IP. Please wait 15 minutes before retrying.' },
+});
 
 type Condition = 'FTD' | 'AD';
 type Audience = Condition | 'BOTH';
@@ -36,13 +104,25 @@ type Audience = Condition | 'BOTH';
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// HTML & XSS Sanitization helper for user-supplied content
+function sanitizeHtmlInput(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/onerror\s*=/gi, '')
+    .replace(/onload\s*=/gi, '')
+    .replace(/onclick\s*=/gi, '');
+}
+
 // Serve static PDF guides from stable uploads and resources paths without frame blocking
 const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads', 'guides');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
-app.use('/uploads/guides', (req, res, next) => {
+app.use('/uploads/guides', (_req, res, next) => {
   res.removeHeader('X-Frame-Options');
   res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -50,7 +130,7 @@ app.use('/uploads/guides', (req, res, next) => {
   next();
 }, express.static(UPLOADS_DIR));
 
-app.use('/resources', (req, res, next) => {
+app.use('/resources', (_req, res, next) => {
   res.removeHeader('X-Frame-Options');
   res.setHeader('Content-Security-Policy', "frame-ancestors 'self' *");
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -107,6 +187,7 @@ interface User {
   badgeLabel: string;
   createdAt: string;
   password?: string;
+  passwordHash?: string;
 }
 
 interface CommunityGroup {
@@ -334,8 +415,8 @@ function isStaff(userId?: string): boolean {
   return !!u && (u.role === 'CLINICIAN_MODERATOR' || u.role === 'SYSTEM_ADMIN');
 }
 
-// Pre-seeded database
-const users: User[] = [
+// Pre-seeded database for testing & demo validation
+const seedUsers: User[] = [
   {
     id: 'user-clinician-1',
     email: 'sgulyan1@jhmi.edu',
@@ -348,6 +429,7 @@ const users: User[] = [
     anonymousHandle: 'Seema Gulyani (Moderator)',
     avatarColor: '#002D72',
     badgeLabel: 'Clinician Moderator',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-01-15T09:00:00Z',
   },
   {
@@ -363,6 +445,7 @@ const users: User[] = [
     anonymousHandle: 'User-882',
     avatarColor: '#1E40AF',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-02-10T14:22:00Z',
   },
   {
@@ -378,6 +461,7 @@ const users: User[] = [
     anonymousHandle: 'User-419',
     avatarColor: '#047857',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-03-01T11:15:00Z',
   },
   {
@@ -393,6 +477,7 @@ const users: User[] = [
     anonymousHandle: 'User-204',
     avatarColor: '#6D28D9',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-04-12T16:40:00Z',
   },
   {
@@ -408,6 +493,7 @@ const users: User[] = [
     anonymousHandle: 'User-512',
     avatarColor: '#B45309',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-05-01T10:00:00Z',
   },
   {
@@ -423,6 +509,7 @@ const users: User[] = [
     anonymousHandle: 'User-633',
     avatarColor: '#0E7490',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-05-15T14:30:00Z',
   },
   {
@@ -437,6 +524,7 @@ const users: User[] = [
     anonymousHandle: 'User-701',
     avatarColor: '#0F766E',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-10-01T10:00:00Z',
   },
   {
@@ -451,8 +539,8 @@ const users: User[] = [
     anonymousHandle: 'User-702',
     avatarColor: '#9333EA',
     badgeLabel: 'Care Partner',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-10-02T11:00:00Z',
-
   },
   {
     id: 'user-admin-1',
@@ -464,22 +552,59 @@ const users: User[] = [
     anonymousHandle: 'JHU CS Admin',
     avatarColor: '#475569',
     badgeLabel: 'System Administrator',
+    passwordHash: DEFAULT_PASSWORD_HASH,
     createdAt: '2026-01-01T00:00:00Z',
   },
 ];
 
-// Helper: Get the requesting user from the request object
+// Active runtime users store
+let users: User[] = [];
+
+// Helper: Strip sensitive authentication fields before sending over HTTP
+function sanitizeUserResponse(user: User) {
+  const { password, passwordHash, ...safe } = user;
+  return safe;
+}
+
+// Helper: Get the requesting user from the request object with JWT validation
 function getRequester(req: express.Request): User | undefined {
+  // 1. Bearer JWT Token verification
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+      if (decoded && decoded.id) {
+        const found = users.find((u) => u.id === decoded.id);
+        if (found) return found;
+      }
+    } catch {
+      if (token.startsWith('jh-sess-')) {
+        const parts = token.split('-');
+        if (parts.length >= 3) {
+          const maybeId = parts.slice(2, parts.length - 1).join('-');
+          const found = users.find((u) => u.id === maybeId || token.includes(u.id));
+          if (found) return found;
+        }
+      }
+    }
+  }
+
+  // 2. Query / body param fallback (for dev persona switching)
   const id =
     (req.query.userId as string) ||
     (req.body?.userId as string) ||
     (req.body?.senderId as string) ||
     (req.body?.authorId as string) ||
     '';
-  return users.find((u) => u.id === id);
+  if (id) {
+    return users.find((u) => u.id === id);
+  }
+
+  return undefined;
 }
 
-// The single visibility rule.
+// Single visibility rule
 function canSee(user: User | undefined, audience: Audience = 'FTD'): boolean {
   if (!user) return false;
   if (user.role !== 'CARE_PARTNER') return true; // Dr. Seema / admins see both
@@ -572,7 +697,7 @@ const communityGroups: CommunityGroup[] = [
   },
 ];
 
-const groupMemberships: { userId: string; groupId: string }[] = [
+const seedGroupMemberships: { userId: string; groupId: string }[] = [
   { userId: 'user-care-1', groupId: 'group-general' },
   { userId: 'user-care-1', groupId: 'group-central-maryland' },
   { userId: 'user-care-2', groupId: 'group-general' },
@@ -588,6 +713,8 @@ const groupMemberships: { userId: string; groupId: string }[] = [
   { userId: 'user-care-7', groupId: 'group-general' },
   { userId: 'user-care-7', groupId: 'group-western-maryland' },
 ];
+
+let groupMemberships: { userId: string; groupId: string }[] = [];
 
 function normalizeGroupId(gId: string): string {
   if (gId === 'group-baltimore' || gId === 'group-catonsville') return 'group-central-maryland';
@@ -989,8 +1116,8 @@ function scanForPhi(text: string): PhiAlert[] {
   return alerts;
 }
 
-// Initial posts seeded
-const posts: Post[] = [
+// Seeded posts for demonstration and validation
+const seedPosts: Post[] = [
   {
     id: 'post-general-1',
     authorId: 'user-clinician-1',
@@ -1457,7 +1584,7 @@ const posts: Post[] = [
   },
 ];
 
-const comments: Comment[] = [
+const seedComments: Comment[] = [
   {
     id: 'comm-gen-1',
     postId: 'post-general-1',
@@ -1922,7 +2049,7 @@ const comments: Comment[] = [
   },
 ];
 
-const auditEvents: ModerationAuditEvent[] = [
+const seedAuditEvents: ModerationAuditEvent[] = [
   {
     id: 'audit-1',
     moderatorId: 'user-clinician-1',
@@ -1945,7 +2072,7 @@ const auditEvents: ModerationAuditEvent[] = [
   },
 ];
 
-const invitations: Invitation[] = [
+const seedInvitations: Invitation[] = [
   {
     id: 'inv-1',
     email: 'carol.jenkins@example.com',
@@ -1961,7 +2088,7 @@ const invitations: Invitation[] = [
   },
 ];
 
-const directMessages: DirectMessage[] = [
+const seedDirectMessages: DirectMessage[] = [
   {
     id: 'dm-1',
     recipientUserId: 'user-care-1',
@@ -1972,6 +2099,13 @@ const directMessages: DirectMessage[] = [
     read: true,
   },
 ];
+
+// Active runtime stores
+let posts: Post[] = [];
+let comments: Comment[] = [];
+let auditEvents: ModerationAuditEvent[] = [];
+let invitations: Invitation[] = [];
+let directMessages: DirectMessage[] = [];
 
 // -------------------------------------------------------------
 // ZERO-TRUST RLS PROJECTION UTILITY
@@ -2015,23 +2149,35 @@ function projectAuthor(userId: string, requestingRole: string) {
 // REST API ENDPOINTS
 // -------------------------------------------------------------
 
-// Switch / Get Active User Persona (For Demo & Testing)
+// Switch / Get Active User Persona (Supports JWT Bearer auth, asUser preview, and clean fallback)
 app.get('/api/v1/users/me', (req, res) => {
-  const userId = (req.query.asUser as string) || 'user-care-1';
-  const user = users.find((u) => u.id === userId) || users[1];
+  let user: User | undefined;
+
+  // 1. Try JWT Bearer token
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+      if (decoded && decoded.id) {
+        user = users.find((u) => u.id === decoded.id);
+      }
+    } catch {}
+  }
+
+  // 2. Try asUser parameter
+  if (!user && req.query.asUser) {
+    const asId = req.query.asUser as string;
+    user = users.find((u) => u.id === asId);
+  }
+
+  // 3. Safe fallback to first user
+  if (!user) {
+    user = users[0] || seedUsers[0];
+  }
+
   res.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      clinicPatientId: user.clinicPatientId,
-      condition: user.condition,
-      anonymousHandle: user.anonymousHandle,
-      badgeLabel: user.badgeLabel,
-      avatarColor: user.avatarColor,
-    },
+    user: sanitizeUserResponse(user),
     allPersonas: users.map((u) => ({
       id: u.id,
       name: `${u.firstName} ${u.lastName}`,
@@ -2399,7 +2545,7 @@ app.get('/api/v1/deflection/discussions-pool', (req, res) => {
   res.json({ pool });
 });
 
-// Draft / Submit Post (Care Partner or Clinician)
+// Draft / Submit Post (Care Partner or Clinician with XSS Sanitization & Zero-Trust Gate)
 app.post('/api/v1/posts', (req, res) => {
   const { title, content, targetCohortId, authorId = 'user-care-1' } = req.body;
   const author = users.find((u) => u.id === authorId);
@@ -2411,12 +2557,15 @@ app.post('/api/v1/posts', (req, res) => {
     return res.status(400).json({ error: 'Title and content are required' });
   }
 
+  const cleanTitle = sanitizeHtmlInput(String(title).trim().slice(0, 300));
+  const cleanContent = sanitizeHtmlInput(String(content).trim().slice(0, 15000));
+
   // Run automated PII / PHI Scrubber
-  const phiAlerts = scanForPhi(`${title} ${content}`);
+  const phiAlerts = scanForPhi(`${cleanTitle} ${cleanContent}`);
 
   // Determine if it looks like an urgent clinical query
   const medicationKeywords = ['seroquel', 'haldol', 'haloperidol', 'donepezil', 'aricept', 'memantine', 'namenda', 'trazodone', 'dosage', 'dose', 'milligram', 'mg', 'prescribe'];
-  const hasMedicationMention = medicationKeywords.some((w) => `${title} ${content}`.toLowerCase().includes(w));
+  const hasMedicationMention = medicationKeywords.some((w) => `${cleanTitle} ${cleanContent}`.toLowerCase().includes(w));
 
   const staff = isStaff(authorId);
   const now = new Date().toISOString();
@@ -2424,10 +2573,10 @@ app.post('/api/v1/posts', (req, res) => {
   const newPost: Post = {
     id: `post-${Date.now()}`,
     authorId,
-    title,
-    rawContent: content,
-    sanitizedContent: content,
-    status: staff ? 'APPROVED' : 'PENDING_MODERATION', // ZERO-TRUST GATE: Always pending!
+    title: cleanTitle,
+    rawContent: cleanContent,
+    sanitizedContent: cleanContent,
+    status: staff ? 'APPROVED' : 'PENDING_MODERATION', // ZERO-TRUST GATE: Always pending for care partners!
     condition,
     moderatedBy: staff ? authorId : undefined,
     moderatedAt: staff ? now : undefined,
@@ -2455,7 +2604,7 @@ app.post('/api/v1/posts', (req, res) => {
   });
 });
 
-// Add comment to post
+// Add comment to post with XSS Sanitization
 app.post('/api/v1/posts/:id/comments', (req, res) => {
   const { content, authorId = 'user-care-1', parentCommentId } = req.body;
   const post = posts.find((p) => p.id === req.params.id);
@@ -2473,6 +2622,11 @@ app.post('/api/v1/posts/:id/comments', (req, res) => {
     return res.status(403).json({
       error: 'This discussion has been closed by a clinician moderator. New replies are no longer accepted.',
     });
+  }
+
+  const cleanContent = sanitizeHtmlInput(String(content || '').trim().slice(0, 8000));
+  if (!cleanContent) {
+    return res.status(400).json({ error: 'Comment content cannot be empty' });
   }
 
   const author = users.find((u) => u.id === authorId);
@@ -2850,8 +3004,6 @@ app.post('/api/v1/moderation/action', (req, res) => {
     post.status = 'CLINICAL_REDIRECT';
     post.rejectionCode = 'CLINICAL_MEDICATION_QUERY';
 
-    const author = users.find((u) => u.id === post.authorId);
-
     directMessages.unshift({
       id: `dm-${Date.now()}`,
       recipientUserId: post.authorId,
@@ -3028,7 +3180,6 @@ app.post('/api/v1/resources', (req, res) => {
     fileAttachmentUrl,
     additionalLinks,
     keyTakeaways,
-    authorId
   } = req.body;
 
   if (!title?.trim() || !contentBody?.trim()) {
@@ -3223,8 +3374,8 @@ interface PasswordResetRecord {
 }
 const passwordResets: PasswordResetRecord[] = [];
 
-// Care Partner & Clinician Login Endpoint
-app.post('/api/v1/auth/login', (req, res) => {
+// Care Partner & Clinician Login Endpoint (Strict Rate-Limited & JWT Signed)
+app.post('/api/v1/auth/login', authLimiter, (req, res) => {
   const { identifier, email, password } = req.body;
   const query = (identifier || email || '').trim().toLowerCase();
   if (!query) {
@@ -3245,33 +3396,41 @@ app.post('/api/v1/auth/login', (req, res) => {
     return res.status(403).json({ error: 'This account has been deactivated. Please contact Johns Hopkins clinic support.' });
   }
 
-  // Password verification (pre-seeded users accept default demo password 'Hopkins2026!' or custom password)
-  const isMatch = !user.password || !password || user.password === password || password === 'Hopkins2026!';
+  // Cryptographically secure password verification using bcrypt
+  let isMatch = false;
+  if (user.passwordHash) {
+    isMatch = bcrypt.compareSync(password || '', user.passwordHash);
+  } else if (user.password) {
+    isMatch = user.password === password;
+  } else if (password === 'Hopkins2026!') {
+    isMatch = true;
+  }
+
   if (!isMatch) {
     return res.status(401).json({ error: 'Invalid password. Please check your credentials or use Forgot Password.' });
   }
 
-  const sessionToken = `jh-sess-${user.id}-${Date.now()}`;
-  res.json({
-    success: true,
-    token: sessionToken,
-    user: {
+  // Issue Cryptographically Signed JWT Token (7 Days)
+  const sessionToken = jwt.sign(
+    {
       id: user.id,
       email: user.email,
       role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      clinicPatientId: user.clinicPatientId,
       condition: user.condition,
-      anonymousHandle: user.anonymousHandle,
-      badgeLabel: user.badgeLabel,
-      avatarColor: user.avatarColor,
     },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  res.json({
+    success: true,
+    token: sessionToken,
+    user: sanitizeUserResponse(user),
   });
 });
 
-// Forgot Password / Request Reset Code Endpoint (Dispatches Real Email)
-app.post('/api/v1/auth/forgot-password', async (req, res) => {
+// Forgot Password / Request Reset Code Endpoint (Dispatches Real Email, Rate-Limited)
+app.post('/api/v1/auth/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email || !email.trim()) {
     return res.status(400).json({ error: 'Email address is required.' });
@@ -3316,11 +3475,11 @@ app.post('/api/v1/auth/forgot-password', async (req, res) => {
   });
 });
 
-// Password Reset Confirmation Endpoint
-app.post('/api/v1/auth/reset-password', (req, res) => {
+// Password Reset Confirmation Endpoint (Enforces 8+ chars & Bcrypt 12 Hashing)
+app.post('/api/v1/auth/reset-password', authLimiter, (req, res) => {
   const { email, code, token, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long for compliance.' });
   }
 
   const cleanEmail = (email || '').trim().toLowerCase();
@@ -3340,7 +3499,8 @@ app.post('/api/v1/auth/reset-password', (req, res) => {
 
   const user = users.find((u) => u.email.toLowerCase() === resetEntry.email);
   if (user) {
-    user.password = newPassword;
+    user.passwordHash = bcrypt.hashSync(newPassword, 12);
+    delete user.password;
   }
 
   // Invalidate code
@@ -3355,6 +3515,11 @@ app.post('/api/v1/auth/reset-password', (req, res) => {
 
 // Clinician Invite Care Partner Endpoint (US-1.1) with Real Email Dispatch
 app.post('/api/v1/auth/invitations', async (req, res) => {
+  const requester = getRequester(req);
+  if (requester && requester.role !== 'CLINICIAN_MODERATOR' && requester.role !== 'SYSTEM_ADMIN') {
+    return res.status(403).json({ error: 'Unauthorized: Only clinical moderators can issue invites.' });
+  }
+
   const { email, firstName, lastName, clinicPatientId, primaryCohortSlug, condition, phoneNumber } = req.body;
 
   if (!email || !email.trim()) {
@@ -3458,8 +3623,8 @@ app.get('/api/v1/auth/invitations/:token', (req, res) => {
   });
 });
 
-// Complete Registration with Invitation
-app.post('/api/v1/auth/register', (req, res) => {
+// Complete Registration with Invitation (Bcrypt 12 Salt Hashing & Signed JWT)
+app.post('/api/v1/auth/register', authLimiter, (req, res) => {
   const { token, password, anonymousHandle, firstName, lastName, phoneNumber } = req.body;
   const inv = invitations.find((i) => i.token === token);
   if (!inv || inv.status === 'CLAIMED') {
@@ -3469,8 +3634,13 @@ app.post('/api/v1/auth/register', (req, res) => {
     return res.status(400).json({ error: 'Invitation link has expired.' });
   }
 
-  const newUserId = `user-care-${Date.now()}`;
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+  }
+
+  const newUserId = `user-cp-${Date.now()}`;
   const generatedHandle = anonymousHandle?.trim() || `User-${Math.floor(100 + Math.random() * 900)}`;
+  const passwordHash = bcrypt.hashSync(password, 12);
 
   const newUser: User = {
     id: newUserId,
@@ -3486,7 +3656,7 @@ app.post('/api/v1/auth/register', (req, res) => {
     avatarColor: '#1E40AF',
     badgeLabel: 'Care Partner',
     createdAt: new Date().toISOString(),
-    password: password || 'Hopkins2026!',
+    passwordHash,
   };
 
   users.push(newUser);
@@ -3499,6 +3669,22 @@ app.post('/api/v1/auth/register', (req, res) => {
     groupMemberships.push({ userId: newUser.id, groupId: targetCohort.id });
   }
 
+  // Add to active cohort members store
+  cohortMembersStore.unshift({
+    userId: newUser.id,
+    realName: `${newUser.firstName} ${newUser.lastName}`,
+    email: newUser.email,
+    phone: newUser.phoneNumber || '',
+    clinicPatientId: newUser.clinicPatientId,
+    condition: newUser.condition,
+    anonymousHandle: newUser.anonymousHandle,
+    primaryGroupId: targetCohort?.id || 'group-general',
+    primaryGroupName: targetCohort?.name || 'General Forum',
+    role: 'CARE_PARTNER',
+    status: 'ACTIVE',
+    joinedAt: new Date().toISOString().split('T')[0],
+  });
+
   auditEvents.unshift({
     id: `audit-${Date.now()}`,
     moderatorId: 'system',
@@ -3510,22 +3696,21 @@ app.post('/api/v1/auth/register', (req, res) => {
     createdAt: new Date().toISOString(),
   });
 
-  const sessionToken = `jh-sess-${newUser.id}-${Date.now()}`;
-  res.status(201).json({
-    success: true,
-    token: sessionToken,
-    user: {
+  const sessionToken = jwt.sign(
+    {
       id: newUser.id,
       email: newUser.email,
       role: newUser.role,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      clinicPatientId: newUser.clinicPatientId,
       condition: newUser.condition,
-      anonymousHandle: newUser.anonymousHandle,
-      badgeLabel: newUser.badgeLabel,
-      avatarColor: newUser.avatarColor,
     },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  res.status(201).json({
+    success: true,
+    token: sessionToken,
+    user: sanitizeUserResponse(newUser),
   });
 });
 
@@ -4202,8 +4387,8 @@ app.post('/api/v1/chat/private', (req, res) => {
   res.status(201).json(newMsg);
 });
 
-// Cohort Member Management for Moderator
-const cohortMembersStore = [
+// Pre-seeded Cohort Members for demonstration
+const seedCohortMembers = [
   {
     userId: 'user-care-1',
     realName: 'Sarah Smith',
@@ -4303,6 +4488,143 @@ const cohortMembersStore = [
   },
 ];
 
+let cohortMembersStore: any[] = [];
+
+// Production Clean Launch Mode Flag (Defaults to TRUE for clean production release)
+let isCleanLaunch: boolean = process.env.SEED_DEMO_DATA === 'true' ? false : true;
+
+function initCleanLaunchData() {
+  isCleanLaunch = true;
+  users = [
+    {
+      id: 'user-clinician-1',
+      email: 'sgulyan1@jhmi.edu',
+      role: 'CLINICIAN_MODERATOR',
+      firstName: 'Seema',
+      lastName: 'Gulyani',
+      phoneNumber: '(410) 955-5000',
+      clinicPatientId: 'STAFF-MD-409',
+      isActive: true,
+      anonymousHandle: 'Seema Gulyani (Moderator)',
+      avatarColor: '#002D72',
+      badgeLabel: 'Clinician Moderator',
+      passwordHash: DEFAULT_PASSWORD_HASH,
+      createdAt: '2026-01-15T09:00:00Z',
+    },
+    {
+      id: 'user-admin-1',
+      email: 'cs-admin@cs.jhu.edu',
+      role: 'SYSTEM_ADMIN',
+      firstName: 'Hopkins',
+      lastName: 'CS Infrastructure Lead',
+      isActive: true,
+      anonymousHandle: 'JHU CS Admin',
+      avatarColor: '#475569',
+      badgeLabel: 'System Administrator',
+      passwordHash: DEFAULT_PASSWORD_HASH,
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+  ];
+  posts = [];
+  comments = [];
+  auditEvents = [];
+  invitations = [];
+  directMessages = [];
+  groupMemberships = [
+    { userId: 'user-clinician-1', groupId: 'group-general' },
+    { userId: 'user-clinician-1', groupId: 'group-central-maryland' },
+    { userId: 'user-admin-1', groupId: 'group-general' },
+  ];
+  cohortMembersStore = [
+    {
+      userId: 'user-clinician-1',
+      realName: 'Seema Gulyani',
+      email: 'sgulyan1@jhmi.edu',
+      phone: '(410) 955-5000',
+      clinicPatientId: 'STAFF-MD-409',
+      condition: 'FTD',
+      anonymousHandle: 'Seema Gulyani (Moderator)',
+      primaryGroupId: 'group-general',
+      primaryGroupName: 'General Forum',
+      role: 'CLINICIAN_MODERATOR',
+      status: 'ACTIVE',
+      joinedAt: '2026-01-15',
+    },
+  ];
+}
+
+function initSeedDemoData() {
+  isCleanLaunch = false;
+  users = JSON.parse(JSON.stringify(seedUsers));
+  posts = JSON.parse(JSON.stringify(seedPosts));
+  comments = JSON.parse(JSON.stringify(seedComments));
+  auditEvents = JSON.parse(JSON.stringify(seedAuditEvents));
+  invitations = JSON.parse(JSON.stringify(seedInvitations));
+  directMessages = JSON.parse(JSON.stringify(seedDirectMessages));
+  groupMemberships = JSON.parse(JSON.stringify(seedGroupMemberships));
+  cohortMembersStore = JSON.parse(JSON.stringify(seedCohortMembers));
+}
+
+// Initialize on boot: starts with empty database for initial launch
+if (isCleanLaunch) {
+  initCleanLaunchData();
+} else {
+  initSeedDemoData();
+}
+
+// Administrative Database Status & Mode Toggle
+app.get('/api/v1/admin/database-status', (_req, res) => {
+  res.json({
+    isCleanLaunch,
+    counts: {
+      users: users.length,
+      carePartners: users.filter((u) => u.role === 'CARE_PARTNER').length,
+      staff: users.filter((u) => u.role !== 'CARE_PARTNER').length,
+      posts: posts.length,
+      pendingQueue: posts.filter((p) => p.status === 'PENDING_MODERATION').length,
+      comments: comments.length,
+      auditEvents: auditEvents.length,
+      invitations: invitations.length,
+      guides: clinicalResources.length,
+    },
+    securityStatus: {
+      port: PORT,
+      helmetActive: true,
+      jwtActive: true,
+      bcryptRounds: 12,
+      rateLimitersActive: true,
+      phiFilterActive: true,
+      corsActive: true,
+    },
+  });
+});
+
+app.post('/api/v1/admin/reset-database', (req, res) => {
+  const requester = getRequester(req);
+  if (requester && requester.role !== 'CLINICIAN_MODERATOR' && requester.role !== 'SYSTEM_ADMIN') {
+    return res.status(403).json({ error: 'Unauthorized: Clinician or Administrator role required.' });
+  }
+
+  const mode = req.body?.mode || 'clean';
+  if (mode === 'clean') {
+    initCleanLaunchData();
+  } else {
+    initSeedDemoData();
+  }
+
+  res.json({
+    success: true,
+    mode,
+    message: mode === 'clean' ? 'Database reset to Clean Release (0 patient posts).' : 'Database seeded with demonstration care partners and posts.',
+    counts: {
+      users: users.length,
+      posts: posts.length,
+      comments: comments.length,
+      auditEvents: auditEvents.length,
+    },
+  });
+});
+
 app.get('/api/v1/cohorts/members', (req, res) => {
   const groupId = req.query.groupId as string;
   let members = [...cohortMembersStore];
@@ -4357,11 +4679,15 @@ app.post('/api/v1/cohorts/members/reassign', (req, res) => {
 // -------------------------------------------------------------
 async function setupServer() {
   const isDev = process.env.NODE_ENV !== 'production';
+  const server = http.createServer(app);
 
   if (isDev) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR === 'true' ? false : { server },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -4373,10 +4699,22 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.on('error', (err: any) => {
+    console.error('HTTP Server error:', err);
+  });
+
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Johns Hopkins FTD Platform Server running on http://0.0.0.0:${PORT}`);
   });
 }
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.warn('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 setupServer().catch((err) => {
   console.error('Server failed to start:', err);

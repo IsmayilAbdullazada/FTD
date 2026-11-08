@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BookOpen,
   Search,
   ExternalLink,
   ShieldCheck,
@@ -8,7 +7,6 @@ import {
   CheckCircle2,
   Plus,
   X,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import { ClinicalResource, CurrentUser, Audience } from '../types';
@@ -42,7 +40,6 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [newContentBody, setNewContentBody] = useState('');
   const [newKeyTakeaways, setNewKeyTakeaways] = useState('');
   const [newExternalUrl, setNewExternalUrl] = useState('');
-  const [newFileAttachmentUrl, setNewFileAttachmentUrl] = useState('');
   const [newAdditionalLinks, setNewAdditionalLinks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -101,7 +98,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
     if (!newTitle.trim() || !newSummary.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
 
-    if (!newExternalUrl.trim() && !newPdfFile && !newFileAttachmentUrl.trim()) {
+    if (!newExternalUrl.trim() && !newPdfFile) {
       setSuccessToast('Please provide an external URL or a PDF resource.');
       return;
     }

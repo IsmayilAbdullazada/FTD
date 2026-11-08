@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Shield,
   Lock,
   Mail,
   Eye,
@@ -15,8 +14,6 @@ import {
   Users,
   ExternalLink,
   ShieldCheck,
-  Sparkles,
-  RefreshCw,
   Clock,
 } from 'lucide-react';
 import { CurrentUser, Condition } from '../types';
@@ -742,6 +739,18 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
           )}
 
         </div>
+
+        {onCancel && (
+          <div className="mt-3 text-center">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition font-medium cursor-pointer"
+            >
+              ← Return to platform
+            </button>
+          </div>
+        )}
 
         {/* Clinical Disclaimer & Emergency Line */}
         <div className="mt-4 text-center text-[11px] text-slate-500 dark:text-slate-400 space-y-1">

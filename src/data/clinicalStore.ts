@@ -1,16 +1,10 @@
 import {
   CurrentUser,
-  PersonaOption,
   CommunityGroup,
   ClinicalResource,
   Post,
   Comment,
   QueueItem,
-  ModerationAuditEvent,
-  DirectMessage,
-  DeflectionMatch,
-  PhiAlert,
-  RejectionReason,
 } from '../types';
 
 export const INITIAL_USERS: (CurrentUser & { phoneNumber?: string })[] = [

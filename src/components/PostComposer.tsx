@@ -1,15 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Send,
-  Sparkles,
-  BookOpen,
   ArrowLeft,
   CheckCircle,
   CheckCircle2,
   Clock,
   ArrowRight,
   ShieldCheck,
-  MessageSquare,
   MessageCircleHeart,
   AlertTriangle,
   Search,
@@ -18,8 +15,7 @@ import {
   Eye,
   Check,
 } from 'lucide-react';
-import { CurrentUser, CommunityGroup, DeflectionMatch, Audience, getProperGroupName } from '../types';
-import { AudienceBadge } from './AudienceBadge';
+import { CurrentUser, CommunityGroup, Audience, getProperGroupName } from '../types';
 import { api } from '../services/api';
 import { INITIAL_POSTS, INITIAL_COMMENTS } from '../data/clinicalStore';
 
@@ -486,7 +482,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   initialContent,
   onPostSubmitted,
   onCancel,
-  onOpenResource,
+  onOpenResource: _onOpenResource,
   onOpenDiscussion,
   onOpenAssistant,
 }) => {

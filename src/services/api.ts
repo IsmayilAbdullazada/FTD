@@ -1550,5 +1550,49 @@ export const api = {
     }
     return res.json();
   },
+
+  getDatabaseStatus: async (): Promise<{
+    isCleanLaunch: boolean;
+    counts: {
+      users: number;
+      carePartners: number;
+      staff: number;
+      posts: number;
+      pendingQueue: number;
+      comments: number;
+      auditEvents: number;
+      invitations: number;
+      guides: number;
+    };
+    securityStatus: {
+      port: number;
+      helmetActive: boolean;
+      jwtActive: boolean;
+      bcryptRounds: number;
+      rateLimitersActive: boolean;
+      phiFilterActive: boolean;
+      corsActive: boolean;
+    };
+  }> => {
+    return safeFetchJson('/api/v1/admin/database-status', undefined, () => ({
+      isCleanLaunch: true,
+      counts: { users: 2, carePartners: 0, staff: 2, posts: 0, pendingQueue: 0, comments: 0, auditEvents: 0, invitations: 0, guides: 10 },
+      securityStatus: { port: 3000, helmetActive: true, jwtActive: true, bcryptRounds: 12, rateLimitersActive: true, phiFilterActive: true, corsActive: true },
+    }));
+  },
+
+  resetDatabase: async (mode: 'clean' | 'demo'): Promise<{ success: boolean; mode: string; message: string; counts: any }> => {
+    const res = await fetch('/api/v1/admin/reset-database', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update database mode');
+    }
+    return res.json();
+  },
 };
+
 

@@ -2,14 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield,
   CheckCircle,
-  XCircle,
   Users,
   Search,
   Plus,
   Layers,
   MapPin,
   AlertTriangle,
-  Phone,
   Check,
   X,
   Sparkles,
@@ -17,22 +15,18 @@ import {
   ArrowRight,
   MessageSquare,
   Clock,
-  Filter,
   Lock,
   LockOpen,
   Bot,
-  BrainCircuit,
   FileText,
   UploadCloud,
   FileCode,
   Trash2,
   Eye,
-  FileCheck,
   Copy,
   ToggleLeft,
   ToggleRight,
   Play,
-  RotateCcw,
   RefreshCw,
   ExternalLink,
   ChevronDown,
@@ -52,7 +46,6 @@ import {
   getProperGroupName,
   getFullGroupName,
   ChatbotGuideFile,
-  ChatbotKnowledgeConfig,
   ChatbotGuideTestResult,
   GuideCondition,
   GuidePageData,
@@ -219,7 +212,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupRegion, setNewGroupRegion] = useState('');
-  const [newGroupRadius, setNewGroupRadius] = useState('35');
+  const newGroupRadius = '35';
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [showNewPostModal, setShowNewPostModal] = useState(false);
@@ -231,10 +224,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
   // Chatbot Knowledge Management State
   const [chatbotGuides, setChatbotGuides] = useState<ChatbotGuideFile[]>([]);
-  const [chatbotConfig, setChatbotConfig] = useState<ChatbotKnowledgeConfig>({
-    totalActiveGuides: 0,
-    totalWords: 0,
-  });
   const [loadingGuides, setLoadingGuides] = useState(false);
   const [guideSearchFilter, setGuideSearchFilter] = useState('');
   const [showUploadGuideModal, setShowUploadGuideModal] = useState(false);
@@ -250,13 +239,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadContent, setUploadContent] = useState('');
   const [uploadPages, setUploadPages] = useState<GuidePageData[]>([]);
-  const [expandedPages, setExpandedPages] = useState<Record<number, boolean>>({ 1: true });
   const [showExtractedInspector, setShowExtractedInspector] = useState(false);
   const [selectedInspectPage, setSelectedInspectPage] = useState<number>(1);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showTechDetails, setShowTechDetails] = useState(false);
   const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(null);
-  const [uploadPdfBase64, setUploadPdfBase64] = useState<string | null>(null);
   const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
   const [isUploadingGuide, setIsUploadingGuide] = useState(false);
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
@@ -367,7 +354,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         }
       }
       setChatbotGuides(deduped);
-      setChatbotConfig(res.config);
     } catch (err) {
       console.error('Failed to load chatbot guides:', err);
     } finally {
@@ -380,10 +366,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     loadMembers();
     loadPublishedPosts();
     loadChatbotGuides();
-  }, [audienceFilter]);
-
-  useEffect(() => {
-    loadPublishedPosts();
   }, [audienceFilter]);
 
   const previousTab = useRef(activeTab);
@@ -444,13 +426,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setUploadFileName('');
     setUploadContent('');
     setUploadPages([]);
-    setExpandedPages({ 1: true });
     setShowExtractedInspector(false);
     setSelectedInspectPage(1);
     setShowMoreOptions(false);
     setShowTechDetails(false);
     setUploadPdfPreviewUrl(null);
-    setUploadPdfBase64(null);
     setEditingGuideId(null);
     setExtractedPdfStats(null);
   };
@@ -486,7 +466,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       setExtractedPdfStats({ pages: builtPages.length || 1, words: guide.wordCount || 0 });
     }
 
-    setExpandedPages({ 1: true });
     setUploadPdfPreviewUrl(guide.pdfUrl || `/resources/${guide.fileName}`);
     setShowUploadGuideModal(true);
   };
@@ -536,7 +515,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setUploadCondition(null); // Start with NOTHING selected so reviewer must make a deliberate choice
     setUploadTopicTag('');
     setUploadPages([]);
-    setExpandedPages({ 1: true });
     setShowExtractedInspector(false);
     setSelectedInspectPage(1);
 
@@ -558,7 +536,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
             binary += String.fromCharCode.apply(null, sub as unknown as number[]);
           }
           const base64 = btoa(binary);
-          setUploadPdfBase64(base64);
 
           const result = await api.extractPdfText({
             fileName: file.name,
@@ -1104,6 +1081,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
           </button>
         </div>
       )}
+
 
       { /* Viewing Filter */ }
       <div className="flex items-center gap-2 text-xs">

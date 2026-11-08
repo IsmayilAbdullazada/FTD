@@ -19,8 +19,6 @@ import {
   RotateCcw,
   ShieldCheck,
   Send,
-  User,
-  HelpCircle,
 } from 'lucide-react';
 import { Post, CommunityGroup, CurrentUser, getProperGroupName } from '../types';
 import { api } from '../services/api';

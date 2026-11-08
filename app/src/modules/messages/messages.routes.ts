@@ -1,131 +1,84 @@
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { query, pool } from '../../config/db.js';
-import { authenticateToken } from '../../middleware/auth.js';
+import { Router } from "express";
+import { z } from "zod";
+import { query } from "../../config/db.js";
+import { asyncHandler, HttpError } from "../../lib/http.js";
+import { authenticateToken } from "../../middleware/auth.js";
 
 const router = Router();
-
-// GET /api/messages/conversations - List conversations for user
-router.get('/conversations', authenticateToken, async (req: Request, res: Response): Promise<void> => {
-  const userId = req.user!.id;
-  const result = await query(
-    `SELECT c.*, 
-            cp.full_name as care_partner_name,
-            cl.full_name as clinician_name,
-            (SELECT body FROM private_messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-            (SELECT created_at FROM private_messages m WHERE m.conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at
-     FROM private_conversations c
-     JOIN users cp ON c.care_partner_id = cp.id
-     JOIN users cl ON c.clinician_id = cl.id
-     WHERE c.care_partner_id = $1 OR c.clinician_id = $1
-     ORDER BY c.updated_at DESC`,
-    [userId]
-  );
-
-  res.json({ conversations: result.rows });
+const map = (r: any) => ({
+  id: r.id,
+  conversationId: r.conversation_id,
+  senderId: r.sender_id,
+  senderName: r.sender_name,
+  senderRole: r.sender_role,
+  recipientId: r.recipient_id,
+  recipientName: r.recipient_name,
+  content: r.content,
+  createdAt: r.created_at,
+  read: Boolean(r.read_at),
 });
-
-// GET /api/messages/conversations/:id - Get conversation details and message history
-router.get('/conversations/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const userId = req.user!.id;
-
-  const convResult = await query(
-    `SELECT * FROM private_conversations WHERE id = $1 AND (care_partner_id = $2 OR clinician_id = $2)`,
-    [id, userId]
-  );
-
-  if (convResult.rowCount === 0) {
-    res.status(404).json({ error: 'Conversation not found or access denied' });
-    return;
-  }
-
-  const messagesResult = await query(
-    `SELECT m.*, u.full_name as sender_name, u.role as sender_role
-     FROM private_messages m
-     JOIN users u ON m.sender_id = u.id
-     WHERE m.conversation_id = $1
-     ORDER BY m.created_at ASC`,
-    [id]
-  );
-
-  res.json({ conversation: convResult.rows[0], messages: messagesResult.rows });
-});
-
-// POST /api/messages/conversations - Start consultation with clinician (e.g., Dr. Seema Gulyani)
-router.post('/conversations', authenticateToken, async (req: Request, res: Response): Promise<void> => {
-  const schema = z.object({
-    clinicianId: z.string().uuid(),
-    subject: z.string().min(3),
-    initialMessage: z.string().min(5),
-  });
-
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message || 'Validation error' });
-    return;
-  }
-
-  const { clinicianId, subject, initialMessage } = parsed.data;
-
-  // Insert conversation & initial message in transaction
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const convResult = await client.query(
-      `INSERT INTO private_conversations (care_partner_id, clinician_id, subject)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [req.user!.id, clinicianId, subject]
+router.get(
+  "/",
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const requested =
+      typeof req.query.caregiverId === "string"
+        ? req.query.caregiverId
+        : req.user!.id;
+    if (req.user!.role === "CARE_PARTNER" && requested !== req.user!.id)
+      throw new HttpError(403, "Conversation access denied");
+    const result = await query(
+      `SELECT m.*,su.first_name||' '||su.last_name sender_name,su.role sender_role,
+    ru.first_name||' '||ru.last_name recipient_name FROM private_messages m JOIN users su ON su.id=m.sender_id JOIN users ru ON ru.id=m.recipient_id
+    WHERE m.sender_id=$1 OR m.recipient_id=$1 ORDER BY m.created_at`,
+      [requested],
     );
-
-    const convId = convResult.rows[0].id;
-    await client.query(
-      `INSERT INTO private_messages (conversation_id, sender_id, body)
-       VALUES ($1, $2, $3)`,
-      [convId, req.user!.id, initialMessage]
+    res.json(result.rows.map(map));
+  }),
+);
+router.post(
+  "/",
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const input = z
+      .object({
+        caregiverId: z.string().min(1),
+        content: z.string().trim().min(1).max(10000),
+      })
+      .parse(req.body);
+    if (req.user!.role === "CARE_PARTNER" && input.caregiverId !== req.user!.id)
+      throw new HttpError(403, "Conversation access denied");
+    const recipientId =
+      req.user!.role === "CARE_PARTNER"
+        ? (
+            await query(
+              `SELECT id FROM users WHERE role='CLINICIAN_MODERATOR' AND is_active ORDER BY created_at LIMIT 1`,
+            )
+          ).rows[0]?.id
+        : input.caregiverId;
+    if (!recipientId) throw new HttpError(404, "Message recipient not found");
+    const caregiverId =
+      req.user!.role === "CARE_PARTNER" ? req.user!.id : input.caregiverId;
+    const r = (
+      await query(
+        `INSERT INTO private_messages(conversation_id,sender_id,recipient_id,content)
+    VALUES($1,$2,$3,$4) RETURNING *`,
+        [`chat-${caregiverId}`, req.user!.id, recipientId, input.content],
+      )
+    ).rows[0];
+    const names = await query(
+      `SELECT id,first_name||' '||last_name name,role FROM users WHERE id=ANY($1::text[])`,
+      [[req.user!.id, recipientId]],
     );
-
-    await client.query('COMMIT');
-    res.status(201).json({ conversationId: convId });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-});
-
-// POST /api/messages/conversations/:id/reply - Send reply inside an existing conversation
-router.post('/conversations/:id/reply', authenticateToken, async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-  const { body } = req.body;
-  const userId = req.user!.id;
-
-  if (!body || typeof body !== 'string' || body.trim().length === 0) {
-    res.status(400).json({ error: 'Message body cannot be empty' });
-    return;
-  }
-
-  const convResult = await query(
-    `SELECT * FROM private_conversations WHERE id = $1 AND (care_partner_id = $2 OR clinician_id = $2)`,
-    [id, userId]
-  );
-
-  if (convResult.rowCount === 0) {
-    res.status(403).json({ error: 'Not authorized for this conversation' });
-    return;
-  }
-
-  const result = await query(
-    `INSERT INTO private_messages (conversation_id, sender_id, body)
-     VALUES ($1, $2, $3)
-     RETURNING *`,
-    [id, userId, body.trim()]
-  );
-
-  await query(`UPDATE private_conversations SET updated_at = NOW() WHERE id = $1`, [id]);
-
-  res.status(201).json({ message: result.rows[0] });
-});
-
+    const byId = new Map(names.rows.map((n) => [n.id, n]));
+    res.status(201).json(
+      map({
+        ...r,
+        sender_name: byId.get(req.user!.id)?.name,
+        sender_role: req.user!.role,
+        recipient_name: byId.get(recipientId)?.name,
+      }),
+    );
+  }),
+);
 export default router;

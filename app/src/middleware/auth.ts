@@ -1,10 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import type { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
+import { query } from "../config/db.js";
 
+export type UserRole = "CARE_PARTNER" | "CLINICIAN_MODERATOR" | "SYSTEM_ADMIN";
 export interface AuthenticatedUser {
   id: string;
   email: string;
-  role: 'care_partner' | 'clinician' | 'admin';
+  role: UserRole;
 }
 
 declare global {
@@ -15,37 +18,75 @@ declare global {
   }
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+function bearer(req: Request): string | undefined {
+  const [scheme, token] = (req.header("authorization") ?? "").split(" ");
+  return scheme?.toLowerCase() === "bearer" && token ? token : undefined;
+}
 
-  if (!token) {
-    res.status(401).json({ error: 'Access token required' });
-    return;
-  }
-
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    res.status(500).json({ error: 'JWT_SECRET is not configured' });
-    return;
-  }
-
-  jwt.verify(token, secret, (err, decoded) => {
-    if (err) {
-      res.status(403).json({ error: 'Invalid or expired token' });
-      return;
-    }
-    req.user = decoded as AuthenticatedUser;
-    next();
+async function authenticatedUser(token: string): Promise<AuthenticatedUser> {
+  const payload = jwt.verify(token, env.JWT_SECRET, {
+    algorithms: ["HS256"],
+    issuer: "ftdcare-api",
+    audience: "ftdcare-web",
   });
-};
+  if (
+    typeof payload === "string" ||
+    typeof payload.id !== "string" ||
+    typeof payload.email !== "string"
+  )
+    throw new Error("Invalid session payload");
+  const result = await query(
+    `SELECT id,email,role FROM users WHERE id=$1 AND is_active`,
+    [payload.id],
+  );
+  const user = result.rows[0];
+  if (!user) throw new Error("Session user is inactive");
+  return { id: user.id, email: user.email, role: user.role };
+}
 
-export const requireRole = (allowedRoles: Array<'care_partner' | 'clinician' | 'admin'>) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+export async function optionalAuthenticate(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const token = bearer(req);
+  if (!token) return next();
+  try {
+    req.user = await authenticatedUser(token);
+    next();
+  } catch {
+    next();
+  }
+}
+
+export async function authenticateToken(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const token = bearer(req);
+  if (!token) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  try {
+    req.user = await authenticatedUser(token);
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired session" });
+  }
+}
+
+export const requireRole =
+  (roles: UserRole[]) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
     next();
   };
-};
+export const requireStaff = requireRole([
+  "CLINICIAN_MODERATOR",
+  "SYSTEM_ADMIN",
+]);

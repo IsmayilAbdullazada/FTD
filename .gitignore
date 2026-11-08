@@ -2,6 +2,8 @@
 *.env
 *.env.*
 config/*.env
+!config/ftdcare.env.example
+public/uploads/guides/
 
 # Dependencies
 node_modules/

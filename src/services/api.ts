@@ -156,29 +156,26 @@ let localEvents: CalendarEvent[] = [
   { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
 ];
 
+const fallbackEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_API_FALLBACK === 'true';
+
+async function apiFetch(input: RequestInfo | URL, options?: RequestInit): Promise<Response> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('jh_session_token') : null;
+  const headers = new Headers(options?.headers);
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...options, headers });
+}
+
 async function safeFetchJson<T>(
   url: string,
   options: RequestInit | undefined,
   fallback: () => T
 ): Promise<T> {
   let res: Response;
-  const token = typeof window !== 'undefined' ? localStorage.getItem('jh_session_token') : null;
-  const headers: Record<string, string> = {
-    ...((options?.headers as Record<string, string>) || {}),
-  };
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const fetchOptions: RequestInit = {
-    ...options,
-    headers,
-  };
-
   try {
-    res = await fetch(url, fetchOptions);
+    res = await apiFetch(url, options);
   } catch {
-    return fallback(); // Network error or offline
+    if (fallbackEnabled) return fallback();
+    throw new Error('The backend is unavailable. Please try again.');
   }
 
   if (res.status === 401) {
@@ -198,8 +195,8 @@ async function safeFetchJson<T>(
     // The server answered with a real error (403/404/etc.). Surface it, don't mask it.
     throw new Error(data?.error || `Request failed (${res.status})`);
   }
-  // Return resilient fallback
-  return fallback();
+  if (fallbackEnabled) return fallback();
+  throw new Error(`Backend returned an invalid response (${res.status})`);
 }
 
 export const api = {
@@ -240,12 +237,7 @@ export const api = {
 
   // Groups / Cohorts
   getCohorts: async (options?: { userId?: string; role?: string }): Promise<CommunityGroup[]> => {
-    const params = new URLSearchParams();
-    if (options?.userId) params.set('userId', options.userId);
-    if (options?.role) params.set('role', options.role);
-    const q = params.toString() ? `?${params.toString()}` : '';
-
-    return safeFetchJson(`/api/v1/cohorts${q}`, undefined, () => {
+    return safeFetchJson('/api/v1/cohorts', undefined, () => {
       if (options?.role === 'CLINICIAN_MODERATOR' || options?.role === 'SYSTEM_ADMIN') {
         return [...localCohorts];
       }
@@ -291,10 +283,8 @@ export const api = {
   // Posts Feed
   getPosts: async (options: { role: string; groupId?: string; status?: string; userId?: string; condition?: string }): Promise<{ total: number; posts: Post[] }> => {
     const params = new URLSearchParams();
-    params.set('role', options.role);
     if (options.groupId) params.set('groupId', options.groupId);
     if (options.status) params.set('status', options.status);
-    if (options.userId) params.set('userId', options.userId);
     if (options.condition) params.set('condition', options.condition);
 
     return safeFetchJson(
@@ -333,9 +323,8 @@ export const api = {
   },
 
   getPostDetails: async (postId: string, role: string, userId: string): Promise<{ post: Post; comments: Comment[] }> => {
-    const query = userId ? `?role=${role}&userId=${userId}` : `?role=${role}`;
     return safeFetchJson(
-      `/api/v1/posts/${postId}${query}`,
+      `/api/v1/posts/${postId}`,
       undefined,
       () => {
         const found = localPosts.find((p) => p.id === postId);
@@ -358,12 +347,13 @@ export const api = {
     authorId: string;
     condition?: Audience;
   }): Promise<{ postId: string; status: string; message: string; hasPhiAlerts: boolean; phiAlertsCount: number }> => {
+    const { authorId: _authorId, ...requestPayload } = payload;
     return safeFetchJson(
       '/api/v1/posts',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       },
       () => {
         const author = localUsers.find((u) => u.id === payload.authorId) || localUsers[1];
@@ -427,7 +417,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, authorId, parentCommentId }),
+        body: JSON.stringify({ content, parentCommentId }),
       },
       () => {
         const post = localPosts.find((p) => p.id === postId);
@@ -470,7 +460,7 @@ export const api = {
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isClosed, moderatorId }),
+        body: JSON.stringify({ isClosed }),
       },
       () => {
         const post = localPosts.find((p) => p.id === postId);
@@ -527,7 +517,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({}),
       },
       () => {
         const post = localPosts.find((p) => p.id === postId);
@@ -751,11 +741,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...payload,
-          userId: payload.senderId,
-          senderId: payload.senderId,
-        }),
+        body: JSON.stringify({ message: payload.message, action: payload.action }),
       },
       () => {
         const post = localPosts.find((p) => p.id === postId);
@@ -820,7 +806,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ caregiverId: payload.caregiverId, content: payload.content }),
       },
       () => {
         const sender = localUsers.find((u) => u.id === payload.senderId) || localUsers[0];
@@ -950,7 +936,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftText, userId }),
+        body: JSON.stringify({ draftText }),
       },
       () => {
         const text = draftText.toLowerCase();
@@ -994,7 +980,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ title: payload.title, content: payload.content }),
       },
       () => {
         const rawText = `${payload.title} ${payload.content}`.toLowerCase();
@@ -1084,7 +1070,7 @@ export const api = {
     }[];
   }> => {
     return safeFetchJson(
-      `/api/v1/deflection/discussions-pool?userId=${userId}`,
+      '/api/v1/deflection/discussions-pool',
       undefined,
       () => {
         const approvedPosts = localPosts.filter((p) => p.status === 'APPROVED');
@@ -1149,10 +1135,10 @@ export const api = {
       sectionTitle?: string;
     };
   }> => {
-    const res = await fetch('/api/v1/knowledge/chat', {
+    const res = await apiFetch('/api/v1/knowledge/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, userId, conversationHistory }),
+      body: JSON.stringify({ query, conversationHistory }),
     });
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -1163,7 +1149,7 @@ export const api = {
 
   // Resources
   getResources: async (userId: string): Promise<ClinicalResource[]> => {
-    return safeFetchJson(`/api/v1/resources?userId=${userId}`, undefined, () => [...localResources]);
+    return safeFetchJson('/api/v1/resources', undefined, () => [...localResources]);
   },
 
   createResource: async (payload: {
@@ -1178,12 +1164,13 @@ export const api = {
     keyTakeaways?: string[];
     authorId: string;
   }): Promise<ClinicalResource> => {
+    const { authorId: _authorId, ...requestPayload } = payload;
     return safeFetchJson(
       '/api/v1/resources',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       },
       () => {
         const newRes: ClinicalResource = {
@@ -1219,16 +1206,17 @@ export const api = {
 
   // Clinic Updates
   getUpdates: async (userId: string): Promise<ClinicUpdate[]> => {
-    return safeFetchJson(`/api/v1/updates?userId=${userId}`, undefined, () => [...localUpdates]);
+    return safeFetchJson('/api/v1/updates', undefined, () => [...localUpdates]);
   },
 
   createUpdate: async (payload: Omit<ClinicUpdate, 'id' | 'createdAt'>): Promise<ClinicUpdate> => {
+    const { authorId: _authorId, ...requestPayload } = payload;
     return safeFetchJson(
       '/api/v1/updates',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestPayload),
       },
       () => {
         const u: ClinicUpdate = {
@@ -1242,9 +1230,8 @@ export const api = {
     );
   },
 
-  // deletes: pass userId as a query param
   deleteUpdate: async (id: string, userId: string): Promise<{ success: boolean }> => {
-    return safeFetchJson(`/api/v1/updates/${id}?userId=${userId}`, { method: 'DELETE' }, () => {
+    return safeFetchJson(`/api/v1/updates/${id}`, { method: 'DELETE' }, () => {
       localUpdates = localUpdates.filter((u) => u.id !== id);
       return { success: true };
     });
@@ -1252,7 +1239,7 @@ export const api = {
 
   // Calendar Events
   getEvents: async (userId: string): Promise<CalendarEvent[]> => {
-    return safeFetchJson(`/api/v1/events?userId=${userId}`, undefined, () => [...localEvents]);
+    return safeFetchJson('/api/v1/events', undefined, () => [...localEvents]);
   },
 
   // createEvent: send authorId along with the event
@@ -1262,7 +1249,7 @@ export const api = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, authorId }),
+        body: JSON.stringify(payload),
       },
       () => {
         const e = { id: `evt-${Date.now()}`, ...payload, authorId } as CalendarEvent;
@@ -1273,7 +1260,7 @@ export const api = {
   },
 
   deleteEvent: async (id: string, userId: string): Promise<{ success: boolean }> => {
-    return safeFetchJson(`/api/v1/events/${id}?userId=${userId}`, { method: 'DELETE' }, () => {
+    return safeFetchJson(`/api/v1/events/${id}`, { method: 'DELETE' }, () => {
       localEvents = localEvents.filter((e) => e.id !== id);
       return { success: true };
     });
@@ -1288,7 +1275,7 @@ export const api = {
   // Notifications
   getNotifications: async (userId: string): Promise<{ unreadCount: number; messages: DirectMessage[] }> => {
     return safeFetchJson(
-      `/api/v1/notifications?userId=${userId}`,
+      '/api/v1/notifications',
       undefined,
       () => {
         const msgs = localDirectMessages.filter((m) => m.recipientUserId === userId);
@@ -1354,7 +1341,7 @@ export const api = {
 
   // Authentication API Methods
   login: async (payload: { identifier: string; password?: string }): Promise<{ success: boolean; token: string; user: CurrentUser }> => {
-    const res = await fetch('/api/v1/auth/login', {
+    const res = await apiFetch('/api/v1/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1367,7 +1354,7 @@ export const api = {
   },
 
   forgotPassword: async (email: string): Promise<{ success: boolean; message: string; emailSent?: boolean; previewUrl?: string; resetToken?: string; testCode?: string }> => {
-    const res = await fetch('/api/v1/auth/forgot-password', {
+    const res = await apiFetch('/api/v1/auth/forgot-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -1380,7 +1367,7 @@ export const api = {
   },
 
   resetPassword: async (payload: { email?: string; code?: string; token?: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
-    const res = await fetch('/api/v1/auth/reset-password', {
+    const res = await apiFetch('/api/v1/auth/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1393,7 +1380,7 @@ export const api = {
   },
 
   getInvitation: async (token: string): Promise<{ valid: boolean; invitation: any }> => {
-    const res = await fetch(`/api/v1/auth/invitations/${encodeURIComponent(token)}`);
+    const res = await apiFetch(`/api/v1/auth/invitations/${encodeURIComponent(token)}`);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || 'Invitation not found or expired.');
@@ -1409,7 +1396,7 @@ export const api = {
     lastName?: string;
     phoneNumber?: string;
   }): Promise<{ success: boolean; token: string; user: CurrentUser }> => {
-    const res = await fetch('/api/v1/auth/register', {
+    const res = await apiFetch('/api/v1/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1423,7 +1410,7 @@ export const api = {
 
   // Chatbot Guide Files & Knowledge Management
   getChatbotGuides: async (): Promise<{ guides: ChatbotGuideFile[]; config: ChatbotKnowledgeConfig }> => {
-    const res = await fetch('/api/v1/chatbot/guides');
+    const res = await apiFetch('/api/v1/chatbot/guides');
     if (!res.ok) {
       throw new Error(`Failed to load guides: ${res.statusText || res.status}`);
     }
@@ -1449,7 +1436,7 @@ export const api = {
     uploadedBy: string;
     uploadedByName: string;
   }): Promise<ChatbotGuideFile> => {
-    const res = await fetch('/api/v1/chatbot/guides', {
+    const res = await apiFetch('/api/v1/chatbot/guides', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1465,7 +1452,7 @@ export const api = {
     id: string,
     payload: Partial<ChatbotGuideFile>
   ): Promise<{ success: boolean; guide: ChatbotGuideFile }> => {
-    const res = await fetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1478,7 +1465,7 @@ export const api = {
   },
 
   approveChatbotGuide: async (id: string): Promise<{ success: boolean; guide: ChatbotGuideFile }> => {
-    const res = await fetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}/approve`, {
+    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}/approve`, {
       method: 'PATCH',
     });
     if (!res.ok) {
@@ -1504,7 +1491,7 @@ export const api = {
     publisher?: string;
     year?: string;
   }> => {
-    const res = await fetch('/api/v1/chatbot/extract-pdf', {
+    const res = await apiFetch('/api/v1/chatbot/extract-pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1517,7 +1504,7 @@ export const api = {
   },
 
   deleteChatbotGuide: async (id: string): Promise<{ success: boolean; remainingGuides?: number }> => {
-    const res = await fetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}`, {
+    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -1528,7 +1515,7 @@ export const api = {
   },
 
   toggleChatbotGuide: async (id: string): Promise<{ guide: ChatbotGuideFile; success: boolean }> => {
-    const res = await fetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}/toggle`, {
+    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}/toggle`, {
       method: 'PATCH',
     });
     if (!res.ok) {
@@ -1539,7 +1526,7 @@ export const api = {
   },
 
   testChatbotGuideRetrieval: async (query: string): Promise<ChatbotGuideTestResult> => {
-    const res = await fetch('/api/v1/knowledge/chat', {
+    const res = await apiFetch('/api/v1/knowledge/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
@@ -1582,7 +1569,7 @@ export const api = {
   },
 
   resetDatabase: async (mode: 'clean' | 'demo'): Promise<{ success: boolean; mode: string; message: string; counts: any }> => {
-    const res = await fetch('/api/v1/admin/reset-database', {
+    const res = await apiFetch('/api/v1/admin/reset-database', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode }),

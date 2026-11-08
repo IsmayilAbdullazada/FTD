@@ -7,11 +7,18 @@ Secure, clinician-moderated knowledge exchange and peer support platform for Fro
 ## 🚀 Quick Start (Local Development)
 
 ```bash
-# 1. Install dependencies
+# 1. Install frontend and backend dependencies
 npm install
+npm --prefix app install
 
-# 2. Run the development server (runs Express backend + Vite frontend)
+# 2. Configure PostgreSQL and the backend
+cp config/ftdcare.env.example config/ftdcare.env
+# Edit config/ftdcare.env, then:
+npm run backend:migrate
+npm run backend:seed
+
+# 3. Run the PostgreSQL backend and Vite frontend together
 npm run dev
 
-# App runs locally at http://localhost:3000
+# Frontend: http://localhost:5173; backend health: http://localhost:3000/api/v1/health
 ```

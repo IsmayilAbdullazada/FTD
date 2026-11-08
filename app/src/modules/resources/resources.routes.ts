@@ -1,52 +1,77 @@
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { query } from '../../config/db.js';
-import { authenticateToken, requireRole } from '../../middleware/auth.js';
+import { Router } from "express";
+import { z } from "zod";
+import { query } from "../../config/db.js";
+import { asyncHandler, HttpError } from "../../lib/http.js";
+import { resource } from "../../lib/serializers.js";
+import { authenticateToken, requireStaff } from "../../middleware/auth.js";
 
 const router = Router();
-
-const createResourceSchema = z.object({
-  title: z.string().min(3),
-  summary: z.string().min(5),
-  content: z.string().optional(),
-  category: z.string().min(2),
-  fileOrExternalUrl: z.string().optional(),
-});
-
-// GET /api/resources - List institutional clinical guides
-router.get('/', async (req: Request, res: Response): Promise<void> => {
-  const { category } = req.query;
-  let sql = 'SELECT * FROM resources WHERE 1=1';
-  const params: any[] = [];
-
-  if (category) {
-    params.push(category);
-    sql += ` AND category = $${params.length}`;
-  }
-
-  sql += ' ORDER BY created_at DESC';
-
-  const result = await query(sql, params);
-  res.json({ resources: result.rows });
-});
-
-// POST /api/resources - Publish a new clinical guide
-router.post('/', authenticateToken, requireRole(['clinician', 'admin']), async (req: Request, res: Response): Promise<void> => {
-  const parsed = createResourceSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message || 'Validation error' });
-    return;
-  }
-
-  const { title, summary, content, category, fileOrExternalUrl } = parsed.data;
-  const result = await query(
-    `INSERT INTO resources (title, summary, content, category, file_or_external_url)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING *`,
-    [title, summary, content || null, category, fileOrExternalUrl || null]
-  );
-
-  res.status(201).json({ resource: result.rows[0] });
-});
-
+router.get(
+  "/",
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const user = await query(`SELECT condition FROM users WHERE id=$1`, [
+      req.user!.id,
+    ]);
+    const condition =
+      req.user!.role === "CARE_PARTNER" ? user.rows[0]?.condition : null;
+    const result = await query(
+      `SELECT * FROM resources WHERE $1::text IS NULL OR disease_domain IN ($1,'BOTH') ORDER BY created_at DESC`,
+      [condition],
+    );
+    res.json(result.rows.map(resource));
+  }),
+);
+router.post(
+  "/",
+  authenticateToken,
+  requireStaff,
+  asyncHandler(async (req, res) => {
+    const input = z
+      .object({
+        title: z.string().trim().min(3),
+        summary: z.string().trim().min(3),
+        contentBody: z.string().trim().min(3),
+        category: z.string().trim().min(2),
+        diseaseDomain: z.enum(["FTD", "AD", "BOTH"]).default("FTD"),
+        externalUrl: z.string().url().or(z.literal("")).optional(),
+        fileAttachmentUrl: z.string().optional(),
+        additionalLinks: z
+          .array(z.object({ label: z.string(), url: z.string().url() }))
+          .default([]),
+        keyTakeaways: z.array(z.string()).default([]),
+      })
+      .parse(req.body);
+    const result = await query(
+      `INSERT INTO resources(title,summary,content_body,category,disease_domain,external_url,file_attachment_url,additional_links,key_takeaways,created_by)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [
+        input.title,
+        input.summary,
+        input.contentBody,
+        input.category,
+        input.diseaseDomain,
+        input.externalUrl || null,
+        input.fileAttachmentUrl || null,
+        JSON.stringify(input.additionalLinks),
+        JSON.stringify(input.keyTakeaways),
+        req.user!.id,
+      ],
+    );
+    res.status(201).json(resource(result.rows[0]));
+  }),
+);
+router.delete(
+  "/:id",
+  authenticateToken,
+  requireStaff,
+  asyncHandler(async (req, res) => {
+    const result = await query(
+      `DELETE FROM resources WHERE id=$1 RETURNING id`,
+      [req.params.id],
+    );
+    if (!result.rows[0]) throw new HttpError(404, "Resource not found");
+    res.json({ success: true });
+  }),
+);
 export default router;

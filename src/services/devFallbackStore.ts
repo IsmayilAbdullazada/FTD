@@ -1,5 +1,43 @@
-import { INITIAL_RESOURCES } from '../data/clinicalStore';
-import { CalendarEvent, ClinicUpdate, DirectMessage } from '../types';
+import {
+  INITIAL_COMMENTS,
+  INITIAL_GROUPS,
+  INITIAL_POSTS,
+  INITIAL_QUEUE_ITEMS,
+  INITIAL_RESOURCES,
+  INITIAL_USERS,
+} from '../data/clinicalStore';
+import {
+  CalendarEvent,
+  ClinicUpdate,
+  DirectMessage,
+  ModerationAuditEvent,
+} from '../types';
+
+export const communityFallbackStore: {
+  users: typeof INITIAL_USERS;
+  cohorts: typeof INITIAL_GROUPS;
+  posts: typeof INITIAL_POSTS;
+  comments: typeof INITIAL_COMMENTS;
+  moderationQueue: typeof INITIAL_QUEUE_ITEMS;
+  auditEvents: ModerationAuditEvent[];
+  userCohortAssignments: Record<string, string>;
+} = {
+  users: [...INITIAL_USERS],
+  cohorts: [...INITIAL_GROUPS],
+  posts: [...INITIAL_POSTS],
+  comments: [...INITIAL_COMMENTS],
+  moderationQueue: [...INITIAL_QUEUE_ITEMS],
+  auditEvents: [],
+  userCohortAssignments: {
+    'user-care-1': 'group-central-maryland',
+    'user-care-2': 'group-eastern-maryland',
+    'user-care-3': 'group-northern-maryland',
+    'user-care-4': 'group-western-maryland',
+    'user-care-5': 'group-southern-maryland',
+    'user-care-6': 'group-central-maryland',
+    'user-care-7': 'group-western-maryland',
+  },
+};
 
 export const contentFallbackStore: {
   resources: typeof INITIAL_RESOURCES;

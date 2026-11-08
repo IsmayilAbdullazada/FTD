@@ -1,4 +1,5 @@
-import { CurrentUser, PrivateConversationMessage } from '../types';
+import { PrivateConversationMessage } from '../types';
+import { communityFallbackStore } from './devFallbackStore';
 import { safeFetchJson } from './httpClient';
 
 const privateMessages: PrivateConversationMessage[] = [
@@ -30,8 +31,7 @@ const privateMessages: PrivateConversationMessage[] = [
   },
 ];
 
-export function createMessagingApi(getFallbackUsers: () => CurrentUser[]) {
-  return {
+export const messagingApi = {
     getPrivateChat(caregiverId: string): Promise<PrivateConversationMessage[]> {
       return safeFetchJson(
         `/api/v1/chat/private?caregiverId=${caregiverId}`,
@@ -62,7 +62,7 @@ export function createMessagingApi(getFallbackUsers: () => CurrentUser[]) {
           }),
         },
         () => {
-          const users = getFallbackUsers();
+          const users = communityFallbackStore.users;
           const sender =
             users.find((user) => user.id === payload.senderId) || users[0];
           const recipient =
@@ -90,5 +90,4 @@ export function createMessagingApi(getFallbackUsers: () => CurrentUser[]) {
         },
       );
     },
-  };
-}
+};

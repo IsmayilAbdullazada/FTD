@@ -5,39 +5,35 @@ import {
   Comment,
   QueueItem,
   CommunityGroup,
-  ClinicalResource,
   DeflectionMatch,
   ModerationAuditEvent,
-  DirectMessage,
-  PrivateConversationMessage,
   GroupMember,
   RejectionReason,
-  ClinicUpdate, 
-  CalendarEvent,
   Audience,
-  Condition,
-  ChatbotGuideFile,
-  ChatbotKnowledgeConfig,
-  ChatbotGuideTestResult,
-  GuideCondition,
-  GuidePageData,
   ModeratorPrivateNote,
 } from '../types';
 import {
   INITIAL_USERS,
   INITIAL_GROUPS,
-  INITIAL_RESOURCES,
   INITIAL_POSTS,
   INITIAL_COMMENTS,
   INITIAL_QUEUE_ITEMS,
 } from '../data/clinicalStore';
 import { authApi } from './authApi';
+import { adminApi } from './adminApi';
+import { contentApi } from './contentApi';
+import {
+  contentFallbackStore,
+  notificationFallbackStore,
+} from './devFallbackStore';
+import { guideApi } from './guideApi';
 import { apiFetch, safeFetchJson } from './httpClient';
+import { createMessagingApi } from './messagingApi';
+import { notificationApi } from './notificationApi';
 
 // Explicit development-only fallback data, enabled with VITE_ENABLE_API_FALLBACK=true.
 let localUsers = [...INITIAL_USERS];
 let localCohorts = [...INITIAL_GROUPS];
-let localResources = [...INITIAL_RESOURCES];
 let localPosts = [...INITIAL_POSTS];
 let localComments = [...INITIAL_COMMENTS];
 let localQueue = [...INITIAL_QUEUE_ITEMS];
@@ -51,115 +47,13 @@ let localUserCohortAssignments: Record<string, string> = {
   'user-care-6': 'group-central-maryland',
   'user-care-7': 'group-western-maryland',
 };
-let localDirectMessages: DirectMessage[] = [
-  {
-    id: 'dm-1',
-    recipientUserId: 'user-care-1',
-    title: 'Post Approved: Bathing Aggression',
-    message: 'Your discussion query has been approved by Dr. Seema and published to the community.',
-    type: 'APPROVAL',
-    createdAt: '2026-09-20T10:15:00Z',
-    read: true,
-  },
-];
-let localPrivateChats: PrivateConversationMessage[] = [
-  {
-    id: 'chat-1',
-    conversationId: 'chat-user-care-1',
-    senderId: 'user-clinician-1',
-    senderName: 'Dr. Seema Gulyani',
-    senderRole: 'CLINICIAN_MODERATOR',
-    recipientId: 'user-care-1',
-    recipientName: 'Sarah Smith',
-    content: 'Hello Sarah, welcome to our Johns Hopkins FTD Care Partner community. Please let me know if you need assistance with local respite or behavioral routines.',
-    createdAt: '2026-09-21T10:00:00Z',
-    read: true,
-  },
-  {
-    id: 'chat-2',
-    conversationId: 'chat-user-care-1',
-    senderId: 'user-care-1',
-    senderName: 'User-882',
-    senderRole: 'CARE_PARTNER',
-    recipientId: 'user-clinician-1',
-    recipientName: 'Dr. Seema Gulyani',
-    content: 'Thank you Dr. Seema. The towel bathing method helped us tremendously yesterday without escalating his anxiety.',
-    createdAt: '2026-09-21T14:30:00Z',
-    read: true,
-  },
-];
-
-let localUpdates: ClinicUpdate[] = [
-  {
-    id: 'upd-1',
-    title: 'Welcome to Clinic Updates',
-    summary: 'This is where the clinic will share news for care partners.',
-    body:
-      'This section will be kept up to date by the clinic team.\n\nYou can expect:\n• Clinical trials that are recruiting or recently closed\n• Newly approved medications\n• Scientific discoveries explained in plain language\n• Announcements from the clinic\n\nIf you have questions about anything posted here, please contact the Clinic Support Line at (410) 555-FTDC.',
-    category: 'ANNOUNCEMENT',
-    condition: 'BOTH',
-    authorId: 'user-clinician-1',
-    createdAt: '2026-10-05T09:00:00Z',
-  },
-  {
-    id: 'upd-2',
-    title: 'Sample: Caregiver Wellbeing Study (Recruiting)',
-    summary: 'Placeholder entry showing how a recruiting clinical trial will appear.',
-    body:
-      'SAMPLE ENTRY: replace with a real study.\n\nWho can participate: [eligibility criteria]\nWhat participation involves: [visits, time commitment, location]\nHow to learn more: [contact or registry link]\n\nParticipation is voluntary and does not affect your loved one\'s care at the clinic.',
-    category: 'CLINICAL_TRIAL',
-    condition: 'FTD',
-    trialStatus: 'RECRUITING',
-    authorId: 'user-clinician-1',
-    createdAt: '2026-10-03T09:00:00Z',
-  },
-  {
-    id: 'upd-3',
-    title: 'Sample: Completed Study, Enrollment Closed',
-    summary: 'Placeholder entry showing how a closed clinical trial will appear.',
-    body:
-      'SAMPLE ENTRY: replace with a real study.\n\nThis study is no longer enrolling. Results, when available, will be summarized here.\n\nQuestions can be directed to the Clinic Support Line at (410) 555-FTDC.',
-    category: 'CLINICAL_TRIAL',
-    condition: 'AD',
-    trialStatus: 'CLOSED',
-    authorId: 'user-clinician-1',
-    createdAt: '2026-09-28T09:00:00Z',
-  },
-  {
-    id: 'upd-4',
-    title: 'Sample: Newly Approved Medication Notice',
-    summary: 'Placeholder entry showing how medication news will appear.',
-    body:
-      'SAMPLE ENTRY: replace with verified information.\n\nWhat was approved and for which condition: [details]\nWhat it may mean for families: [plain-language summary]\n\nPlease do not start, stop, or change any medication based on this post. Discuss all medication questions with your care team.',
-    category: 'MEDICATION',
-    condition: 'BOTH',
-    authorId: 'user-clinician-1',
-    createdAt: '2026-09-25T09:00:00Z',
-  },
-  {
-    id: 'upd-5',
-    title: 'Sample: Research Findings in Plain Language',
-    summary: 'Placeholder entry showing how a scientific discovery summary will appear.',
-    body:
-      'SAMPLE ENTRY: replace with a real summary.\n\nWhat researchers found: [summary]\nWhy it matters: [context]\nWhat it does not mean: [limits of the findings]\n\nSource: [link to publication or news release]',
-    category: 'RESEARCH',
-    condition: 'FTD',
-    authorId: 'user-clinician-1',
-    createdAt: '2026-09-20T09:00:00Z',
-  },
-];
-
-let localEvents: CalendarEvent[] = [
-  { id: 'evt-1', title: 'Caregiver Check-in', type: 'SUPPORT_GROUP', startsAt: '2026-10-14T18:00', location: 'Zoom (link sent by email)', description: 'Informal evening check-in for care partners.', authorId: 'user-clinician-1' },
-  { id: 'evt-2', title: 'Baltimore Metro Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-10-21T18:30', location: 'Johns Hopkins Outpatient Center, Baltimore', description: 'Monthly in-person group for Baltimore-area families.', authorId: 'user-clinician-1' },
-  { id: 'evt-3', title: 'Care Partner Fall Lunch', type: 'SOCIAL', startsAt: '2026-10-25T12:00', location: 'TBD (Baltimore area)', description: 'A relaxed get-together. Loved ones are welcome.', authorId: 'user-clinician-1' },
-  { id: 'evt-4', title: 'Care Partner Conference: Planning Ahead', type: 'CARE_PARTNER_CONFERENCE', startsAt: '2026-11-07T09:30', location: 'Hybrid: in person and Zoom', description: 'A half-day conference on legal, financial, and care planning.', authorId: 'user-clinician-1' },
-  { id: 'evt-5', title: 'Eastern Shore Support Group', type: 'SUPPORT_GROUP', startsAt: '2026-11-12T17:30', location: 'Zoom', description: 'Virtual meeting for Eastern Shore families.', authorId: 'user-clinician-1' },
-  { id: 'evt-6', title: 'Holiday Social Gathering', type: 'SOCIAL', startsAt: '2026-11-21T14:00', location: 'TBD', description: 'Seasonal get-together for care partners and families.', authorId: 'user-clinician-1' },
-];
-
 export const api = {
   ...authApi,
+  ...guideApi,
+  ...adminApi,
+  ...contentApi,
+  ...notificationApi,
+  ...createMessagingApi(() => localUsers),
   // Current user persona
   getCurrentUser: async (asUserId?: string): Promise<{ user: CurrentUser; allPersonas: PersonaOption[] }> => {
     const query = asUserId ? `?asUser=${asUserId}` : '';
@@ -666,7 +560,7 @@ export const api = {
         if (queueIdx >= 0) localQueue.splice(queueIdx, 1);
 
         if (item) {
-          localDirectMessages.unshift({
+          notificationFallbackStore.messages.unshift({
             id: `dm-${Date.now()}`,
             recipientUserId: item.author.userId,
             title: 'Medical Inquiry Diverted to Care Support Line',
@@ -739,54 +633,6 @@ export const api = {
           notes: post?.moderatorPrivateNotes || [note],
           message: payload.action === 'PUBLISH' ? 'Private message sent and post published!' : 'Private message sent to care partner.',
         };
-      }
-    );
-  },
-
-  // Private 1-on-1 Chat between Dr. Seema and Caregivers
-  getPrivateChat: async (caregiverId: string): Promise<PrivateConversationMessage[]> => {
-    return safeFetchJson(
-      `/api/v1/chat/private?caregiverId=${caregiverId}`,
-      undefined,
-      () => {
-        return localPrivateChats.filter(
-          (m) => m.conversationId === `chat-${caregiverId}` || m.recipientId === caregiverId || m.senderId === caregiverId
-        );
-      }
-    );
-  },
-
-  sendPrivateChatMessage: async (payload: {
-    caregiverId: string;
-    senderId: string;
-    content: string;
-  }): Promise<PrivateConversationMessage> => {
-    return safeFetchJson(
-      '/api/v1/chat/private',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caregiverId: payload.caregiverId, content: payload.content }),
-      },
-      () => {
-        const sender = localUsers.find((u) => u.id === payload.senderId) || localUsers[0];
-        const recipient = localUsers.find((u) => u.id === payload.caregiverId) || localUsers[1];
-
-        const newMsg: PrivateConversationMessage = {
-          id: `chat-msg-${Date.now()}`,
-          conversationId: `chat-${payload.caregiverId}`,
-          senderId: sender.id,
-          senderName: sender.role === 'CLINICIAN_MODERATOR' ? 'Dr. Seema Gulyani' : sender.anonymousHandle,
-          senderRole: sender.role,
-          recipientId: recipient.id,
-          recipientName: recipient.role === 'CLINICIAN_MODERATOR' ? 'Dr. Seema Gulyani' : recipient.anonymousHandle,
-          content: payload.content,
-          createdAt: new Date().toISOString(),
-          read: false,
-        };
-
-        localPrivateChats.push(newMsg);
-        return newMsg;
       }
     );
   },
@@ -902,7 +748,7 @@ export const api = {
         const text = draftText.toLowerCase();
         const matches: DeflectionMatch[] = [];
 
-        localResources.forEach((res) => {
+        contentFallbackStore.resources.forEach((res) => {
           const combined = `${res.title} ${res.summary} ${res.contentBody}`.toLowerCase();
           const words = text.split(/\s+/).filter((w) => w.length > 3);
           const score = words.filter((w) => combined.includes(w)).length;
@@ -1107,370 +953,11 @@ export const api = {
     return res.json();
   },
 
-  // Resources
-  getResources: async (userId: string): Promise<ClinicalResource[]> => {
-    return safeFetchJson('/api/v1/resources', undefined, () => [...localResources]);
-  },
-
-  createResource: async (payload: {
-    title: string;
-    category: ClinicalResource['category'];
-    summary: string;
-    contentBody: string;
-    diseaseDomain?: Audience;
-    externalUrl?: string;
-    fileAttachmentUrl?: string;
-    additionalLinks?: { label: string; url: string }[];
-    keyTakeaways?: string[];
-    authorId: string;
-  }): Promise<ClinicalResource> => {
-    const { authorId: _authorId, ...requestPayload } = payload;
-    return safeFetchJson(
-      '/api/v1/resources',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload),
-      },
-      () => {
-        const newRes: ClinicalResource = {
-          id: `res-${Date.now()}`,
-          title: payload.title,
-          category: payload.category || 'BEHAVIORAL_AGITATION',
-          summary: payload.summary,
-          contentBody: payload.contentBody,
-          diseaseDomain: payload.diseaseDomain || 'FTD',
-          externalUrl: payload.externalUrl || '',
-          fileAttachmentUrl: payload.fileAttachmentUrl || '',
-          additionalLinks: payload.additionalLinks || [],
-          keyTakeaways: payload.keyTakeaways || [],
-          createdAt: new Date().toISOString(),
-        };
-        localResources.unshift(newRes);
-        return newRes;
-      }
-    );
-  },
-
-  deleteResource: async (id: string): Promise<void> => {
-    await safeFetchJson(
-      `/api/v1/resources/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
-      () => {
-        const index = localResources.findIndex((r) => r.id === id);
-        if (index !== -1) localResources.splice(index, 1);
-        return undefined;
-      }
-    );
-  },
-
-  // Clinic Updates
-  getUpdates: async (userId: string): Promise<ClinicUpdate[]> => {
-    return safeFetchJson('/api/v1/updates', undefined, () => [...localUpdates]);
-  },
-
-  createUpdate: async (payload: Omit<ClinicUpdate, 'id' | 'createdAt'>): Promise<ClinicUpdate> => {
-    const { authorId: _authorId, ...requestPayload } = payload;
-    return safeFetchJson(
-      '/api/v1/updates',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload),
-      },
-      () => {
-        const u: ClinicUpdate = {
-          id: `upd-${Date.now()}`,
-          ...payload,
-          createdAt: new Date().toISOString(),
-        };
-        localUpdates.unshift(u);
-        return u;
-      }
-    );
-  },
-
-  deleteUpdate: async (id: string, userId: string): Promise<{ success: boolean }> => {
-    return safeFetchJson(`/api/v1/updates/${id}`, { method: 'DELETE' }, () => {
-      localUpdates = localUpdates.filter((u) => u.id !== id);
-      return { success: true };
-    });
-  },
-
-  // Calendar Events
-  getEvents: async (userId: string): Promise<CalendarEvent[]> => {
-    return safeFetchJson('/api/v1/events', undefined, () => [...localEvents]);
-  },
-
-  // createEvent: send authorId along with the event
-  createEvent: async (payload: Omit<CalendarEvent, 'id' | 'authorId'>, authorId: string): Promise<CalendarEvent> => {
-    return safeFetchJson(
-      '/api/v1/events',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-      () => {
-        const e = { id: `evt-${Date.now()}`, ...payload, authorId } as CalendarEvent;
-        localEvents.push(e);
-        return e;
-      }
-    );
-  },
-
-  deleteEvent: async (id: string, userId: string): Promise<{ success: boolean }> => {
-    return safeFetchJson(`/api/v1/events/${id}`, { method: 'DELETE' }, () => {
-      localEvents = localEvents.filter((e) => e.id !== id);
-      return { success: true };
-    });
-  },
-
-
   // Audit Events
   getAuditEvents: async (): Promise<ModerationAuditEvent[]> => {
     return safeFetchJson('/api/v1/moderation/audit', undefined, () => [...localAuditEvents]);
   },
 
-  // Notifications
-  getNotifications: async (userId: string): Promise<{ unreadCount: number; messages: DirectMessage[] }> => {
-    return safeFetchJson(
-      '/api/v1/notifications',
-      undefined,
-      () => {
-        const msgs = localDirectMessages.filter((m) => m.recipientUserId === userId);
-        return {
-          unreadCount: msgs.filter((m) => !m.read).length,
-          messages: msgs,
-        };
-      }
-    );
-  },
-
-  markNotificationRead: async (id: string): Promise<{ success: boolean }> => {
-    return safeFetchJson(
-      `/api/v1/notifications/${id}/read`,
-      { method: 'POST' },
-      () => {
-        const msg = localDirectMessages.find((m) => m.id === id);
-        if (msg) msg.read = true;
-        return { success: true };
-      }
-    );
-  },
-
-  // Clinician Invitations
-  issueInvitation: async (payload: {
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    clinicPatientId?: string;
-    primaryCohortSlug: string;
-    condition: Condition;
-    phoneNumber?: string;
-  }): Promise<{
-    invitationId: string;
-    inviteToken: string;
-    inviteExpiresAt: string;
-    registrationUrl: string;
-    status: string;
-    emailSent?: boolean;
-    emailPreviewUrl?: string;
-    emailError?: string;
-  }> => {
-    return safeFetchJson(
-      '/api/v1/auth/invitations',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-      () => {
-        const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
-        return {
-          invitationId: `inv-${Date.now()}`,
-          inviteToken: token,
-          inviteExpiresAt: new Date(Date.now() + 72 * 3600000).toISOString(),
-          registrationUrl: `/register?token=${token}`,
-          status: 'DISPATCHED',
-          emailSent: true,
-        };
-      }
-    );
-  },
-
-  // Chatbot Guide Files & Knowledge Management
-  getChatbotGuides: async (): Promise<{ guides: ChatbotGuideFile[]; config: ChatbotKnowledgeConfig }> => {
-    const res = await apiFetch('/api/v1/chatbot/guides');
-    if (!res.ok) {
-      throw new Error(`Failed to load guides: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  uploadChatbotGuide: async (payload: {
-    title: string;
-    condition: GuideCondition;
-    topicTag?: string;
-    publisher?: string;
-    year?: string;
-    fileName: string;
-    fileSize?: number;
-    mimeType?: string;
-    category?: string;
-    description?: string;
-    content: string;
-    pages?: GuidePageData[];
-    totalChunks?: number;
-    status?: 'DRAFT' | 'APPROVED';
-    pdfUrl?: string;
-    uploadedBy: string;
-    uploadedByName: string;
-  }): Promise<ChatbotGuideFile> => {
-    const res = await apiFetch('/api/v1/chatbot/guides', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to save guide: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  updateChatbotGuide: async (
-    id: string,
-    payload: Partial<ChatbotGuideFile>
-  ): Promise<{ success: boolean; guide: ChatbotGuideFile }> => {
-    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to update guide: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  approveChatbotGuide: async (id: string): Promise<{ success: boolean; guide: ChatbotGuideFile }> => {
-    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}/approve`, {
-      method: 'PATCH',
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to approve guide: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  extractPdfText: async (payload: {
-    fileName: string;
-    fileBase64: string;
-  }): Promise<{
-    text: string;
-    pages: GuidePageData[];
-    totalChunks: number;
-    wordCount: number;
-    pageCount: number;
-    fileName: string;
-    pdfUrl?: string;
-    title: string;
-    category?: string;
-    publisher?: string;
-    year?: string;
-  }> => {
-    const res = await apiFetch('/api/v1/chatbot/extract-pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to extract PDF: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  deleteChatbotGuide: async (id: string): Promise<{ success: boolean; remainingGuides?: number }> => {
-    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to delete guide: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  toggleChatbotGuide: async (id: string): Promise<{ guide: ChatbotGuideFile; success: boolean }> => {
-    const res = await apiFetch(`/api/v1/chatbot/guides/${encodeURIComponent(id)}/toggle`, {
-      method: 'PATCH',
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Failed to toggle guide: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  testChatbotGuideRetrieval: async (query: string): Promise<ChatbotGuideTestResult> => {
-    const res = await apiFetch('/api/v1/knowledge/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `Assistant test query failed: ${res.statusText || res.status}`);
-    }
-    return res.json();
-  },
-
-  getDatabaseStatus: async (): Promise<{
-    isCleanLaunch: boolean;
-    counts: {
-      users: number;
-      carePartners: number;
-      staff: number;
-      posts: number;
-      pendingQueue: number;
-      comments: number;
-      auditEvents: number;
-      invitations: number;
-      guides: number;
-    };
-    securityStatus: {
-      port: number;
-      helmetActive: boolean;
-      jwtActive: boolean;
-      bcryptRounds: number;
-      rateLimitersActive: boolean;
-      phiFilterActive: boolean;
-      corsActive: boolean;
-    };
-  }> => {
-    return safeFetchJson('/api/v1/admin/database-status', undefined, () => ({
-      isCleanLaunch: true,
-      counts: { users: 2, carePartners: 0, staff: 2, posts: 0, pendingQueue: 0, comments: 0, auditEvents: 0, invitations: 0, guides: 10 },
-      securityStatus: { port: 3000, helmetActive: true, jwtActive: true, bcryptRounds: 12, rateLimitersActive: true, phiFilterActive: true, corsActive: true },
-    }));
-  },
-
-  resetDatabase: async (mode: 'clean' | 'demo'): Promise<{ success: boolean; mode: string; message: string; counts: any }> => {
-    const res = await apiFetch('/api/v1/admin/reset-database', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to update database mode');
-    }
-    return res.json();
-  },
 };
 
 

@@ -1,5 +1,5 @@
 import { Condition, CurrentUser } from '../types';
-import { apiFetch, requestJson } from './httpClient';
+import { apiFetch, requestJson, safeFetchJson } from './httpClient';
 
 interface AuthResponse {
   success: boolean;
@@ -25,6 +25,27 @@ interface InvitationResponse {
     condition: Condition;
     primaryCohortSlug: string;
   };
+}
+
+export interface IssueInvitationPayload {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  clinicPatientId?: string;
+  primaryCohortSlug: string;
+  condition: Condition;
+  phoneNumber?: string;
+}
+
+export interface IssuedInvitation {
+  invitationId: string;
+  inviteToken: string;
+  inviteExpiresAt: string;
+  registrationUrl: string;
+  status: string;
+  emailSent?: boolean;
+  emailPreviewUrl?: string;
+  emailError?: string;
 }
 
 export const authApi = {
@@ -101,6 +122,28 @@ export const authApi = {
         body: JSON.stringify(payload),
       },
       'Registration failed.',
+    );
+  },
+
+  issueInvitation(payload: IssueInvitationPayload): Promise<IssuedInvitation> {
+    return safeFetchJson(
+      '/api/v1/auth/invitations',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
+        return {
+          invitationId: `inv-${Date.now()}`,
+          inviteToken: token,
+          inviteExpiresAt: new Date(Date.now() + 72 * 3600000).toISOString(),
+          registrationUrl: `/register?token=${token}`,
+          status: 'DISPATCHED',
+          emailSent: true,
+        };
+      },
     );
   },
 };

@@ -15,6 +15,7 @@ import { AuthScreens } from './components/AuthScreens';
 import { SessionTimeoutModal } from './components/SessionTimeoutModal';
 import { CurrentUser, PersonaOption, CommunityGroup, DirectMessage, QueueItem } from './types';
 import { api } from './services/api';
+import { useAutoDismiss } from './hooks/useAutoDismiss';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -30,14 +31,7 @@ export default function App() {
   const [targetDiscussionId, setTargetDiscussionId] = useState<string | null>(null);
   const [feedSection, setFeedSection] = useState<'all' | 'my-posts'>('all');
 
-  // Auto-fade submission notice after 3.5 seconds
-  useEffect(() => {
-    if (!feedNotice) return;
-    const timer = setTimeout(() => {
-      setFeedNotice(null);
-    }, 3500);
-    return () => clearTimeout(timer);
-  }, [feedNotice]);
+  useAutoDismiss(feedNotice, setFeedNotice, 3500);
 
   // Modals
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
@@ -145,8 +139,10 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
 
-    const handleSessionExpired = (e: any) => {
-      const reason = e?.detail?.reason || 'Your session expired. Please sign in again.';
+    const handleSessionExpired = (event: Event) => {
+      const reason =
+        (event as CustomEvent<{ reason?: string }>).detail?.reason ||
+        'Your session expired. Please sign in again.';
       handleSignOut(reason);
     };
     window.addEventListener('jh:session-expired', handleSessionExpired);

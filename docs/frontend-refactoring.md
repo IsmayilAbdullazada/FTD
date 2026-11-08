@@ -19,6 +19,12 @@ src/
   services/
     httpClient.ts    # transport, credentials, errors, session expiry
     authApi.ts       # authentication and account recovery
+    contentApi.ts    # resources, clinic updates, and calendar events
+    guideApi.ts      # chatbot guide administration
+    messagingApi.ts  # private clinician/caregiver conversations
+    notificationApi.ts
+    adminApi.ts
+    devFallbackStore.ts # opt-in development data only
     api.ts           # temporary compatibility facade
   components/        # reusable presentation components
   hooks/             # cross-feature behavior
@@ -30,13 +36,16 @@ src/
 
 - Centralized credentialed requests, JSON validation, typed errors, and session-expiry events in `httpClient.ts`.
 - Moved login, logout, registration, invitation lookup, and password recovery into `authApi.ts`.
+- Moved invitations, resources, updates, calendar events, guide management, notifications, private messaging, and database administration into focused domain clients.
+- Moved extracted opt-in demo content and notification data into `devFallbackStore.ts`.
+- Added a typed cross-feature auto-dismiss hook for transient notices.
 - Preserved the existing `api` facade so component call sites and rendered output remain stable.
 - Replaced browser-readable JWT storage with HttpOnly cookie sessions.
 
 ## Next safe extractions
 
-1. Move discussion, moderation, cohort, and content calls into domain API modules.
-2. Move opt-in demo state into a dedicated development adapter.
+1. Move discussion, moderation, cohort, and knowledge calls into domain API modules.
+2. Move the remaining discussion and cohort demo state into the development adapter.
 3. Extract stateful feature hooks from `App.tsx` and `ClinicianDashboard.tsx` without moving presentation markup in the same change.
 4. Split large presentation files along existing modal and tab boundaries after behavior is isolated.
 5. Add route-level lazy loading to reduce the main bundle after visual parity is established.

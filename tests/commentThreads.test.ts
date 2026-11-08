@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildCommentTree } from '../src/utils/commentTree.ts';
+import { buildCommentTree } from '../src/shared/lib/commentTree.ts';
 import { isVisibleReplyParent } from '../server/replyParent.ts';
 import type { Comment } from '../src/types';
 const comment = (id: string, parentCommentId?: string) => ({ id, parentCommentId,

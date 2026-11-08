@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { PDFParse } from 'pdf-parse';
-import { cleanPdfText } from '../src/utils/cleanPdfText.ts';
+import { cleanPdfText } from '../src/shared/lib/cleanPdfText.ts';
 
 export interface RagChunk {
   id: string;

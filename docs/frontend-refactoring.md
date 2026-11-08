@@ -5,7 +5,7 @@ The frontend should evolve by feature while preserving its current rendered inte
 ## Invariants
 
 - Keep existing JSX structure, Tailwind classes, copy, navigation, and accessibility semantics unless a product change is explicitly requested.
-- Keep `src/services/api.ts` as the compatibility facade while domain clients move into focused modules.
+- Import feature-owned API adapters directly; do not introduce an application-wide API service object.
 - Treat server responses as the source of identity and authorization. Never send requester roles or requester IDs as proof of access.
 - Fail closed in production. Development fallback data remains opt-in through `VITE_ENABLE_API_FALLBACK=true`.
 - Add types at boundaries and centralize transport errors instead of repeating response parsing.
@@ -15,27 +15,34 @@ The frontend should evolve by feature while preserving its current rendered inte
 
 ```text
 src/
-  features/
-    app/             # app data, view state, navigation, and orchestration
-  services/
-    httpClient.ts    # transport, credentials, errors, session expiry
-    authApi.ts       # authentication and account recovery
-    communityApi.ts  # current user, cohorts, and cohort membership
-    discussionApi.ts # discussions and replies
-    moderationApi.ts # moderation queue, actions, notes, and audit
-    knowledgeApi.ts  # deflection, matching, and assistant requests
-    contentApi.ts    # resources, clinic updates, and calendar events
-    guideApi.ts      # chatbot guide administration
-    messagingApi.ts  # private clinician/caregiver conversations
-    notificationApi.ts
-    adminApi.ts
-    devFallbackStore.ts # opt-in development data only
-    api.ts           # temporary compatibility facade
-  components/        # reusable presentation components
-  hooks/             # cross-feature behavior
-  types/             # shared contracts
-  utils/             # pure helpers
+  app/               # application shell, providers, routing/navigation, orchestration
+    components/
+    hooks/
+    lib/
+    providers/
+  features/          # business capabilities; each owns its UI and API adapter
+    auth/
+      api/
+      components/
+      index.ts       # public UI entry point
+    discussions/
+    moderation/
+    knowledge/
+    content/
+    notifications/
+  shared/            # code with multiple feature consumers and no feature policy
+    api/             # HTTP transport shared by feature API adapters
+    components/
+    dev/             # explicitly opt-in development fixtures and stores
+    hooks/
+    lib/
+  types/             # shared contracts pending gradual feature ownership
 ```
+
+Features may import from `shared`, while `shared` must not import feature UI.
+The app shell imports feature public entry points instead of reaching into their
+internal component folders. Domain API adapters remain feature-owned, and UI
+code imports only the adapters it actually uses.
 
 ## Completed foundation
 
@@ -44,10 +51,10 @@ src/
 - Moved invitations, resources, updates, calendar events, guide management, notifications, private messaging, and database administration into focused domain clients.
 - Moved user/cohort, discussion, moderation, and knowledge behavior into focused domain clients.
 - Moved extracted opt-in demo content and notification data into `devFallbackStore.ts`.
-- Reduced `api.ts` to a composition-only compatibility facade; it must not contain endpoint or fallback implementations.
+- Removed the application-wide API facade after migrating callers to feature-owned adapters.
 - Added a typed cross-feature auto-dismiss hook for transient notices.
-- Extracted API-backed app data, view state, browser location handling, and orchestration from `App.tsx` into `features/app`.
-- Preserved the existing `api` facade so component call sites and rendered output remain stable.
+- Extracted API-backed app data, view state, browser location handling, and orchestration from `App.tsx` into `app`.
+- Reorganized the frontend around feature ownership, public feature entry points, and a small cross-feature `shared` layer.
 - Replaced browser-readable JWT storage with HttpOnly cookie sessions.
 
 ## Next safe extractions

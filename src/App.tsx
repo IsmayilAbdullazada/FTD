@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { CarePartnerFeed } from './components/CarePartnerFeed';
@@ -13,229 +12,45 @@ import { UpdatesPage } from './components/UpdatesPage';
 import { CalendarPage } from './components/CalendarPage';
 import { AuthScreens } from './components/AuthScreens';
 import { SessionTimeoutModal } from './components/SessionTimeoutModal';
-import { CurrentUser, PersonaOption, CommunityGroup, DirectMessage, QueueItem } from './types';
-import { api } from './services/api';
-import { useAutoDismiss } from './hooks/useAutoDismiss';
+import { useAppController } from './features/app/useAppController';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [allPersonas, setAllPersonas] = useState<PersonaOption[]>([]);
-  const [cohorts, setCohorts] = useState<CommunityGroup[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('feed');
-  const [pendingTriageCount, setPendingTriageCount] = useState<number>(0);
-  const [pendingQueue, setPendingQueue] = useState<QueueItem[]>([]);
-  const [notifications, setNotifications] = useState<DirectMessage[]>([]);
-  const [feedNotice, setFeedNotice] = useState<string | null>(null);
-  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
-  const [feedResetKey, setFeedResetKey] = useState<number>(0);
-  const [targetDiscussionId, setTargetDiscussionId] = useState<string | null>(null);
-  const [feedSection, setFeedSection] = useState<'all' | 'my-posts'>('all');
-
-  useAutoDismiss(feedNotice, setFeedNotice, 3500);
-
-  // Modals
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [assistantPrefill, setAssistantPrefill] = useState<{ query: string } | null>(null);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [isAuditOpen, setIsAuditOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [inspectedResourceId, setInspectedResourceId] = useState<string | null>(null);
-  const [composerInitialTitle, setComposerInitialTitle] = useState<string>('');
-  const [composerInitialContent, setComposerInitialContent] = useState<string>('');
-  const [authMode, setAuthMode] = useState<'login' | 'forgot-password' | 'register'>('login');
-  const [authInviteToken, setAuthInviteToken] = useState<string | undefined>(undefined);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-
-  // Initial load
-  const loadUserAndData = async (asUserId?: string) => {
-    try {
-      const userRes = await api.getCurrentUser(asUserId);
-      setCurrentUser(userRes.user);
-      setAllPersonas(userRes.allPersonas);
-
-      // Respect URL parameters on initial cold load only
-      if (!asUserId) {
-        const searchParams = new URLSearchParams(window.location.search);
-        const urlTab = searchParams.get('tab');
-        const urlPost = searchParams.get('post');
-        const tokenParam = searchParams.get('token') || (window.location.pathname.startsWith('/register') ? searchParams.get('token') : null);
-
-        if (tokenParam) {
-          setAuthInviteToken(tokenParam);
-          setAuthMode('register');
-          setIsAuthOpen(true);
-        } else if (urlTab === 'login') {
-          setAuthMode('login');
-          setIsAuthOpen(true);
-        } else if (urlTab === 'forgot-password' || urlTab === 'reset-password') {
-          setAuthMode('forgot-password');
-          setIsAuthOpen(true);
-        } else if (urlPost) {
-          setTargetDiscussionId(urlPost);
-          setActiveTab('feed');
-        } else if (urlTab) {
-          if (urlTab === 'compose' && window.history.state?.discussionDraft) {
-            setComposerInitialTitle(window.history.state.discussionDraft.title || '');
-            setComposerInitialContent(window.history.state.discussionDraft.content || '');
-          }
-          setActiveTab(urlTab);
-        } else if (userRes.user.role === 'CLINICIAN_MODERATOR' || userRes.user.role === 'SYSTEM_ADMIN') {
-          setActiveTab('moderation');
-        } else {
-          setActiveTab('feed');
-        }
-      }
-
-      const cohortsRes = await api.getCohorts({ userId: userRes.user.id, role: userRes.user.role });
-      setCohorts(cohortsRes);
-
-      const isStaffUser = userRes.user.role !== 'CARE_PARTNER';
-      if (isStaffUser) {
-        const queueRes = await api.getModerationQueue();
-        setPendingTriageCount(queueRes.totalPending || 0);
-        setPendingQueue(queueRes.items || []);
-      } else {
-        setPendingTriageCount(0);
-        setPendingQueue([]);
-      }
-
-      const notifRes = await api.getNotifications(userRes.user.id);
-      setNotifications(notifRes.messages || []);
-    } catch (err) {
-      console.error('Failed to bootstrap app data:', err);
-    }
-  };
-
-  useEffect(() => {
-    loadUserAndData();
-
-    // Listen for browser back / forward navigation
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get('tab') || 'feed';
-      const postParam = params.get('post') || null;
-      const tokenParam = params.get('token');
-
-      if (tokenParam) {
-        setAuthInviteToken(tokenParam);
-        setAuthMode('register');
-        setIsAuthOpen(true);
-      } else if (tabParam === 'login') {
-        setAuthMode('login');
-        setIsAuthOpen(true);
-      } else if (tabParam === 'forgot-password') {
-        setAuthMode('forgot-password');
-        setIsAuthOpen(true);
-      } else {
-        setIsAuthOpen(false);
-        if (tabParam === 'compose') {
-          setComposerInitialTitle(window.history.state?.discussionDraft?.title || '');
-          setComposerInitialContent(window.history.state?.discussionDraft?.content || '');
-        }
-        setActiveTab(tabParam);
-        setTargetDiscussionId(postParam);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    const handleSessionExpired = (event: Event) => {
-      const reason =
-        (event as CustomEvent<{ reason?: string }>).detail?.reason ||
-        'Your session expired. Please sign in again.';
-      handleSignOut(reason);
-    };
-    window.addEventListener('jh:session-expired', handleSessionExpired);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('jh:session-expired', handleSessionExpired);
-    };
-  }, []);
-
-  const handleLoginSuccess = async (user: CurrentUser) => {
-    // 1. Immediately clean browser URL: set pathname to '/', remove ?token=..., set ?tab=nextTab
-    const nextTab = user.role === 'CLINICIAN_MODERATOR' || user.role === 'SYSTEM_ADMIN' ? 'moderation' : 'feed';
-    const url = new URL(window.location.href);
-    url.pathname = '/';
-    url.searchParams.delete('token');
-    url.searchParams.set('tab', nextTab);
-    window.history.replaceState({ tab: nextTab }, '', url.toString());
-
-    // 2. Clear auth modal state, clear session notice and update active user
-    setSessionNotice(null);
-    setAuthInviteToken(undefined);
-    setIsAuthOpen(false);
-    setCurrentUser(user);
-    setActiveTab(nextTab);
-
-    // 3. Load user's data without re-reading the old URL token
-    await loadUserAndData(user.id);
-  };
-
-  const handleSignOut = (notice?: string) => {
-    void api.logout();
-    setComposerInitialTitle('');
-    setComposerInitialContent('');
-    setCurrentUser(null);
-    setSessionNotice(notice || null);
-    setAuthMode('login');
-    setIsAuthOpen(true);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'login');
-    url.searchParams.delete('post');
-    url.searchParams.delete('token');
-    window.history.pushState({ tab: 'login' }, '', url.toString());
-  };
-
-  const handleSwitchPersona = (userId: string) => {
-    setComposerInitialTitle('');
-    setComposerInitialContent('');
-    loadUserAndData(userId);
-    setFeedResetKey((prev) => prev + 1);
-    setTargetDiscussionId(null);
-    const targetPersona = allPersonas.find((p) => p.id === userId);
-    let nextTab = 'feed';
-    if (targetPersona?.role === 'CLINICIAN_MODERATOR' || targetPersona?.role === 'SYSTEM_ADMIN') {
-      nextTab = 'moderation';
-    }
-    setActiveTab(nextTab);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', nextTab);
-    url.searchParams.delete('post');
-    window.history.pushState({ tab: nextTab, post: null }, '', url.toString());
-  };
-
-
-  const handleQueueUpdated = async () => {
-    try {
-      const isStaffUser = currentUser?.role !== 'CARE_PARTNER';
-      if (isStaffUser) {
-        const queueRes = await api.getModerationQueue();
-        setPendingTriageCount(queueRes.totalPending || 0);
-        setPendingQueue(queueRes.items || []);
-      } else {
-        setPendingTriageCount(0);
-        setPendingQueue([]);
-      }
-      if (currentUser) {
-        const notifRes = await api.getNotifications(currentUser.id);
-        setNotifications(notifRes.messages || []);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-
-  const handleOpenResourceFromDeflection = (resourceId: string) => {
-    setInspectedResourceId(resourceId);
-    setActiveTab('knowledge');
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'knowledge');
-    url.searchParams.delete('post');
-    window.history.pushState({ tab: 'knowledge', post: null }, '', url.toString());
-  };
+  const { state, actions } = useAppController();
+  const {
+    currentUser,
+    allPersonas,
+    cohorts,
+    activeTab,
+    pendingTriageCount,
+    pendingQueue,
+    notifications,
+    feedNotice,
+    sessionNotice,
+    feedResetKey,
+    targetDiscussionId,
+    feedSection,
+    isAssistantOpen,
+    assistantPrefill,
+    isInviteOpen,
+    isAuditOpen,
+    isNotificationsOpen,
+    inspectedResourceId,
+    composerInitialTitle,
+    composerInitialContent,
+    authMode,
+    authInviteToken,
+    isAuthOpen,
+  } = state;
+  const {
+    loginSucceeded: handleLoginSuccess,
+    signOut: handleSignOut,
+    switchPersona: handleSwitchPersona,
+    queueUpdated: handleQueueUpdated,
+    selectTab: handleSelectTab,
+    openDiscussion: handleOpenDiscussion,
+    openDiscussionFromComposer: handleOpenDiscussionFromComposer,
+    openResource: handleOpenResourceFromDeflection,
+  } = actions;
 
   if (isAuthOpen || !currentUser) {
     return (
@@ -244,22 +59,10 @@ export default function App() {
         initialToken={authInviteToken}
         onLoginSuccess={handleLoginSuccess}
         sessionNotice={sessionNotice}
-        onCancel={currentUser ? () => setIsAuthOpen(false) : undefined}
+        onCancel={currentUser ? actions.closeAuth : undefined}
       />
     );
   }
-
-  const handleSelectTab = (tab: string) => {
-    if (tab === 'feed') {
-      setFeedResetKey((prev) => prev + 1);
-    }
-    setActiveTab(tab);
-    setTargetDiscussionId(null);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    url.searchParams.delete('post');
-    window.history.pushState({ tab, post: null }, '', url.toString());
-  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19] flex flex-col text-slate-800 dark:text-slate-100 font-sans selection:bg-[#002D72]/15 selection:text-[#002D72] dark:selection:bg-blue-600/30 dark:selection:text-blue-200 transition-colors">
@@ -273,16 +76,8 @@ export default function App() {
         setActiveTab={handleSelectTab}
         pendingTriageCount={pendingTriageCount}
         notifications={notifications}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenMyPosts={() => {
-          setActiveTab('feed');
-          setFeedSection('my-posts');
-          setTargetDiscussionId(null);
-          const url = new URL(window.location.href);
-          url.searchParams.set('tab', 'feed');
-          url.searchParams.delete('post');
-          window.history.pushState({ tab: 'feed', post: null }, '', url.toString());
-        }}
+        onOpenNotifications={actions.openNotifications}
+        onOpenMyPosts={actions.openMyPosts}
       />
 
       {/* Main Content Area */}
@@ -293,16 +88,12 @@ export default function App() {
             cohorts={cohorts}
             resetKey={feedResetKey}
             targetDiscussionId={targetDiscussionId}
-            onClearTargetDiscussion={() => setTargetDiscussionId(null)}
+            onClearTargetDiscussion={actions.clearTargetDiscussion}
             recentNotice={feedNotice}
-            onDismissNotice={() => setFeedNotice(null)}
-            onOpenComposer={() => {
-              setComposerInitialTitle('');
-              setComposerInitialContent('');
-              handleSelectTab('compose');
-            }}
+            onDismissNotice={actions.dismissFeedNotice}
+            onOpenComposer={actions.openComposer}
             initialSection={feedSection}
-            onSectionChange={(sec) => setFeedSection(sec)}
+            onSectionChange={actions.changeFeedSection}
           />
         )}
 
@@ -312,34 +103,11 @@ export default function App() {
             cohorts={cohorts}
             initialTitle={composerInitialTitle}
             initialContent={composerInitialContent}
-            onOpenAssistant={(query) => {
-              setAssistantPrefill({ query });
-              setIsAssistantOpen(true);
-            }}
-            onPostSubmitted={() => {
-              setComposerInitialTitle('');
-              setComposerInitialContent('');
-              setFeedNotice('Your post has been submitted and is currently under review.');
-              setFeedSection('my-posts');
-              handleSelectTab('feed');
-              handleQueueUpdated();
-            }}
-            onCancel={() => {
-              setComposerInitialTitle('');
-              setComposerInitialContent('');
-              handleSelectTab('feed');
-            }}
+            onOpenAssistant={actions.openAssistant}
+            onPostSubmitted={actions.postSubmitted}
+            onCancel={actions.cancelComposer}
             onOpenResource={handleOpenResourceFromDeflection}
-            onOpenDiscussion={(postId) => {
-              setComposerInitialTitle('');
-              setComposerInitialContent('');
-              setTargetDiscussionId(postId);
-              setActiveTab('feed');
-              const url = new URL(window.location.href);
-              url.searchParams.set('tab', 'feed');
-              url.searchParams.set('post', postId);
-              window.history.pushState({ tab: 'feed', post: postId }, '', url.toString());
-            }}
+            onOpenDiscussion={handleOpenDiscussionFromComposer}
           />
         )}
 
@@ -348,27 +116,17 @@ export default function App() {
             currentUser={currentUser}
             cohorts={cohorts}
             onQueueUpdated={handleQueueUpdated}
-            onOpenAudit={() => setIsAuditOpen(true)}
-            onOpenInvite={() => setIsInviteOpen(true)}
-            onCohortCreated={async () => {
-              const res = await api.getCohorts({ userId: currentUser.id, role: currentUser.role });
-              setCohorts(res);
-            }}
-            onOpenDiscussion={(postId) => {
-              setTargetDiscussionId(postId);
-              setActiveTab('feed');
-              const url = new URL(window.location.href);
-              url.searchParams.set('tab', 'feed');
-              url.searchParams.set('post', postId);
-              window.history.pushState({ tab: 'feed', post: postId }, '', url.toString());
-            }}
+            onOpenAudit={actions.openAudit}
+            onOpenInvite={actions.openInvite}
+            onCohortCreated={actions.cohortCreated}
+            onOpenDiscussion={handleOpenDiscussion}
           />
         )}
 
         {activeTab === 'knowledge' && (
           <KnowledgeBaseExplorer
             initialResourceId={inspectedResourceId}
-            onClearInitialResource={() => setInspectedResourceId(null)}
+            onClearInitialResource={actions.clearInspectedResource}
             currentUser={currentUser}
           />
         )}
@@ -386,7 +144,7 @@ export default function App() {
                 Inspect logged clinical reviews, approvals, and redactions.
               </p>
               <button
-                onClick={() => setIsAuditOpen(true)}
+                onClick={actions.openAudit}
                 className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition"
               >
                 Open Audit Ledger
@@ -404,51 +162,38 @@ export default function App() {
         currentUser={currentUser}
         isOpen={isAssistantOpen}
         prefillRequest={assistantPrefill}
-        onToggle={() => setIsAssistantOpen((prev) => !prev)}
-        onClose={() => setIsAssistantOpen(false)}
-        onCreateDiscussion={(draft) => {
-          setComposerInitialTitle(draft.title);
-          setComposerInitialContent(draft.content);
-          setActiveTab('compose');
-          setIsAssistantOpen(false);
-          const url = new URL(window.location.href);
-          url.searchParams.set('tab', 'compose');
-          url.searchParams.delete('post');
-          window.history.pushState({ tab: 'compose', discussionDraft: draft }, '', url.toString());
-        }}
+        onToggle={actions.toggleAssistant}
+        onClose={actions.closeAssistant}
+        onCreateDiscussion={actions.createDiscussion}
       />
 
       <InvitationModal
         isOpen={isInviteOpen}
-        onClose={() => setIsInviteOpen(false)}
+        onClose={actions.closeInvite}
         cohorts={cohorts}
       />
 
       <AuditLedgerModal
         isOpen={isAuditOpen}
-        onClose={() => setIsAuditOpen(false)}
+        onClose={actions.closeAudit}
       />
 
       <NotificationsModal
         isOpen={isNotificationsOpen}
-        onClose={() => setIsNotificationsOpen(false)}
+        onClose={actions.closeNotifications}
         currentUser={currentUser}
         notifications={notifications}
         pendingQueue={pendingQueue}
-        onRefreshNotifications={() => currentUser && loadUserAndData(currentUser.id)}
+        onRefreshNotifications={actions.refreshNotifications}
         onQueueUpdated={handleQueueUpdated}
-        onNavigateToConsole={() => setActiveTab('moderation')}
-        onNavigateToFeed={() => setActiveTab('feed')}
+        onNavigateToConsole={actions.navigateToConsole}
+        onNavigateToFeed={actions.navigateToFeed}
       />
 
       {/* Inactivity detection & Session Timeout with 60s countdown warning */}
       <SessionTimeoutModal
         isAuthenticated={!!currentUser && !isAuthOpen}
-        onTimeout={() =>
-          handleSignOut(
-            'Your session timed out due to inactivity to protect patient and caregiver privacy. Please sign in again.'
-          )
-        }
+        onTimeout={actions.sessionTimedOut}
       />
     </div>
   );

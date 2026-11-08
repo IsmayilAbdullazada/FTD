@@ -15,7 +15,8 @@ The frontend should evolve by feature while preserving its current rendered inte
 
 ```text
 src/
-  features/          # feature-specific hooks and components
+  features/
+    app/             # app data, view state, navigation, and orchestration
   services/
     httpClient.ts    # transport, credentials, errors, session expiry
     authApi.ts       # authentication and account recovery
@@ -45,11 +46,12 @@ src/
 - Moved extracted opt-in demo content and notification data into `devFallbackStore.ts`.
 - Reduced `api.ts` to a composition-only compatibility facade; it must not contain endpoint or fallback implementations.
 - Added a typed cross-feature auto-dismiss hook for transient notices.
+- Extracted API-backed app data, view state, browser location handling, and orchestration from `App.tsx` into `features/app`.
 - Preserved the existing `api` facade so component call sites and rendered output remain stable.
 - Replaced browser-readable JWT storage with HttpOnly cookie sessions.
 
 ## Next safe extractions
 
-1. Extract stateful feature hooks from `App.tsx` and `ClinicianDashboard.tsx` without moving presentation markup in the same change.
+1. Extract stateful feature hooks from `ClinicianDashboard.tsx` without moving presentation markup in the same change.
 2. Split large presentation files along existing modal and tab boundaries after behavior is isolated.
 3. Add route-level lazy loading to reduce the main bundle after visual parity is established.

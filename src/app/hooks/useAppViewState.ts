@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAutoDismiss } from '@/shared/hooks/useAutoDismiss';
+import { useAutoDismiss } from '@/app/hooks/useAutoDismiss';
 
 export type AuthMode = 'login' | 'forgot-password' | 'register';
 export type FeedSection = 'all' | 'my-posts';

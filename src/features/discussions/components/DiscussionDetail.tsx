@@ -19,7 +19,7 @@ import {
 import { discussionApi } from '@/features/discussions/api/discussionApi';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
-import { buildCommentTree, type CommentNode } from '@/shared/lib/commentTree';
+import { buildCommentTree, type CommentNode } from '@/features/discussions/lib/commentTree';
 import { Comment, CurrentUser, Post, getProperGroupName } from '@/types';
 
 interface DiscussionDetailProps {

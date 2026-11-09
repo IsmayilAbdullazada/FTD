@@ -14,7 +14,7 @@ import {
   MessageCircleHeart,
 } from 'lucide-react';
 import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
-import { useFooterClearance } from '@/shared/hooks/useFooterClearance';
+import { useFooterClearance } from '@/features/knowledge/hooks/useFooterClearance';
 import { CurrentUser } from '@/types';
 
 interface FloatingChatbotAssistantProps {

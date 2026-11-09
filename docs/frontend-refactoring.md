@@ -21,13 +21,35 @@ src/
     lib/
     providers/
   features/          # business capabilities; each owns its UI and API adapter
+    clinician-workspace/ # role workspace composition; no domain persistence
+      components/
+      types.ts
+      index.ts
     auth/
       api/
       components/
       index.ts       # public UI entry point
     discussions/
+      api/
+      components/
+      hooks/
+      lib/           # pure discussion rules and tree construction
+    community/
+      api/
+      components/
+      hooks/
+      lib/           # pure member/cohort rules
     moderation/
+      api/
+      components/
+      hooks/
+      lib/           # pure moderation filtering and sanitization
     knowledge/
+      api/
+      components/
+      hooks/
+      lib/           # guide-title and guide-workflow helpers
+      types.ts
     content/
     notifications/
   shared/            # code with multiple feature consumers and no feature policy
@@ -35,14 +57,20 @@ src/
     components/
     dev/             # explicitly opt-in development fixtures and stores
     hooks/
-    lib/
-  types/             # shared contracts pending gradual feature ownership
+    lib/             # cross-feature/runtime helpers such as PDF cleaning and pagination
+  types/             # genuinely cross-feature identity and domain contracts
 ```
 
 Features may import from `shared`, while `shared` must not import feature UI.
 The app shell imports feature public entry points instead of reaching into their
 internal component folders. Domain API adapters remain feature-owned, and UI
 code imports only the adapters it actually uses.
+
+Feature subfolders are capability-driven rather than mandatory. A feature gets
+`lib/` only when it owns pure domain helpers that do not belong in a component,
+hook, or API adapter. `shared/` is the dependency-neutral shared kernel: code
+belongs there only when it is generic infrastructure or intentionally consumed
+across feature boundaries. It must not contain feature policy.
 
 ## Completed foundation
 
@@ -52,7 +80,7 @@ code imports only the adapters it actually uses.
 - Moved user/cohort, discussion, moderation, and knowledge behavior into focused domain clients.
 - Moved extracted opt-in demo content and notification data into `devFallbackStore.ts`.
 - Removed the application-wide API facade after migrating callers to feature-owned adapters.
-- Added a typed cross-feature auto-dismiss hook for transient notices.
+- Added an app-owned typed auto-dismiss hook for transient notices.
 - Extracted API-backed app data, view state, browser location handling, and orchestration from `App.tsx` into `app`.
 - Reorganized the frontend around feature ownership, public feature entry points, and a small cross-feature `shared` layer.
 - Replaced browser-readable JWT storage with HttpOnly cookie sessions.

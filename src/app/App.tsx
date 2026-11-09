@@ -1,17 +1,38 @@
+import { lazy, Suspense } from 'react';
 import { Footer } from '@/app/components/Footer';
 import { Header } from '@/app/components/Header';
 import { SessionTimeoutModal } from '@/app/components/SessionTimeoutModal';
-import { AuthScreens } from '@/features/auth';
-import { CalendarPage, UpdatesPage } from '@/features/content';
-import { CarePartnerFeed, PostComposer } from '@/features/discussions';
 import { InvitationModal } from '@/features/invitations';
-import {
-  FloatingChatbotAssistant,
-  KnowledgeBaseExplorer,
-} from '@/features/knowledge';
-import { AuditLedgerModal, ClinicianDashboard } from '@/features/moderation';
+import { AuditLedgerModal } from '@/features/moderation';
 import { NotificationsModal } from '@/features/notifications';
 import { useAppController } from '@/app/hooks/useAppController';
+
+const ClinicianDashboard = lazy(() =>
+  import('@/features/clinician-workspace').then((module) => ({
+    default: module.ClinicianDashboard,
+  }))
+);
+const AuthScreens = lazy(() =>
+  import('@/features/auth').then((module) => ({ default: module.AuthScreens }))
+);
+const CarePartnerFeed = lazy(() =>
+  import('@/features/discussions').then((module) => ({ default: module.CarePartnerFeed }))
+);
+const PostComposer = lazy(() =>
+  import('@/features/discussions').then((module) => ({ default: module.PostComposer }))
+);
+const KnowledgeBaseExplorer = lazy(() =>
+  import('@/features/knowledge').then((module) => ({ default: module.KnowledgeBaseExplorer }))
+);
+const FloatingChatbotAssistant = lazy(() =>
+  import('@/features/knowledge').then((module) => ({ default: module.FloatingChatbotAssistant }))
+);
+const UpdatesPage = lazy(() =>
+  import('@/features/content').then((module) => ({ default: module.UpdatesPage }))
+);
+const CalendarPage = lazy(() =>
+  import('@/features/content').then((module) => ({ default: module.CalendarPage }))
+);
 
 export default function App() {
   const { state, actions } = useAppController();
@@ -53,13 +74,15 @@ export default function App() {
 
   if (isAuthOpen || !currentUser) {
     return (
-      <AuthScreens
-        initialMode={authMode}
-        initialToken={authInviteToken}
-        onLoginSuccess={handleLoginSuccess}
-        sessionNotice={sessionNotice}
-        onCancel={currentUser ? actions.closeAuth : undefined}
-      />
+      <Suspense fallback={<div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19]" />}>
+        <AuthScreens
+          initialMode={authMode}
+          initialToken={authInviteToken}
+          onLoginSuccess={handleLoginSuccess}
+          sessionNotice={sessionNotice}
+          onCancel={currentUser ? actions.closeAuth : undefined}
+        />
+      </Suspense>
     );
   }
 
@@ -81,6 +104,13 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 pb-10 md:pb-12 xl:pb-8">
+        <Suspense
+          fallback={(
+            <div className="max-w-6xl mx-auto px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+              Loading...
+            </div>
+          )}
+        >
         {activeTab === 'feed' && (
           <CarePartnerFeed
             currentUser={currentUser}
@@ -111,15 +141,23 @@ export default function App() {
         )}
 
         {activeTab === 'moderation' && (
-          <ClinicianDashboard
-            currentUser={currentUser}
-            cohorts={cohorts}
-            onQueueUpdated={handleQueueUpdated}
-            onOpenAudit={actions.openAudit}
-            onOpenInvite={actions.openInvite}
-            onCohortCreated={actions.cohortCreated}
-            onOpenDiscussion={handleOpenDiscussion}
-          />
+          <Suspense
+            fallback={(
+              <div className="max-w-6xl mx-auto px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                Loading dashboard...
+              </div>
+            )}
+          >
+            <ClinicianDashboard
+              currentUser={currentUser}
+              cohorts={cohorts}
+              onQueueUpdated={handleQueueUpdated}
+              onOpenAudit={actions.openAudit}
+              onOpenInvite={actions.openInvite}
+              onCohortCreated={actions.cohortCreated}
+              onOpenDiscussion={handleOpenDiscussion}
+            />
+          </Suspense>
         )}
 
         {activeTab === 'knowledge' && (
@@ -151,20 +189,23 @@ export default function App() {
             </div>
           </div>
         )}
+        </Suspense>
       </main>
 
       {/* Official Institutional Footer */}
       <Footer />
 
       {/* PERSISTENT FLOATING CLINICAL CHATBOT (Circle button on every view + floating chat window) */}
-      <FloatingChatbotAssistant
-        currentUser={currentUser}
-        isOpen={isAssistantOpen}
-        prefillRequest={assistantPrefill}
-        onToggle={actions.toggleAssistant}
-        onClose={actions.closeAssistant}
-        onCreateDiscussion={actions.createDiscussion}
-      />
+      <Suspense fallback={null}>
+        <FloatingChatbotAssistant
+          currentUser={currentUser}
+          isOpen={isAssistantOpen}
+          prefillRequest={assistantPrefill}
+          onToggle={actions.toggleAssistant}
+          onClose={actions.closeAssistant}
+          onCreateDiscussion={actions.createDiscussion}
+        />
+      </Suspense>
 
       <InvitationModal
         isOpen={isInviteOpen}

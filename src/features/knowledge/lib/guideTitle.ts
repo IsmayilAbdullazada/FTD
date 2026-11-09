@@ -86,3 +86,4 @@ export function suggestGuideTitle(fileName: string, firstPageText?: string): str
     .map((w) => (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
     .join(' ');
 }
+

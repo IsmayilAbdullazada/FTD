@@ -4,13 +4,17 @@ import { cleanPdfText } from '@/shared/lib/cleanPdfText';
 import {
   ChatbotGuideFile,
   ChatbotGuideTestResult,
-  CurrentUser,
   GuideCondition,
   GuidePageData,
-} from '@/types';
+} from '@/features/knowledge/types';
+import type { CurrentUser } from '@/types';
 import {
   suggestGuideTitle,
-} from '@/features/moderation/lib/guideTitle';
+} from '@/features/knowledge/lib/guideTitle';
+import {
+  filterGuides,
+  replaceGuide,
+} from '@/features/knowledge/lib/guideWorkflow';
 
 interface UseGuideManagementOptions {
   currentUser: CurrentUser;
@@ -101,9 +105,7 @@ export function useGuideManagement({
   const handleToggleGuide = async (guide: ChatbotGuideFile) => {
     try {
       const res = await guideApi.toggleChatbotGuide(guide.id);
-      setChatbotGuides((prev) =>
-        prev.map((g) => (g.id === guide.id ? { ...g, isActive: res.guide.isActive } : g))
-      );
+      setChatbotGuides((previous) => replaceGuide(previous, res.guide));
       setActionSuccessNotice(
         res.guide.isActive
           ? `Guide "${guide.title}" activated. Assistant will now use this document.`
@@ -196,7 +198,8 @@ export function useGuideManagement({
 
   const handleQuickApprove = async (guide: ChatbotGuideFile) => {
     try {
-      await guideApi.approveChatbotGuide(guide.id);
+      const response = await guideApi.approveChatbotGuide(guide.id);
+      setChatbotGuides((previous) => replaceGuide(previous, response.guide));
       setActionSuccessNotice(`Approved "${guide.title}" for chatbot!`);
       setTimeout(() => setActionSuccessNotice(null), 3500);
       loadChatbotGuides();
@@ -391,23 +394,11 @@ export function useGuideManagement({
     }
   };
 
-  const filteredGuides = chatbotGuides
-    .filter((g) => {
-      if (guideStatusFilter === 'DRAFT') return g.status === 'DRAFT';
-      if (guideStatusFilter === 'APPROVED') return g.status === 'APPROVED' || !g.status;
-      return true;
-    })
-    .filter((g) => {
-      const q = guideSearchFilter.toLowerCase();
-      return (
-        !q ||
-        g.title.toLowerCase().includes(q) ||
-        g.fileName.toLowerCase().includes(q) ||
-        (g.publisher && g.publisher.toLowerCase().includes(q)) ||
-        (g.year && g.year.toLowerCase().includes(q)) ||
-        g.content.toLowerCase().includes(q)
-      );
-    });
+  const filteredGuides = filterGuides(
+    chatbotGuides,
+    guideStatusFilter,
+    guideSearchFilter,
+  );
 
   return {
     chatbotGuides,
@@ -469,3 +460,4 @@ export function useGuideManagement({
     handleRunTestQuery,
   };
 }
+

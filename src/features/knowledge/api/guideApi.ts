@@ -4,7 +4,7 @@ import {
   ChatbotKnowledgeConfig,
   GuideCondition,
   GuidePageData,
-} from '@/types';
+} from '@/features/knowledge/types';
 import { apiFetch } from '@/shared/api/httpClient';
 
 interface UploadGuidePayload {

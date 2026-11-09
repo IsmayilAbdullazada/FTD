@@ -58,9 +58,16 @@ code imports only the adapters it actually uses.
 - Replaced browser-readable JWT storage with HttpOnly cookie sessions.
 - Split clinician guide, discussion, and member/cohort behavior into feature hooks.
 - Split the clinician discussions, cohorts, and members views into focused tab components while preserving their markup and styling.
+- Added a `clinician-workspace` composition feature with dedicated header and navigation components.
+- Moved discussion, community, moderation, and knowledge panels, hooks, dialogs, and helpers to their domain owners.
+- Reduced `ClinicianDashboard.tsx` from 2,801 lines to a 497-line composition layer.
+- Moved guide contracts from the global type package into `features/knowledge/types.ts`.
+- Added pure, tested state transitions for moderation filtering and redaction, discussion policy changes, member reassignment, and guide workflows.
+- Added keyboard activation for dashboard and cohort cards plus dialog focus restoration and accessible dialog semantics.
+- Lazy-loaded major workspaces, reducing the initial production JavaScript bundle from approximately 840 kB to 363 kB.
 
-## Next safe extractions
+## Next improvements
 
-1. Continue splitting `ClinicianDashboard.tsx` along its existing queue, guide, and modal boundaries.
-2. Move feature-local contracts out of the shared `types` package as ownership becomes clear.
-3. Add route-level lazy loading to reduce the main bundle after visual parity is established.
+1. Move additional discussion and community contracts out of the global type package when their remaining shared development fixtures are retired.
+2. Introduce a server-state library only if cache synchronization across screens becomes difficult to maintain with the current feature hooks.
+3. Add browser-level accessibility checks when the project adopts a browser test dependency.

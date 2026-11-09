@@ -61,6 +61,12 @@ export function CohortsTab({
               <div
                 key={cohort.id}
                 onClick={() => onSelectCohort(cohort.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onSelectCohort(cohort.id);
+                  }
+                }}
                 className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 space-y-3.5 flex flex-col justify-between cursor-pointer group hover:border-[#002D72] dark:hover:border-blue-500 hover:shadow-xs transition-all text-left"
                 role="button"
                 tabIndex={0}
@@ -101,3 +107,4 @@ export function CohortsTab({
     </div>
   );
 }
+

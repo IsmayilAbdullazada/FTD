@@ -82,7 +82,6 @@ const health = async (_req: express.Request, res: express.Response) => {
     res.status(503).json({ status: "unhealthy", database: "disconnected" });
   }
 };
-app.get("/api/health", health);
 app.get("/api/v1/health", health);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);

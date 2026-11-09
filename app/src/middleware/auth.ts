@@ -51,21 +51,6 @@ async function authenticatedUser(token: string): Promise<AuthenticatedUser> {
   return { id: user.id, email: user.email, role: user.role };
 }
 
-export async function optionalAuthenticate(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const token = sessionToken(req);
-  if (!token) return next();
-  try {
-    req.user = await authenticatedUser(token);
-    next();
-  } catch {
-    next();
-  }
-}
-
 export async function authenticateToken(
   req: Request,
   res: Response,

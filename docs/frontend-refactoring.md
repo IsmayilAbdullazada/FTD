@@ -90,7 +90,7 @@ across feature boundaries. It must not contain feature policy.
 - Moved discussion, community, moderation, and knowledge panels, hooks, dialogs, and helpers to their domain owners.
 - Reduced `ClinicianDashboard.tsx` from 2,801 lines to a 497-line composition layer.
 - Moved guide contracts from the global type package into `features/knowledge/types.ts`.
-- Added pure, tested state transitions for moderation filtering and redaction, discussion policy changes, member reassignment, and guide workflows.
+- Added pure state-transition helpers for moderation filtering and redaction, discussion policy changes, member reassignment, and guide workflows.
 - Added keyboard activation for dashboard and cohort cards plus dialog focus restoration and accessible dialog semantics.
 - Lazy-loaded major workspaces, reducing the initial production JavaScript bundle from approximately 840 kB to 363 kB.
 

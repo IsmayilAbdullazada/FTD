@@ -1,3 +1,4 @@
+import { postAudience } from '../posts/postAccess.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { query } from '../../config/db.js';
@@ -6,6 +7,7 @@ import { isStaffRole } from '../../lib/roles.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 const textQuery = z
   .object({
     query: z.string().trim().min(2).max(2000).optional(),
@@ -21,10 +23,7 @@ async function discussionMatches(term: string, userId: string, role: string) {
     ts_rank(to_tsvector('english',p.title||' '||p.sanitized_content),websearch_to_tsquery('english',$1)) score,
     (SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.status='APPROVED')::int reply_count
     FROM posts p WHERE p.status='APPROVED' AND to_tsvector('english',p.title||' '||p.sanitized_content) @@ websearch_to_tsquery('english',$1)
-    AND ($3::boolean OR (p.condition IN (COALESCE((SELECT condition FROM users WHERE id=$2),'FTD'),'BOTH')
-      AND EXISTS(SELECT 1 FROM post_groups pg WHERE pg.post_id=p.id AND
-        (pg.cohort_id='group-general' OR EXISTS(SELECT 1 FROM cohort_members cm
-          WHERE cm.cohort_id=pg.cohort_id AND cm.user_id=$2)))))
+    AND ($3::boolean OR (${postAudience('$2')}))
     ORDER BY score DESC LIMIT 5`,
     [term, userId, isStaffRole(role)],
   );
@@ -32,7 +31,6 @@ async function discussionMatches(term: string, userId: string, role: string) {
 }
 router.post(
   '/deflect',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const parsed = textQuery.parse(req.body);
     const term = parsed.draftText || parsed.query || parsed.message!;
@@ -74,7 +72,6 @@ router.post(
 );
 router.post(
   '/chat',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const parsed = textQuery.parse(req.body);
     const term = parsed.query || parsed.message!;

@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { lazy, Suspense, useMemo } from 'react';
 import { Footer } from '@/app/components/Footer';
 import { Header } from '@/app/components/Header';
 import { SessionTimeoutModal } from '@/app/components/SessionTimeoutModal';
@@ -46,7 +47,7 @@ const CalendarPage = lazy(() =>
   })),
 );
 
-export default function App() {
+function AppContent() {
   const { state, actions } = useAppController();
   const {
     currentUser,
@@ -84,6 +85,10 @@ export default function App() {
     openResource: handleOpenResourceFromDeflection,
   } = actions;
 
+  const initialQueue = useMemo(
+    () => ({ items: pendingQueue, totalPending: pendingTriageCount }),
+    [pendingQueue, pendingTriageCount],
+  );
   if (isAuthOpen || !currentUser) {
     return (
       <Suspense
@@ -165,6 +170,7 @@ export default function App() {
               }
             >
               <ClinicianDashboard
+                initialQueue={initialQueue}
                 currentUser={currentUser}
                 cohorts={cohorts}
                 onQueueUpdated={handleQueueUpdated}
@@ -251,5 +257,13 @@ export default function App() {
         onTimeout={actions.sessionTimedOut}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 }

@@ -1,3 +1,4 @@
+/* eslint no-control-regex: "off" -- Deliberately reject or remove control characters from input. */
 import { z } from 'zod';
 
 function isHttpUrl(value: string): boolean {

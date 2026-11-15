@@ -16,10 +16,7 @@ export const communityApi = {
   },
 
   // Groups / Cohorts
-  getCohorts: async (options?: {
-    userId?: string;
-    role?: string;
-  }): Promise<CommunityGroup[]> => {
+  getCohorts: async (): Promise<CommunityGroup[]> => {
     return safeFetchJson('/api/v1/cohorts', undefined);
   },
 

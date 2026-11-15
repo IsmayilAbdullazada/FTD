@@ -4,9 +4,9 @@ import { asyncHandler, HttpError } from '../../lib/http.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 router.get(
   '/',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const result = await query(
       `SELECT * FROM notifications WHERE recipient_user_id=$1 ORDER BY created_at DESC LIMIT 100`,
@@ -26,7 +26,6 @@ router.get(
 );
 router.post(
   '/:id/read',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const result = await query(
       `UPDATE notifications SET read_at=COALESCE(read_at,NOW()) WHERE id=$1 AND recipient_user_id=$2 RETURNING id`,

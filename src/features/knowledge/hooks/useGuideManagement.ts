@@ -22,7 +22,6 @@ interface UseGuideManagementOptions {
 }
 
 export function useGuideManagement({
-  currentUser,
   onQueueUpdated,
   setActionSuccessNotice,
 }: UseGuideManagementOptions) {
@@ -427,8 +426,6 @@ export function useGuideManagement({
           mimeType: uploadFileName.toLowerCase().endsWith('.pdf')
             ? 'application/pdf'
             : 'text/plain',
-          uploadedBy: currentUser.id,
-          uploadedByName: `${currentUser.firstName} ${currentUser.lastName}`,
         });
         setActionSuccessNotice(
           isApproved

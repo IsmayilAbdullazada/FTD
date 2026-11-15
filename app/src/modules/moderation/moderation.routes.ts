@@ -8,10 +8,10 @@ import { paginationMeta, parsePagination } from '../../lib/pagination.js';
 import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 
 router.get(
   '/queue',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const { page, pageSize, limit, offset } = parsePagination(req.query);
@@ -91,7 +91,6 @@ router.get(
 
 router.post(
   '/action',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const input = z
@@ -225,7 +224,6 @@ router.post(
 
 router.get(
   '/audit',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (_req, res) => {
     const result = await query(

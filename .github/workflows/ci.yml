@@ -1,5 +1,7 @@
 name: Checks
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -34,9 +36,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - run: npm --prefix app audit --audit-level=high
+      - run: npm audit --audit-level=high
       - run: npm ci
       - run: npm --prefix app ci
-      - run: npm run lint
+      - run: npm run typecheck
       - run: npm run lint:eslint
       - run: npm run format:check
       - run: npm test

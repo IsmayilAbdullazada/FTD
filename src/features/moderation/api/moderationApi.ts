@@ -2,7 +2,6 @@ import {
   Audience,
   ModerationAuditEvent,
   ModeratorPrivateNote,
-  Post,
   QueueItem,
   RejectionReason,
 } from '@/types';
@@ -50,7 +49,6 @@ export const moderationApi = {
     payload: {
       message: string;
       action?: 'KEEP_PENDING' | 'PUBLISH';
-      senderId?: string;
     },
   ): Promise<{
     success: boolean;
@@ -59,14 +57,17 @@ export const moderationApi = {
     notes: ModeratorPrivateNote[];
     message: string;
   }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/private-note`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: payload.message,
-        action: payload.action,
-      }),
-    });
+    return safeFetchJson(
+      `/api/v1/posts/${encodeURIComponent(postId)}/private-note`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: payload.message,
+          action: payload.action,
+        }),
+      },
+    );
   },
 
   // Audit Events

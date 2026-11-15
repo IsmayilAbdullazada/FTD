@@ -5,10 +5,8 @@ import { Audience, Comment, Post } from '@/types';
 export const discussionApi = {
   // Posts Feed
   getPosts: async (options: {
-    role: string;
     groupId?: string;
     status?: string;
-    userId?: string;
     condition?: string;
     page?: number;
     pageSize?: number;
@@ -31,17 +29,17 @@ export const discussionApi = {
 
   getPostDetails: async (
     postId: string,
-    role: string,
-    userId: string,
   ): Promise<{ post: Post; comments: Comment[] }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}`, undefined);
+    return safeFetchJson(
+      `/api/v1/posts/${encodeURIComponent(postId)}`,
+      undefined,
+    );
   },
 
   createPost: async (payload: {
     title: string;
     content: string;
     targetCohortId?: string;
-    authorId: string;
     condition?: Audience;
   }): Promise<{
     postId: string;
@@ -50,33 +48,33 @@ export const discussionApi = {
     hasPhiAlerts: boolean;
     phiAlertsCount: number;
   }> => {
-    const { authorId: _authorId, ...requestPayload } = payload;
     return safeFetchJson('/api/v1/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload),
+      body: JSON.stringify(payload),
     });
   },
 
   addComment: async (
     postId: string,
     content: string,
-    authorId: string,
     parentCommentId?: string,
   ): Promise<{ comment: Comment; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, parentCommentId }),
-    });
+    return safeFetchJson(
+      `/api/v1/posts/${encodeURIComponent(postId)}/comments`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, parentCommentId }),
+      },
+    );
   },
 
   closePost: async (
     postId: string,
     isClosed: boolean,
-    moderatorId?: string,
   ): Promise<{ post: Post; isClosed: boolean; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/close`, {
+    return safeFetchJson(`/api/v1/posts/${encodeURIComponent(postId)}/close`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isClosed }),
@@ -87,18 +85,20 @@ export const discussionApi = {
     postId: string,
     allowUnmoderated: boolean,
   ): Promise<{ post: Post; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/unmoderated-replies`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ allowUnmoderatedReplies: allowUnmoderated }),
-    });
+    return safeFetchJson(
+      `/api/v1/posts/${encodeURIComponent(postId)}/unmoderated-replies`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowUnmoderatedReplies: allowUnmoderated }),
+      },
+    );
   },
 
   togglePostUpvote: async (
     postId: string,
-    userId: string,
   ): Promise<{ success: boolean; upvotes: number; isUpvoted: boolean }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/upvote`, {
+    return safeFetchJson(`/api/v1/posts/${encodeURIComponent(postId)}/upvote`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -109,7 +109,7 @@ export const discussionApi = {
     postId: string,
     payload: { title?: string; content?: string; targetCohortId?: string },
   ): Promise<{ post: Post; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}`, {
+    return safeFetchJson(`/api/v1/posts/${encodeURIComponent(postId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -119,7 +119,9 @@ export const discussionApi = {
   deletePost: async (
     postId: string,
   ): Promise<{ success: boolean; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}`, { method: 'DELETE' });
+    return safeFetchJson(`/api/v1/posts/${encodeURIComponent(postId)}`, {
+      method: 'DELETE',
+    });
   },
 
   updateComment: async (
@@ -127,19 +129,25 @@ export const discussionApi = {
     commentId: string,
     content: string,
   ): Promise<{ comment: Comment; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/comments/${commentId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
+    return safeFetchJson(
+      `/api/v1/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      },
+    );
   },
 
   deleteComment: async (
     postId: string,
     commentId: string,
   ): Promise<{ success: boolean; message: string }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}/comments/${commentId}`, {
-      method: 'DELETE',
-    });
+    return safeFetchJson(
+      `/api/v1/posts/${encodeURIComponent(postId)}/comments/${encodeURIComponent(commentId)}`,
+      {
+        method: 'DELETE',
+      },
+    );
   },
 };

@@ -5,7 +5,7 @@ import {
   filterMembers,
   moveMemberToGroup,
 } from '@/features/community/lib/memberFilters';
-import type { CommunityGroup, Condition, GroupMember } from '@/types';
+import type { Condition, GroupMember } from '@/types';
 
 interface UseMemberManagementOptions {
   audienceFilter: 'all' | Condition;

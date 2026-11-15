@@ -3,9 +3,10 @@ import { safeFetchJson } from '@/shared/api/httpClient';
 import { DirectMessage } from '@/types';
 
 export const notificationApi = {
-  getNotifications(
-    userId: string,
-  ): Promise<{ unreadCount: number; messages: DirectMessage[] }> {
+  getNotifications(): Promise<{
+    unreadCount: number;
+    messages: DirectMessage[];
+  }> {
     return safeFetchJson('/api/v1/notifications', undefined);
   },
 

@@ -1,3 +1,4 @@
+import { useAuthState } from '../hooks/AuthStateContext';
 import {
   AlertCircle,
   ArrowRight,
@@ -8,49 +9,28 @@ import {
   Mail,
 } from 'lucide-react';
 
-import type { AuthScreensProps, useAuthScreens } from '../hooks/useAuthScreens';
+export function LoginPanel() {
+  const {
+    mode,
+    setMode,
+    showPassword,
+    setShowPassword,
+    loginIdentifier,
+    setLoginIdentifier,
+    loginPassword,
+    setLoginPassword,
+    rememberMe,
+    setRememberMe,
+    isLoggingIn,
+    loginError,
+    setForgotEmail,
+    setResetError,
+    setResetSuccessMessage,
+    setRegisterError,
+    handleLogin,
+    sessionNotice,
+  } = useAuthState();
 
-type Props = Pick<
-  ReturnType<typeof useAuthScreens>,
-  | 'mode'
-  | 'setMode'
-  | 'showPassword'
-  | 'setShowPassword'
-  | 'loginIdentifier'
-  | 'setLoginIdentifier'
-  | 'loginPassword'
-  | 'setLoginPassword'
-  | 'rememberMe'
-  | 'setRememberMe'
-  | 'isLoggingIn'
-  | 'loginError'
-  | 'setForgotEmail'
-  | 'setResetError'
-  | 'setResetSuccessMessage'
-  | 'setRegisterError'
-  | 'handleLogin'
-> &
-  Pick<AuthScreensProps, 'sessionNotice'>;
-export function LoginPanel({
-  mode,
-  setMode,
-  showPassword,
-  setShowPassword,
-  loginIdentifier,
-  setLoginIdentifier,
-  loginPassword,
-  setLoginPassword,
-  rememberMe,
-  setRememberMe,
-  isLoggingIn,
-  loginError,
-  setForgotEmail,
-  setResetError,
-  setResetSuccessMessage,
-  setRegisterError,
-  handleLogin,
-  sessionNotice,
-}: Props) {
   return (
     <>
       {mode === 'login' && (

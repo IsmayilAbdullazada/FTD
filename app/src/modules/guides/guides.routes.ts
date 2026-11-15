@@ -1,8 +1,8 @@
+import { uploadsDirectory } from '../../services/uploads.js';
 import type { PoolClient } from 'pg';
 import type { GuideRow } from '../../db/rows.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Router } from 'express';
 import { PDFParse } from 'pdf-parse';
 import { z } from 'zod';
@@ -12,10 +12,7 @@ import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 import { publicAssetUrl } from '../../lib/urlValidation.js';
 
 const router = Router();
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../../..',
-);
+router.use(authenticateToken);
 const pagesSchema = z
   .array(
     z.object({
@@ -116,7 +113,6 @@ async function reindex(client: PoolClient, guide: GuideRow) {
 
 router.get(
   '/',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (_req, res) => {
     const rows = await query(
@@ -138,7 +134,6 @@ router.get(
 );
 router.post(
   '/',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const i = guideInput.parse(req.body);
@@ -181,10 +176,16 @@ router.post(
 );
 router.put(
   '/:id',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
-    const i = guideInput.partial().parse(req.body);
+    const i = guideInput
+      .partial()
+      .extend({
+        isActive: z.boolean().optional(),
+        status: z.enum(['DRAFT', 'APPROVED']).optional(),
+        pages: z.array(pagesSchema.unwrap().element).optional(),
+      })
+      .parse(req.body);
     const r = await transaction(async (client) => {
       const updated = (
         await client.query(
@@ -222,7 +223,6 @@ router.put(
 );
 router.patch(
   '/:id/approve',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const r = await transaction(async (client) => {
@@ -248,7 +248,6 @@ router.patch(
 );
 router.patch(
   '/:id/toggle',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const r = await transaction(async (client) => {
@@ -274,7 +273,6 @@ router.patch(
 );
 router.delete(
   '/:id',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const r = await query(
@@ -322,10 +320,14 @@ export const extractPdf = asyncHandler(async (req, res) => {
       chunkCount: words ? Math.ceil(words / 340) : 0,
     };
   });
-  const dir = path.join(repoRoot, 'public', 'uploads', 'guides');
+  const dir = uploadsDirectory;
   await fs.mkdir(dir, { recursive: true });
   const stored = `guide_${Date.now()}_${safe}`;
   await fs.writeFile(path.join(dir, stored), buffer);
+  await query(
+    'INSERT INTO guide_uploads(storage_name,uploaded_by) VALUES($1,$2)',
+    [stored, req.user!.id],
+  );
   const text = pages.map((p) => p.text).join('\n\n');
   res.json({
     text,

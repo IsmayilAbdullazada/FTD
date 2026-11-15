@@ -1,59 +1,35 @@
+import { useAuthState } from '../hooks/AuthStateContext';
 import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
-  ExternalLink,
   KeyRound,
   Mail,
 } from 'lucide-react';
 
-import type { useAuthScreens } from '../hooks/useAuthScreens';
+export function RecoveryPanel() {
+  const {
+    mode,
+    setMode,
+    forgotEmail,
+    setForgotEmail,
+    forgotStep,
+    setForgotStep,
+    resetCode,
+    setResetCode,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    isSendingReset,
+    resetError,
+    setResetError,
+    resetSuccessMessage,
+    setResetSuccessMessage,
+    handleRequestPasswordReset,
+    handleConfirmPasswordReset,
+  } = useAuthState();
 
-type Props = Pick<
-  ReturnType<typeof useAuthScreens>,
-  | 'mode'
-  | 'setMode'
-  | 'forgotEmail'
-  | 'setForgotEmail'
-  | 'forgotStep'
-  | 'setForgotStep'
-  | 'resetCode'
-  | 'setResetCode'
-  | 'newPassword'
-  | 'setNewPassword'
-  | 'confirmPassword'
-  | 'setConfirmPassword'
-  | 'isSendingReset'
-  | 'resetError'
-  | 'setResetError'
-  | 'resetSuccessMessage'
-  | 'setResetSuccessMessage'
-  | 'emailPreviewUrl'
-  | 'handleRequestPasswordReset'
-  | 'handleConfirmPasswordReset'
->;
-export function RecoveryPanel({
-  mode,
-  setMode,
-  forgotEmail,
-  setForgotEmail,
-  forgotStep,
-  setForgotStep,
-  resetCode,
-  setResetCode,
-  newPassword,
-  setNewPassword,
-  confirmPassword,
-  setConfirmPassword,
-  isSendingReset,
-  resetError,
-  setResetError,
-  resetSuccessMessage,
-  setResetSuccessMessage,
-  emailPreviewUrl,
-  handleRequestPasswordReset,
-  handleConfirmPasswordReset,
-}: Props) {
   return (
     <>
       {mode === 'forgot-password' && (
@@ -77,7 +53,7 @@ export function RecoveryPanel({
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {forgotStep === 'request'
-                ? "Enter your email and we'll send you a 6-digit code to reset your password."
+                ? "Enter your email and we'll send a reset link and verification code."
                 : `Enter the 6-digit code sent to ${forgotEmail}.`}
             </p>
           </div>
@@ -94,19 +70,6 @@ export function RecoveryPanel({
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
               <div className="flex-1">
                 <div>{resetSuccessMessage}</div>
-                {emailPreviewUrl && (
-                  <div className="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60">
-                    <a
-                      href={emailPreviewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 underline"
-                    >
-                      <span>Preview sent reset email</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                )}
               </div>
             </div>
           )}

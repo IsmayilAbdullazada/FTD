@@ -1,3 +1,5 @@
+import { cleanupUploads } from './services/uploads.js';
+import { processRecoveryJob } from './services/recovery.js';
 import { logger } from './lib/logger.js';
 import http from 'node:http';
 import { app } from './app.js';
@@ -9,10 +11,21 @@ server.listen(env.PORT, '0.0.0.0', () =>
   logger.info(`[FTD backend] Listening on http://0.0.0.0:${env.PORT}`),
 );
 
+const recoveryTimer = setInterval(() => {
+  void processRecoveryJob();
+}, 5000);
+recoveryTimer.unref();
+const uploadCleanupTimer = setInterval(() => {
+  void cleanupUploads();
+}, 3600000);
+uploadCleanupTimer.unref();
+void cleanupUploads();
 let closing = false;
 async function shutdown(signal: string) {
   if (closing) return;
   closing = true;
+  clearInterval(recoveryTimer);
+  clearInterval(uploadCleanupTimer);
   logger.info(`[FTD backend] ${signal}; shutting down`);
   server.close(async () => {
     await pool.end();

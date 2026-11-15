@@ -92,4 +92,8 @@ async function runMigrations() {
   }
 }
 
-void runMigrations();
+void runMigrations().catch(async (error) => {
+  logger.error('Migration connection failed', error);
+  process.exitCode = 1;
+  await pool.end();
+});

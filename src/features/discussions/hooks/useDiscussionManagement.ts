@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import { useRef } from 'react';
 import { reportError } from '@/shared/lib/logger';
 import { discussionApi } from '@/features/discussions/api/discussionApi';
@@ -18,7 +19,6 @@ interface UseDiscussionManagementOptions {
 }
 
 export const useDiscussionManagement = ({
-  currentUser,
   audienceFilter,
   onQueueUpdated,
   setActionSuccessNotice,
@@ -43,8 +43,6 @@ export const useDiscussionManagement = ({
         pageSize: 10,
         search: searchPostsQuery,
         policy: postsPolicyFilter,
-        role: currentUser.role,
-        userId: currentUser.id,
         condition: audienceFilter === 'all' ? undefined : audienceFilter,
       });
       if (version !== requestVersion.current) return;
@@ -54,8 +52,7 @@ export const useDiscussionManagement = ({
     } catch (error) {
       reportError('Failed to load published posts:', error);
     } finally {
-      if (version !== requestVersion.current) return;
-      setLoadingPosts(false);
+      if (version === requestVersion.current) setLoadingPosts(false);
     }
   };
 
@@ -92,11 +89,7 @@ export const useDiscussionManagement = ({
     setIsTogglingClose(true);
     const targetClosed = !post.isClosed;
     try {
-      const response = await discussionApi.closePost(
-        post.id,
-        targetClosed,
-        currentUser.id,
-      );
+      const response = await discussionApi.closePost(post.id, targetClosed);
       setPublishedPosts((previous) => replacePost(previous, response.post));
       setActionSuccessNotice(
         targetClosed
@@ -118,8 +111,9 @@ export const useDiscussionManagement = ({
   useEffect(() => {
     setPage(1);
   }, [audienceFilter, searchPostsQuery, postsPolicyFilter]);
+  const loadPostsEffect = useEffectEvent(() => loadPublishedPosts());
   useEffect(() => {
-    void loadPublishedPosts();
+    loadPostsEffect();
   }, [page, audienceFilter, searchPostsQuery, postsPolicyFilter]);
 
   const filteredDiscussions = filterDiscussions(

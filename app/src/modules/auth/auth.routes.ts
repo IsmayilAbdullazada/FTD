@@ -1,7 +1,3 @@
-const dummyPasswordHash = bcrypt.hashSync(
-  crypto.randomBytes(32).toString('hex'),
-  12,
-);
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -16,7 +12,12 @@ import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 import { authLimiter } from '../../middleware/rateLimiter.js';
 import { clearSessionCookie, setSessionCookie } from '../../lib/session.js';
 
+const dummyPasswordHash = bcrypt.hashSync(
+  crypto.randomBytes(32).toString('hex'),
+  12,
+);
 const router = Router();
+router.use(authLimiter);
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
 const escapeHtml = (value: string) =>
@@ -51,7 +52,6 @@ const tokenFor = (user: {
 
 router.post(
   '/login',
-  authLimiter,
   asyncHandler(async (req, res) => {
     const { identifier, password, rememberMe } = z
       .object({
@@ -75,16 +75,23 @@ router.post(
     setSessionCookie(res, token, rememberMe);
     res.json({
       success: true,
-      ...(env.NODE_ENV === 'test' ? { token } : {}),
       user: currentUser(user as Parameters<typeof currentUser>[0]),
     });
   }),
 );
 
-router.post('/logout', (_req, res) => {
-  clearSessionCookie(res);
-  res.json({ success: true });
-});
+router.post(
+  '/logout',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    await query(
+      'UPDATE users SET session_version=session_version+1 WHERE id=$1',
+      [req.user!.id],
+    );
+    clearSessionCookie(res);
+    res.json({ success: true });
+  }),
+);
 
 router.post(
   '/invitations',
@@ -142,6 +149,10 @@ router.post(
 router.get(
   '/invitations/:token',
   asyncHandler(async (req, res) => {
+    await query(
+      "UPDATE invitations SET status='EXPIRED' WHERE token_hash=$1 AND status='DISPATCHED' AND expires_at<=NOW()",
+      [sha256(String(req.params.token))],
+    );
     const result = await query(
       `SELECT email,first_name,last_name,condition,primary_cohort_slug,status,expires_at FROM invitations WHERE token_hash=$1`,
       [sha256(String(req.params.token))],
@@ -169,7 +180,6 @@ router.get(
 
 router.post(
   '/register',
-  authLimiter,
   asyncHandler(async (req, res) => {
     const input = z
       .object({
@@ -225,7 +235,6 @@ router.post(
     setSessionCookie(res, token, true);
     res.status(201).json({
       success: true,
-      ...(env.NODE_ENV === 'test' ? { token } : {}),
       user: currentUser(user as Parameters<typeof currentUser>[0]),
     });
   }),
@@ -233,61 +242,21 @@ router.post(
 
 router.post(
   '/forgot-password',
-  authLimiter,
   asyncHandler(async (req, res) => {
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
-    const found = await query(
-      `SELECT id FROM users WHERE LOWER(email)=LOWER($1) AND is_active`,
-      [email],
-    );
-    const generic = {
+    await query('INSERT INTO password_recovery_jobs(email) VALUES($1)', [
+      email,
+    ]);
+    res.json({
       success: true,
-      message: 'If that account exists, a reset code has been issued.',
-    };
-    if (!found.rows[0]) {
-      res.json(generic);
-      return;
-    }
-    const resetToken = crypto.randomBytes(32).toString('base64url');
-    const code = String(crypto.randomInt(100000, 1_000_000));
-    const resetUrl = `${env.APP_URL.replace(/\/$/, '')}/?tab=reset-password&email=${encodeURIComponent(email)}&resetToken=${encodeURIComponent(resetToken)}`;
-    await query(
-      `DELETE FROM password_resets WHERE user_id=$1 AND consumed_at IS NULL`,
-      [found.rows[0].id],
-    );
-    await query(
-      `INSERT INTO password_resets(user_id,token_hash,code_hash,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '20 minutes')`,
-      [found.rows[0].id, sha256(resetToken), await bcrypt.hash(code, 10)],
-    );
-    const delivery = await sendEmail({
-      to: email,
-      subject: 'Hopkins Care Partner Connect password reset',
-      text: `Open this password reset link: ${resetUrl}\n\nThe link expires in 20 minutes.`,
-      html: `<p><a href="${escapeHtml(resetUrl)}">Reset your password</a></p><p>Both expire in 20 minutes.</p>`,
+      message: 'If that account exists, recovery instructions will be emailed.',
+      requiresEmailLink: true,
     });
-    await sendEmail({
-      to: email,
-      subject: 'Password reset verification code',
-      text: `Your verification code is ${code}. It expires in 20 minutes.`,
-      html: `<p>Your verification code is ${escapeHtml(code)}. It expires in 20 minutes.</p>`,
-    });
-    res.json(
-      env.NODE_ENV === 'production' || env.ENABLE_DEV_AUTH_PREVIEWS !== 'true'
-        ? { ...generic, requiresEmailLink: true }
-        : {
-            ...generic,
-            ...delivery,
-            resetToken,
-            testCode: code,
-            requiresEmailLink: false,
-          },
-    );
   }),
 );
 
 router.post(
   '/reset-password',
-  authLimiter,
   asyncHandler(async (req, res) => {
     const input = z
       .object({
@@ -352,6 +321,20 @@ router.get(
       `SELECT id,recipient,subject,delivery_status,created_at FROM email_outbox ORDER BY created_at DESC LIMIT 25`,
     );
     res.json(result.rows);
+  }),
+);
+
+router.post(
+  '/invitations/:id/revoke',
+  authenticateToken,
+  requireStaff,
+  asyncHandler(async (req, res) => {
+    const result = await query(
+      "UPDATE invitations SET status='REVOKED' WHERE id=$1 AND status='DISPATCHED' RETURNING id",
+      [req.params.id],
+    );
+    if (!result.rowCount) throw new HttpError(409, 'Invitation is not active');
+    res.json({ success: true });
   }),
 );
 

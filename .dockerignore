@@ -4,3 +4,5 @@
 config/*.env
 .env*
 public/uploads
+
+app/src/db/migrations/*_probe_*.sql

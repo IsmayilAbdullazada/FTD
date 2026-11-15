@@ -1,12 +1,11 @@
 import { DeflectionMatch } from '@/types';
 
-import { apiFetch, safeFetchJson } from '@/shared/api/httpClient';
+import { requestJson, safeFetchJson } from '@/shared/api/httpClient';
 
 export const knowledgeApi = {
   // Pre-submission Typeahead Deflection
   deflectQuery: async (
     draftText: string,
-    userId: string,
   ): Promise<{ deflectionMatches: DeflectionMatch[] }> => {
     return safeFetchJson('/api/v1/knowledge/deflect', {
       method: 'POST',
@@ -19,7 +18,6 @@ export const knowledgeApi = {
   checkDiscussionMatches: async (payload: {
     title: string;
     content: string;
-    userId: string;
   }): Promise<{
     matches: {
       postId: string;
@@ -38,9 +36,7 @@ export const knowledgeApi = {
   },
 
   // Instant discussion pool for real-time keystroke matching
-  getAllDiscussionsPool: async (
-    userId: string,
-  ): Promise<{
+  getAllDiscussionsPool: async (): Promise<{
     pool: {
       id: string;
       title: string;
@@ -64,7 +60,6 @@ export const knowledgeApi = {
   // Closed-loop Assistant Grounded in Verified Institutional Care Guides
   chatWithAssistant: async (
     query: string,
-    userId: string = 'anonymous',
     conversationHistory: Array<{
       role: string;
       content?: string;
@@ -106,18 +101,15 @@ export const knowledgeApi = {
       sectionTitle?: string;
     };
   }> => {
-    const res = await apiFetch('/api/v1/knowledge/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, conversationHistory }),
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(
-        errData.error ||
-          `Knowledge Assistant request failed: ${res.statusText || res.status}`,
-      );
-    }
-    return res.json();
+    return requestJson(
+      '/api/v1/knowledge/chat',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, conversationHistory }),
+      },
+      (response) =>
+        `Knowledge Assistant request failed: ${response.statusText || response.status}`,
+    );
   },
 };

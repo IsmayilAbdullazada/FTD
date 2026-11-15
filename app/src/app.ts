@@ -1,3 +1,8 @@
+import { uploadsDirectory } from './services/uploads.js';
+import { query } from './config/db.js';
+import { asyncHandler } from './lib/http.js';
+import { isStaffRole } from './lib/roles.js';
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +35,11 @@ const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
 );
+app.use((_req, res, next) => {
+  res.locals.requestId = randomUUID();
+  res.setHeader('X-Request-ID', res.locals.requestId);
+  next();
+});
 app.disable('x-powered-by');
 app.set(
   'trust proxy',
@@ -45,21 +55,38 @@ app.use(
     credentials: true,
   }),
 );
-app.use('/api', globalLimiter);
+app.use('/api/v1', (req, res, next) => {
+  if (req.path === '/health' || req.path.startsWith('/auth/')) return next();
+  authenticateToken(req, res, () => globalLimiter(req, res, next));
+});
 app.use('/api', protectCookieSession);
 app.post(
   '/api/v1/chatbot/extract-pdf',
-  express.json({ limit: '18mb' }),
   authenticateToken,
   requireStaff,
+  express.json({ limit: '18mb' }),
   extractPdf,
 );
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 app.use(
   '/uploads/guides',
-  express.static(path.join(repositoryRoot, 'public', 'uploads', 'guides'), {
+  authenticateToken,
+  asyncHandler(async (req, res, next) => {
+    const name = path.basename(req.path);
+    if (isStaffRole(req.user!.role)) return next();
+    const allowed = await query(
+      `SELECT 1 FROM chatbot_guides g JOIN users u ON u.id=$2 WHERE g.pdf_url=$1 AND g.status='APPROVED' AND g.is_active AND g.condition IN(u.condition,'GENERAL') UNION ALL SELECT 1 FROM resources r JOIN users u ON u.id=$2 WHERE r.file_attachment_url=$1 AND r.disease_domain IN(u.condition,'BOTH')`,
+      ['/uploads/guides/' + name, req.user!.id],
+    );
+    if (!allowed.rowCount) throw new HttpError(404, 'PDF not found');
+    next();
+  }),
+  express.static(uploadsDirectory, {
     index: false,
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'private, no-store');
+    },
   }),
 );
 app.use(

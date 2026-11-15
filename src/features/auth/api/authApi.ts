@@ -9,10 +9,6 @@ interface AuthResponse {
 interface ForgotPasswordResponse {
   success: boolean;
   message: string;
-  emailSent?: boolean;
-  previewUrl?: string;
-  resetToken?: string;
-  testCode?: string;
   requiresEmailLink?: boolean;
 }
 

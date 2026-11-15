@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
 import { useFooterClearance } from '@/features/knowledge/hooks/useFooterClearance';
 import { reportError } from '@/shared/lib/logger';
@@ -176,7 +177,9 @@ export const FloatingChatbotAssistant: React.FC<
       setShowHint(false);
       try {
         sessionStorage.setItem('jh_companion_hint_dismissed', 'true');
-      } catch {}
+      } catch {
+        /* Storage may be unavailable in private browsing. */
+      }
       return;
     }
     if (currentUser?.role !== 'CARE_PARTNER') {
@@ -186,7 +189,9 @@ export const FloatingChatbotAssistant: React.FC<
     if (hintDismissedRef.current) return;
     try {
       if (sessionStorage.getItem('jh_companion_hint_dismissed')) return;
-    } catch {}
+    } catch {
+      /* Storage may be unavailable in private browsing. */
+    }
     const timer = setTimeout(() => setShowHint(true), 1800);
     return () => clearTimeout(timer);
   }, [isOpen, currentUser?.role]);
@@ -207,7 +212,9 @@ export const FloatingChatbotAssistant: React.FC<
     setShowHint(false);
     try {
       sessionStorage.setItem('jh_companion_hint_dismissed', 'true');
-    } catch {}
+    } catch {
+      /* Storage may be unavailable in private browsing. */
+    }
   };
 
   const handleOpenFromHint = () => {
@@ -217,9 +224,12 @@ export const FloatingChatbotAssistant: React.FC<
     }
   };
 
+  const resetWelcome = useEffectEvent(() =>
+    setMessages([createWelcomeMessage(currentUser)]),
+  );
   // Reset conversation context when switching persona/condition
   useEffect(() => {
-    setMessages([createWelcomeMessage(currentUser)]);
+    resetWelcome();
   }, [currentUser?.id, currentUser?.condition]);
 
   useEffect(() => {
@@ -291,7 +301,6 @@ export const FloatingChatbotAssistant: React.FC<
     try {
       const res = await knowledgeApi.chatWithAssistant(
         q.trim(),
-        currentUser?.id || 'anonymous',
         historyPayload,
       );
       const botMsg: ChatMessage = {

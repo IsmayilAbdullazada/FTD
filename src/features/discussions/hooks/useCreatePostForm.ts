@@ -17,7 +17,6 @@ interface UseCreatePostFormOptions {
 }
 
 export function useCreatePostForm({
-  currentUser,
   loadPublishedPosts,
   onAudienceReset,
   onPostCreated,
@@ -46,7 +45,6 @@ export function useCreatePostForm({
         title: npTitle.trim(),
         content: npContent.trim(),
         targetCohortId: npGroupId,
-        authorId: currentUser.id,
         condition: npAudience,
       });
       setShowNewPostModal(false);

@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import { contentApi } from '@/features/content/api/contentApi';
 import { reportError } from '@/shared/lib/logger';
 import { Audience, ClinicalResource, CurrentUser } from '@/types';
@@ -11,7 +12,6 @@ export interface KnowledgeBaseExplorerProps {
 
 export function useKnowledgeResources({
   initialResourceId,
-  onClearInitialResource,
   currentUser,
 }: KnowledgeBaseExplorerProps) {
   const [resources, setResources] = useState<ClinicalResource[]>([]);
@@ -47,7 +47,7 @@ export function useKnowledgeResources({
 
   const loadResources = async () => {
     try {
-      const data = await contentApi.getResources(currentUser?.id ?? '');
+      const data = await contentApi.getResources();
       setResources(data);
       if (initialResourceId) {
         const match = data.find((r) => r.id === initialResourceId);
@@ -60,8 +60,9 @@ export function useKnowledgeResources({
     }
   };
 
+  const loadResourcesEffect = useEffectEvent(() => loadResources());
   useEffect(() => {
-    loadResources();
+    loadResourcesEffect();
   }, [initialResourceId, currentUser?.id]);
 
   const categories = [
@@ -145,7 +146,6 @@ export function useKnowledgeResources({
         externalUrl: newExternalUrl.trim() || undefined,
         additionalLinks,
         diseaseDomain: newAudience,
-        authorId: currentUser?.id ?? '',
       });
 
       setResources((prev) => [created, ...prev]);

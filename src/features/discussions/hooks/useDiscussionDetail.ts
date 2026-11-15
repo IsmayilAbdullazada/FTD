@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import { reportError } from '@/shared/lib/logger';
 import { discussionApi } from '@/features/discussions/api/discussionApi';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
@@ -79,11 +80,7 @@ export function useDiscussionDetail({
   const loadComments = async () => {
     setLoadingComments(true);
     try {
-      const res = await discussionApi.getPostDetails(
-        post.id,
-        currentUser.role,
-        currentUser.id,
-      );
+      const res = await discussionApi.getPostDetails(post.id);
       setComments(res.comments || []);
       if (res.post) {
         setPost(res.post);
@@ -96,8 +93,9 @@ export function useDiscussionDetail({
     }
   };
 
+  const loadCommentsEffect = useEffectEvent(() => loadComments());
   useEffect(() => {
-    loadComments();
+    loadCommentsEffect();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [post.id]);
 
@@ -213,7 +211,6 @@ export function useDiscussionDetail({
     try {
       const res = await moderationApi.sendPostPrivateNote(post.id, {
         message: carePrivateReplyText.trim(),
-        senderId: currentUser.id,
         action: 'KEEP_PENDING',
       });
 
@@ -321,11 +318,7 @@ export function useDiscussionDetail({
     const newClosed = !post.isClosed;
 
     try {
-      const res = await discussionApi.closePost(
-        post.id,
-        newClosed,
-        currentUser.id,
-      );
+      const res = await discussionApi.closePost(post.id, newClosed);
       const updatedPost: Post = {
         ...post,
         isClosed: newClosed,
@@ -365,7 +358,6 @@ export function useDiscussionDetail({
       const res = await discussionApi.addComment(
         post.id,
         submittedContent,
-        currentUser.id,
         replyTarget?.id,
       );
       setReplyText('');
@@ -428,7 +420,7 @@ export function useDiscussionDetail({
     if (onPostUpdated) onPostUpdated(updatedPost);
 
     try {
-      const res = await discussionApi.togglePostUpvote(post.id, currentUser.id);
+      const res = await discussionApi.togglePostUpvote(post.id);
       const syncedPost = {
         ...post,
         upvotes: res.upvotes,

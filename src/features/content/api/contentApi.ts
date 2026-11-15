@@ -17,20 +17,18 @@ interface CreateResourcePayload {
   fileAttachmentUrl?: string;
   additionalLinks?: { label: string; url: string }[];
   keyTakeaways?: string[];
-  authorId: string;
 }
 
 export const contentApi = {
-  getResources(_userId: string): Promise<ClinicalResource[]> {
+  getResources(): Promise<ClinicalResource[]> {
     return safeFetchJson('/api/v1/resources', undefined);
   },
 
   createResource(payload: CreateResourcePayload): Promise<ClinicalResource> {
-    const { authorId: _authorId, ...requestPayload } = payload;
     return safeFetchJson('/api/v1/resources', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -40,32 +38,30 @@ export const contentApi = {
     });
   },
 
-  getUpdates(_userId: string): Promise<ClinicUpdate[]> {
+  getUpdates(): Promise<ClinicUpdate[]> {
     return safeFetchJson('/api/v1/updates', undefined);
   },
 
   createUpdate(
-    payload: Omit<ClinicUpdate, 'id' | 'createdAt'>,
+    payload: Omit<ClinicUpdate, 'id' | 'createdAt' | 'authorId'>,
   ): Promise<ClinicUpdate> {
-    const { authorId: _authorId, ...requestPayload } = payload;
     return safeFetchJson('/api/v1/updates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload),
+      body: JSON.stringify(payload),
     });
   },
 
-  deleteUpdate(id: string, _userId: string): Promise<{ success: boolean }> {
+  deleteUpdate(id: string): Promise<{ success: boolean }> {
     return safeFetchJson(`/api/v1/updates/${id}`, { method: 'DELETE' });
   },
 
-  getEvents(_userId: string): Promise<CalendarEvent[]> {
+  getEvents(): Promise<CalendarEvent[]> {
     return safeFetchJson('/api/v1/events', undefined);
   },
 
   createEvent(
     payload: Omit<CalendarEvent, 'id' | 'authorId'>,
-    authorId: string,
   ): Promise<CalendarEvent> {
     return safeFetchJson('/api/v1/events', {
       method: 'POST',
@@ -74,7 +70,7 @@ export const contentApi = {
     });
   },
 
-  deleteEvent(id: string, _userId: string): Promise<{ success: boolean }> {
+  deleteEvent(id: string): Promise<{ success: boolean }> {
     return safeFetchJson(`/api/v1/events/${id}`, { method: 'DELETE' });
   },
 };

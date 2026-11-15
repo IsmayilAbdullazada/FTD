@@ -1,3 +1,4 @@
+/* eslint no-control-regex: "off" -- Deliberately reject or remove control characters from input. */
 /**
  * cleanPdfText - Production-grade clinical document text cleaner
  *

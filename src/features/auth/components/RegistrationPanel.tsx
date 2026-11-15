@@ -1,40 +1,25 @@
+import { useAuthState } from '../hooks/AuthStateContext';
 import { AlertCircle, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-react';
 
-import type { useAuthScreens } from '../hooks/useAuthScreens';
+export function RegistrationPanel() {
+  const {
+    mode,
+    setMode,
+    inviteToken,
+    setInviteToken,
+    inviteData,
+    loadingInvite,
+    registerPassword,
+    setRegisterPassword,
+    registerHandle,
+    setRegisterHandle,
+    registerError,
+    setRegisterError,
+    isRegistering,
+    loadInvitation,
+    handleCompleteRegistration,
+  } = useAuthState();
 
-type Props = Pick<
-  ReturnType<typeof useAuthScreens>,
-  | 'mode'
-  | 'setMode'
-  | 'inviteToken'
-  | 'setInviteToken'
-  | 'inviteData'
-  | 'loadingInvite'
-  | 'registerPassword'
-  | 'setRegisterPassword'
-  | 'registerHandle'
-  | 'registerError'
-  | 'setRegisterError'
-  | 'isRegistering'
-  | 'loadInvitation'
-  | 'handleCompleteRegistration'
->;
-export function RegistrationPanel({
-  mode,
-  setMode,
-  inviteToken,
-  setInviteToken,
-  inviteData,
-  loadingInvite,
-  registerPassword,
-  setRegisterPassword,
-  registerHandle,
-  registerError,
-  setRegisterError,
-  isRegistering,
-  loadInvitation,
-  handleCompleteRegistration,
-}: Props) {
   return (
     <>
       {mode === 'register' && (
@@ -103,7 +88,14 @@ export function RegistrationPanel({
                   </div>
                   <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                    <span>{registerHandle}</span>
+                    <input
+                      aria-label="Community handle"
+                      value={registerHandle}
+                      onChange={(event) =>
+                        setRegisterHandle(event.target.value)
+                      }
+                      maxLength={40}
+                    />
                   </div>
                 </div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">
@@ -118,10 +110,10 @@ export function RegistrationPanel({
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={8}
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   className="block w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72]"
                 />
               </div>

@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import { reportError } from '@/shared/lib/logger';
 import { discussionApi } from '@/features/discussions/api/discussionApi';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
@@ -23,9 +24,7 @@ export function useCarePartnerFeed({
   resetKey,
   targetDiscussionId,
   onClearTargetDiscussion,
-  recentNotice,
   onDismissNotice,
-  onOpenComposer,
   initialSection,
   onSectionChange,
 }: CarePartnerFeedProps) {
@@ -101,11 +100,7 @@ export function useCarePartnerFeed({
           setSelectedPost(found);
         } else {
           try {
-            const details = await discussionApi.getPostDetails(
-              postId,
-              currentUser.role,
-              currentUser.id,
-            );
+            const details = await discussionApi.getPostDetails(postId);
             if (details.post) {
               setSelectedPost(details.post);
             }
@@ -133,7 +128,7 @@ export function useCarePartnerFeed({
         if (onClearTargetDiscussion) onClearTargetDiscussion();
       } else if (!loading) {
         discussionApi
-          .getPostDetails(effectiveTargetId, currentUser.role, currentUser.id)
+          .getPostDetails(effectiveTargetId)
           .then((res) => {
             if (res.post) {
               setSelectedPost(res.post);
@@ -228,9 +223,7 @@ export function useCarePartnerFeed({
         search: searchQuery,
         section: viewSection,
         closed: selectedStatusFilter,
-        role: currentUser.role,
         groupId: groupId === 'all' ? undefined : groupId,
-        userId: currentUser.id,
         condition:
           isStaff && selectedCondition !== 'all'
             ? selectedCondition
@@ -259,13 +252,13 @@ export function useCarePartnerFeed({
     } catch (err) {
       reportError('Failed to load feed:', err);
     } finally {
-      if (version !== requestVersion.current) return;
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
+  const loadFeedEffect = useEffectEvent(() => loadFeed(selectedGroupTab));
   useEffect(() => {
-    loadFeed(selectedGroupTab);
+    loadFeedEffect();
   }, [
     selectedGroupTab,
     selectedCondition,
@@ -302,7 +295,7 @@ export function useCarePartnerFeed({
     );
 
     try {
-      const res = await discussionApi.togglePostUpvote(postId, currentUser.id);
+      const res = await discussionApi.togglePostUpvote(postId);
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId
@@ -380,7 +373,6 @@ export function useCarePartnerFeed({
     try {
       const res = await moderationApi.sendPostPrivateNote(postId, {
         message,
-        senderId: currentUser.id,
         action: 'KEEP_PENDING',
       });
 

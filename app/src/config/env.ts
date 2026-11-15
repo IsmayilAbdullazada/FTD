@@ -11,6 +11,7 @@ const schema = z.object({
   DB_USER: z.string().default('ftdcare_user'),
   DB_PASSWORD: z.string().default(''),
   DB_POOL_MAX: z.coerce.number().int().positive().default(20),
+  GUIDE_UPLOAD_DIRECTORY: z.string().optional(),
   DB_SSL: z.enum(['true', 'false']).default('false'),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
   JWT_SECRET: z.string().min(32),
@@ -47,6 +48,13 @@ if (parsed.data.NODE_ENV === 'production') {
   if (parsed.data.ENABLE_DEV_AUTH_PREVIEWS === 'true')
     throw new Error(
       'Development auth previews cannot be enabled in production',
+    );
+  if (
+    parsed.data.ENABLE_DATABASE_RESET === 'true' ||
+    parsed.data.ENABLE_DEV_PERSONAS === 'true'
+  )
+    throw new Error(
+      'Development and database reset features cannot be enabled in production',
     );
   if (parsed.data.DB_PASSWORD.length < 12)
     throw new Error(

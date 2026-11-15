@@ -1,3 +1,4 @@
+let authenticatedSession = false;
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -12,11 +13,24 @@ export async function apiFetch(
   input: RequestInfo | URL,
   options?: RequestInit,
 ): Promise<Response> {
-  return fetch(input, {
+  const response = await fetch(input, {
     ...options,
     headers: new Headers(options?.headers),
     credentials: 'include',
   });
+  const url = String(input);
+  const publicAuth = /\/auth\//.test(url);
+  if (
+    response.ok &&
+    (/\/users\/me/.test(url) || /\/auth\/(login|register)/.test(url))
+  )
+    authenticatedSession = true;
+  if (/\/auth\/logout/.test(url)) authenticatedSession = false;
+  if (response.status === 401 && authenticatedSession && !publicAuth) {
+    authenticatedSession = false;
+    notifyExpiredSession();
+  }
+  return response;
 }
 
 function notifyExpiredSession(): void {
@@ -46,11 +60,16 @@ async function responseError(
 export async function requestJson<T>(
   input: RequestInfo | URL,
   options?: RequestInit,
-  fallbackMessage = 'Request failed',
+  fallbackMessage: string | ((response: Response) => string) = 'Request failed',
 ): Promise<T> {
   const response = await apiFetch(input, options);
-  if (response.status === 401) notifyExpiredSession();
-  if (!response.ok) throw await responseError(response, fallbackMessage);
+  if (!response.ok)
+    throw await responseError(
+      response,
+      typeof fallbackMessage === 'function'
+        ? fallbackMessage(response)
+        : fallbackMessage,
+    );
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     throw new ApiError('Backend returned an invalid response', response.status);
@@ -58,29 +77,4 @@ export async function requestJson<T>(
   return response.json() as Promise<T>;
 }
 
-export async function safeFetchJson<T>(
-  url: string,
-  options: RequestInit | undefined,
-): Promise<T> {
-  let response: Response;
-  try {
-    response = await apiFetch(url, options);
-  } catch {
-    throw new Error('The backend is unavailable. Please try again.');
-  }
-
-  if (response.status === 401) notifyExpiredSession();
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const data = await response.json();
-    if (response.ok) return data;
-    throw new ApiError(
-      data?.error || `Request failed (${response.status})`,
-      response.status,
-    );
-  }
-  throw new ApiError(
-    `Backend returned an invalid response (${response.status})`,
-    response.status,
-  );
-}
+export const safeFetchJson = requestJson;

@@ -36,7 +36,6 @@ type Props = Pick<
   Pick<CarePartnerFeedProps, 'cohorts'>;
 
 export function FeedFilters({
-  posts,
   viewSection,
   selectedGroupTab,
   setSelectedGroupTab,

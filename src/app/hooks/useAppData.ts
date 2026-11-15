@@ -25,29 +25,23 @@ export function useAppData() {
   ): Promise<void> {
     try {
       const userResult = await communityApi.getCurrentUser(asUserId);
-      setCurrentUser(userResult.user);
       setAllPersonas(userResult.allPersonas);
       onUserLoaded?.(userResult.user);
 
-      const cohortResult = await communityApi.getCohorts({
-        userId: userResult.user.id,
-        role: userResult.user.role,
-      });
-      setCohorts(cohortResult);
-
-      if (userResult.user.role !== 'CARE_PARTNER') {
-        const queueResult = await moderationApi.getModerationQueue();
-        setPendingTriageCount(queueResult.totalPending || 0);
-        setPendingQueue(queueResult.items || []);
-      } else {
-        setPendingTriageCount(0);
-        setPendingQueue([]);
-      }
-
-      const notificationResult = await notificationApi.getNotifications(
-        userResult.user.id,
+      const [cohortResult, queueResult, notificationResult] = await Promise.all(
+        [
+          communityApi.getCohorts(),
+          userResult.user.role !== 'CARE_PARTNER'
+            ? moderationApi.getModerationQueue()
+            : Promise.resolve({ totalPending: 0, items: [] }),
+          notificationApi.getNotifications(),
+        ],
       );
+      setCohorts(cohortResult);
+      setPendingTriageCount(queueResult.totalPending);
+      setPendingQueue(queueResult.items);
       setNotifications(notificationResult.messages || []);
+      setCurrentUser(userResult.user);
     } catch (error) {
       reportError('Failed to bootstrap app data:', error);
     }
@@ -66,7 +60,7 @@ export function useAppData() {
         setPendingQueue([]);
       }
       if (user) {
-        const result = await notificationApi.getNotifications(user.id);
+        const result = await notificationApi.getNotifications();
         setNotifications(result.messages || []);
       }
     } catch (error) {
@@ -76,10 +70,7 @@ export function useAppData() {
 
   async function reloadCohorts(user: CurrentUser | null): Promise<void> {
     if (!user) return;
-    const result = await communityApi.getCohorts({
-      userId: user.id,
-      role: user.role,
-    });
+    const result = await communityApi.getCohorts();
     setCohorts(result);
   }
 

@@ -7,9 +7,9 @@ import { currentUser, persona } from '../../lib/serializers.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 router.get(
   '/me',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const requestedId =
       typeof req.query.asUser === 'string' ? req.query.asUser : req.user!.id;

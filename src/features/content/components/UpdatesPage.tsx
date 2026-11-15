@@ -91,7 +91,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
 
   useEffect(() => {
     contentApi
-      .getUpdates(currentUser.id)
+      .getUpdates()
       .then(setUpdates)
       .finally(() => setLoading(false));
   }, [currentUser.id]);
@@ -130,7 +130,6 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
         trialStatus:
           form.category === 'CLINICAL_TRIAL' ? form.trialStatus : undefined,
         externalUrl: form.externalUrl.trim() || undefined,
-        authorId: currentUser.id,
       });
       setUpdates((prev) => [created, ...prev]);
       setShowAddModal(false);
@@ -145,7 +144,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
   };
 
   const handleDelete = async (u: ClinicUpdate) => {
-    await contentApi.deleteUpdate(u.id, currentUser.id);
+    await contentApi.deleteUpdate(u.id);
     setUpdates((prev) => prev.filter((x) => x.id !== u.id));
     setActive(null);
     setPendingDelete(null);

@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import { useRef } from 'react';
 import { reportError } from '@/shared/lib/logger';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
@@ -14,6 +15,7 @@ import type {
 
 interface UseModerationQueueOptions {
   currentUser: CurrentUser;
+  initialQueue?: { items: QueueItem[]; totalPending: number };
   cohorts: CommunityGroup[];
   audienceFilter: 'all' | Condition;
   onQueueUpdated: () => void;
@@ -23,6 +25,7 @@ interface UseModerationQueueOptions {
 
 export function useModerationQueue({
   currentUser,
+  initialQueue,
   cohorts,
   audienceFilter,
   onQueueUpdated,
@@ -64,10 +67,36 @@ export function useModerationQueue({
   useEffect(() => {
     setPage(1);
   }, [audienceFilter]);
+  const lastLoadedKey = useRef<string | null>(null);
+  const loadQueueEffect = useEffectEvent(() => {
+    const key = `${page}:${audienceFilter}`;
+    if (lastLoadedKey.current === key) return;
+    const firstLoad = lastLoadedKey.current === null;
+    lastLoadedKey.current = key;
+    if (firstLoad && initialQueue && page === 1 && audienceFilter === 'all') {
+      setQueueItems(initialQueue.items);
+      setTotal(initialQueue.totalPending);
+      setLoadingQueue(false);
+      if (initialQueue.items[0]) initItemState(initialQueue.items[0]);
+      return;
+    }
+    return loadQueue();
+  });
   useEffect(() => {
-    void loadQueue();
+    loadQueueEffect();
   }, [page, audienceFilter]);
 
+  const acceptSnapshot = useEffectEvent(() => {
+    if (initialQueue && page === 1 && audienceFilter === 'all') {
+      setQueueItems(initialQueue.items);
+      setTotal(initialQueue.totalPending);
+      setLoadingQueue(false);
+      if (initialQueue.items[0]) initItemState(initialQueue.items[0]);
+    }
+  });
+  useEffect(() => {
+    acceptSnapshot();
+  }, [initialQueue]);
   const initItemState = (item: QueueItem) => {
     setApproveAudience(item.condition ?? 'FTD');
     setSanitizedDraft(item.sanitizedContent || item.rawContent);
@@ -101,8 +130,7 @@ export function useModerationQueue({
     } catch (error) {
       reportError('Request failed', error);
     } finally {
-      if (version !== requestVersion.current) return;
-      setLoadingQueue(false);
+      if (version === requestVersion.current) setLoadingQueue(false);
     }
   };
 
@@ -170,7 +198,6 @@ export function useModerationQueue({
       const response = await moderationApi.sendPostPrivateNote(activeItem.id, {
         message: privateReplyMessage.trim(),
         action: privateReplyAction,
-        senderId: currentUser.id,
       });
       setShowPrivateReplyModal(false);
       setPrivateReplyMessage('');

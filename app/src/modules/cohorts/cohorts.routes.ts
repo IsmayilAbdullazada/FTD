@@ -8,10 +8,10 @@ import { isStaffRole } from '../../lib/roles.js';
 import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 
 router.get(
   '/',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const staff = isStaffRole(req.user!.role);
     const result = await query(
@@ -28,7 +28,6 @@ router.get(
 
 router.post(
   '/',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const input = z
@@ -65,7 +64,6 @@ router.post(
 
 router.get(
   '/members',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const groupId =
@@ -97,7 +95,6 @@ router.get(
 
 router.post(
   '/members/reassign',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const input = z

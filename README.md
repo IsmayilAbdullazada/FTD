@@ -32,26 +32,29 @@ Seed accounts have random, unrecoverable initial passwords. Configure SMTP and u
 
 Backend configuration is loaded from `config/ftdcare.env` or process environment variables. Keep secrets outside Git. See `config/ftdcare.env.example`.
 
-| Variables                                                               | Configuration                                                                      |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `JWT_SECRET`                                                            | Required, at least 32 random characters                                            |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`               | PostgreSQL connection; production password must be at least 12 characters          |
-| `DB_SSL`                                                                | `true` for databases requiring verified TLS; otherwise `false`                     |
-| `DB_POOL_MAX`                                                           | Pool size, default `20`                                                            |
-| `NODE_ENV`, `PORT`                                                      | `development`/`test`/`production`; API port defaults to `3000`                     |
-| `APP_URL`, `CORS_ORIGIN`                                                | Public frontend URL and comma-separated allowed origins; production requires HTTPS |
-| `TRUST_PROXY_HOPS`                                                      | Trusted proxy count; `1` for a single nginx proxy, `0` for direct access           |
-| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`                           | Session lifetime, defaults `8h` and `28800000`                                     |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`         | Mail delivery configuration for invitations and recovery; defaults to port `587`   |
-| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET`, `ALLOW_PRODUCTION_SEED` | Development/admin switches, default `false`; leave disabled in production          |
+| Variables                                                               | Configuration                                                                                             |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                                                            | Required, at least 32 random characters                                                                   |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`               | PostgreSQL connection; production password must be at least 12 characters                                 |
+| `DB_SSL`                                                                | `true` for databases requiring verified TLS; otherwise `false`                                            |
+| `GUIDE_UPLOAD_DIRECTORY`                                                | Optional absolute path for persistent uploaded PDF storage                                                |
+| `DB_POOL_MAX`                                                           | Pool size, default `20`                                                                                   |
+| `NODE_ENV`, `PORT`                                                      | `development`/`test`/`production`; API port defaults to `3000`                                            |
+| `APP_URL`, `CORS_ORIGIN`                                                | Public frontend URL and comma-separated allowed origins; production requires HTTPS                        |
+| `TRUST_PROXY_HOPS`                                                      | Trusted proxy count; `1` for a single nginx proxy, `0` for direct access                                  |
+| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`                           | Session lifetime, defaults `8h` and `28800000`                                                            |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`         | Mail delivery configuration for invitations and recovery; defaults to port `587`                          |
+| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET`, `ALLOW_PRODUCTION_SEED` | Default `false`; personas and database reset are rejected in production; seeding requires explicit opt-in |
 
-Frontend API calls use the same origin with HttpOnly session cookies. Vite proxies `/api` to port 3000; `VITE_API_PROXY_TARGET` can override this locally. Mock API fallback requires both development mode and `VITE_ENABLE_API_FALLBACK=true`. The backend currently provides retrieval-based knowledge responses; an API key does not enable model generation.
+Frontend API calls use the same origin with HttpOnly session cookies. Vite proxies `/api` to port 3000; `VITE_API_PROXY_TARGET` can override this locally. The backend currently provides retrieval-based knowledge responses; an API key does not enable model generation.
 
 ## Database migrations and pagination
 
 `npm run backend:migrate` applies numbered SQL files from `app/src/db/migrations` in filename order. Each migration runs once, records a SHA-256 checksum, and shares a transaction and advisory lock with the migration run. Editing a recorded migration fails the run; add a new numbered file for subsequent schema changes. The initial migration is idempotent so existing installations can adopt the migration history without deleting data. Back up production before schema updates.
 
 Posts, moderation queue and private messages accept `page` and `pageSize`. Defaults are page 1 and 25 items (50 for messages), capped at 100. Responses include `pagination: { page, pageSize, total, totalPages }`. Posts retain `posts`/`total`; moderation retains `items`/`totalPending`; private chat returns `messages`. Messages page from newest history, with each page ordered chronologically. Frontend collection adapters request only the selected page. Feed search, audience, ownership and reply-policy filters run on the server before pagination.
+
+Authenticated API requests are limited per user (1,200 requests per 15 minutes); auth routes retain a separate IP limit (60 per 15 minutes). Health checks are exempt. Limits are currently process-local, so deployments with multiple API processes should use a shared limiter store. Logout revokes all sessions for the account by incrementing its session version.
 
 ## Production deployment with nginx
 
@@ -78,12 +81,12 @@ Posts, moderation queue and private messages accept `page` and `pageSize`. Defau
    curl --fail https://your-domain.com/api/v1/health
    ```
 
-Guide metadata and PDF URLs are stored in PostgreSQL. The current upload endpoint writes files under `public/uploads/guides`; mount persistent storage there when using uploads, and include it in backups. External PDF URLs can point to durable object storage. Database URL records alone do not persist the PDF bytes. `public/resources` contains the bundled seed resources.
+Guide metadata and PDF URLs are stored in PostgreSQL. The upload endpoint writes files under `public/uploads/guides`, or the absolute path set by `GUIDE_UPLOAD_DIRECTORY`. Mount persistent storage there and include it in backups. Serve `/uploads/guides/` through the authenticated API, never a public filesystem alias. Draft uploads require staff access; care partners can read only active, approved guides and resources for their condition. The API removes unreferenced generated uploads older than 24 hours at startup and hourly. External PDF URLs can point to durable object storage. Database URL records alone do not persist the PDF bytes. `public/resources` contains the bundled seed resources.
 
 ## Validation
 
 ```bash
-npm run lint
+npm run typecheck
 npm run build
 npm --prefix app run build
 npm run backend:test
@@ -91,9 +94,11 @@ npm run backend:test
 
 Backend integration tests require a migrated, seeded, isolated PostgreSQL database configured in `config/ftdcare.test.env` (same variable names as the backend environment). They exercise authentication, authorization, moderation, frontend contracts and pagination and mutate test data. Never point them at production.
 
-Development API fallbacks have been removed. Email bodies are not retained in the outbox. Reset links and codes are delivered separately. `ENABLE_DEV_AUTH_PREVIEWS` defaults to false and is forbidden in production.
+Development API fallbacks have been removed. Email bodies are not retained in the outbox. Password-reset requests enqueue the same durable job for every email and return before account lookup or SMTP. The API worker polls every five seconds and retries failed delivery up to five times, one minute apart. SMTP requires TLS; configure a working SMTP service before enabling account recovery. Reset links and codes are delivered separately. `ENABLE_DEV_AUTH_PREVIEWS` defaults to false and is forbidden in production.
 
-Quality checks: `npm test`, `npm run lint:eslint`, and `npm run format:check`. CI also provisions an isolated PostgreSQL 16 service, migrates twice, seeds random initial credentials, runs integration tests, and builds the Docker image. Frontend diagnostics log event names only in development; backend logs use structured events without serializing request content or error objects.
+Quality checks: `npm test`, `npm run lint:eslint`, and `npm run format:check`. CI also provisions isolated PostgreSQL 16 and 18 services, migrates twice, seeds random initial credentials, runs integration tests, and builds the Docker image. Frontend diagnostics log event names only in development; backend logs include request IDs, route templates, sanitized error messages, error codes and stack locations without serializing request bodies, cookies or database error details.
+
+The full dependency audit currently reports a moderate `minimatch` denial-of-service advisory through the development-only `typescript-eslint` dependency chain, with no upstream fix reported. Production dependencies have no reported vulnerabilities. CI scans both production and development dependencies and fails on high or critical findings.
 
 Standalone `/api/v1/chat/private` and admin database endpoints are API-only; there are no standalone messaging or database-admin screens. Per-post private dialogue is available in the discussion interface.
 

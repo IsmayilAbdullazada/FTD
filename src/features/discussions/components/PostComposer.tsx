@@ -68,11 +68,6 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     setContent(initialContent || '');
   }, [initialTitle, initialContent]);
 
-  const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
-    user.role !== 'CARE_PARTNER' ||
-    audience === 'BOTH' ||
-    audience === user.condition;
-
   // Pool of all old discussions (seeded immediately from in-memory clinical store for 0ms startup)
   const [discussionsPool, setDiscussionsPool] = useState<
     DiscussionSearchItem[]
@@ -82,7 +77,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   useEffect(() => {
     let isMounted = true;
     knowledgeApi
-      .getAllDiscussionsPool(currentUser.id)
+      .getAllDiscussionsPool()
       .then((res) => {
         if (isMounted) setDiscussionsPool(res.pool ?? []);
       })
@@ -149,7 +144,6 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         title: title.trim(),
         content: content.trim(),
         targetCohortId: selectedCohortId,
-        authorId: currentUser.id,
         ...(isStaff ? { condition: audience } : {}),
       });
 

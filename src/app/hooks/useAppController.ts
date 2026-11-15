@@ -1,3 +1,4 @@
+import { useEffectEvent, useRef } from 'react';
 import { useEffect } from 'react';
 import { authApi } from '@/features/auth/api/authApi';
 import { CurrentUser } from '@/types';
@@ -85,7 +86,7 @@ export function useAppController() {
     } else if (tab === 'login') {
       setAuthMode('login');
       setIsAuthOpen(true);
-    } else if (tab === 'forgot-password') {
+    } else if (tab === 'forgot-password' || tab === 'reset-password') {
       setAuthMode('forgot-password');
       setIsAuthOpen(true);
     } else {
@@ -109,20 +110,31 @@ export function useAppController() {
     pushSignedOutLocation();
   }
 
+  const onNavigation = useEffectEvent(syncNavigationFromLocation);
+  const bootstrapRequest = useRef<Promise<void> | null>(null);
+  const onBootstrap = useEffectEvent(() => {
+    bootstrapRequest.current ??= data.actions.loadUserAndData(
+      undefined,
+      applyInitialLocation,
+    );
+    return bootstrapRequest.current;
+  });
+  const onSessionExpired = useEffectEvent(signOut);
   useEffect(() => {
-    void data.actions.loadUserAndData(undefined, applyInitialLocation);
+    onNavigation();
+    void onBootstrap();
 
     const handleSessionExpired = (event: Event) => {
       const reason =
         (event as CustomEvent<{ reason?: string }>).detail?.reason ||
         'Your session expired. Please sign in again.';
-      signOut(reason);
+      onSessionExpired(reason);
     };
 
-    window.addEventListener('popstate', syncNavigationFromLocation);
+    window.addEventListener('popstate', onNavigation);
     window.addEventListener('jh:session-expired', handleSessionExpired);
     return () => {
-      window.removeEventListener('popstate', syncNavigationFromLocation);
+      window.removeEventListener('popstate', onNavigation);
       window.removeEventListener('jh:session-expired', handleSessionExpired);
     };
   }, []);

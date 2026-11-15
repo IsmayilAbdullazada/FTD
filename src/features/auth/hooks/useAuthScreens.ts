@@ -15,8 +15,6 @@ export function useAuthScreens({
   onLoginSuccess,
   initialMode = 'login',
   initialToken,
-  onCancel,
-  sessionNotice,
 }: AuthScreensProps) {
   const [mode, setMode] = useState<'login' | 'forgot-password' | 'register'>(
     initialMode,
@@ -41,7 +39,6 @@ export function useAuthScreens({
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(
     null,
   );
-  const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
   // Invite / Register State
@@ -56,7 +53,7 @@ export function useAuthScreens({
   const [loadingInvite, setLoadingInvite] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerHandle, setRegisterHandle] = useState(
-    () => `User-${Math.floor(1000 + Math.random() * 9000)}`,
+    () => `User-${crypto.randomUUID().replaceAll('-', '')}`,
   );
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -96,7 +93,7 @@ export function useAuthScreens({
       setInviteData(res.invitation);
       // Auto-assign random anonymous handle
       setRegisterHandle(
-        (prev) => prev || `User-${Math.floor(1000 + Math.random() * 9000)}`,
+        (prev) => prev || `User-${crypto.randomUUID().replaceAll('-', '')}`,
       );
     } catch (err: unknown) {
       reportError('Failed to load invitation:', err);
@@ -136,8 +133,6 @@ export function useAuthScreens({
     }
   };
 
-  // 1-Click Quick Demo Login for instant review
-
   const handleRequestPasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotEmail.trim()) {
@@ -148,24 +143,11 @@ export function useAuthScreens({
     setIsSendingReset(true);
     setResetError(null);
     try {
-      const res = await authApi.forgotPassword(forgotEmail.trim());
-      setResetToken(res.resetToken || null);
-      if (res.testCode) {
-        setResetCode(res.testCode);
-      }
-      if (res.previewUrl) {
-        setEmailPreviewUrl(res.previewUrl);
-      }
-      if (res.resetToken) {
-        setResetSuccessMessage(
-          `A 6-digit verification code has been dispatched to ${forgotEmail.trim()}.`,
-        );
-        setForgotStep('verify');
-      } else {
-        setResetSuccessMessage(
-          'If the account exists, open the password reset link sent by email.',
-        );
-      }
+      await authApi.forgotPassword(forgotEmail.trim());
+      setResetToken(null);
+      setResetSuccessMessage(
+        'If the account exists, open the password reset link sent by email.',
+      );
     } catch (err: unknown) {
       reportError('Password reset request failed:', err);
       setResetError(
@@ -249,6 +231,8 @@ export function useAuthScreens({
       onLoginSuccess(res.user);
     } catch (err: unknown) {
       reportError('Registration failed:', err);
+      if (err instanceof Error && 'status' in err && err.status === 409)
+        setRegisterHandle(`User-${crypto.randomUUID().replaceAll('-', '')}`);
       setRegisterError(
         (err instanceof Error ? err.message : undefined) ||
           'Could not complete registration. Token may be invalid.',
@@ -289,8 +273,6 @@ export function useAuthScreens({
     setResetError,
     resetSuccessMessage,
     setResetSuccessMessage,
-    emailPreviewUrl,
-    setEmailPreviewUrl,
     resetToken,
     setResetToken,
     inviteToken,

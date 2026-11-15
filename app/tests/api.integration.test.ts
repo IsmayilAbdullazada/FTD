@@ -28,7 +28,7 @@ const json = (
   method,
   headers: {
     'content-type': 'application/json',
-    ...(token ? { authorization: `Bearer ${token}` } : {}),
+    ...(token ? { cookie: token, origin: 'http://localhost:5173' } : {}),
   },
   body: JSON.stringify(body),
 });
@@ -103,8 +103,8 @@ test('care partner and clinician authenticate with the frontend contract', async
     care.headers.get('set-cookie') ?? '',
     /^jh_session=.*HttpOnly.*SameSite=Strict/i,
   );
-  careToken = care.body.token;
-  clinicianToken = clinician.body.token;
+  careToken = care.headers.get('set-cookie')!.split(';')[0];
+  clinicianToken = clinician.headers.get('set-cookie')!.split(';')[0];
   assert.equal(care.body.user.role, 'CARE_PARTNER');
   assert.equal(clinician.body.user.role, 'CLINICIAN_MODERATOR');
   const admin = await request(
@@ -115,7 +115,7 @@ test('care partner and clinician authenticate with the frontend contract', async
     }),
   );
   assert.equal(admin.status, 200);
-  adminToken = admin.body.token;
+  adminToken = admin.headers.get('set-cookie')!.split(';')[0];
 });
 
 test('logout clears the HttpOnly session cookie', async () => {
@@ -152,6 +152,19 @@ test('logout clears the HttpOnly session cookie', async () => {
   });
   assert.equal(logout.status, 200);
   assert.match(logout.headers.get('set-cookie') ?? '', /jh_session=;/);
+  assert.equal(
+    (await request('/api/v1/users/me', { headers: { cookie: sessionCookie } }))
+      .status,
+    401,
+  );
+  const renewed = await request(
+    '/api/v1/auth/login',
+    json(undefined, {
+      identifier: 'sarah.smith@example.com',
+      password: 'Hopkins2026!',
+    }),
+  );
+  careToken = renewed.headers.get('set-cookie')!.split(';')[0];
 });
 
 test('condition and cohort boundaries apply to direct access, interactions, and search', async () => {
@@ -171,7 +184,7 @@ test('condition and cohort boundaries apply to direct access, interactions, and 
     [hiddenCohortId, hiddenConditionId],
   );
   try {
-    const careHeaders = { authorization: `Bearer ${careToken}` };
+    const careHeaders = { cookie: careToken, origin: 'http://localhost:5173' };
     assert.equal(
       (
         await request(`/api/v1/posts/${hiddenCohortId}`, {
@@ -229,7 +242,7 @@ test('condition and cohort boundaries apply to direct access, interactions, and 
     assert.equal(
       (
         await request(`/api/v1/posts/${hiddenCohortId}`, {
-          headers: { authorization: `Bearer ${clinicianToken}` },
+          headers: { cookie: clinicianToken, origin: 'http://localhost:5173' },
         })
       ).status,
       200,
@@ -261,21 +274,21 @@ test('JWT identity overrides forged user IDs through posting, moderation, and me
   assert.equal(
     (
       await request('/api/v1/moderation/queue', {
-        headers: { authorization: `Bearer ${careToken}` },
+        headers: { cookie: careToken, origin: 'http://localhost:5173' },
       })
     ).status,
     403,
   );
 
   const queue = await request('/api/v1/moderation/queue', {
-    headers: { authorization: `Bearer ${clinicianToken}` },
+    headers: { cookie: clinicianToken, origin: 'http://localhost:5173' },
   });
   const post = queue.body.items.find((item: any) => item.id === postId);
   assert.equal(post.author.userId, 'user-care-1');
   assert.equal(post.condition, 'FTD');
   assert.equal(post.isUrgentClinical, true);
   assert.ok(post.phiAlerts.some((alert: any) => alert.type === 'EMAIL'));
-  assert.ok(!post.rawContent.includes('<script>'));
+  assert.ok(post.rawContent.includes('<script>')); // Plain text is preserved; React escapes it.
   const approval = await request(
     '/api/v1/moderation/action',
     json(clinicianToken, {
@@ -299,7 +312,7 @@ test('JWT identity overrides forged user IDs through posting, moderation, and me
   assert.equal(comment.body.comment.author.userId, 'user-care-1');
   assert.equal(comment.body.comment.status, 'PENDING_MODERATION');
   const secondQueue = await request('/api/v1/moderation/queue', {
-    headers: { authorization: `Bearer ${clinicianToken}` },
+    headers: { cookie: clinicianToken, origin: 'http://localhost:5173' },
   });
   const reply = secondQueue.body.items.find(
     (item: any) => item.id === comment.body.comment.id,
@@ -317,7 +330,7 @@ test('JWT identity overrides forged user IDs through posting, moderation, and me
 
   const details = await request(
     `/api/v1/posts/${postId}?role=SYSTEM_ADMIN&userId=user-clinician-1`,
-    { headers: { authorization: `Bearer ${careToken}` } },
+    { headers: { cookie: careToken, origin: 'http://localhost:5173' } },
   );
   assert.equal(details.body.comments.length, 1);
   assert.equal(details.body.post.rawContent, undefined);
@@ -328,9 +341,31 @@ test('JWT identity overrides forged user IDs through posting, moderation, and me
       caregiverId: 'user-care-1',
       senderId: 'user-clinician-1',
       content: 'Secure sender identity check.',
+      recipientId: 'user-clinician-1',
     }),
   );
   assert.equal(message.body.senderId, 'user-care-1');
+  const inbox = await request('/api/v1/chat/private?caregiverId=user-care-1', {
+    headers: { cookie: clinicianToken },
+  });
+  assert.equal(
+    inbox.body.messages.find(
+      (entry: { id: string }) => entry.id === message.body.id,
+    ).read,
+    true,
+  );
+  const persisted = await pool.query(
+    'SELECT read_at FROM private_messages WHERE id=$1',
+    [message.body.id],
+  );
+  assert.ok(persisted.rows[0].read_at);
+  assert.ok(
+    (
+      await pool.query(
+        "SELECT 1 FROM notifications WHERE recipient_user_id='user-clinician-1' AND type='DIRECT_CHAT'",
+      )
+    ).rowCount,
+  );
 });
 
 test('private staff notes can publish and care-partner edits return content to moderation', async () => {
@@ -357,7 +392,7 @@ test('private staff notes can publish and care-partner edits return content to m
     assert.equal(note.body.notes.length, 1);
 
     const ownerView = await request(`/api/v1/posts/${transitionPostId}`, {
-      headers: { authorization: `Bearer ${careToken}` },
+      headers: { cookie: careToken, origin: 'http://localhost:5173' },
     });
     assert.equal(ownerView.body.post.moderatorPrivateNotes.length, 1);
     const reply = await request(
@@ -395,7 +430,7 @@ test('private staff notes can publish and care-partner edits return content to m
 });
 
 test('frontend collection endpoints return their expected top-level shapes', async () => {
-  const headers = { authorization: `Bearer ${careToken}` };
+  const headers = { cookie: careToken, origin: 'http://localhost:5173' };
   const [me, cohorts, feed, resources, notifications] = await Promise.all([
     request('/api/v1/users/me', { headers }),
     request('/api/v1/cohorts?role=SYSTEM_ADMIN&userId=user-clinician-1', {
@@ -503,6 +538,36 @@ test('staff content, invitation, guide retrieval, and admin contracts use Postgr
     200,
   );
   assert.equal(invitation.body.previewUrl, undefined);
+  const revokeUrl = `/api/v1/auth/invitations/${invitation.body.invitationId}/revoke`;
+  assert.equal((await request(revokeUrl, json(careToken, {}))).status, 403);
+  assert.equal(
+    (await request(revokeUrl, json(clinicianToken, {}))).status,
+    200,
+  );
+  const inviteUrl = `/api/v1/auth/invitations/${encodeURIComponent(invitation.body.inviteToken)}`;
+  assert.equal((await request(inviteUrl)).status, 404);
+  assert.equal(
+    (
+      await pool.query('SELECT status FROM invitations WHERE id=$1', [
+        invitation.body.invitationId,
+      ])
+    ).rows[0].status,
+    'REVOKED',
+  );
+  await pool.query(
+    "UPDATE invitations SET status='DISPATCHED',expires_at=NOW()-INTERVAL '1 minute' WHERE id=$1",
+    [invitation.body.invitationId],
+  );
+  assert.equal((await request(inviteUrl)).status, 404);
+  assert.equal(
+    (
+      await pool.query('SELECT status FROM invitations WHERE id=$1', [
+        invitation.body.invitationId,
+      ])
+    ).rows[0].status,
+    'EXPIRED',
+  );
+
   cleanup.push(() =>
     pool.query('DELETE FROM invitations WHERE email=$1', [
       'integration.invite@example.com',
@@ -553,7 +618,7 @@ test('staff content, invitation, guide retrieval, and admin contracts use Postgr
   );
 
   const status = await request('/api/v1/admin/database-status', {
-    headers: { authorization: `Bearer ${adminToken}` },
+    headers: { cookie: adminToken, origin: 'http://localhost:5173' },
   });
   assert.equal(status.status, 200);
   assert.equal(typeof status.body.counts.users, 'number');
@@ -601,7 +666,7 @@ test('password reset does not expose credentials or persist email bodies', async
 });
 
 test('collection pagination bounds results, preserves totals, and rejects invalid pages', async () => {
-  const headers = { authorization: `Bearer ${clinicianToken}` };
+  const headers = { cookie: clinicianToken, origin: 'http://localhost:5173' };
   const ids = ['pagination-post-a', 'pagination-post-b', 'pagination-post-c'];
   try {
     for (const id of ids) {
@@ -673,4 +738,138 @@ test('knowledge rejects missing text and health is exempt from throttling', asyn
     );
   for (let index = 0; index < 110; index++)
     assert.equal((await request('/api/v1/health')).status, 200);
+});
+
+test('request errors, protected PDF parsing, and inactive guide edits preserve security contracts', async () => {
+  const headers = {
+    cookie: clinicianToken,
+    origin: 'http://localhost:5173',
+    'content-type': 'application/json',
+  };
+  assert.equal(
+    (
+      await request('/api/v1/chatbot/extract-pdf', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{',
+      })
+    ).status,
+    401,
+  );
+  const malformed = await request('/api/v1/posts', {
+    method: 'POST',
+    headers,
+    body: '{',
+  });
+  assert.equal(malformed.status, 400);
+  assert.ok(malformed.body.requestId);
+  assert.equal(
+    (
+      await request('/api/v1/posts', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ content: 'x'.repeat(1024 * 1024 + 1) }),
+      })
+    ).status,
+    413,
+  );
+  const cohort = {
+    name: 'Duplicate fixture',
+    slug: 'duplicate-fixture',
+    description: 'Fixture description',
+    geographicRegion: 'Test',
+  };
+  const created = await request(
+    '/api/v1/cohorts',
+    json(clinicianToken, cohort),
+  );
+  assert.equal(created.status, 201);
+  try {
+    assert.equal(
+      (await request('/api/v1/cohorts', json(clinicianToken, cohort))).status,
+      409,
+    );
+  } finally {
+    await pool.query('DELETE FROM cohorts WHERE slug=$1', [cohort.slug]);
+  }
+  const guide = await request(
+    '/api/v1/chatbot/guides',
+    json(clinicianToken, {
+      title: 'Inactive guide fixture',
+      condition: 'FTD',
+      fileName: 'inactive.pdf',
+      content: 'This is a test guide.',
+      isActive: false,
+    }),
+  );
+  assert.equal(guide.status, 201);
+  try {
+    const edited = await request(
+      '/api/v1/chatbot/guides/' + guide.body.id,
+      json(clinicianToken, { title: 'Renamed inactive guide' }, 'PUT'),
+    );
+    assert.equal(edited.status, 200);
+    assert.equal(edited.body.guide.isActive, false);
+  } finally {
+    await pool.query('DELETE FROM chatbot_guides WHERE id=$1', [guide.body.id]);
+  }
+});
+
+test('private replies cannot publish rejected posts or bypass audit recording', async () => {
+  const id = 'security-rejected-private-note';
+  await pool.query(
+    "INSERT INTO posts(id,author_id,title,raw_content,sanitized_content,status) VALUES($1,'user-care-1','Rejected fixture','Fixture content','Fixture content','REJECTED')",
+    [id],
+  );
+  try {
+    const denied = await request(
+      `/api/v1/posts/${id}/private-note`,
+      json(clinicianToken, {
+        message: 'This must not publish',
+        action: 'PUBLISH',
+      }),
+    );
+    assert.equal(denied.status, 409);
+    const post = (
+      await pool.query('SELECT status FROM posts WHERE id=$1', [id])
+    ).rows[0];
+    assert.equal(post.status, 'REJECTED');
+    assert.equal(
+      (
+        await pool.query(
+          'SELECT 1 FROM moderator_private_notes WHERE post_id=$1',
+          [id],
+        )
+      ).rowCount,
+      0,
+    );
+    await pool.query(
+      "UPDATE posts SET status='PENDING_MODERATION' WHERE id=$1",
+      [id],
+    );
+    assert.equal(
+      (
+        await request(
+          `/api/v1/posts/${id}/private-note`,
+          json(clinicianToken, {
+            message: 'Reviewed and published',
+            action: 'PUBLISH',
+          }),
+        )
+      ).status,
+      201,
+    );
+    assert.equal(
+      (
+        await pool.query(
+          "SELECT 1 FROM moderation_audit WHERE entity_id=$1 AND action_taken='APPROVE'",
+          [id],
+        )
+      ).rowCount,
+      1,
+    );
+  } finally {
+    await pool.query('DELETE FROM moderation_audit WHERE entity_id=$1', [id]);
+    await pool.query('DELETE FROM posts WHERE id=$1', [id]);
+  }
 });

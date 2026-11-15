@@ -57,6 +57,10 @@ export async function authenticateToken(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
+  if (req.user) {
+    next();
+    return;
+  }
   const token = sessionToken(req);
   if (!token) {
     res.status(401).json({ error: 'Authentication required' });

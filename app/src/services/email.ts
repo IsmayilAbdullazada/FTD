@@ -33,6 +33,7 @@ export async function sendEmail(message: {
         host: env.SMTP_HOST,
         port: env.SMTP_PORT,
         secure: env.SMTP_PORT === 465,
+        requireTLS: true,
         auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
         connectionTimeout: 5000,
         greetingTimeout: 5000,

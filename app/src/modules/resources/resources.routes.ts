@@ -8,9 +8,9 @@ import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 import { httpUrl, publicAssetUrl } from '../../lib/urlValidation.js';
 
 const router = Router();
+router.use(authenticateToken);
 router.get(
   '/',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
       req.user!.id,
@@ -29,7 +29,6 @@ router.get(
 );
 router.post(
   '/',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const input = z
@@ -70,7 +69,6 @@ router.post(
 );
 router.delete(
   '/:id',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const result = await query(

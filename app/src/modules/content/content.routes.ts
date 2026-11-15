@@ -7,9 +7,9 @@ import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 import { httpUrl } from '../../lib/urlValidation.js';
 
 const router = Router();
+router.use(authenticateToken);
 router.get(
   '/updates',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
       req.user!.id,
@@ -39,7 +39,6 @@ router.get(
 );
 router.post(
   '/updates',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const i = z
@@ -90,7 +89,6 @@ router.post(
 );
 router.delete(
   '/updates/:id',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const r = await query(
@@ -104,7 +102,6 @@ router.delete(
 
 router.get(
   '/events',
-  authenticateToken,
   asyncHandler(async (req, res) => {
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
       req.user!.id,
@@ -132,7 +129,6 @@ router.get(
 );
 router.post(
   '/events',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const i = z
@@ -174,7 +170,6 @@ router.post(
 );
 router.delete(
   '/events/:id',
-  authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const r = await query(

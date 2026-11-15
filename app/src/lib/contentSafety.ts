@@ -7,12 +7,9 @@ export interface PhiAlert {
 }
 
 export function sanitizeUserContent(text: string): string {
-  return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/\bon(?:error|load|click)\s*=/gi, '')
-    .trim();
+  // Text is stored as text. React escapes it at rendering boundaries; this is
+  // normalization only, never an HTML-sanitization or XSS security boundary.
+  return text.trim();
 }
 
 export function scanForPhi(text: string): PhiAlert[] {

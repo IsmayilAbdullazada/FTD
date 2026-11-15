@@ -14,11 +14,11 @@
     "preview": "vite preview",
     "start": "npm --prefix app start",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
     "test": "vitest run",
     "lint:eslint": "eslint src app/src",
     "format:check": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "lucide-react": "^0.546.0",
@@ -36,6 +36,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^31.0.1",
     "prettier": "^3.10.1",
     "tailwindcss": "^4.3.3",

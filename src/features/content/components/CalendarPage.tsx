@@ -84,7 +84,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
     let cancelled = false;
     const loadEvents = async () => {
       try {
-        const data = await contentApi.getEvents(currentUser.id);
+        const data = await contentApi.getEvents();
         if (!cancelled) setEvents(data);
       } catch (err) {
         reportError('Failed to load calendar events:', err);
@@ -148,17 +148,14 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
     if (!form.title.trim() || !form.startsAt || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const created = await contentApi.createEvent(
-        {
-          title: form.title.trim(),
-          type: form.type,
-          startsAt: form.startsAt,
-          location: form.location.trim(),
-          description: form.description.trim() || undefined,
-          condition: form.condition,
-        },
-        currentUser.id,
-      );
+      const created = await contentApi.createEvent({
+        title: form.title.trim(),
+        type: form.type,
+        startsAt: form.startsAt,
+        location: form.location.trim(),
+        description: form.description.trim() || undefined,
+        condition: form.condition,
+      });
       setEvents((prev) => [...prev, created]);
       setShowModal(false);
       setToast(`"${created.title}" added to the calendar.`);
@@ -176,7 +173,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
   };
 
   const handleDelete = async (ev: CalendarEvent) => {
-    await contentApi.deleteEvent(ev.id, currentUser.id);
+    await contentApi.deleteEvent(ev.id);
     setEvents((prev) => prev.filter((x) => x.id !== ev.id));
     setPendingDelete(null);
     setToast(`"${ev.title}" removed from the calendar.`);

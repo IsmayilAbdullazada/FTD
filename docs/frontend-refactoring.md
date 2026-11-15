@@ -7,7 +7,7 @@ The frontend should evolve by feature while preserving its current rendered inte
 - Keep existing JSX structure, Tailwind classes, copy, navigation, and accessibility semantics unless a product change is explicitly requested.
 - Import feature-owned API adapters directly; do not introduce an application-wide API service object.
 - Treat server responses as the source of identity and authorization. Never send requester roles or requester IDs as proof of access.
-- Fail closed in production. Development fallback data remains opt-in through `VITE_ENABLE_API_FALLBACK=true`.
+- Fail closed on API errors. Development mock fallbacks have been removed.
 - Add types at boundaries and centralize transport errors instead of repeating response parsing.
 - Extract behavior before extracting visual components so each step stays reviewable and low risk.
 

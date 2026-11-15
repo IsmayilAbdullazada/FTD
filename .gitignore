@@ -25,3 +25,6 @@ yarn-error.log*
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Local migration experiments
+app/src/db/migrations/*_probe_*.sql

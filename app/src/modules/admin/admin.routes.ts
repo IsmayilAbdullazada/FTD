@@ -6,6 +6,7 @@ import { asyncHandler, HttpError } from '../../lib/http.js';
 import { authenticateToken, requireRole } from '../../middleware/auth.js';
 
 const router = Router();
+router.use(authenticateToken);
 router.use(authenticateToken, requireRole(['SYSTEM_ADMIN']));
 
 async function counts() {

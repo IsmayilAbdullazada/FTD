@@ -1,3 +1,4 @@
+import { postAudience } from './postAccess.js';
 import type { PostRow, CommentRow, UserRow, CohortRow } from '../../db/rows.js';
 import { query } from '../../config/db.js';
 import { HttpError } from '../../lib/http.js';
@@ -87,4 +88,34 @@ export async function findComment(id: string, privileged: boolean) {
     result.rows[0] as Parameters<typeof mapComment>[0],
     privileged,
   );
+}
+
+const postListWhere = `WHERE
+ (($2::boolean AND p.status=COALESCE($3,p.status) AND ($3::text IS NOT NULL OR p.status='APPROVED')) OR
+  (NOT $2::boolean AND ((p.status='APPROVED' AND ${postAudience('$1')})
+    OR (p.author_id=$1 AND p.status='PENDING_MODERATION'))))
+ AND ($4::text IS NULL OR EXISTS(SELECT 1 FROM post_groups filter_pg WHERE filter_pg.post_id=p.id AND filter_pg.cohort_id=$4))
+ AND ($5::text IS NULL OR p.condition IN ($5,'BOTH'))
+ AND ($6::text = '' OR p.title ILIKE '%'||$6||'%' OR p.sanitized_content ILIKE '%'||$6||'%' OR EXISTS(SELECT 1 FROM users su WHERE su.id=p.author_id AND su.anonymous_handle ILIKE '%'||$6||'%') OR EXISTS(SELECT 1 FROM post_groups sg JOIN cohorts sc ON sc.id=sg.cohort_id WHERE sg.post_id=p.id AND (sc.name ILIKE '%'||$6||'%' OR sc.geographic_region ILIKE '%'||$6||'%')))
+ AND ($7::text <> 'my-posts' OR p.author_id=$1)
+ AND ($7::text <> 'all' OR p.status='APPROVED')
+ AND ($8::text <> 'closed' OR p.is_closed)
+ AND ($8::text <> 'open' OR NOT p.is_closed)
+ AND ($9::text <> 'closed' OR p.is_closed)
+ AND ($9::text <> 'moderated' OR (NOT p.allow_unmoderated_replies AND NOT p.is_closed))
+ AND ($9::text <> 'unmoderated' OR (p.allow_unmoderated_replies AND NOT p.is_closed))`;
+
+export async function queryPostPage(
+  values: unknown[],
+  limit: number,
+  offset: number,
+) {
+  const [result, countResult] = await Promise.all([
+    query(
+      `${postSelect} ${postListWhere} ORDER BY CASE WHEN $7='my-posts' AND p.status='PENDING_MODERATION' THEN 0 ELSE 1 END,p.created_at DESC,p.id DESC LIMIT $10 OFFSET $11`,
+      [...values, limit, offset],
+    ),
+    query(`SELECT COUNT(*)::int total FROM posts p ${postListWhere}`, values),
+  ]);
+  return { rows: result.rows, total: countResult.rows[0].total as number };
 }

@@ -1,3 +1,4 @@
+import { useEffectEvent } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { CurrentUser, Condition, CommunityGroup } from '@/types';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -28,6 +29,7 @@ import type { ClinicianDashboardTab } from '@/features/clinician-workspace/types
 interface ClinicianDashboardProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
+  initialQueue?: { items: import('@/types').QueueItem[]; totalPending: number };
   onQueueUpdated: () => void;
   onOpenInvite: () => void;
   onOpenAudit: () => void;
@@ -38,6 +40,7 @@ interface ClinicianDashboardProps {
 export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   currentUser,
   cohorts,
+  initialQueue,
   onQueueUpdated,
   onOpenInvite,
   onOpenAudit,
@@ -130,6 +133,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     handleCleanPersonalInfo,
     changeQueuePage,
   } = useModerationQueue({
+    initialQueue,
     currentUser,
     cohorts,
     audienceFilter,
@@ -237,14 +241,19 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setActionSuccessNotice,
   });
 
-  useEffect(() => {
+  const refreshAudience = useEffectEvent(() => {
     loadMembers();
     loadChatbotGuides();
+  });
+  const refreshQueue = useEffectEvent(() => loadQueue());
+  useEffect(() => {
+    refreshAudience();
   }, [audienceFilter]);
 
   const previousTab = useRef(activeTab);
   useEffect(() => {
-    if (activeTab === 'queue' && previousTab.current !== 'queue') loadQueue();
+    if (activeTab === 'queue' && previousTab.current !== 'queue')
+      refreshQueue();
     previousTab.current = activeTab;
   }, [activeTab]);
 

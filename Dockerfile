@@ -10,7 +10,6 @@ FROM node:24-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/app ./app
-COPY --from=build --chown=node:node /app/dist ./frontend
 COPY --from=build --chown=node:node /app/public ./public
 USER node
 EXPOSE 3000

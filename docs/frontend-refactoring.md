@@ -55,7 +55,6 @@ src/
   shared/            # code with multiple feature consumers and no feature policy
     api/             # HTTP transport shared by feature API adapters
     components/
-    dev/             # explicitly opt-in development fixtures and stores
     hooks/
     lib/             # cross-feature/runtime helpers such as PDF cleaning and pagination
   types/             # genuinely cross-feature identity and domain contracts
@@ -78,7 +77,6 @@ across feature boundaries. It must not contain feature policy.
 - Moved login, logout, registration, invitation lookup, and password recovery into `authApi.ts`.
 - Moved invitations, resources, updates, calendar events, guide management, notifications, private messaging, and database administration into focused domain clients.
 - Moved user/cohort, discussion, moderation, and knowledge behavior into focused domain clients.
-- Moved extracted opt-in demo content and notification data into `devFallbackStore.ts`.
 - Removed the application-wide API facade after migrating callers to feature-owned adapters.
 - Added an app-owned typed auto-dismiss hook for transient notices.
 - Extracted API-backed app data, view state, browser location handling, and orchestration from `App.tsx` into `app`.
@@ -96,7 +94,7 @@ across feature boundaries. It must not contain feature policy.
 
 ## Next improvements
 
-1. Move additional discussion and community contracts out of the global type package when their remaining shared development fixtures are retired.
+1. Move additional discussion and community contracts out of the global type package when they no longer have cross-feature consumers.
 2. Introduce a server-state library only if cache synchronization across screens becomes difficult to maintain with the current feature hooks.
 3. Add browser-level accessibility checks when the project adopts a browser test dependency.
 
@@ -106,6 +104,5 @@ The feed composes filters, a post list, and post dialogs. API interactions and
 state live in `useCarePartnerFeed`. Discussion detail uses `useDiscussionDetail`
 with separate replies and action-dialog components. Composer matching rules live
 in `lib/discussionSearch.ts`, and suggestions render in `SimilarDiscussionsBox`.
-Development fixtures are grouped by domain under `shared/dev/fixtures`.
 
 Collection adapters request one server page at a time. The feed and clinician workspace apply search, audience, ownership, and discussion policy filters on the server before counting and selecting a page.

@@ -1,7 +1,7 @@
-import type { Dispatch, SetStateAction } from 'react';
-import { Trash2 } from 'lucide-react';
 import type { ChatbotGuideFile } from '@/features/knowledge/types';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
+import { Trash2 } from 'lucide-react';
+import type { Dispatch, SetStateAction } from 'react';
 
 interface DeleteGuideDialogProps {
   guide: ChatbotGuideFile | null;

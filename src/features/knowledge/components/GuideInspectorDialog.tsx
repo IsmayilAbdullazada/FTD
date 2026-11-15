@@ -1,4 +1,6 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { ChatbotGuideFile } from '@/features/knowledge/types';
+import { AudienceBadge } from '@/shared/components/AudienceBadge';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import {
   Check,
   Copy,
@@ -8,9 +10,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { AudienceBadge } from '@/shared/components/AudienceBadge';
-import type { ChatbotGuideFile } from '@/features/knowledge/types';
-import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
+import type { Dispatch, SetStateAction } from 'react';
 
 interface GuideInspectorDialogProps {
   guide: ChatbotGuideFile | null;

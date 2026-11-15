@@ -1,9 +1,6 @@
-import type {
-  Dispatch,
-  DragEventHandler,
-  RefObject,
-  SetStateAction,
-} from 'react';
+import { INSTITUTIONAL_RESOURCE_FILES } from '@/features/knowledge/lib/guideTitle';
+import type { GuideCondition, GuidePageData } from '@/features/knowledge/types';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import {
   AlertTriangle,
   Check,
@@ -17,9 +14,12 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
-import { INSTITUTIONAL_RESOURCE_FILES } from '@/features/knowledge/lib/guideTitle';
-import type { GuideCondition, GuidePageData } from '@/features/knowledge/types';
-import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
+import type {
+  Dispatch,
+  DragEventHandler,
+  RefObject,
+  SetStateAction,
+} from 'react';
 
 interface GuideUploadDialogProps {
   open: boolean;

@@ -4,7 +4,7 @@ A React application with a clinician-moderated PostgreSQL API for FTD and Alzhei
 
 ## Local development
 
-Use Node.js 22.21+ (Node.js 24 recommended), npm, and PostgreSQL 16.
+Use Node.js 24, npm, and PostgreSQL 16 or 18.
 
 ```bash
 npm ci
@@ -20,13 +20,13 @@ Open http://localhost:5173. The backend listens on port 3000; health is availabl
 
 ## Roles and demonstration accounts
 
-| Role                  | Access                                                                                                           | Seed login                                              |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `CARE_PARTNER`        | Approved discussions in their condition/cohorts, own pending questions, resources and private clinician messages | `sarah.smith@example.com` or `marcus.vance@example.com` |
-| `CLINICIAN_MODERATOR` | Moderation, discussion policies, guides, cohorts, membership and invitations                                     | `sgulyan1@jhmi.edu`                                     |
-| `SYSTEM_ADMIN`        | Staff capabilities plus database administration                                                                  | `cs-admin@cs.jhu.edu`                                   |
+| Role                  | Access                                                                                                          | Seed login                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `CARE_PARTNER`        | Approved discussions in their condition/cohorts, own pending questions, resources and per-post private dialogue | `sarah.smith@example.com` or `marcus.vance@example.com` |
+| `CLINICIAN_MODERATOR` | Moderation, discussion policies, guides, cohorts, membership and invitations                                    | `sgulyan1@jhmi.edu`                                     |
+| `SYSTEM_ADMIN`        | Staff capabilities; database administration is API-only                                                         | `cs-admin@cs.jhu.edu`                                   |
 
-Seed accounts have random, unrecoverable initial passwords. Configure SMTP and use account recovery to activate them. Historical accounts using the formerly public seed password are invalidated by migration 003. Production seeding is disabled unless explicitly enabled with `ALLOW_PRODUCTION_SEED=true`.
+Seed accounts have random, unrecoverable initial passwords. Configure SMTP and use account recovery to activate them. Historical accounts using the formerly public seed password are invalidated by corrective migration 004. Production seeding is disabled unless explicitly enabled with `ALLOW_PRODUCTION_SEED=true`.
 
 ## Environment configuration
 
@@ -91,8 +91,12 @@ npm run backend:test
 
 Backend integration tests require a migrated, seeded, isolated PostgreSQL database configured in `config/ftdcare.test.env` (same variable names as the backend environment). They exercise authentication, authorization, moderation, frontend contracts and pagination and mutate test data. Never point them at production.
 
-Frontend ownership rules and module layout are documented in `docs/frontend-refactoring.md`. Development fixtures live in `src/shared/dev/fixtures`; `clinicalStore.ts` remains their export entry point.
-
 Development API fallbacks have been removed. Email bodies are not retained in the outbox. Reset links and codes are delivered separately. `ENABLE_DEV_AUTH_PREVIEWS` defaults to false and is forbidden in production.
 
 Quality checks: `npm test`, `npm run lint:eslint`, and `npm run format:check`. CI also provisions an isolated PostgreSQL 16 service, migrates twice, seeds random initial credentials, runs integration tests, and builds the Docker image. Frontend diagnostics log event names only in development; backend logs use structured events without serializing request content or error objects.
+
+Standalone `/api/v1/chat/private` and admin database endpoints are API-only; there are no standalone messaging or database-admin screens. Per-post private dialogue is available in the discussion interface.
+
+Password recovery verifies access to one email inbox. Separate link and code emails are not independent factors and do not protect against mailbox compromise.
+
+For Docker deployments, pass production environment variables and run `docker run --rm --env-file /secure/ftdcare.env IMAGE node app/dist/db/migrate.js` before starting the API. The compiled seed command is `node app/dist/db/seed.js`; production seeding remains disabled by default. These commands do not require tsx or development dependencies.

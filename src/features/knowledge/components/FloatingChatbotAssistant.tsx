@@ -1,22 +1,22 @@
-import { reportError } from '@/shared/lib/logger';
-import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import {
-  Send,
-  X,
-  Phone,
-  RotateCcw,
-  MessageSquare,
-  ShieldCheck,
-  ChevronRight,
-  FileText,
-  ExternalLink,
-  HeartHandshake,
-  MessageCircleHeart,
-} from 'lucide-react';
 import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
 import { useFooterClearance } from '@/features/knowledge/hooks/useFooterClearance';
+import { reportError } from '@/shared/lib/logger';
 import { CurrentUser } from '@/types';
+import {
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  HeartHandshake,
+  MessageCircleHeart,
+  MessageSquare,
+  Phone,
+  RotateCcw,
+  Send,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface FloatingChatbotAssistantProps {
   currentUser?: CurrentUser | null;

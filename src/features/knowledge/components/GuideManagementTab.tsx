@@ -1,4 +1,9 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type {
+  ChatbotGuideFile,
+  ChatbotGuideTestResult,
+} from '@/features/knowledge/types';
+import { AudienceBadge } from '@/shared/components/AudienceBadge';
+import { Pagination } from '@/shared/components/Pagination';
 import {
   Bot,
   Check,
@@ -13,12 +18,7 @@ import {
   Trash2,
   UploadCloud,
 } from 'lucide-react';
-import { AudienceBadge } from '@/shared/components/AudienceBadge';
-import { Pagination } from '@/shared/components/Pagination';
-import type {
-  ChatbotGuideFile,
-  ChatbotGuideTestResult,
-} from '@/features/knowledge/types';
+import type { Dispatch, SetStateAction } from 'react';
 
 interface PaginationModel<T> {
   items: T[];

@@ -1,79 +1,240 @@
 # Hopkins Care Partner Connect
 
-A React application with a clinician-moderated PostgreSQL API for FTD and Alzheimer's care partners.
+A full-stack application for frontotemporal dementia (FTD) and Alzheimer's care communities. Care partners participate in condition- and cohort-scoped discussions, while clinicians moderate submissions, manage educational guides, and provide private replies.
 
-## Local development
+The frontend uses React 19, TypeScript, Vite, and Tailwind CSS. The backend uses Express, TypeScript, PostgreSQL, Zod, and cookie-based authentication. Knowledge responses retrieve content from stored guides and discussions; the current implementation does not generate responses with an external language model.
 
-Use Node.js 24, npm, and PostgreSQL 16 or 18.
+## Contents
+
+- [Getting started](#getting-started)
+- [Project structure](#project-structure)
+- [Configuration](#configuration)
+- [Roles and account access](#roles-and-account-access)
+- [Development commands](#development-commands)
+- [Testing and CI](#testing-and-ci)
+- [API conventions](#api-conventions)
+- [Database and file storage](#database-and-file-storage)
+- [Production deployment](#production-deployment)
+- [Operations and troubleshooting](#operations-and-troubleshooting)
+- [Contributing](#contributing)
+
+## Getting started
+
+### Prerequisites
+
+- Node.js **24**, as specified in [.nvmrc](.nvmrc), and npm.
+- PostgreSQL **16 or 18**, with permission to create the `pgcrypto` extension in the application database.
+- An SMTP service with TLS for invitations and password recovery. The app can start without SMTP, but email-based account activation and recovery require working delivery.
+
+Run commands from the repository root unless stated otherwise. Local development and deployment scripts assume a Unix-like shell. Clone the repository and enter it before proceeding:
+
+```bash
+git clone https://github.com/IsmayilAbdullazada/FTD.git
+cd FTD
+```
+
+### Install and configure
 
 ```bash
 npm ci
 npm --prefix app ci
 cp config/ftdcare.env.example config/ftdcare.env
-# Create the PostgreSQL database/user and edit config/ftdcare.env.
+```
+
+Create the application database and role using your PostgreSQL administrator account. For example, with PostgreSQL administrator access configured for these tools:
+
+```bash
+createuser --pwprompt ftdcare_user
+createdb --owner=ftdcare_user ftdcare_db
+```
+
+Edit `config/ftdcare.env` with the matching database credentials, SMTP settings, and a unique signing secret. Generate a secret with:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
+```
+
+Use the generated value for `JWT_SECRET`. Environment files containing credentials are ignored by Git.
+
+### Initialize and run
+
+```bash
 npm run backend:migrate
 npm run backend:seed
 npm run dev
 ```
 
-Open http://localhost:5173. The backend listens on port 3000; health is available at `/api/v1/health`. Use `localhost` consistently with the configured CORS origin.
+| Service               | Local address                       |
+| --------------------- | ----------------------------------- |
+| Frontend              | http://localhost:5173               |
+| Backend API           | http://localhost:3000/api/v1        |
+| Database health check | http://localhost:3000/api/v1/health |
 
-## Roles and demonstration accounts
+Vite proxies `/api` and `/uploads/guides` to the backend. Use `localhost` consistently with `APP_URL` and `CORS_ORIGIN` so cookies and origin checks agree. Both development processes stop when you stop `npm run dev`.
 
-| Role                  | Access                                                                                                          | Seed login                                              |
-| --------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `CARE_PARTNER`        | Approved discussions in their condition/cohorts, own pending questions, resources and per-post private dialogue | `sarah.smith@example.com` or `marcus.vance@example.com` |
-| `CLINICIAN_MODERATOR` | Moderation, discussion policies, guides, cohorts, membership and invitations                                    | `sgulyan1@jhmi.edu`                                     |
-| `SYSTEM_ADMIN`        | Staff capabilities; database administration is API-only                                                         | `cs-admin@cs.jhu.edu`                                   |
+Seeded accounts have random, unrecoverable initial passwords. There is no shared demo password. Follow [Roles and account access](#roles-and-account-access) to configure a local staff account before attempting to sign in.
 
-Seed accounts have random, unrecoverable initial passwords. Configure SMTP and use account recovery to activate them. Historical accounts using the formerly public seed password are invalidated by corrective migration 004. Production seeding is disabled unless explicitly enabled with `ALLOW_PRODUCTION_SEED=true`.
+## Project structure
 
-## Environment configuration
+```text
+src/                         React frontend
+  app/                       Application shell, providers, navigation, orchestration
+  features/                  Domain-owned components, hooks, API adapters, and types
+  shared/                    Reusable UI, HTTP transport, hooks, and pure helpers
+  types/                     Cross-feature contracts
+app/                         Backend package, with its own dependency lockfile
+  src/
+    config/                  Validated runtime configuration and database connection
+    db/migrations/           Numbered SQL migrations
+    middleware/              Authentication, origin protection, rate limits, errors
+    modules/                 Domain routes, services, and queries
+    services/                Mail delivery, recovery jobs, upload lifecycle
+  tests/                     Backend integration and regression tests
+config/                      Environment template and nginx configuration
+public/                      Bundled resources, fonts, and static assets
+scripts/                     Development process launcher
+docs/                        Supporting architecture documentation
+```
 
-Backend configuration is loaded from `config/ftdcare.env` or process environment variables. Keep secrets outside Git. See `config/ftdcare.env.example`.
+Feature code owns its domain behavior; `shared` contains infrastructure and components used across features. See the [frontend refactoring guide](docs/frontend-refactoring.md) for ownership boundaries. Frontend build output goes to `dist/`; compiled backend code and migrations go to `app/dist/`.
 
-| Variables                                                               | Configuration                                                                                             |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`                                                            | Required, at least 32 random characters                                                                   |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`               | PostgreSQL connection; production password must be at least 12 characters                                 |
-| `DB_SSL`                                                                | `true` for databases requiring verified TLS; otherwise `false`                                            |
-| `GUIDE_UPLOAD_DIRECTORY`                                                | Optional absolute path for persistent uploaded PDF storage                                                |
-| `DB_POOL_MAX`                                                           | Pool size, default `20`                                                                                   |
-| `NODE_ENV`, `PORT`                                                      | `development`/`test`/`production`; API port defaults to `3000`                                            |
-| `APP_URL`, `CORS_ORIGIN`                                                | Public frontend URL and comma-separated allowed origins; production requires HTTPS                        |
-| `TRUST_PROXY_HOPS`                                                      | Trusted proxy count; `1` for a single nginx proxy, `0` for direct access                                  |
-| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`                           | Session lifetime, defaults `8h` and `28800000`                                                            |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`         | Mail delivery configuration for invitations and recovery; defaults to port `587`                          |
-| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET`, `ALLOW_PRODUCTION_SEED` | Default `false`; personas and database reset are rejected in production; seeding requires explicit opt-in |
+## Configuration
 
-Frontend API calls use the same origin with HttpOnly session cookies. Vite proxies `/api` to port 3000; `VITE_API_PROXY_TARGET` can override this locally. The backend currently provides retrieval-based knowledge responses; an API key does not enable model generation.
+Backend npm scripts load `config/ftdcare.env` when present. Backend tests load `config/ftdcare.test.env` instead. Existing process environment variables take precedence over file values. The root `.env` is not the backend configuration file. Start with the [backend environment template](config/ftdcare.env.example); [env.ts](app/src/config/env.ts) defines defaults and validation.
 
-## Database migrations and pagination
+| Variables                                                       | Purpose / default                                                                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                                                    | Required signing secret, at least 32 characters; generate a unique random value per environment.                    |
+| `DB_HOST`, `DB_PORT`                                            | PostgreSQL host and port; `127.0.0.1`, `5432`.                                                                      |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`                             | Database name, role, and password; production requires a password of at least 12 characters.                        |
+| `DB_SSL`, `DB_POOL_MAX`                                         | Verified database TLS (`false` by default) and pool size (`20`).                                                    |
+| `NODE_ENV`, `PORT`                                              | Runtime mode (`development`) and API port (`3000`). Set `NODE_ENV=production` for deployments.                      |
+| `APP_URL`                                                       | Frontend URL used in emailed links; `http://localhost:5173`.                                                        |
+| `CORS_ORIGIN`                                                   | Comma-separated allowed frontend origins; `http://localhost:5173`. Production origins and `APP_URL` must use HTTPS. |
+| `TRUST_PROXY_HOPS`                                              | Trusted reverse-proxy hops; `1` for one nginx proxy, `0` for direct access. Match the actual network topology.      |
+| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`                   | Token lifetime (`8h`) and persistent-cookie lifetime (`28800000`).                                                  |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP delivery settings; port `587` by default, implicit TLS on `465`, TLS required for delivery.                    |
+| `GUIDE_UPLOAD_DIRECTORY`                                        | Optional absolute persistent upload path; defaults to `public/uploads/guides`.                                      |
+| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET`                  | Development-only switches; default `false`, rejected in production.                                                 |
+| `ENABLE_DEV_AUTH_PREVIEWS`                                      | Redacted development email previews; default `false`, rejected in production. Does not expose reset credentials.    |
+| `ALLOW_PRODUCTION_SEED`                                         | Explicit opt-in to run the seed script in production; default `false`.                                              |
 
-`npm run backend:migrate` applies numbered SQL files from `app/src/db/migrations` in filename order. Each migration runs once, records a SHA-256 checksum, and shares a transaction and advisory lock with the migration run. Editing a recorded migration fails the run; add a new numbered file for subsequent schema changes. The initial migration is idempotent so existing installations can adopt the migration history without deleting data. Back up production before schema updates.
+`VITE_API_PROXY_TARGET` configures the Vite development proxy and defaults to `http://127.0.0.1:3000`. Set it in the frontend process environment when changing the API port. Frontend `VITE_*` configuration can be exposed to the browser; never put secrets in it. `GEMINI_API_KEY` is optional legacy configuration and does not enable model generation.
 
-Posts, moderation queue and private messages accept `page` and `pageSize`. Defaults are page 1 and 25 items (50 for messages), capped at 100. Responses include `pagination: { page, pageSize, total, totalPages }`. Posts retain `posts`/`total`; moderation retains `items`/`totalPending`; private chat returns `messages`. Messages page from newest history, with each page ordered chronologically. Frontend collection adapters request only the selected page. Feed search, audience, ownership and reply-policy filters run on the server before pagination.
+## Roles and account access
 
-Authenticated API requests are limited per user (1,200 requests per 15 minutes); auth routes retain a separate IP limit (60 per 15 minutes). Health checks are exempt. Limits are currently process-local, so deployments with multiple API processes should use a shared limiter store. Logout revokes all sessions for the account by incrementing its session version.
+| Role                  | Capabilities                                                                                                  | Seeded email addresses                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `CARE_PARTNER`        | Approved discussions in their condition/cohorts, own pending questions, resources, per-post private dialogue. | `sarah.smith@example.com`, `marcus.vance@example.com` |
+| `CLINICIAN_MODERATOR` | Moderation, discussion policies, guides, cohorts, membership, invitations.                                    | `sgulyan1@jhmi.edu`                                   |
+| `SYSTEM_ADMIN`        | Staff capabilities and API-only database administration.                                                      | `cs-admin@cs.jhu.edu`                                 |
 
-## Production deployment with nginx
+Seeding creates sample accounts and content for development. It does not provide usable initial passwords or access to the listed inboxes. For local testing, assign an inbox you control to the seeded clinician using a PostgreSQL administrator connection to your development database:
 
-1. Provision PostgreSQL, an application service account, a domain, nginx and a valid TLS certificate. Place the checkout at `/var/www/ftdcare/app` and set production environment values above.
-2. Install and build (build tools require development dependencies at build time):
+```sql
+UPDATE users SET email = 'you@your-domain.example' WHERE id = 'user-clinician-1';
+```
+
+Replace the example email before running this statement. Configure SMTP, then use **Forgot password** for that address. Open the emailed reset link and enter the verification code from the separate message to choose a password. Rerunning the seed script restores seeded email addresses, so repeat this local override after reseeding. This is a development setup step; production account provisioning should use your approved administration process. Do not seed demonstration content into a real care community as an account-provisioning shortcut.
+
+New care partners register through a staff-issued invitation. Password recovery verifies one inbox; separate link and code emails are not multifactor authentication and do not protect against mailbox compromise. Standalone private chat and database-admin endpoints are API-only; per-post private dialogue has a frontend interface.
+
+## Development commands
+
+| Command                                            | Action                                                                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                                      | Start frontend and backend together.                                                                             |
+| `npm run dev:frontend` / `npm run dev:backend`     | Start either development process separately.                                                                     |
+| `npm run backend:migrate` / `npm run backend:seed` | Apply migrations / load development seed data.                                                                   |
+| `npm run typecheck`                                | Check frontend and Vite configuration types.                                                                     |
+| `npm run lint:eslint`                              | Check frontend and backend source, including React hook rules.                                                   |
+| `npm run format:check` / `npm run format`          | Check / apply Prettier formatting.                                                                               |
+| `npm test` / `npm run backend:test`                | Run frontend / backend tests.                                                                                    |
+| `npm run build`                                    | Build the production frontend into `dist/`.                                                                      |
+| `npm --prefix app run build`                       | Compile the backend and copy SQL migrations into `app/dist/`.                                                    |
+| `npm start`                                        | Start the compiled API; does not serve the frontend.                                                             |
+| `npm run preview`                                  | Preview the frontend build on port 4173; start the API separately and allow the preview origin in `CORS_ORIGIN`. |
+
+Vite preview inherits the configured API/upload proxies. When testing emailed links against preview, also point `APP_URL` at the preview origin.
+
+There are separate root and backend lockfiles. Use `npm ci` for reproducible installs and update the relevant lockfile when changing dependencies.
+
+## Testing and CI
+
+These checks do not require PostgreSQL:
+
+```bash
+npm run typecheck
+npm run lint:eslint
+npm run format:check
+npm test
+npm run build
+npm --prefix app run build
+```
+
+Backend tests mutate data and require a separate, migrated, seeded database. Create a test database, copy `config/ftdcare.env.example` to `config/ftdcare.test.env`, and set `NODE_ENV=test` and the test database credentials there. Use a different database from development and production. Leave SMTP credentials unset or use an isolated test mail service; do not reuse production mail credentials.
+
+Load the test configuration explicitly when initializing that database:
+
+```bash
+node --env-file=config/ftdcare.test.env --run backend:migrate
+node --env-file=config/ftdcare.test.env --run backend:seed
+npm run backend:test
+```
+
+Frontend tests use Vitest, Testing Library, and jsdom, including `<App/>` invitation and login regressions. Backend tests use Node's test runner and real PostgreSQL, covering authorization, sessions, moderation, messages, recovery, uploads, indexes, and legacy-password upgrades. Browser smoke checks and real SMTP delivery are separate from these automated suites.
+
+[GitHub Actions](.github/workflows/ci.yml) runs checks against PostgreSQL 16 and 18, applies migrations twice, seeds the test database, runs both test suites, builds both packages and the Docker image, and audits dependencies. CI has read-only repository permissions; high and critical audit findings fail the workflow.
+
+Run dependency checks locally with:
+
+```bash
+npm audit --audit-level=high
+npm --prefix app audit --audit-level=high
+```
+
+The last recorded audit on 2026-11-15 reported a moderate `minimatch` advisory through development-only `typescript-eslint` dependencies, with no fix reported, and no production dependency advisories. Run the commands above for current results.
+
+## API conventions
+
+- API routes use `/api/v1`; `GET /api/v1/health` checks database connectivity and returns `503` when unavailable.
+- Browser requests include HttpOnly session cookies. Production cookies use `Secure`; cookie-authenticated mutations require an allowed origin. Authorization uses server-side identity and role checks.
+- Logout increments the account's session version, revoking all its existing sessions.
+- Validation errors return `400`, authorization failures `401`/`403`, unique conflicts `409`, oversized bodies `413`, and unexpected failures `500`. Central error responses include a request ID; responses also expose `X-Request-ID` for log correlation.
+- Authenticated API traffic is limited per user to 1,200 requests per 15 minutes. Auth routes use a separate 60-request per-IP limit. Health checks are exempt. Limiter state is process-local; multiple API processes require a shared store for a consistent deployment-wide limit.
+
+Posts, moderation queues, and private messages accept `page` and `pageSize`. Defaults are page 1 and 25 items (50 for messages), capped at 100. Responses include `pagination: { page, pageSize, total, totalPages }` alongside `posts`, `items`, or `messages`. Message pages select newest history and order each page chronologically. Frontend collection adapters request the selected page; feed filters run on the server before pagination.
+
+## Database and file storage
+
+Migrations live in [app/src/db/migrations](app/src/db/migrations). The runner applies numbered SQL files in filename order under one transaction and advisory lock, recording SHA-256 checksums. Applied files must not be edited; add a new numbered migration. The baseline supports existing installations, and later migrations include corrective account changes, foreign-key indexes, and durable recovery jobs.
+
+Run migrations as a deployment step before starting the new API version. Back up the database first. There is no automated down-migration command; plan rollback using a compatible application version or a tested database restore.
+
+Guide metadata and PDF URLs live in PostgreSQL; uploaded PDF bytes live on disk. Persist and back up `GUIDE_UPLOAD_DIRECTORY` along with the database. A URL in PostgreSQL does not preserve its target file. Bundled seed PDFs live in `public/resources`; external PDF URLs require their own durable storage and access policy.
+
+Uploaded PDFs must be served through `/uploads/guides/` on the authenticated API. Staff can access drafts; care partners can access active, approved guides for their condition and condition-appropriate resource attachments. Do not expose the upload directory through a public filesystem alias. At API startup and hourly, generated uploads older than 24 hours are removed if no guide or resource references them.
+
+## Production deployment
+
+### nginx and a supervised API process
+
+1. Provision PostgreSQL, an application service account, nginx, a domain, and a TLS certificate. Set production environment values, SMTP, and persistent upload storage. The commands below assume the checkout is at `/var/www/ftdcare/app`.
+2. Install and build with development dependencies available at build time:
 
    ```bash
    npm ci
    npm --prefix app ci
    npm run build
    npm --prefix app run build
-   npm run backend:migrate
+   npm --prefix app run migrate:compiled
    sudo mkdir -p /var/www/ftdcare/html
    sudo rsync -a --delete dist/ /var/www/ftdcare/html/
    ```
 
-3. Run `npm --prefix app start` under a process supervisor such as systemd. Set its working directory to `/var/www/ftdcare/app`, run as the application service account, enable restart on failure, and expose port 3000 only through the local proxy/firewall. Production secrets must be readable only by that service account.
-4. Copy `config/nginx.conf` into `/etc/nginx/sites-available/ftdcare`, set the domain and certificate paths, and enable it in `sites-enabled`. Its static root is `/var/www/ftdcare/html` and its API upstream is `127.0.0.1:3000`. The config includes the PDF-upload proxy and request size needed for extraction.
-5. Validate and reload:
+3. Run `npm start` under a supervisor such as systemd, with the repository as its working directory, the application service account, and restart-on-failure enabled. Restrict access to secrets and expose API port 3000 through the proxy/firewall only.
+4. Install [config/nginx.conf](config/nginx.conf) in nginx's site configuration. Replace the example domain and enable the certificate paths. The template serves `/var/www/ftdcare/html`, proxies API and uploaded PDF requests to `127.0.0.1:3000`, and sets security headers and the PDF request-size limit.
+5. Validate the configuration and deployment:
 
    ```bash
    sudo nginx -t
@@ -81,27 +242,44 @@ Authenticated API requests are limited per user (1,200 requests per 15 minutes);
    curl --fail https://your-domain.com/api/v1/health
    ```
 
-Guide metadata and PDF URLs are stored in PostgreSQL. The upload endpoint writes files under `public/uploads/guides`, or the absolute path set by `GUIDE_UPLOAD_DIRECTORY`. Mount persistent storage there and include it in backups. Serve `/uploads/guides/` through the authenticated API, never a public filesystem alias. Draft uploads require staff access; care partners can read only active, approved guides and resources for their condition. The API removes unreferenced generated uploads older than 24 hours at startup and hourly. External PDF URLs can point to durable object storage. Database URL records alone do not persist the PDF bytes. `public/resources` contains the bundled seed resources.
+Verify login, invitation registration, guide access, and email delivery over the deployed HTTPS origin before opening access to users. The API process also runs recovery and upload-cleanup jobs, so it must stay running for those jobs to execute.
 
-## Validation
+### Docker API image
 
 ```bash
-npm run typecheck
-npm run build
-npm --prefix app run build
-npm run backend:test
+docker build -t ftdcare:local .
+docker run --rm --env-file /secure/ftdcare.env ftdcare:local node app/dist/db/migrate.js
 ```
 
-Backend integration tests require a migrated, seeded, isolated PostgreSQL database configured in `config/ftdcare.test.env` (same variable names as the backend environment). They exercise authentication, authorization, moderation, frontend contracts and pagination and mutate test data. Never point them at production.
+The image runs the API as the non-root `node` user and includes compiled migrations. It does not serve the frontend; build and deploy `dist/` to nginx separately using the steps above. Configure `DB_HOST` to a database address reachable from the container; `127.0.0.1` inside the container refers to that container.
 
-Development API fallbacks have been removed. Email bodies are not retained in the outbox. Password-reset requests enqueue the same durable job for every email and return before account lookup or SMTP. The API worker polls every five seconds and retries failed delivery up to five times, one minute apart. SMTP requires TLS; configure a working SMTP service before enabling account recovery. Reset links and codes are delivered separately. `ENABLE_DEV_AUTH_PREVIEWS` defaults to false and is forbidden in production.
+Create a persistent host upload directory writable by the container user (UID 1000 in the supplied base image), then start the API:
 
-Quality checks: `npm test`, `npm run lint:eslint`, and `npm run format:check`. CI also provisions isolated PostgreSQL 16 and 18 services, migrates twice, seeds random initial credentials, runs integration tests, and builds the Docker image. Frontend diagnostics log event names only in development; backend logs include request IDs, route templates, sanitized error messages, error codes and stack locations without serializing request bodies, cookies or database error details.
+```bash
+docker run -d --name ftdcare-api --restart unless-stopped \
+  --env-file /secure/ftdcare.env \
+  -p 127.0.0.1:3000:3000 \
+  --mount type=bind,src=/var/lib/ftdcare/guides,dst=/var/lib/ftdcare/guides \
+  -e GUIDE_UPLOAD_DIRECTORY=/var/lib/ftdcare/guides \
+  ftdcare:local
+```
 
-The full dependency audit currently reports a moderate `minimatch` denial-of-service advisory through the development-only `typescript-eslint` dependency chain, with no upstream fix reported. Production dependencies have no reported vulnerabilities. CI scans both production and development dependencies and fails on high or critical findings.
+Use the same database/network settings for migration and API containers. Runtime maintenance commands use compiled JavaScript, since development dependencies are removed: `node app/dist/db/migrate.js` and, only when intentionally loading seed data, `node app/dist/db/seed.js`. Production seeding remains disabled by default.
 
-Standalone `/api/v1/chat/private` and admin database endpoints are API-only; there are no standalone messaging or database-admin screens. Per-post private dialogue is available in the discussion interface.
+## Operations and troubleshooting
 
-Password recovery verifies access to one email inbox. Separate link and code emails are not independent factors and do not protect against mailbox compromise.
+| Symptom / task                                         | What to check                                                                                                                                                                                                 |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database health returns `503`                          | Database availability, credentials, TLS configuration, network access, and applied migrations.                                                                                                                |
+| Login fails after initial seeding                      | Seed passwords cannot be recovered. Configure SMTP and use recovery for an inbox you control.                                                                                                                 |
+| Login works but subsequent requests return `401`/`403` | Frontend origin, HTTPS, cookie settings, reverse-proxy topology, and consistent hostnames.                                                                                                                    |
+| Invitations or resets do not arrive                    | SMTP credentials, required TLS, sender configuration, delivery status, and the running API worker. Recovery polls every five seconds and makes up to five delivery attempts, one minute apart after failures. |
+| Guide PDFs disappear after a restart                   | Persistent upload mount, write permissions, and whether the guide/resource URL still references the file. Unsaved orphan uploads expire.                                                                      |
+| Request fails unexpectedly                             | Correlate `X-Request-ID` or the response's `requestId` with structured API logs.                                                                                                                              |
+| Preparing a release or restore                         | Back up PostgreSQL and uploaded files together; verify the restore procedure and migration compatibility.                                                                                                     |
 
-For Docker deployments, pass production environment variables and run `docker run --rm --env-file /secure/ftdcare.env IMAGE node app/dist/db/migrate.js` before starting the API. The compiled seed command is `node app/dist/db/seed.js`; production seeding remains disabled by default. These commands do not require tsx or development dependencies.
+Backend logs include request IDs, route templates, sanitized error messages, codes, and stack locations without serializing request bodies or cookies. Email bodies and reset credentials are not retained in the outbox. Monitor API health and mail delivery; a healthy database alone does not establish that SMTP or every user flow works.
+
+## Contributing
+
+Keep changes within their owning feature or backend domain and preserve UI and API behavior unless the change explicitly requires otherwise. Add behavioral regression coverage for fixes, run the checks above, and describe validation and migration requirements in the pull request. Use synthetic data in fixtures and keep real patient data out of tests, issues, screenshots, and logs. Do not commit environment credentials, uploaded PDFs, or temporary migration probes.

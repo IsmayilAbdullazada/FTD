@@ -4,6 +4,7 @@ import { query, transaction } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
 import { sanitizeUserContent } from "../../lib/contentSafety.js";
 import { cohort } from "../../lib/serializers.js";
+import { paginationMeta, parsePagination } from "../../lib/pagination.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
 
 const router = Router();
@@ -12,8 +13,9 @@ router.get(
   "/queue",
   authenticateToken,
   requireStaff,
-  asyncHandler(async (_req, res) => {
-    const result = await query(`
+  asyncHandler(async (req, res) => {
+    const { page, pageSize, limit, offset } = parsePagination(req.query);
+    const queueQuery = `
     SELECT p.id,'POST' type,p.id post_id,p.title,p.raw_content,p.sanitized_content,p.condition,p.is_urgent_clinical,p.phi_alerts,
       p.allow_unmoderated_replies,p.created_at,u.id user_id,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,
       u.condition user_condition,u.anonymous_handle,u.avatar_color,NULL::text post_content,NULL::text parent_comment_id,NULL::text parent_content,
@@ -25,10 +27,19 @@ router.get(
       p.sanitized_content,c.parent_comment_id,parent.sanitized_content,
       COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]')
     FROM comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=c.author_id LEFT JOIN comments parent ON parent.id=c.parent_comment_id
-    WHERE c.status='PENDING_MODERATION' ORDER BY created_at`);
-    const groupRows = await query(
-      `SELECT c.*,(SELECT COUNT(*) FROM cohort_members cm WHERE cm.cohort_id=c.id)::int member_count FROM cohorts c`,
-    );
+    WHERE c.status='PENDING_MODERATION'`;
+    const [result, countResult, groupRows] = await Promise.all([
+      query(
+        `SELECT * FROM (${queueQuery}) pending_queue ORDER BY created_at,id LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ),
+      query(`SELECT
+        ((SELECT COUNT(*) FROM posts WHERE status='PENDING_MODERATION') +
+         (SELECT COUNT(*) FROM comments WHERE status='PENDING_MODERATION'))::int total`),
+      query(
+        `SELECT c.*,(SELECT COUNT(*) FROM cohort_members cm WHERE cm.cohort_id=c.id)::int member_count FROM cohorts c`,
+      ),
+    ]);
     const groups = new Map(groupRows.rows.map((r) => [r.id, cohort(r)]));
     const items = result.rows.map((r) => ({
       id: r.id,
@@ -59,7 +70,12 @@ router.get(
       phiAlerts: r.phi_alerts ?? [],
       createdAt: r.created_at,
     }));
-    res.json({ totalPending: items.length, items });
+    const totalPending = countResult.rows[0].total as number;
+    res.json({
+      totalPending,
+      items,
+      pagination: paginationMeta(page, pageSize, totalPending),
+    });
   }),
 );
 

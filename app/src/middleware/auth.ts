@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { query } from "../config/db.js";
 import { sessionCookie } from "../lib/session.js";
+import type { UserRole } from "../lib/roles.js";
 
-export type UserRole = "CARE_PARTNER" | "CLINICIAN_MODERATOR" | "SYSTEM_ADMIN";
+export type { UserRole } from "../lib/roles.js";
 export interface AuthenticatedUser {
   id: string;
   email: string;

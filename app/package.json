@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",
     "dev": "node --env-file-if-exists=../config/ftdcare.env --import tsx src/server.ts",
     "start": "node --env-file-if-exists=../config/ftdcare.env dist/server.js",
     "migrate": "node --env-file-if-exists=../config/ftdcare.env --import tsx src/db/migrate.ts",

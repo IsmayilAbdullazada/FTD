@@ -1,24 +1,32 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { discussionApi } from "@/features/discussions/api/discussionApi";
+import { knowledgeApi } from "@/features/knowledge/api/knowledgeApi";
+import { INITIAL_COMMENTS, INITIAL_POSTS } from "@/shared/dev/clinicalStore";
 import {
-  Send,
+  Audience,
+  CommunityGroup,
+  CurrentUser,
+  getProperGroupName,
+} from "@/types";
+import {
+  AlertTriangle,
   ArrowLeft,
+  ArrowRight,
+  Check,
   CheckCircle,
   CheckCircle2,
   Clock,
-  ArrowRight,
-  ShieldCheck,
   MessageCircleHeart,
-  AlertTriangle,
-  Search,
   Phone,
+  Send,
+  ShieldCheck,
   X,
-  Eye,
-  Check,
-} from 'lucide-react';
-import { discussionApi } from '@/features/discussions/api/discussionApi';
-import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
-import { INITIAL_COMMENTS, INITIAL_POSTS } from '@/shared/dev/clinicalStore';
-import { Audience, CommunityGroup, CurrentUser, getProperGroupName } from '@/types';
+} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  findRealtimeKeywordMatches,
+  type DiscussionSearchItem,
+} from "../lib/discussionSearch";
+import { SimilarDiscussionsBox } from "./SimilarDiscussionsBox";
 
 interface PostComposerProps {
   currentUser: CurrentUser;
@@ -32,450 +40,6 @@ interface PostComposerProps {
   onOpenAssistant: (query: string) => void;
 }
 
-export interface DiscussionSearchItem {
-  id: string;
-  title: string;
-  content: string;
-  authorHandle: string;
-  authorBadge?: string;
-  cohortName?: string;
-  createdAt: string;
-  replies: {
-    id: string;
-    content: string;
-    authorHandle: string;
-    authorBadge?: string;
-    createdAt?: string;
-  }[];
-}
-
-export interface RealtimeSnippetItem {
-  beforeMatch: string;
-  matchedText: string;
-  afterMatch: string;
-  hasLeadingEllipsis: boolean;
-  hasTrailingEllipsis: boolean;
-  signature: string;
-}
-
-export interface RealtimeMatchItem {
-  id: string;
-  postId: string;
-  postTitle: string;
-  matchedTerms: string[];
-  titleMatched: boolean;
-  snippets: RealtimeSnippetItem[];
-  score: number;
-}
-
-const STOP_WORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'for', 'to', 'of', 'in', 'on', 'at', 'by', 'with',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-  'that', 'this', 'these', 'those', 'it', 'its', 'my', 'your', 'his', 'her', 'their', 'our',
-  'what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how',
-  'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
-  'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-  'can', 'will', 'just', 'should', 'now', 'into', 'onto', 'from', 'about',
-  'need', 'help', 'want', 'trying', 'tried', 'like', 'i', 'me', 'we', 'us', 'you',
-]);
-
-/**
- * Extracts distinct sentence snippets around the matched substring with '...'
- * Separates beforeMatch, matchedText, and afterMatch for high-fidelity bolding.
- */
-function extractSentenceSnippets(
-  text: string,
-  queryWord: string,
-  maxSnippets = 2
-): RealtimeSnippetItem[] {
-  if (!text || !queryWord) return [];
-  const lowerText = text.toLowerCase();
-  const lowerQuery = queryWord.toLowerCase();
-  const queryLen = queryWord.length;
-
-  const results: RealtimeSnippetItem[] = [];
-  let searchFrom = 0;
-
-  while (searchFrom < text.length && results.length < maxSnippets) {
-    const matchIndex = lowerText.indexOf(lowerQuery, searchFrom);
-    if (matchIndex === -1) break;
-
-    // Search sentence boundaries around matchIndex (. ! ? or newline)
-    let sentenceStart = 0;
-    for (let i = matchIndex - 1; i >= 0; i--) {
-      const char = text[i];
-      if (char === '.' || char === '!' || char === '?' || char === '\n') {
-        sentenceStart = i + 1;
-        break;
-      }
-    }
-
-    let sentenceEnd = text.length;
-    for (let i = matchIndex + queryLen; i < text.length; i++) {
-      const char = text[i];
-      if (char === '.' || char === '!' || char === '?' || char === '\n') {
-        sentenceEnd = i + 1;
-        break;
-      }
-    }
-
-    // Clean whitespace around boundaries
-    while (sentenceStart < matchIndex && /\s/.test(text[sentenceStart])) {
-      sentenceStart++;
-    }
-    while (sentenceEnd > matchIndex + queryLen && /\s/.test(text[sentenceEnd - 1])) {
-      sentenceEnd--;
-    }
-
-    let snippetStart = sentenceStart;
-    let snippetEnd = sentenceEnd;
-
-    // If snippet is longer than 110 characters, create a focused window around match
-    if (snippetEnd - snippetStart > 110) {
-      let windowStart = Math.max(sentenceStart, matchIndex - 35);
-      let windowEnd = Math.min(sentenceEnd, matchIndex + queryLen + 45);
-
-      if (windowStart > sentenceStart) {
-        const spaceIdx = text.indexOf(' ', windowStart);
-        if (spaceIdx !== -1 && spaceIdx < matchIndex) {
-          windowStart = spaceIdx + 1;
-        }
-      }
-
-      if (windowEnd < sentenceEnd) {
-        const spaceIdx = text.lastIndexOf(' ', windowEnd);
-        if (spaceIdx !== -1 && spaceIdx > matchIndex + queryLen) {
-          windowEnd = spaceIdx;
-        }
-      }
-
-      snippetStart = windowStart;
-      snippetEnd = windowEnd;
-    }
-
-    const beforeMatch = text.substring(snippetStart, matchIndex);
-    const matchedText = text.substring(matchIndex, matchIndex + queryLen);
-    const afterMatch = text.substring(matchIndex + queryLen, snippetEnd);
-
-    const hasLeadingEllipsis = snippetStart > 0;
-    const hasTrailingEllipsis = snippetEnd < text.length;
-
-    const signature = `${beforeMatch.trim()}|${matchedText.toLowerCase()}|${afterMatch.trim()}`;
-    if (!results.some((r) => r.signature === signature)) {
-      results.push({
-        beforeMatch,
-        matchedText,
-        afterMatch,
-        hasLeadingEllipsis,
-        hasTrailingEllipsis,
-        signature,
-      });
-    }
-
-    searchFrom = Math.max(matchIndex + queryLen, sentenceEnd);
-  }
-
-  return results;
-}
-
-/**
- * Highlights matching keywords directly in the post headline link.
- */
-function highlightTitleText(
-  title: string,
-  matchedTerms: string[]
-): React.ReactNode {
-  if (!matchedTerms || matchedTerms.length === 0) {
-    return <span>{title}</span>;
-  }
-
-  const validTerms = matchedTerms
-    .map((t) => t.trim())
-    .filter((t) => t.length >= 2);
-
-  if (validTerms.length === 0) {
-    return <span>{title}</span>;
-  }
-
-  // Sort longest terms first to match full phrases before sub-words
-  const escapedTerms = validTerms
-    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .sort((a, b) => b.length - a.length);
-
-  try {
-    const pattern = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
-    const parts = title.split(pattern);
-
-    return (
-      <span>
-        {parts.map((part, index) => {
-          if (!part) return null;
-          const isMatch = validTerms.some(
-            (term) => term.toLowerCase() === part.toLowerCase()
-          );
-          if (isMatch) {
-            return (
-              <strong
-                key={index}
-                className="font-bold text-[#002D72] dark:text-amber-300 bg-amber-200/90 dark:bg-amber-950/80 px-1 py-0.5 rounded shadow-2xs mx-0.5"
-              >
-                {part}
-              </strong>
-            );
-          }
-          return <span key={index}>{part}</span>;
-        })}
-      </span>
-    );
-  } catch {
-    return <span>{title}</span>;
-  }
-}
-
-/**
- * Searches across all old posts' headlines, content, and replies in real time with 0ms latency.
- * Groups matches by post ID so each post appears only once under its title without duplicates.
- */
-function findRealtimeKeywordMatches(
-  inputText: string,
-  pool: DiscussionSearchItem[]
-): RealtimeMatchItem[] {
-  const trimmed = inputText.trim();
-  if (trimmed.length < 4) return [];
-
-  const lowerInput = trimmed.toLowerCase();
-  const candidateTerms: string[] = [];
-
-  // 1. Full phrase if <= 40 chars
-  if (trimmed.length <= 40) {
-    candidateTerms.push(lowerInput);
-  }
-
-  // 2. Meaningful keywords >= 3 chars
-  const words = lowerInput
-    .replace(/[^a-z0-9'-]+/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
-
-  words.forEach((w) => {
-    if (!candidateTerms.includes(w)) {
-      candidateTerms.push(w);
-    }
-  });
-
-  // 3. Current active word being typed (if >= 3 chars)
-  const lastWordMatch = lowerInput.match(/([a-z0-9'-]+)$/);
-  if (lastWordMatch && lastWordMatch[1].length >= 3) {
-    const lastWord = lastWordMatch[1];
-    if (!STOP_WORDS.has(lastWord) && !candidateTerms.includes(lastWord)) {
-      candidateTerms.push(lastWord);
-    }
-  }
-
-  if (candidateTerms.length === 0) return [];
-
-  // Group matches by post ID so each post appears only once
-  const postGroupMap = new Map<
-    string,
-    {
-      postId: string;
-      postTitle: string;
-      matchedTerms: Set<string>;
-      titleMatched: boolean;
-      snippets: RealtimeSnippetItem[];
-      score: number;
-    }
-  >();
-
-  for (const post of pool) {
-    for (const term of candidateTerms) {
-      // 1. Check Headline (Title) - highlights directly in title, avoids repeating title below
-      if (post.title.toLowerCase().includes(term)) {
-        let group = postGroupMap.get(post.id);
-        if (!group) {
-          group = {
-            postId: post.id,
-            postTitle: post.title,
-            matchedTerms: new Set<string>(),
-            titleMatched: true,
-            snippets: [],
-            score: 0,
-          };
-          postGroupMap.set(post.id, group);
-        }
-        group.titleMatched = true;
-        group.matchedTerms.add(term);
-        group.score += 120 + (term === lowerInput ? 60 : 0) + term.length * 3;
-      }
-
-      // 2. Check Post Content
-      if (post.content.toLowerCase().includes(term)) {
-        const extracted = extractSentenceSnippets(post.content, term, 2);
-        if (extracted.length > 0) {
-          let group = postGroupMap.get(post.id);
-          if (!group) {
-            group = {
-              postId: post.id,
-              postTitle: post.title,
-              matchedTerms: new Set<string>(),
-              titleMatched: false,
-              snippets: [],
-              score: 0,
-            };
-            postGroupMap.set(post.id, group);
-          }
-          group.matchedTerms.add(term);
-          group.score += 80 + (term === lowerInput ? 40 : 0) + term.length * 2;
-          for (const snip of extracted) {
-            if (!group.snippets.some((s) => s.signature === snip.signature)) {
-              if (group.snippets.length < 3) {
-                group.snippets.push(snip);
-              }
-            }
-          }
-        }
-      }
-
-      // 3. Check Replies (Comments)
-      for (const reply of post.replies) {
-        if (reply.content.toLowerCase().includes(term)) {
-          const extracted = extractSentenceSnippets(reply.content, term, 1);
-          if (extracted.length > 0) {
-            let group = postGroupMap.get(post.id);
-            if (!group) {
-              group = {
-                postId: post.id,
-                postTitle: post.title,
-                matchedTerms: new Set<string>(),
-                titleMatched: false,
-                snippets: [],
-                score: 0,
-              };
-              postGroupMap.set(post.id, group);
-            }
-            group.matchedTerms.add(term);
-            group.score += 90 + (term === lowerInput ? 45 : 0) + term.length * 2;
-            for (const snip of extracted) {
-              if (!group.snippets.some((s) => s.signature === snip.signature)) {
-                if (group.snippets.length < 3) {
-                  group.snippets.push(snip);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const results: RealtimeMatchItem[] = Array.from(postGroupMap.values()).map(
-    (g) => ({
-      id: `match-group-${g.postId}`,
-      postId: g.postId,
-      postTitle: g.postTitle,
-      matchedTerms: Array.from(g.matchedTerms),
-      titleMatched: g.titleMatched,
-      snippets: g.snippets,
-      score: g.score,
-    })
-  );
-
-  results.sort((a, b) => b.score - a.score);
-  return results.slice(0, 5);
-}
-
-interface SimilarDiscussionsBoxProps {
-  matches: RealtimeMatchItem[];
-  onDismiss: () => void;
-  onOpenDiscussion: (postId: string) => void;
-  onPreview: (postId: string) => void;
-}
-
-const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
-  matches,
-  onDismiss,
-  onOpenDiscussion,
-  onPreview,
-}) => {
-  if (matches.length === 0) return null;
-
-  return (
-    <div className="mt-3 bg-white dark:bg-slate-900 rounded-xl border border-blue-200/90 dark:border-blue-900/60 shadow-xs overflow-hidden animate-in fade-in duration-150 transition-colors">
-      <div className="bg-slate-50/90 dark:bg-slate-800/90 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
-          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Posts that may be similar</span>
-          <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-950/80 border border-transparent dark:border-blue-800/60 px-2 py-0.5 rounded-md">
-            {matches.length}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 min-w-9 min-h-9 flex items-center justify-center rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer"
-          title="Dismiss suggestions"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 p-2 space-y-2">
-        {matches.map((item) => (
-          <div
-            key={item.id}
-            className="p-3.5 rounded-xl hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition text-left space-y-2 border border-slate-100 dark:border-slate-800/80 hover:border-blue-100 dark:hover:border-blue-900/50"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => onOpenDiscussion(item.postId)}
-                className="text-base font-semibold text-[#002D72] dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline text-left cursor-pointer transition min-w-0 flex-1 leading-snug py-1"
-              >
-                {highlightTitleText(item.postTitle, item.matchedTerms)}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onPreview(item.postId)}
-                className="min-h-11 px-3.5 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer border border-slate-200/60 dark:border-slate-700"
-                title="Preview discussion answers"
-              >
-                <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span>Preview</span>
-              </button>
-            </div>
-
-            {/* If content or replies matched, show sentence snippet(s) with ... and bolding the matching substring */}
-            {item.snippets.length > 0 && (
-              <div className="space-y-1.5 pt-0.5">
-                {item.snippets.map((snippet, sIdx) => (
-                  <div
-                    key={sIdx}
-                    className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-sans"
-                  >
-                    {snippet.hasLeadingEllipsis && <span className="text-slate-400 dark:text-slate-500 font-bold">... </span>}
-                    <span>{snippet.beforeMatch}</span>
-                    <strong className="font-bold text-[#002D72] dark:text-amber-200 bg-amber-200/90 dark:bg-amber-950/90 px-1 py-0.5 rounded shadow-2xs mx-0.5">
-                      {snippet.matchedText}
-                    </strong>
-                    <span>{snippet.afterMatch}</span>
-                    {snippet.hasTrailingEllipsis && <span className="text-slate-400 dark:text-slate-500 font-bold"> ...</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-slate-50 dark:bg-slate-800/90 px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-sans">
-        <span>💡 Tip: Click any post headline above to read the discussion, or continue writing your question below.</span>
-      </div>
-    </div>
-  );
-};
-
-
 export const PostComposer: React.FC<PostComposerProps> = ({
   currentUser,
   cohorts,
@@ -487,10 +51,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   onOpenDiscussion,
   onOpenAssistant,
 }) => {
-  const [title, setTitle] = useState(initialTitle || '');
-  const [content, setContent] = useState(initialContent || '');
+  const [title, setTitle] = useState(initialTitle || "");
+  const [content, setContent] = useState(initialContent || "");
   const [selectedCohortId, setSelectedCohortId] = useState(
-    cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || ''
+    cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || "",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -500,18 +64,31 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    setTitle(initialTitle || '');
-    setContent(initialContent || '');
+    setTitle(initialTitle || "");
+    setContent(initialContent || "");
   }, [initialTitle, initialContent]);
 
-  const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
-    user.role !== 'CARE_PARTNER' || audience === 'BOTH' || audience === user.condition;
-  
+  const canSeeClient = (user: CurrentUser, audience: Audience = "FTD") =>
+    user.role !== "CARE_PARTNER" ||
+    audience === "BOTH" ||
+    audience === user.condition;
+
   // Pool of all old discussions (seeded immediately from in-memory clinical store for 0ms startup)
-  const [discussionsPool, setDiscussionsPool] = useState<DiscussionSearchItem[]>(() => {
-    return INITIAL_POSTS.filter((p) => p.status === 'APPROVED' && canSeeClient(currentUser, p.condition ?? 'FTD')).map((p) => {
+  const [discussionsPool, setDiscussionsPool] = useState<
+    DiscussionSearchItem[]
+  >(() => {
+    if (
+      !import.meta.env.DEV ||
+      import.meta.env.VITE_ENABLE_API_FALLBACK !== "true"
+    )
+      return [];
+    return INITIAL_POSTS.filter(
+      (p) =>
+        p.status === "APPROVED" &&
+        canSeeClient(currentUser, p.condition ?? "FTD"),
+    ).map((p) => {
       const postComments = INITIAL_COMMENTS.filter(
-        (c) => c.postId === p.id && (c.status === 'APPROVED' || !c.status)
+        (c) => c.postId === p.id && (c.status === "APPROVED" || !c.status),
       );
       const cohort = p.assignedGroups?.[0];
       return {
@@ -520,7 +97,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         content: p.content,
         authorHandle: p.author.anonymousHandle,
         authorBadge: p.author.badgeLabel,
-        cohortName: cohort?.properName || cohort?.name || 'General Forum',
+        cohortName: cohort?.properName || cohort?.name || "General Forum",
         createdAt: p.createdAt,
         replies: postComments.map((c) => ({
           id: c.id,
@@ -536,19 +113,27 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   // Load latest pool from backend to ensure any new posts/comments in session are included
   useEffect(() => {
     let isMounted = true;
-    knowledgeApi.getAllDiscussionsPool(currentUser.id)
-    .then((res) => { if (isMounted) setDiscussionsPool(res.pool ?? []); })
-    .catch((err) => console.warn('Could not fetch discussions pool:', err));
+    knowledgeApi
+      .getAllDiscussionsPool(currentUser.id)
+      .then((res) => {
+        if (isMounted) setDiscussionsPool(res.pool ?? []);
+      })
+      .catch((err) => console.warn("Could not fetch discussions pool:", err));
     return () => {
       isMounted = false;
     };
   }, [currentUser.id]);
 
   // Debounced search query (300ms debounce across title & content, starting at 4 characters)
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   useEffect(() => {
-    const text = title.trim().length >= 4 ? title.trim() : content.trim().length >= 4 ? content.trim() : '';
+    const text =
+      title.trim().length >= 4
+        ? title.trim()
+        : content.trim().length >= 4
+          ? content.trim()
+          : "";
     const timer = setTimeout(() => {
       setDebouncedQuery(text);
     }, 300);
@@ -566,21 +151,21 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   const [solvedByDeflection, setSolvedByDeflection] = useState(false);
 
   // audience state
-  const isStaff = currentUser.role !== 'CARE_PARTNER';
-  const [audience, setAudience] = useState<Audience>('BOTH');
+  const isStaff = currentUser.role !== "CARE_PARTNER";
+  const [audience, setAudience] = useState<Audience>("BOTH");
 
   // Keyboard shortcut listener to dismiss suggestions on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         setSuggestionsDismissed(true);
         setPreviewPostId(null);
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
@@ -604,11 +189,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         title: title.trim(),
         cohortName: assignedCohort
           ? getProperGroupName(assignedCohort)
-          : 'General Forum',
+          : "General Forum",
       });
     } catch (err) {
-      console.error('Failed to submit post:', err);
-      setSubmitError('Failed to submit question. Please try again.');
+      console.error("Failed to submit post:", err);
+      setSubmitError("Failed to submit question. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -616,8 +201,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
   const handleDiscardDraft = () => {
     setSolvedByDeflection(true);
-    setTitle('');
-    setContent('');
+    setTitle("");
+    setContent("");
     setTimeout(() => {
       onCancel();
     }, 1500);
@@ -641,7 +226,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           <span>Back to discussions</span>
         </button>
         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Posting as: <strong className="text-slate-800 dark:text-slate-200">{currentUser.anonymousHandle}</strong>
+          Posting as:{" "}
+          <strong className="text-slate-800 dark:text-slate-200">
+            {currentUser.anonymousHandle}
+          </strong>
         </span>
       </div>
 
@@ -662,25 +250,33 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               Question Submitted for Review
             </h2>
             <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base max-w-md mx-auto leading-relaxed font-sans">
-              Thank you, {currentUser.firstName}. Your question has been safely received and is now in review.
+              Thank you, {currentUser.firstName}. Your question has been safely
+              received and is now in review.
             </p>
           </div>
 
           {/* Submission Details Card */}
           <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-4 sm:p-5 text-left max-w-lg mx-auto space-y-3 text-xs sm:text-sm font-sans">
             <div>
-              <span className="text-slate-400 dark:text-slate-500 block text-xs">Topic / Question:</span>
+              <span className="text-slate-400 dark:text-slate-500 block text-xs">
+                Topic / Question:
+              </span>
               <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
                 {submittedPostData.title}
               </span>
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
               <span>Assigned Group:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{submittedPostData.cohortName}</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {submittedPostData.cohortName}
+              </span>
             </div>
             <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-emerald-800 dark:text-emerald-400 text-xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Personal details are verified and privacy protected before publishing</span>
+              <span>
+                Personal details are verified and privacy protected before
+                publishing
+              </span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
               <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
@@ -699,8 +295,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <button
               onClick={() => {
                 setSubmittedPostData(null);
-                setTitle('');
-                setContent('');
+                setTitle("");
+                setContent("");
               }}
               className="w-full sm:w-auto px-5 py-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-semibold transition cursor-pointer"
             >
@@ -719,13 +315,17 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           </p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-7 space-y-5 shadow-xs transition-colors">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-7 space-y-5 shadow-xs transition-colors"
+        >
           <div>
             <h1 className="font-serif text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
               Ask a Question
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Connect with fellow care partners and receive safe, verified guidance.
+              Connect with fellow care partners and receive safe, verified
+              guidance.
             </p>
           </div>
 
@@ -738,10 +338,13 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             >
               <Phone className="w-5 h-5 text-red-700 dark:text-red-400 shrink-0 mt-0.5" />
               <p className="text-base sm:text-lg font-bold text-red-900 dark:text-red-200 leading-snug">
-                For a life-threatening emergency, call{' '}
-                <a href="tel:911" className="underline underline-offset-2 hover:text-red-950 dark:hover:text-red-100">
+                For a life-threatening emergency, call{" "}
+                <a
+                  href="tel:911"
+                  className="underline underline-offset-2 hover:text-red-950 dark:hover:text-red-100"
+                >
                   911
-                </a>{' '}
+                </a>{" "}
                 right away.
               </p>
             </div>
@@ -752,16 +355,20 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 <span>This platform is not for urgent messages</span>
               </div>
               <p className="text-sm leading-relaxed font-sans">
-                This platform is not intended for urgent messages to your clinician. If you need to reach your
-                clinician, please call your clinic at{' '}
-                <a href="tel:4109555147" className="font-bold text-[#002D72] dark:text-sky-400 underline">
+                This platform is not intended for urgent messages to your
+                clinician. If you need to reach your clinician, please call your
+                clinic at{" "}
+                <a
+                  href="tel:4109555147"
+                  className="font-bold text-[#002D72] dark:text-sky-400 underline"
+                >
                   (410) 955-5147, option 2
-                </a>{' '}
+                </a>{" "}
                 or send a message through EPIC.
               </p>
               <p className="text-sm leading-relaxed font-sans">
-                Please do not share any confidential information through the portal. Submitted posts are
-                reviewed once every 24 hours.
+                Please do not share any confidential information through the
+                portal. Submitted posts are reviewed once every 24 hours.
               </p>
             </div>
           </div>
@@ -775,7 +382,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               {similarMatches.length > 0 && !suggestionsDismissed && (
                 <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>{similarMatches.length} similar {similarMatches.length === 1 ? 'discussion' : 'discussions'} found</span>
+                  <span>
+                    {similarMatches.length} similar{" "}
+                    {similarMatches.length === 1 ? "discussion" : "discussions"}{" "}
+                    found
+                  </span>
                 </span>
               )}
             </div>
@@ -820,19 +431,37 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             />
           </div>
 
-          <aside aria-label="Try Care Companion before posting"
-            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 p-4">
+          <aside
+            aria-label="Try Care Companion before posting"
+            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 p-4"
+          >
             <div className="flex items-start gap-3 flex-1 min-w-0">
-              <MessageCircleHeart aria-hidden="true" className="w-6 h-6 shrink-0 text-[#002D72] dark:text-sky-400 mt-0.5" />
+              <MessageCircleHeart
+                aria-hidden="true"
+                className="w-6 h-6 shrink-0 text-[#002D72] dark:text-sky-400 mt-0.5"
+              />
               <div className="space-y-1">
-                <h2 className="text-base font-semibold text-[#002D72] dark:text-sky-300">Before you post, try Care Companion</h2>
+                <h2 className="text-base font-semibold text-[#002D72] dark:text-sky-300">
+                  Before you post, try Care Companion
+                </h2>
                 <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  Find guide pages and discussions that may help. Your post draft will stay here while you look.
+                  Find guide pages and discussions that may help. Your post
+                  draft will stay here while you look.
                 </p>
               </div>
             </div>
-            <button type="button" onClick={() => onOpenAssistant([title.trim(), content.trim()].filter(Boolean).join(' — ').replace(/\s+/g, ' '))}
-              className="min-h-11 shrink-0 rounded-lg bg-[#002D72] dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+            <button
+              type="button"
+              onClick={() =>
+                onOpenAssistant(
+                  [title.trim(), content.trim()]
+                    .filter(Boolean)
+                    .join(" — ")
+                    .replace(/\s+/g, " "),
+                )
+              }
+              className="min-h-11 shrink-0 rounded-lg bg-[#002D72] dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            >
               Try Care Companion
             </button>
           </aside>
@@ -861,15 +490,21 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 Who can see this post
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {([['FTD', 'FTD only'], ['AD', 'AD only'], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                {(
+                  [
+                    ["FTD", "FTD only"],
+                    ["AD", "AD only"],
+                    ["BOTH", "Both groups"],
+                  ] as [Audience, string][]
+                ).map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setAudience(value)}
                     className={`min-h-11 px-3 py-2.5 rounded-xl text-sm font-semibold border transition cursor-pointer ${
                       audience === value
-                        ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-slate-400'
+                        ? "bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600"
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-slate-400"
                     }`}
                   >
                     {label}
@@ -889,7 +524,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               className="w-full min-h-12 py-3 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-base font-semibold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Submitting...' : 'Submit Question'}</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit Question"}</span>
             </button>
           </div>
         </form>
@@ -927,7 +562,12 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4 font-sans text-sm">
               <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2">
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                  <span>Original question by <strong className="text-slate-800 dark:text-slate-200">{activePreviewPost.authorHandle}</strong></span>
+                  <span>
+                    Original question by{" "}
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {activePreviewPost.authorHandle}
+                    </strong>
+                  </span>
                   <span>{activePreviewPost.cohortName}</span>
                 </div>
                 <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-sm sm:text-base">
@@ -938,28 +578,37 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Community & Moderator Guidance ({activePreviewPost.replies.length})
+                    Community & Moderator Guidance (
+                    {activePreviewPost.replies.length})
                   </h4>
                 </div>
 
                 {activePreviewPost.replies.length === 0 ? (
-                  <p className="text-sm text-slate-400 dark:text-slate-500 italic">No replies yet for this question.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 italic">
+                    No replies yet for this question.
+                  </p>
                 ) : (
                   <div className="space-y-2.5">
                     {activePreviewPost.replies.map((reply) => {
-                      const isModerator = reply.authorHandle.includes('Moderator') || reply.authorHandle.includes('Dr. Seema') || reply.authorBadge?.includes('Moderator') || reply.authorBadge?.includes('Clinician');
+                      const isModerator =
+                        reply.authorHandle.includes("Moderator") ||
+                        reply.authorHandle.includes("Dr. Seema") ||
+                        reply.authorBadge?.includes("Moderator") ||
+                        reply.authorBadge?.includes("Clinician");
                       return (
                         <div
                           key={reply.id}
                           className={`p-3.5 rounded-xl border text-sm leading-relaxed space-y-1.5 ${
                             isModerator
-                              ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                              ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100"
+                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                           }`}
                         >
                           <div className="flex items-center justify-between text-xs">
-                            <span className={`font-semibold ${isModerator ? 'text-[#002D72] dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                              {reply.authorHandle} {isModerator && '⭐'}
+                            <span
+                              className={`font-semibold ${isModerator ? "text-[#002D72] dark:text-blue-400" : "text-slate-700 dark:text-slate-300"}`}
+                            >
+                              {reply.authorHandle} {isModerator && "⭐"}
                             </span>
                             {reply.authorBadge && (
                               <span className="text-xs text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-medium">
@@ -967,7 +616,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                               </span>
                             )}
                           </div>
-                          <p className="text-sm sm:text-base leading-relaxed">{reply.content}</p>
+                          <p className="text-sm sm:text-base leading-relaxed">
+                            {reply.content}
+                          </p>
                         </div>
                       );
                     })}

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { query } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
+import { isStaffRole } from "../../lib/roles.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
 import { httpUrl } from "../../lib/urlValidation.js";
 
@@ -13,8 +14,9 @@ router.get(
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
       req.user!.id,
     ]);
-    const condition =
-      req.user!.role === "CARE_PARTNER" ? user.rows[0]?.condition : null;
+    const condition = isStaffRole(req.user!.role)
+      ? null
+      : user.rows[0]?.condition;
     const result = await query(
       `SELECT * FROM clinic_updates WHERE $1::text IS NULL OR condition IN($1,'BOTH') ORDER BY created_at DESC`,
       [condition],
@@ -107,8 +109,9 @@ router.get(
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
       req.user!.id,
     ]);
-    const condition =
-      req.user!.role === "CARE_PARTNER" ? user.rows[0]?.condition : null;
+    const condition = isStaffRole(req.user!.role)
+      ? null
+      : user.rows[0]?.condition;
     const result = await query(
       `SELECT * FROM calendar_events WHERE $1::text IS NULL OR condition IS NULL OR condition IN($1,'BOTH') ORDER BY starts_at`,
       [condition],

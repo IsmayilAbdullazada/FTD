@@ -571,3 +571,47 @@ test("password reset creates a private development preview without account enume
     ]),
   );
 });
+
+test("collection pagination bounds results, preserves totals, and rejects invalid pages", async () => {
+  const headers = { authorization: `Bearer ${clinicianToken}` };
+  const ids = ["pagination-post-a", "pagination-post-b", "pagination-post-c"];
+  try {
+    for (const id of ids) {
+      await pool.query(
+        `INSERT INTO posts(id,author_id,title,raw_content,sanitized_content,status,condition)
+        VALUES($1,'user-care-1','Pagination fixture','Fixture content','Fixture content','PENDING_MODERATION','FTD')`,
+        [id],
+      );
+    }
+    const queue = await request("/api/v1/moderation/queue?pageSize=1", {
+      headers,
+    });
+    assert.equal(queue.status, 200);
+    assert.equal(queue.body.items.length, 1);
+    assert.ok(queue.body.totalPending >= 3);
+    const next = await request("/api/v1/moderation/queue?pageSize=1&page=2", {
+      headers,
+    });
+    assert.notEqual(queue.body.items[0].id, next.body.items[0].id);
+    const empty = await request("/api/v1/posts?pageSize=1&page=999999", {
+      headers,
+    });
+    assert.equal(empty.status, 200);
+    assert.deepEqual(empty.body.posts, []);
+    assert.equal(empty.body.pagination.pageSize, 1);
+    for (const endpoint of [
+      "/api/v1/posts",
+      "/api/v1/moderation/queue",
+      "/api/v1/chat/private",
+    ]) {
+      assert.equal(
+        (await request(`${endpoint}?page=0`, { headers })).status,
+        400,
+      );
+      const bounded = await request(`${endpoint}?pageSize=9999`, { headers });
+      assert.equal(bounded.body.pagination.pageSize, 100);
+    }
+  } finally {
+    await pool.query("DELETE FROM posts WHERE id=ANY($1::text[])", [ids]);
+  }
+});

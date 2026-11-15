@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { query } from "../../config/db.js";
 import { asyncHandler } from "../../lib/http.js";
+import { isStaffRole } from "../../lib/roles.js";
 import { authenticateToken } from "../../middleware/auth.js";
 
 const router = Router();
@@ -13,7 +14,7 @@ router.post(
       .object({ title: z.string().default(""), content: z.string().min(1) })
       .parse(req.body);
     const term = `${title} ${content}`.trim();
-    const staff = req.user!.role !== "CARE_PARTNER";
+    const staff = isStaffRole(req.user!.role);
     const r = await query(
       `SELECT p.id post_id,p.title,p.sanitized_content,u.anonymous_handle,
     (SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.status='APPROVED')::int reply_count,
@@ -43,7 +44,7 @@ router.get(
   "/discussions-pool",
   authenticateToken,
   asyncHandler(async (req, res) => {
-    const staff = req.user!.role !== "CARE_PARTNER";
+    const staff = isStaffRole(req.user!.role);
     const r = await query(
       `SELECT p.*,u.anonymous_handle,u.badge_label,(SELECT g.name FROM post_groups pg JOIN cohorts g ON g.id=pg.cohort_id WHERE pg.post_id=p.id LIMIT 1) cohort_name,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',c.id,'content',c.sanitized_content,'authorHandle',cu.anonymous_handle,'authorBadge',cu.badge_label,'createdAt',c.created_at) ORDER BY c.created_at)

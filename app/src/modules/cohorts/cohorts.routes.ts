@@ -4,6 +4,7 @@ import { z } from "zod";
 import { query, transaction } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
 import { cohort } from "../../lib/serializers.js";
+import { isStaffRole } from "../../lib/roles.js";
 import { authenticateToken, requireStaff } from "../../middleware/auth.js";
 
 const router = Router();
@@ -12,7 +13,7 @@ router.get(
   "/",
   authenticateToken,
   asyncHandler(async (req, res) => {
-    const staff = req.user!.role !== "CARE_PARTNER";
+    const staff = isStaffRole(req.user!.role);
     const result = await query(
       `SELECT c.*,(SELECT COUNT(*) FROM cohort_members cm2 WHERE cm2.cohort_id=c.id)::int member_count
      FROM cohorts c WHERE c.is_active AND ($1::boolean OR c.is_general_board OR EXISTS(

@@ -99,3 +99,16 @@ across feature boundaries. It must not contain feature policy.
 1. Move additional discussion and community contracts out of the global type package when their remaining shared development fixtures are retired.
 2. Introduce a server-state library only if cache synchronization across screens becomes difficult to maintain with the current feature hooks.
 3. Add browser-level accessibility checks when the project adopts a browser test dependency.
+
+## Discussion module boundaries
+
+The feed composes filters, a post list, and post dialogs. API interactions and
+state live in `useCarePartnerFeed`. Discussion detail uses `useDiscussionDetail`
+with separate replies and action-dialog components. Composer matching rules live
+in `lib/discussionSearch.ts`, and suggestions render in `SimilarDiscussionsBox`.
+Development fixtures are grouped by domain under `shared/dev/fixtures`.
+
+Collection adapters traverse bounded backend pages to preserve existing display
+and filtering semantics. This is a compatibility strategy; future incremental
+loading should move search/filter policy to the server before fetching only one
+page at a time.

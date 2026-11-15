@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { query } from "../../config/db.js";
 import { asyncHandler, HttpError } from "../../lib/http.js";
+import { paginationMeta, parsePagination } from "../../lib/pagination.js";
+import { isStaffRole } from "../../lib/roles.js";
 import { authenticateToken } from "../../middleware/auth.js";
 
 const router = Router();
@@ -25,15 +27,33 @@ router.get(
       typeof req.query.caregiverId === "string"
         ? req.query.caregiverId
         : req.user!.id;
-    if (req.user!.role === "CARE_PARTNER" && requested !== req.user!.id)
+    if (!isStaffRole(req.user!.role) && requested !== req.user!.id)
       throw new HttpError(403, "Conversation access denied");
-    const result = await query(
-      `SELECT m.*,su.first_name||' '||su.last_name sender_name,su.role sender_role,
-    ru.first_name||' '||ru.last_name recipient_name FROM private_messages m JOIN users su ON su.id=m.sender_id JOIN users ru ON ru.id=m.recipient_id
-    WHERE m.sender_id=$1 OR m.recipient_id=$1 ORDER BY m.created_at`,
-      [requested],
-    );
-    res.json(result.rows.map(map));
+    const { page, pageSize, limit, offset } = parsePagination(req.query, 50);
+    const [result, countResult] = await Promise.all([
+      query(
+        `SELECT * FROM (
+          SELECT m.*,su.first_name||' '||su.last_name sender_name,su.role sender_role,
+          ru.first_name||' '||ru.last_name recipient_name
+          FROM private_messages m
+          JOIN users su ON su.id=m.sender_id
+          JOIN users ru ON ru.id=m.recipient_id
+          WHERE m.sender_id=$1 OR m.recipient_id=$1
+          ORDER BY m.created_at DESC,m.id DESC LIMIT $2 OFFSET $3
+        ) messages_page ORDER BY created_at`,
+        [requested, limit, offset],
+      ),
+      query(
+        `SELECT COUNT(*)::int total FROM private_messages
+         WHERE sender_id=$1 OR recipient_id=$1`,
+        [requested],
+      ),
+    ]);
+    const total = countResult.rows[0].total as number;
+    res.json({
+      messages: result.rows.map(map),
+      pagination: paginationMeta(page, pageSize, total),
+    });
   }),
 );
 router.post(
@@ -46,10 +66,10 @@ router.post(
         content: z.string().trim().min(1).max(10000),
       })
       .parse(req.body);
-    if (req.user!.role === "CARE_PARTNER" && input.caregiverId !== req.user!.id)
+    if (!isStaffRole(req.user!.role) && input.caregiverId !== req.user!.id)
       throw new HttpError(403, "Conversation access denied");
     const recipientId =
-      req.user!.role === "CARE_PARTNER"
+      !isStaffRole(req.user!.role)
         ? (
             await query(
               `SELECT id FROM users WHERE role='CLINICIAN_MODERATOR' AND is_active ORDER BY created_at LIMIT 1`,
@@ -58,7 +78,7 @@ router.post(
         : input.caregiverId;
     if (!recipientId) throw new HttpError(404, "Message recipient not found");
     const caregiverId =
-      req.user!.role === "CARE_PARTNER" ? req.user!.id : input.caregiverId;
+      !isStaffRole(req.user!.role) ? req.user!.id : input.caregiverId;
     const r = (
       await query(
         `INSERT INTO private_messages(conversation_id,sender_id,recipient_id,content)

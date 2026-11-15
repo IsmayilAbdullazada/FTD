@@ -1,3 +1,4 @@
+import { isStaffRole } from '../../lib/roles.js';
 import { Router } from "express";
 import { env } from "../../config/env.js";
 import { query } from "../../config/db.js";
@@ -14,7 +15,7 @@ router.get(
       typeof req.query.asUser === "string" ? req.query.asUser : req.user!.id;
     if (
       requestedId !== req.user!.id &&
-      (env.ENABLE_DEV_PERSONAS !== "true" || req.user!.role === "CARE_PARTNER")
+      (env.ENABLE_DEV_PERSONAS !== "true" || !isStaffRole(req.user!.role))
     ) {
       throw new HttpError(403, "Persona switching is disabled");
     }
@@ -24,7 +25,7 @@ router.get(
     );
     if (!selected.rows[0]) throw new HttpError(404, "User not found");
     const personas =
-      env.ENABLE_DEV_PERSONAS === "true" && req.user!.role !== "CARE_PARTNER"
+      env.ENABLE_DEV_PERSONAS === "true" && isStaffRole(req.user!.role)
         ? (
             await query(
               `SELECT * FROM users WHERE is_active ORDER BY role DESC,first_name,last_name`,

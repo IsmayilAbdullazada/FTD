@@ -1,6 +1,12 @@
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
+import { reportError } from '@/shared/lib/logger';
 import { discussionApi } from '@/features/discussions/api/discussionApi';
 import type { Audience, CurrentUser } from '@/types';
+import {
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react';
 
 interface UseCreatePostFormOptions {
   currentUser: CurrentUser;
@@ -26,7 +32,14 @@ export function useCreatePostForm({
 
   const handleCreatePost = async (event: FormEvent) => {
     event.preventDefault();
-    if (!npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience || isSubmittingPost) return;
+    if (
+      !npTitle.trim() ||
+      !npContent.trim() ||
+      !npGroupId ||
+      !npAudience ||
+      isSubmittingPost
+    )
+      return;
     setIsSubmittingPost(true);
     try {
       await discussionApi.createPost({
@@ -47,7 +60,7 @@ export function useCreatePostForm({
       setActionSuccessNotice('Post published.');
       setTimeout(() => setActionSuccessNotice(null), 3500);
     } catch (error) {
-      console.error('Failed to create post:', error);
+      reportError('Failed to create post:', error);
       setActionSuccessNotice('Could not publish post. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {

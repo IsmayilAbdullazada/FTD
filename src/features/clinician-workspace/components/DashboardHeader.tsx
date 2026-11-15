@@ -73,16 +73,20 @@ export function DashboardHeader({
             <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span className="font-medium">{actionSuccessNotice}</span>
           </div>
-          <button onClick={onDismissNotice} className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 cursor-pointer">
+          <button
+            onClick={onDismissNotice}
+            className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-
-      { /* Viewing Filter */ }
+      {/* Viewing Filter */}
       <div className="flex items-center gap-2 text-xs">
-        <span className="font-semibold text-slate-600 dark:text-slate-400">Viewing:</span>
+        <span className="font-semibold text-slate-600 dark:text-slate-400">
+          Viewing:
+        </span>
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg font-semibold">
           {(['all', 'FTD', 'AD'] as const).map((opt) => (
             <button
@@ -100,8 +104,6 @@ export function DashboardHeader({
           ))}
         </div>
       </div>
-
     </>
   );
 }
-

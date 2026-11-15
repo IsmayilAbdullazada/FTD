@@ -66,7 +66,9 @@ export const authApi = {
   },
 
   async logout(): Promise<void> {
-    await apiFetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => undefined);
+    await apiFetch('/api/v1/auth/logout', { method: 'POST' }).catch(
+      () => undefined,
+    );
   },
 
   forgotPassword(email: string): Promise<ForgotPasswordResponse> {
@@ -126,24 +128,10 @@ export const authApi = {
   },
 
   issueInvitation(payload: IssueInvitationPayload): Promise<IssuedInvitation> {
-    return safeFetchJson(
-      '/api/v1/auth/invitations',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-      () => {
-        const token = `jh-token-${Math.random().toString(36).substring(2, 9)}`;
-        return {
-          invitationId: `inv-${Date.now()}`,
-          inviteToken: token,
-          inviteExpiresAt: new Date(Date.now() + 72 * 3600000).toISOString(),
-          registrationUrl: `/register?token=${token}`,
-          status: 'DISPATCHED',
-          emailSent: true,
-        };
-      },
-    );
+    return safeFetchJson('/api/v1/auth/invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
   },
 };

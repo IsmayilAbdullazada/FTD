@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { useState, useEffect } from 'react';
 import {
   Search,
@@ -28,14 +29,20 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [activeResource, setActiveResource] = useState<ClinicalResource | null>(null);
+  const [activeResource, setActiveResource] = useState<ClinicalResource | null>(
+    null,
+  );
   const [newAudience, setNewAudience] = useState<Audience | ''>('');
-  const [pendingDelete, setPendingDelete] = useState<ClinicalResource | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ClinicalResource | null>(
+    null,
+  );
 
   // Add Source Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState<ClinicalResource['category']>('BEHAVIORAL_AGITATION');
+  const [newCategory, setNewCategory] = useState<ClinicalResource['category']>(
+    'BEHAVIORAL_AGITATION',
+  );
   const [newSummary, setNewSummary] = useState('');
   const [newContentBody, setNewContentBody] = useState('');
   const [newKeyTakeaways, setNewKeyTakeaways] = useState('');
@@ -45,7 +52,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
 
-  const isClinician = currentUser?.role === 'CLINICIAN_MODERATOR' || currentUser?.role === 'SYSTEM_ADMIN';
+  const isClinician =
+    currentUser?.role === 'CLINICIAN_MODERATOR' ||
+    currentUser?.role === 'SYSTEM_ADMIN';
 
   const loadResources = async () => {
     try {
@@ -56,7 +65,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         if (match) setActiveResource(match);
       }
     } catch (err) {
-      console.error('Failed to load resources:', err);
+      reportError('Failed to load resources:', err);
     } finally {
       setLoading(false);
     }
@@ -80,13 +89,15 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   ];
 
   const filtered = resources.filter((res) => {
-    const matchesCategory = selectedCategory === 'ALL' || res.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'ALL' || res.category === selectedCategory;
     const matchesSearch =
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (res.contentBody ?? '').toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesAudience = isClinician ||
+    const matchesAudience =
+      isClinician ||
       res.diseaseDomain === 'BOTH' ||
       res.diseaseDomain === currentUser?.condition;
 
@@ -96,7 +107,14 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newTitle.trim() || !newSummary.trim() || !newContentBody.trim() || !newAudience || isSubmitting) return;
+    if (
+      !newTitle.trim() ||
+      !newSummary.trim() ||
+      !newContentBody.trim() ||
+      !newAudience ||
+      isSubmitting
+    )
+      return;
 
     if (!newExternalUrl.trim() && !newPdfFile) {
       setSuccessToast('Please provide an external URL or a PDF resource.');
@@ -116,22 +134,25 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         .filter((t) => t.length > 0);
 
       const additionalLinks = newAdditionalLinks
-      .split('\n')
-      .map((line) => {
-        const [label, ...urlParts] = line.split('|');
-        return {
-          label: label.trim(),
-          url: urlParts.join('|').trim(),
-        };
-      })
-      .filter((link) => link.label && link.url);
+        .split('\n')
+        .map((line) => {
+          const [label, ...urlParts] = line.split('|');
+          return {
+            label: label.trim(),
+            url: urlParts.join('|').trim(),
+          };
+        })
+        .filter((link) => link.label && link.url);
 
       const created = await contentApi.createResource({
         title: newTitle.trim(),
         category: newCategory,
         summary: newSummary.trim() || newTitle.trim(),
         contentBody: newContentBody.trim(),
-        keyTakeaways: takeawaysList.length > 0 ? takeawaysList : [newSummary.trim() || newTitle.trim()],
+        keyTakeaways:
+          takeawaysList.length > 0
+            ? takeawaysList
+            : [newSummary.trim() || newTitle.trim()],
         externalUrl: newExternalUrl.trim() || undefined,
         additionalLinks,
         diseaseDomain: newAudience,
@@ -149,8 +170,10 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       setNewAudience('');
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
-      console.error('Failed to create guide:', err);
-      setSuccessToast('Could not save guide. Please verify all fields and try again.');
+      reportError('Failed to create guide:', err);
+      setSuccessToast(
+        'Could not save guide. Please verify all fields and try again.',
+      );
       setTimeout(() => setSuccessToast(null), 4000);
     } finally {
       setIsSubmitting(false);
@@ -161,12 +184,12 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     try {
       await contentApi.deleteResource(resource.id);
       setResources((prev) => prev.filter((r) => r.id !== resource.id));
-      setActiveResource((prev) => prev?.id === resource.id ? null : prev);
+      setActiveResource((prev) => (prev?.id === resource.id ? null : prev));
       setPendingDelete(null);
       setSuccessToast(`Guide "${resource.title}" deleted.`);
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
-      console.error('Failed to delete guide:', err);
+      reportError('Failed to delete guide:', err);
       setSuccessToast('Could not delete guide. Please try again.');
       setTimeout(() => setSuccessToast(null), 4000);
     }
@@ -187,7 +210,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-            Trauma-informed, non-pharmacological protocols curated by Johns Hopkins specialists.
+            Trauma-informed, non-pharmacological protocols curated by Johns
+            Hopkins specialists.
           </p>
         </div>
 
@@ -216,7 +240,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   Delete this guide?
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  "{pendingDelete.title}" will be removed for all care partners. This can't be undone.
+                  "{pendingDelete.title}" will be removed for all care partners.
+                  This can't be undone.
                 </p>
               </div>
               <div className="flex items-center justify-end gap-2">
@@ -262,7 +287,10 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
         {/* Clean Dropdown Filter for Disciplines */}
         <div className="flex items-center gap-2">
-          <label htmlFor="discipline-select" className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium">
+          <label
+            htmlFor="discipline-select"
+            className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap font-medium"
+          >
             Topic:
           </label>
           <select
@@ -272,7 +300,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             className="px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 shadow-2xs cursor-pointer"
           >
             {categories.map((cat) => (
-              <option key={cat.key} value={cat.key} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+              <option
+                key={cat.key}
+                value={cat.key}
+                className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
                 {cat.label}
               </option>
             ))}
@@ -287,8 +319,12 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-slate-500 dark:text-slate-400 text-sm space-y-2">
-          <p className="font-semibold text-slate-700 dark:text-slate-300">No resources found matching your search.</p>
-          <p className="text-slate-400 dark:text-slate-500 text-xs sm:text-sm">Try using different keywords or selecting "All Topics".</p>
+          <p className="font-semibold text-slate-700 dark:text-slate-300">
+            No resources found matching your search.
+          </p>
+          <p className="text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
+            Try using different keywords or selecting "All Topics".
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -298,15 +334,22 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               onClick={() => setActiveResource(res)}
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
-              <div className="space-y-2">          
+              <div className="space-y-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-xs font-semibold text-[#002D72] dark:text-blue-400">
-                    {categories.find((c) => c.key === res.category)?.label || res.category}
+                    {categories.find((c) => c.key === res.category)?.label ||
+                      res.category}
                   </span>
-                  {isClinician && <AudienceBadge condition={res.diseaseDomain} />}
+                  {isClinician && (
+                    <AudienceBadge condition={res.diseaseDomain} />
+                  )}
                   <div className="ml-auto flex items-center gap-3 shrink-0">
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(res.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(res.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
                     </span>
                     {isClinician && (
                       <button
@@ -349,7 +392,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   )}
                   {res.additionalLinks?.length ? (
                     <span className="text-slate-500 dark:text-slate-400">
-                      +{res.additionalLinks.length} more link{res.additionalLinks.length === 1 ? '' : 's'}
+                      +{res.additionalLinks.length} more link
+                      {res.additionalLinks.length === 1 ? '' : 's'}
                     </span>
                   ) : null}
                 </div>
@@ -379,8 +423,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-white dark:bg-slate-900">
               <div className="space-y-1.5">
                 <span className="font-semibold text-[#002D72] dark:text-blue-400 flex items-center gap-2">
-                  {categories.find((c) => c.key === activeResource.category)?.label || activeResource.category}
-                  {isClinician && <AudienceBadge condition={activeResource.diseaseDomain} />}
+                  {categories.find((c) => c.key === activeResource.category)
+                    ?.label || activeResource.category}
+                  {isClinician && (
+                    <AudienceBadge condition={activeResource.diseaseDomain} />
+                  )}
                 </span>
                 <h2 className="font-serif text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight">
                   {activeResource.title}
@@ -400,7 +447,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             {/* Scrollable Body */}
             <div className="p-5 sm:p-7 overflow-y-auto space-y-5 text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-300">
               <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 space-y-1.5">
-                <div className="font-semibold text-[#002D72] dark:text-blue-400 text-xs uppercase tracking-wider">Care Overview</div>
+                <div className="font-semibold text-[#002D72] dark:text-blue-400 text-xs uppercase tracking-wider">
+                  Care Overview
+                </div>
                 <p className="leading-relaxed">{activeResource.summary}</p>
               </div>
 
@@ -437,7 +486,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                         className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-[#002D72] dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                       >
                         <ExternalLink className="w-5 h-5 shrink-0" />
-                        <span className="font-medium">Visit source website</span>
+                        <span className="font-medium">
+                          Visit source website
+                        </span>
                       </a>
                     )}
 
@@ -469,21 +520,24 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               </div>
 
               {/* Key Takeaways */}
-              {activeResource.keyTakeaways && activeResource.keyTakeaways.length > 0 && (
-                <div className="space-y-2.5">
-                  <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
-                    Key Care Recommendations
+              {activeResource.keyTakeaways &&
+                activeResource.keyTakeaways.length > 0 && (
+                  <div className="space-y-2.5">
+                    <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
+                      Key Care Recommendations
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      {activeResource.keyTakeaways.map((point, idx) => (
+                        <li key={idx} className="flex items-start gap-2.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                          <span className="leading-relaxed text-slate-700 dark:text-slate-300">
+                            {point}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-2 text-sm">
-                    {activeResource.keyTakeaways.map((point, idx) => (
-                      <li key={idx} className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                        <span className="leading-relaxed text-slate-700 dark:text-slate-300">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                )}
             </div>
 
             {/* Footer */}
@@ -534,7 +588,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   Add Care Source / Protocol
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Publish verified guidance to the caregiver knowledge base and assistant.
+                  Publish verified guidance to the caregiver knowledge base and
+                  assistant.
                 </p>
               </div>
               <button
@@ -545,7 +600,10 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleCreateGuide} className="p-4 overflow-y-auto space-y-3.5 text-xs flex-1">
+            <form
+              onSubmit={handleCreateGuide}
+              className="p-4 overflow-y-auto space-y-3.5 text-xs flex-1"
+            >
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Title
@@ -566,18 +624,34 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 </label>
                 <select
                   value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value as ClinicalResource['category'])}
+                  onChange={(e) =>
+                    setNewCategory(
+                      e.target.value as ClinicalResource['category'],
+                    )
+                  }
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
                 >
-                  <option value="BEHAVIORAL_AGITATION">Sensory & Agitation</option>
+                  <option value="BEHAVIORAL_AGITATION">
+                    Sensory & Agitation
+                  </option>
                   <option value="INCONTINENCE">Toileting & Incontinence</option>
-                  <option value="SAFETY_WANDERING">Wandering & Driving Safety</option>
-                  <option value="LEGAL_MEDICAID">Legal & Medicaid Spend-Down</option>
-                  <option value="COMMUNICATION_PPA">Speech & Communication (PPA)</option>
+                  <option value="SAFETY_WANDERING">
+                    Wandering & Driving Safety
+                  </option>
+                  <option value="LEGAL_MEDICAID">
+                    Legal & Medicaid Spend-Down
+                  </option>
+                  <option value="COMMUNICATION_PPA">
+                    Speech & Communication (PPA)
+                  </option>
                   <option value="NUTRITION_DIET">Nutrition & Swallowing</option>
-                  <option value="CAREGIVER_SUPPORT">Caregiver Support & Wellbeing</option>
+                  <option value="CAREGIVER_SUPPORT">
+                    Caregiver Support & Wellbeing
+                  </option>
                   <option value="DAILY_CARE">Daily Care & Routines</option>
-                  <option value="GENERAL_EDUCATION">General Dementia Education</option>
+                  <option value="GENERAL_EDUCATION">
+                    General Dementia Education
+                  </option>
                 </select>
               </div>
 
@@ -623,26 +697,32 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
               </div>
 
               <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Which care partners will see this guide?
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {([['FTD', 'FTD'], ['AD', "Alzheimer's"], ['BOTH', 'Both']] as [Audience, string][]).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setNewAudience(value)}
-                    className={`w-full px-3 py-2 border rounded-lg text-xs font-semibold transition cursor-pointer ${
-                      newAudience === value
-                        ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Which care partners will see this guide?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ['FTD', 'FTD'],
+                      ['AD', "Alzheimer's"],
+                      ['BOTH', 'Both'],
+                    ] as [Audience, string][]
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setNewAudience(value)}
+                      className={`w-full px-3 py-2 border rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        newAudience === value
+                          ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -665,7 +745,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   rows={3}
                   value={newAdditionalLinks}
                   onChange={(e) => setNewAdditionalLinks(e.target.value)}
-                  placeholder={'AFTD driving guidance | https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/\nAnother source | https://example.org'}
+                  placeholder={
+                    'AFTD driving guidance | https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/\nAnother source | https://example.org'
+                  }
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
                 />
               </div>
@@ -686,7 +768,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   </p>
                 )}
                 <p className="mt-1 text-slate-500 dark:text-slate-400">
-                  Upload a PDF, or provide a webpage URL above. At least one source is required.
+                  Upload a PDF, or provide a webpage URL above. At least one
+                  source is required.
                 </p>
               </div>
 

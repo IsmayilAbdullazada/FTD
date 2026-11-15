@@ -1,6 +1,3 @@
-const fallbackEnabled =
-  import.meta.env.DEV && import.meta.env.VITE_ENABLE_API_FALLBACK === 'true';
-
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -37,7 +34,10 @@ async function responseError(
 ): Promise<ApiError> {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    return new ApiError(`${fallbackMessage} (${response.status})`, response.status);
+    return new ApiError(
+      `${fallbackMessage} (${response.status})`,
+      response.status,
+    );
   }
   const body = await response.json().catch(() => ({}));
   return new ApiError(body?.error || fallbackMessage, response.status);
@@ -61,13 +61,11 @@ export async function requestJson<T>(
 export async function safeFetchJson<T>(
   url: string,
   options: RequestInit | undefined,
-  fallback: () => T,
 ): Promise<T> {
   let response: Response;
   try {
     response = await apiFetch(url, options);
   } catch {
-    if (fallbackEnabled) return fallback();
     throw new Error('The backend is unavailable. Please try again.');
   }
 
@@ -81,7 +79,6 @@ export async function safeFetchJson<T>(
       response.status,
     );
   }
-  if (fallbackEnabled) return fallback();
   throw new ApiError(
     `Backend returned an invalid response (${response.status})`,
     response.status,

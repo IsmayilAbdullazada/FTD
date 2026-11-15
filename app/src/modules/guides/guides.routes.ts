@@ -1,18 +1,20 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { Router } from "express";
-import { PDFParse } from "pdf-parse";
-import { z } from "zod";
-import { query, transaction } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { authenticateToken, requireStaff } from "../../middleware/auth.js";
-import { publicAssetUrl } from "../../lib/urlValidation.js";
+import type { PoolClient } from 'pg';
+import type { GuideRow } from '../../db/rows.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Router } from 'express';
+import { PDFParse } from 'pdf-parse';
+import { z } from 'zod';
+import { query, transaction } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { authenticateToken, requireStaff } from '../../middleware/auth.js';
+import { publicAssetUrl } from '../../lib/urlValidation.js';
 
 const router = Router();
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../../../..",
+  '../../../..',
 );
 const pagesSchema = z
   .array(
@@ -26,7 +28,7 @@ const pagesSchema = z
   .default([]);
 const guideInput = z.object({
   title: z.string().trim().min(3),
-  condition: z.enum(["FTD", "AD", "GENERAL"]),
+  condition: z.enum(['FTD', 'AD', 'GENERAL']),
   topicTag: z.string().optional(),
   publisher: z.string().optional(),
   year: z.string().optional(),
@@ -37,7 +39,7 @@ const guideInput = z.object({
   description: z.string().optional(),
   content: z.string(),
   pages: pagesSchema.optional(),
-  status: z.enum(["DRAFT", "APPROVED"]).default("DRAFT"),
+  status: z.enum(['DRAFT', 'APPROVED']).default('DRAFT'),
   pdfUrl: publicAssetUrl.optional(),
   isActive: z.boolean().default(true),
 });
@@ -46,12 +48,12 @@ function chunk(text: string, max = 400, overlap = 60) {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const out: string[] = [];
   for (let i = 0; i < words.length; i += max - overlap) {
-    out.push(words.slice(i, i + max).join(" "));
+    out.push(words.slice(i, i + max).join(' '));
     if (i + max >= words.length) break;
   }
   return out;
 }
-function map(r: any) {
+function map(r: GuideRow & { uploaded_by_name?: string }) {
   return {
     id: r.id,
     title: r.title,
@@ -79,9 +81,9 @@ function map(r: any) {
     wordCount: r.content.trim().split(/\s+/).filter(Boolean).length,
   };
 }
-async function reindex(client: any, guide: any) {
+async function reindex(client: PoolClient, guide: GuideRow) {
   await client.query(`DELETE FROM guide_chunks WHERE guide_id=$1`, [guide.id]);
-  if (!guide.is_active || guide.status !== "APPROVED") {
+  if (!guide.is_active || guide.status !== 'APPROVED') {
     await client.query(`UPDATE chatbot_guides SET total_chunks=0 WHERE id=$1`, [
       guide.id,
     ]);
@@ -93,7 +95,7 @@ async function reindex(client: any, guide: any) {
       : [{ pageNumber: 1, text: guide.content }];
   let count = 0;
   for (const page of pages)
-    for (const [index, content] of chunk(page.text || "").entries()) {
+    for (const [index, content] of chunk(page.text || '').entries()) {
       await client.query(
         `INSERT INTO guide_chunks(id,guide_id,page,content) VALUES($1,$2,$3,$4)`,
         [
@@ -113,19 +115,21 @@ async function reindex(client: any, guide: any) {
 }
 
 router.get(
-  "/",
+  '/',
   authenticateToken,
   requireStaff,
   asyncHandler(async (_req, res) => {
     const rows = await query(
       `SELECT g.*,u.first_name||' '||u.last_name uploaded_by_name FROM chatbot_guides g JOIN users u ON u.id=g.uploaded_by ORDER BY g.created_at DESC`,
     );
-    const guides = rows.rows.map(map);
+    const guides = rows.rows.map((row) =>
+      map(row as Parameters<typeof map>[0]),
+    );
     res.json({
       guides,
       config: {
         totalActiveGuides: guides.filter(
-          (g) => g.isActive && g.status === "APPROVED",
+          (g) => g.isActive && g.status === 'APPROVED',
         ).length,
         totalWords: guides.reduce((n, g) => n + g.wordCount, 0),
       },
@@ -133,7 +137,7 @@ router.get(
   }),
 );
 router.post(
-  "/",
+  '/',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -151,7 +155,7 @@ router.post(
             i.year ?? null,
             path.basename(i.fileName),
             i.fileSize ?? 0,
-            i.mimeType ?? "application/pdf",
+            i.mimeType ?? 'application/pdf',
             i.category ?? null,
             i.description ?? null,
             i.content,
@@ -170,11 +174,13 @@ router.post(
       `SELECT first_name||' '||last_name uploaded_by_name FROM users WHERE id=$1`,
       [req.user!.id],
     );
-    res.status(201).json(map({ ...r, ...user.rows[0] }));
+    res
+      .status(201)
+      .json(map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]));
   }),
 );
 router.put(
-  "/:id",
+  '/:id',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -200,7 +206,7 @@ router.put(
           ],
         )
       ).rows[0];
-      if (!updated) throw new HttpError(404, "Guide not found");
+      if (!updated) throw new HttpError(404, 'Guide not found');
       updated.total_chunks = await reindex(client, updated);
       return updated;
     });
@@ -208,11 +214,14 @@ router.put(
       `SELECT first_name||' '||last_name uploaded_by_name FROM users WHERE id=$1`,
       [r.uploaded_by],
     );
-    res.json({ success: true, guide: map({ ...r, ...user.rows[0] }) });
+    res.json({
+      success: true,
+      guide: map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]),
+    });
   }),
 );
 router.patch(
-  "/:id/approve",
+  '/:id/approve',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -223,7 +232,7 @@ router.patch(
           [req.user!.id, req.params.id],
         )
       ).rows[0];
-      if (!g) throw new HttpError(404, "Guide not found");
+      if (!g) throw new HttpError(404, 'Guide not found');
       g.total_chunks = await reindex(client, g);
       return g;
     });
@@ -231,11 +240,14 @@ router.patch(
       `SELECT first_name||' '||last_name uploaded_by_name FROM users WHERE id=$1`,
       [r.uploaded_by],
     );
-    res.json({ success: true, guide: map({ ...r, ...user.rows[0] }) });
+    res.json({
+      success: true,
+      guide: map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]),
+    });
   }),
 );
 router.patch(
-  "/:id/toggle",
+  '/:id/toggle',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -246,7 +258,7 @@ router.patch(
           [req.params.id],
         )
       ).rows[0];
-      if (!g) throw new HttpError(404, "Guide not found");
+      if (!g) throw new HttpError(404, 'Guide not found');
       g.total_chunks = await reindex(client, g);
       return g;
     });
@@ -254,11 +266,14 @@ router.patch(
       `SELECT first_name||' '||last_name uploaded_by_name FROM users WHERE id=$1`,
       [r.uploaded_by],
     );
-    res.json({ success: true, guide: map({ ...r, ...user.rows[0] }) });
+    res.json({
+      success: true,
+      guide: map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]),
+    });
   }),
 );
 router.delete(
-  "/:id",
+  '/:id',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -266,7 +281,7 @@ router.delete(
       `DELETE FROM chatbot_guides WHERE id=$1 RETURNING id`,
       [req.params.id],
     );
-    if (!r.rows[0]) throw new HttpError(404, "Guide not found");
+    if (!r.rows[0]) throw new HttpError(404, 'Guide not found');
     const c = await query(`SELECT COUNT(*)::int count FROM chatbot_guides`);
     res.json({ success: true, remainingGuides: c.rows[0].count });
   }),
@@ -279,26 +294,26 @@ export const extractPdf = asyncHandler(async (req, res) => {
         .string()
         .min(1)
         .refine(
-          (value) => path.extname(value).toLowerCase() === ".pdf",
-          "Only PDF files are accepted",
+          (value) => path.extname(value).toLowerCase() === '.pdf',
+          'Only PDF files are accepted',
         ),
       fileBase64: z.string().min(16).max(20_000_000),
     })
     .parse(req.body);
-  const safe = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, "_");
+  const safe = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
   const buffer = Buffer.from(
-    fileBase64.replace(/^data:[^;]+;base64,/, ""),
-    "base64",
+    fileBase64.replace(/^data:[^;]+;base64,/, ''),
+    'base64',
   );
   if (buffer.length > 12 * 1024 * 1024)
-    throw new HttpError(413, "PDF exceeds 12 MB limit");
-  if (buffer.subarray(0, 5).toString("ascii") !== "%PDF-")
-    throw new HttpError(400, "Uploaded file is not a valid PDF");
+    throw new HttpError(413, 'PDF exceeds 12 MB limit');
+  if (buffer.subarray(0, 5).toString('ascii') !== '%PDF-')
+    throw new HttpError(400, 'Uploaded file is not a valid PDF');
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
   const parsed = await parser.getText();
   await parser.destroy();
-  const pages = (parsed.pages ?? []).map((p: any, index: number) => {
-    const text = (p.text ?? "").replace(/\s+/g, " ").trim();
+  const pages = (parsed.pages ?? []).map((p, index: number) => {
+    const text = (p.text ?? '').replace(/\s+/g, ' ').trim();
     const words = text ? text.split(/\s+/).length : 0;
     return {
       pageNumber: index + 1,
@@ -307,11 +322,11 @@ export const extractPdf = asyncHandler(async (req, res) => {
       chunkCount: words ? Math.ceil(words / 340) : 0,
     };
   });
-  const dir = path.join(repoRoot, "public", "uploads", "guides");
+  const dir = path.join(repoRoot, 'public', 'uploads', 'guides');
   await fs.mkdir(dir, { recursive: true });
   const stored = `guide_${Date.now()}_${safe}`;
   await fs.writeFile(path.join(dir, stored), buffer);
-  const text = pages.map((p) => p.text).join("\n\n");
+  const text = pages.map((p) => p.text).join('\n\n');
   res.json({
     text,
     pages,
@@ -320,7 +335,7 @@ export const extractPdf = asyncHandler(async (req, res) => {
     pageCount: pages.length,
     fileName: safe,
     pdfUrl: `/uploads/guides/${stored}`,
-    title: "",
+    title: '',
   });
 });
 export default router;

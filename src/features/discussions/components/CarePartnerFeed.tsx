@@ -5,17 +5,17 @@ import {
   Clock,
   Plus,
   X,
-} from "lucide-react";
-import React from "react";
-import { DiscussionDetail } from "./DiscussionDetail";
-import { FeedFilters } from "./FeedFilters";
-import { FeedPostDialogs } from "./FeedPostDialogs";
-import { FeedPostList } from "./FeedPostList";
+} from 'lucide-react';
+import React from 'react';
+import { DiscussionDetail } from './DiscussionDetail';
+import { FeedFilters } from './FeedFilters';
+import { FeedPostDialogs } from './FeedPostDialogs';
+import { FeedPostList } from './FeedPostList';
 
 import {
   useCarePartnerFeed,
   type CarePartnerFeedProps,
-} from "../hooks/useCarePartnerFeed";
+} from '../hooks/useCarePartnerFeed';
 
 export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   currentUser,
@@ -30,6 +30,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   onSectionChange,
 }) => {
   const {
+    totalPosts,
     posts,
     setPosts,
     loading,
@@ -121,10 +122,10 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
     (p) =>
       p.author.userId === currentUser.id ||
       p.author.anonymousHandle === currentUser.anonymousHandle ||
-      (p.author as any).id === currentUser.id,
+      false,
   );
   const myPendingCount = myPosts.filter(
-    (p) => p.status === "PENDING_MODERATION",
+    (p) => p.status === 'PENDING_MODERATION',
   ).length;
 
   return (
@@ -178,18 +179,18 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       </div>
 
       {/* REASSURING BANNER: For caregivers with posts under review */}
-      {isCarePartner && myPendingCount > 0 && viewSection === "all" && (
+      {isCarePartner && myPendingCount > 0 && viewSection === 'all' && (
         <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
           <div className="flex items-start sm:items-center gap-2.5 min-w-0">
             <Clock className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
             <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
-              You have {myPendingCount} post{myPendingCount > 1 ? "s" : ""}{" "}
+              You have {myPendingCount} post{myPendingCount > 1 ? 's' : ''}{' '}
               currently under review.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => handleSectionChange("my-posts")}
+            onClick={() => handleSectionChange('my-posts')}
             className="text-xs sm:text-sm font-semibold text-amber-900 dark:text-amber-200 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
           >
             <span>View My Posts</span>
@@ -199,19 +200,19 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       )}
 
       {/* MY POSTS DEDICATED HEADER */}
-      {isCarePartner && viewSection === "my-posts" && (
+      {isCarePartner && viewSection === 'my-posts' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5 animate-in fade-in">
           <div className="flex items-center justify-between">
             <button
               type="button"
-              onClick={() => handleSectionChange("all")}
+              onClick={() => handleSectionChange('all')}
               className="text-xs sm:text-sm font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Back to Discussions</span>
             </button>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-900/60">
-              {myPosts.length} Total {myPosts.length === 1 ? "Post" : "Posts"}
+              {myPosts.length} Total {myPosts.length === 1 ? 'Post' : 'Posts'}
             </span>
           </div>
 
@@ -248,6 +249,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         cohorts={cohorts}
       />
       <FeedPostList
+        totalPosts={totalPosts}
         posts={posts}
         loading={loading}
         viewSection={viewSection}

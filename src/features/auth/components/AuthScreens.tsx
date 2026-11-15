@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { useState, useEffect } from 'react';
 import {
   Lock,
@@ -34,7 +35,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   onCancel,
   sessionNotice,
 }) => {
-  const [mode, setMode] = useState<'login' | 'forgot-password' | 'register'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'forgot-password' | 'register'>(
+    initialMode,
+  );
   const [showPassword, setShowPassword] = useState(false);
 
   // Login Form State
@@ -52,7 +55,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
-  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(
+    null,
+  );
   const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
@@ -67,7 +72,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   } | null>(null);
   const [loadingInvite, setLoadingInvite] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
-  const [registerHandle, setRegisterHandle] = useState(() => `User-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [registerHandle, setRegisterHandle] = useState(
+    () => `User-${Math.floor(1000 + Math.random() * 9000)}`,
+  );
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const quickLoginEnabled =
@@ -91,7 +98,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
     setForgotStep('verify');
     setForgotEmail(resetEmailParam);
     setResetToken(resetTokenParam);
-    setResetSuccessMessage('Enter the 6-digit verification code from your email.');
+    setResetSuccessMessage(
+      'Enter the 6-digit verification code from your email.',
+    );
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('resetToken');
     cleanUrl.searchParams.delete('email');
@@ -105,10 +114,15 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       const res = await authApi.getInvitation(token);
       setInviteData(res.invitation);
       // Auto-assign random anonymous handle
-      setRegisterHandle((prev) => prev || `User-${Math.floor(1000 + Math.random() * 9000)}`);
-    } catch (err: any) {
-      console.error('Failed to load invitation:', err);
-      setRegisterError(err.message || 'Invitation not found or expired.');
+      setRegisterHandle(
+        (prev) => prev || `User-${Math.floor(1000 + Math.random() * 9000)}`,
+      );
+    } catch (err: unknown) {
+      reportError('Failed to load invitation:', err);
+      setRegisterError(
+        (err instanceof Error ? err.message : undefined) ||
+          'Invitation not found or expired.',
+      );
     } finally {
       setLoadingInvite(false);
     }
@@ -130,9 +144,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         rememberMe,
       });
       onLoginSuccess(res.user);
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setLoginError(err.message || 'Invalid credentials. Please verify your email/ID and password.');
+    } catch (err: unknown) {
+      reportError('Login error:', err);
+      setLoginError(
+        (err instanceof Error ? err.message : undefined) ||
+          'Invalid credentials. Please verify your email/ID and password.',
+      );
     } finally {
       setIsLoggingIn(false);
     }
@@ -171,14 +188,21 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         setEmailPreviewUrl(res.previewUrl);
       }
       if (res.resetToken) {
-        setResetSuccessMessage(`A 6-digit verification code has been dispatched to ${forgotEmail.trim()}.`);
+        setResetSuccessMessage(
+          `A 6-digit verification code has been dispatched to ${forgotEmail.trim()}.`,
+        );
         setForgotStep('verify');
       } else {
-        setResetSuccessMessage('If the account exists, open the password reset link sent by email.');
+        setResetSuccessMessage(
+          'If the account exists, open the password reset link sent by email.',
+        );
       }
-    } catch (err: any) {
-      console.error('Password reset request failed:', err);
-      setResetError(err.message || 'Could not send recovery email. Please check the address.');
+    } catch (err: unknown) {
+      reportError('Password reset request failed:', err);
+      setResetError(
+        (err instanceof Error ? err.message : undefined) ||
+          'Could not send recovery email. Please check the address.',
+      );
     } finally {
       setIsSendingReset(false);
     }
@@ -217,9 +241,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         setForgotStep('request');
         setResetSuccessMessage(null);
       }, 1500);
-    } catch (err: any) {
-      console.error('Reset confirmation failed:', err);
-      setResetError(err.message || 'Invalid or expired code. Please try again.');
+    } catch (err: unknown) {
+      reportError('Reset confirmation failed:', err);
+      setResetError(
+        (err instanceof Error ? err.message : undefined) ||
+          'Invalid or expired code. Please try again.',
+      );
     } finally {
       setIsSendingReset(false);
     }
@@ -251,9 +278,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       setInviteToken('');
       setRegisterError(null);
       onLoginSuccess(res.user);
-    } catch (err: any) {
-      console.error('Registration failed:', err);
-      setRegisterError(err.message || 'Could not complete registration. Token may be invalid.');
+    } catch (err: unknown) {
+      reportError('Registration failed:', err);
+      setRegisterError(
+        (err instanceof Error ? err.message : undefined) ||
+          'Could not complete registration. Token may be invalid.',
+      );
     } finally {
       setIsRegistering(false);
     }
@@ -285,7 +315,6 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-slate-900 py-6 px-4 shadow-xl border border-slate-200 dark:border-slate-800 rounded-2xl sm:px-8 transition-colors">
-
           {/* ========================================================= */}
           {/* SCREEN 1: LOGIN */}
           {/* ========================================================= */}
@@ -304,8 +333,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                 <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs animate-in fade-in">
                   <Clock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                   <div className="flex-1">
-                    <div className="font-semibold text-amber-900 dark:text-amber-100">Session Expired</div>
-                    <div className="text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">{sessionNotice}</div>
+                    <div className="font-semibold text-amber-900 dark:text-amber-100">
+                      Session Expired
+                    </div>
+                    <div className="text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">
+                      {sessionNotice}
+                    </div>
                   </div>
                 </div>
               )}
@@ -371,7 +404,11 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -423,7 +460,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                         <Stethoscope className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                         <span>Dr. Seema</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Moderator</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        Moderator
+                      </div>
                     </button>
 
                     <button
@@ -435,7 +474,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                         <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                         <span>Sarah S.</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">FTD Partner</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        FTD Partner
+                      </div>
                     </button>
 
                     <button
@@ -447,7 +488,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                         <Users className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         <span>Marcus V.</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">FTD Partner</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        FTD Partner
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -463,7 +506,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   }}
                   className="text-xs text-slate-600 dark:text-slate-400 hover:text-[#002D72] dark:hover:text-blue-400 transition cursor-pointer font-medium"
                 >
-                  Have an invite link? <span className="font-bold underline">Join here</span>
+                  Have an invite link?{' '}
+                  <span className="font-bold underline">Join here</span>
                 </button>
               </div>
             </div>
@@ -528,7 +572,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               )}
 
               {forgotStep === 'request' ? (
-                <form onSubmit={handleRequestPasswordReset} className="space-y-3.5">
+                <form
+                  onSubmit={handleRequestPasswordReset}
+                  className="space-y-3.5"
+                >
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Email address
@@ -567,7 +614,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleConfirmPasswordReset} className="space-y-3.5">
+                <form
+                  onSubmit={handleConfirmPasswordReset}
+                  className="space-y-3.5"
+                >
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -586,7 +636,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                       required
                       maxLength={6}
                       value={resetCode}
-                      onChange={(e) => setResetCode(e.target.value.replace(/[^0-9]/g, ''))}
+                      onChange={(e) =>
+                        setResetCode(e.target.value.replace(/[^0-9]/g, ''))
+                      }
                       placeholder="e.g. 481920"
                       className="block w-full px-3 py-2 text-center tracking-widest font-mono text-sm font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                     />
@@ -665,7 +717,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                   <span>Join Care Partner Connect</span>
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Welcome! Set up your password below to create your account and join the community.
+                  Welcome! Set up your password below to create your account and
+                  join the community.
                 </p>
               </div>
 
@@ -702,7 +755,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               )}
 
               {inviteData && (
-                <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
+                <form
+                  onSubmit={handleCompleteRegistration}
+                  className="space-y-3.5"
+                >
                   {/* Automatically assigned random anonymous handle */}
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
                     <div>
@@ -755,7 +811,6 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               )}
             </div>
           )}
-
         </div>
 
         {onCancel && (
@@ -776,7 +831,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             Johns Hopkins Medicine • Memory and Alzheimer's Treatment Center
           </p>
           <p>
-            Clinical Inquiries: (410) 955-5147 • In a life-threatening crisis, dial <strong>911</strong> immediately.
+            Clinical Inquiries: (410) 955-5147 • In a life-threatening crisis,
+            dial <strong>911</strong> immediately.
           </p>
         </div>
       </div>

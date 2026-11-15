@@ -1,7 +1,11 @@
-import type { Dispatch, FormEventHandler, SetStateAction } from 'react';
-import { X } from 'lucide-react';
-import { getProperGroupName, type Audience, type CommunityGroup } from '@/types';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
+import {
+  getProperGroupName,
+  type Audience,
+  type CommunityGroup,
+} from '@/types';
+import { X } from 'lucide-react';
+import type { Dispatch, FormEventHandler, SetStateAction } from 'react';
 
 interface CreatePostDialogProps {
   open: boolean;
@@ -37,7 +41,7 @@ export function CreatePostDialog({
   const dialogRef = useDialogFocus(showNewPostModal);
   return (
     <>
-      { /* MODAL new post details */}
+      {/* MODAL new post details */}
       {showNewPostModal && (
         <div
           onClick={() => setShowNewPostModal(false)}
@@ -54,17 +58,31 @@ export function CreatePostDialog({
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">New Post</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Published immediately, no review needed.</p>
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
+                  New Post
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Published immediately, no review needed.
+                </p>
               </div>
-              <button type="button" aria-label="Close create post dialog" onClick={() => setShowNewPostModal(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">
+              <button
+                type="button"
+                aria-label="Close create post dialog"
+                onClick={() => setShowNewPostModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} className="p-4 space-y-3.5 text-xs">
+            <form
+              onSubmit={handleCreatePost}
+              className="p-4 space-y-3.5 text-xs"
+            >
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Title</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Title
+                </label>
                 <input
                   value={npTitle}
                   onChange={(e) => setNpTitle(e.target.value)}
@@ -74,7 +92,9 @@ export function CreatePostDialog({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Post</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Post
+                </label>
                 <textarea
                   rows={5}
                   value={npContent}
@@ -85,24 +105,38 @@ export function CreatePostDialog({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Region / group</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Region / group
+                </label>
                 <select
                   value={npGroupId}
                   onChange={(e) => setNpGroupId(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"
                   required
                 >
-                  <option value="" disabled>Choose a group...</option>
+                  <option value="" disabled>
+                    Choose a group...
+                  </option>
                   {cohorts.map((c) => (
-                    <option key={c.id} value={c.id}>{getProperGroupName(c)}</option>
+                    <option key={c.id} value={c.id}>
+                      {getProperGroupName(c)}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Disease group</label>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Disease group
+                </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {([['FTD', 'FTD only'], ['AD', "Alzheimer's only"], ['BOTH', 'Both groups']] as [Audience, string][]).map(([value, label]) => (
+                  {(
+                    [
+                      ['FTD', 'FTD only'],
+                      ['AD', "Alzheimer's only"],
+                      ['BOTH', 'Both groups'],
+                    ] as [Audience, string][]
+                  ).map(([value, label]) => (
                     <button
                       key={value}
                       type="button"
@@ -120,12 +154,22 @@ export function CreatePostDialog({
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <button type="button" onClick={() => setShowNewPostModal(false)} className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setShowNewPostModal(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer"
+                >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmittingPost || !npTitle.trim() || !npContent.trim() || !npGroupId || !npAudience}
+                  disabled={
+                    isSubmittingPost ||
+                    !npTitle.trim() ||
+                    !npContent.trim() ||
+                    !npGroupId ||
+                    !npAudience
+                  }
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
                 >
                   {isSubmittingPost ? 'Publishing...' : 'Publish Post'}
@@ -135,8 +179,6 @@ export function CreatePostDialog({
           </div>
         </div>
       )}
-
     </>
   );
 }
-

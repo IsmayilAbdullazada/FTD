@@ -1,6 +1,11 @@
 import { safeFetchJson } from '@/shared/api/httpClient';
-import { contentFallbackStore } from '@/shared/dev/devFallbackStore';
-import { Audience, CalendarEvent, ClinicalResource, ClinicUpdate } from '@/types';
+
+import {
+  Audience,
+  CalendarEvent,
+  ClinicalResource,
+  ClinicUpdate,
+} from '@/types';
 
 interface CreateResourcePayload {
   title: string;
@@ -17,127 +22,59 @@ interface CreateResourcePayload {
 
 export const contentApi = {
   getResources(_userId: string): Promise<ClinicalResource[]> {
-    return safeFetchJson('/api/v1/resources', undefined, () => [
-      ...contentFallbackStore.resources,
-    ]);
+    return safeFetchJson('/api/v1/resources', undefined);
   },
 
   createResource(payload: CreateResourcePayload): Promise<ClinicalResource> {
     const { authorId: _authorId, ...requestPayload } = payload;
-    return safeFetchJson(
-      '/api/v1/resources',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload),
-      },
-      () => {
-        const resource: ClinicalResource = {
-          id: `res-${Date.now()}`,
-          title: payload.title,
-          category: payload.category || 'BEHAVIORAL_AGITATION',
-          summary: payload.summary,
-          contentBody: payload.contentBody,
-          diseaseDomain: payload.diseaseDomain || 'FTD',
-          externalUrl: payload.externalUrl || '',
-          fileAttachmentUrl: payload.fileAttachmentUrl || '',
-          additionalLinks: payload.additionalLinks || [],
-          keyTakeaways: payload.keyTakeaways || [],
-          createdAt: new Date().toISOString(),
-        };
-        contentFallbackStore.resources.unshift(resource);
-        return resource;
-      },
-    );
+    return safeFetchJson('/api/v1/resources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestPayload),
+    });
   },
 
   async deleteResource(id: string): Promise<void> {
-    await safeFetchJson(
-      `/api/v1/resources/${encodeURIComponent(id)}`,
-      { method: 'DELETE' },
-      () => {
-        const index = contentFallbackStore.resources.findIndex(
-          (resource) => resource.id === id,
-        );
-        if (index !== -1) contentFallbackStore.resources.splice(index, 1);
-        return undefined;
-      },
-    );
+    await safeFetchJson(`/api/v1/resources/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
 
   getUpdates(_userId: string): Promise<ClinicUpdate[]> {
-    return safeFetchJson('/api/v1/updates', undefined, () => [
-      ...contentFallbackStore.updates,
-    ]);
+    return safeFetchJson('/api/v1/updates', undefined);
   },
 
   createUpdate(
     payload: Omit<ClinicUpdate, 'id' | 'createdAt'>,
   ): Promise<ClinicUpdate> {
     const { authorId: _authorId, ...requestPayload } = payload;
-    return safeFetchJson(
-      '/api/v1/updates',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload),
-      },
-      () => {
-        const update: ClinicUpdate = {
-          id: `upd-${Date.now()}`,
-          ...payload,
-          createdAt: new Date().toISOString(),
-        };
-        contentFallbackStore.updates.unshift(update);
-        return update;
-      },
-    );
-  },
-
-  deleteUpdate(id: string, _userId: string): Promise<{ success: boolean }> {
-    return safeFetchJson(`/api/v1/updates/${id}`, { method: 'DELETE' }, () => {
-      contentFallbackStore.updates = contentFallbackStore.updates.filter(
-        (update) => update.id !== id,
-      );
-      return { success: true };
+    return safeFetchJson('/api/v1/updates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestPayload),
     });
   },
 
+  deleteUpdate(id: string, _userId: string): Promise<{ success: boolean }> {
+    return safeFetchJson(`/api/v1/updates/${id}`, { method: 'DELETE' });
+  },
+
   getEvents(_userId: string): Promise<CalendarEvent[]> {
-    return safeFetchJson('/api/v1/events', undefined, () => [
-      ...contentFallbackStore.events,
-    ]);
+    return safeFetchJson('/api/v1/events', undefined);
   },
 
   createEvent(
     payload: Omit<CalendarEvent, 'id' | 'authorId'>,
     authorId: string,
   ): Promise<CalendarEvent> {
-    return safeFetchJson(
-      '/api/v1/events',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-      () => {
-        const event = {
-          id: `evt-${Date.now()}`,
-          ...payload,
-          authorId,
-        } as CalendarEvent;
-        contentFallbackStore.events.push(event);
-        return event;
-      },
-    );
+    return safeFetchJson('/api/v1/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
   },
 
   deleteEvent(id: string, _userId: string): Promise<{ success: boolean }> {
-    return safeFetchJson(`/api/v1/events/${id}`, { method: 'DELETE' }, () => {
-      contentFallbackStore.events = contentFallbackStore.events.filter(
-        (event) => event.id !== id,
-      );
-      return { success: true };
-    });
+    return safeFetchJson(`/api/v1/events/${id}`, { method: 'DELETE' });
   },
 };

@@ -1,5 +1,6 @@
-import pg, { type PoolClient, type QueryResultRow } from "pg";
-import { env } from "./env.js";
+import { logger } from '../lib/logger.js';
+import pg, { type PoolClient, type QueryResultRow } from 'pg';
+import { env } from './env.js';
 
 const { Pool } = pg;
 export const pool = new Pool({
@@ -11,9 +12,9 @@ export const pool = new Pool({
   max: env.DB_POOL_MAX,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
-  ssl: env.DB_SSL === "true" ? { rejectUnauthorized: true } : false,
+  ssl: env.DB_SSL === 'true' ? { rejectUnauthorized: true } : false,
 });
-pool.on("error", (error) => console.error("[Postgres pool error]", error));
+pool.on('error', (error) => logger.error('[Postgres pool error]', error));
 
 export function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
@@ -26,12 +27,12 @@ export async function transaction<T>(
 ): Promise<T> {
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     const result = await work(client);
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     throw error;
   } finally {
     client.release();

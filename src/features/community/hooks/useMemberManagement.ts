@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { communityApi } from '@/features/community/api/communityApi';
 import {
@@ -19,19 +20,22 @@ export const useMemberManagement = ({
   const [selectedCohortFilter, setSelectedCohortFilter] = useState('all');
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [reassigningUser, setReassigningUser] = useState<GroupMember | null>(null);
+  const [reassigningUser, setReassigningUser] = useState<GroupMember | null>(
+    null,
+  );
   const [targetNewGroupId, setTargetNewGroupId] = useState('');
 
   const loadMembers = async (groupId?: string) => {
     setLoadingMembers(true);
     try {
       const response = await communityApi.getGroupMembers(groupId);
-      const filtered = audienceFilter === 'all'
-        ? response
-        : response.filter((member) => member.condition === audienceFilter);
+      const filtered =
+        audienceFilter === 'all'
+          ? response
+          : response.filter((member) => member.condition === audienceFilter);
       setMembers(filtered);
     } catch (error) {
-      console.error(error);
+      reportError('Request failed', error);
     } finally {
       setLoadingMembers(false);
     }
@@ -40,9 +44,12 @@ export const useMemberManagement = ({
   const handleConfirmReassign = async () => {
     if (!reassigningUser || !targetNewGroupId) return;
     try {
-      await communityApi.updateMemberGroup(reassigningUser.userId, targetNewGroupId);
+      await communityApi.updateMemberGroup(
+        reassigningUser.userId,
+        targetNewGroupId,
+      );
       setMembers((previous) =>
-        moveMemberToGroup(previous, reassigningUser.userId, targetNewGroupId)
+        moveMemberToGroup(previous, reassigningUser.userId, targetNewGroupId),
       );
       setReassigningUser(null);
       setTargetNewGroupId('');
@@ -50,8 +57,10 @@ export const useMemberManagement = ({
       setTimeout(() => setActionSuccessNotice(null), 3000);
       loadMembers(selectedCohortFilter);
     } catch (error) {
-      console.error(error);
-      setActionSuccessNotice('Failed to update member group. Please try again.');
+      reportError('Request failed', error);
+      setActionSuccessNotice(
+        'Failed to update member group. Please try again.',
+      );
       setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
@@ -78,4 +87,3 @@ export const useMemberManagement = ({
     handleConfirmReassign,
   };
 };
-

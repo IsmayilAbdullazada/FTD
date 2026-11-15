@@ -1,6 +1,11 @@
 import { ArrowRight, MapPin, Plus } from 'lucide-react';
 import { Pagination } from '@/shared/components/Pagination';
-import { getFullGroupName, getProperGroupName, type CommunityGroup, type GroupMember } from '@/types';
+import {
+  getFullGroupName,
+  getProperGroupName,
+  type CommunityGroup,
+  type GroupMember,
+} from '@/types';
 
 interface PaginationModel<T> {
   items: T[];
@@ -35,7 +40,8 @@ export function CohortsTab({
             Community Groups
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Regional and clinic-wide support cohorts. Click any group card to view its enrolled members.
+            Regional and clinic-wide support cohorts. Click any group card to
+            view its enrolled members.
           </p>
         </div>
 
@@ -50,13 +56,19 @@ export function CohortsTab({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
-          <span className="font-semibold text-slate-700 dark:text-slate-300">All Groups ({cohorts.length})</span>
-          <span className="text-slate-400 dark:text-slate-500">Click a card to filter members</span>
+          <span className="font-semibold text-slate-700 dark:text-slate-300">
+            All Groups ({cohorts.length})
+          </span>
+          <span className="text-slate-400 dark:text-slate-500">
+            Click a card to filter members
+          </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {pagination.items.map((cohort) => {
-            const assignedCount = members.filter((member) => member.primaryGroupId === cohort.id).length;
+            const assignedCount = members.filter(
+              (member) => member.primaryGroupId === cohort.id,
+            ).length;
             return (
               <div
                 key={cohort.id}
@@ -77,13 +89,16 @@ export function CohortsTab({
                       {getProperGroupName(cohort)}
                     </span>
                     <span className="shrink-0 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                      {assignedCount} {assignedCount === 1 ? 'member' : 'members'}
+                      {assignedCount}{' '}
+                      {assignedCount === 1 ? 'member' : 'members'}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="font-medium text-slate-700 dark:text-slate-300">{getFullGroupName(cohort)}</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      {getFullGroupName(cohort)}
+                    </span>
                   </div>
 
                   <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">
@@ -92,7 +107,9 @@ export function CohortsTab({
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                  <span className="text-xs text-slate-400 dark:text-slate-500">Click to view members</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    Click to view members
+                  </span>
                   <span className="font-semibold text-xs flex items-center gap-1">
                     <span>View members</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -107,4 +124,3 @@ export function CohortsTab({
     </div>
   );
 }
-

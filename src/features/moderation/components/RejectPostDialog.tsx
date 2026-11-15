@@ -57,7 +57,9 @@ export function RejectPostDialog({
                 </label>
                 <select
                   value={rejectionCode}
-                  onChange={(e) => setRejectionCode(e.target.value as RejectionReason)}
+                  onChange={(e) =>
+                    setRejectionCode(e.target.value as RejectionReason)
+                  }
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                 >
                   <option value="CLINICAL_MEDICATION_QUERY">
@@ -111,8 +113,6 @@ export function RejectPostDialog({
           </div>
         </div>
       )}
-
     </>
   );
 }
-

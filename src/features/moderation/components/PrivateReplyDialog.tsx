@@ -28,13 +28,17 @@ export function PrivateReplyDialog({
   onActionChange: setPrivateReplyAction,
   onSend: handleSendPrivateReply,
 }: PrivateReplyDialogProps) {
-  const dialogRef = useDialogFocus(showPrivateReplyModal && Boolean(activeItem));
+  const dialogRef = useDialogFocus(
+    showPrivateReplyModal && Boolean(activeItem),
+  );
   return (
     <>
       {/* MODAL: PRIVATE REPLY TO AUTHOR */}
       {showPrivateReplyModal && activeItem && (
         <div
-          onClick={() => !isSendingPrivateReply && setShowPrivateReplyModal(false)}
+          onClick={() =>
+            !isSendingPrivateReply && setShowPrivateReplyModal(false)
+          }
           className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer overflow-y-auto"
         >
           <div
@@ -56,7 +60,8 @@ export function PrivateReplyDialog({
                     Reply Privately to Author
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    To {activeItem.author.realName} ({activeItem.author.anonymousHandle})
+                    To {activeItem.author.realName} (
+                    {activeItem.author.anonymousHandle})
                   </p>
                 </div>
               </div>
@@ -77,15 +82,23 @@ export function PrivateReplyDialog({
                 <span>Confidential Clinical Communication</span>
               </div>
               <p className="text-[11.5px] leading-relaxed text-blue-800 dark:text-blue-300">
-                This message is delivered directly to the author's post card in their feed with an unmistakable private badge. Only the author and clinical moderators can view this conversation.
+                This message is delivered directly to the author's post card in
+                their feed with an unmistakable private badge. Only the author
+                and clinical moderators can view this conversation.
               </p>
             </div>
 
             {/* Post Snippet */}
             <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-750 text-xs space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Regarding Post</span>
-              <div className="font-semibold text-slate-900 dark:text-white line-clamp-1">{activeItem.title}</div>
-              <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">{activeItem.rawContent}</p>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                Regarding Post
+              </span>
+              <div className="font-semibold text-slate-900 dark:text-white line-clamp-1">
+                {activeItem.title}
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
+                {activeItem.rawContent}
+              </p>
             </div>
 
             {/* Action selector */}
@@ -128,7 +141,8 @@ export function PrivateReplyDialog({
             {/* Note input */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Private Message to Care Partner <span className="text-rose-500">*</span>
+                Private Message to Care Partner{' '}
+                <span className="text-rose-500">*</span>
               </label>
               <textarea
                 rows={4}
@@ -174,4 +188,3 @@ export function PrivateReplyDialog({
     </>
   );
 }
-

@@ -1,16 +1,20 @@
-import { Router } from "express";
-import { z } from "zod";
-import { query } from "../../config/db.js";
-import { asyncHandler } from "../../lib/http.js";
-import { isStaffRole } from "../../lib/roles.js";
-import { authenticateToken } from "../../middleware/auth.js";
+import { Router } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { asyncHandler } from '../../lib/http.js';
+import { isStaffRole } from '../../lib/roles.js';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
-const textQuery = z.object({
-  query: z.string().trim().min(2).max(2000).optional(),
-  message: z.string().trim().min(2).max(2000).optional(),
-  draftText: z.string().trim().min(2).max(2000).optional(),
-});
+const textQuery = z
+  .object({
+    query: z.string().trim().min(2).max(2000).optional(),
+    message: z.string().trim().min(2).max(2000).optional(),
+    draftText: z.string().trim().min(2).max(2000).optional(),
+  })
+  .refine((value) => Boolean(value.query || value.message || value.draftText), {
+    message: 'A query is required',
+  });
 async function discussionMatches(term: string, userId: string, role: string) {
   const result = await query(
     `SELECT p.id,p.title,p.sanitized_content,
@@ -27,7 +31,7 @@ async function discussionMatches(term: string, userId: string, role: string) {
   return result.rows;
 }
 router.post(
-  "/deflect",
+  '/deflect',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const parsed = textQuery.parse(req.body);
@@ -47,7 +51,7 @@ router.post(
     res.json({
       deflectionMatches: [
         ...resources.rows.map((r) => ({
-          sourceType: "RESOURCE",
+          sourceType: 'RESOURCE',
           id: r.id,
           title: r.title,
           category: r.category,
@@ -56,7 +60,7 @@ router.post(
           confidenceScore: Number(r.score),
         })),
         ...discussions.map((r) => ({
-          sourceType: "PAST_DISCUSSION",
+          sourceType: 'PAST_DISCUSSION',
           id: r.id,
           postId: r.id,
           title: r.title,
@@ -69,7 +73,7 @@ router.post(
   }),
 );
 router.post(
-  "/chat",
+  '/chat',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const parsed = textQuery.parse(req.body);
@@ -77,7 +81,7 @@ router.post(
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
       req.user!.id,
     ]);
-    const condition = user.rows[0]?.condition || "FTD";
+    const condition = user.rows[0]?.condition || 'FTD';
     const chunks = await query(
       `SELECT gc.*,g.title,g.file_name,g.pdf_url,ts_rank(gc.search_vector,websearch_to_tsquery('english',$1)) score
     FROM guide_chunks gc JOIN chatbot_guides g ON g.id=gc.guide_id WHERE g.status='APPROVED' AND g.is_active
@@ -98,7 +102,7 @@ router.post(
       url: `${r.pdf_url || `/resources/${r.file_name}`}#page=${r.page}`,
     }));
     res.json({
-      answer: "",
+      answer: '',
       retrievedChunks: chunks.rows.map((r) => ({
         guideTitle: r.title,
         fileName: r.file_name,
@@ -110,7 +114,7 @@ router.post(
       suggestedQuestions: [],
       isUploadedGuideSourced: cited.length > 0,
       isOffline: true,
-      discussionDraft: { title: "", content: term },
+      discussionDraft: { title: '', content: term },
       discussions: discussions.map((r) => ({
         id: r.id,
         title: r.title,

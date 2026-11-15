@@ -1,7 +1,7 @@
-import type { Dispatch, SetStateAction } from 'react';
-import { Lock } from 'lucide-react';
-import type { Post } from '@/types';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
+import type { Post } from '@/types';
+import { Lock } from 'lucide-react';
+import type { Dispatch, SetStateAction } from 'react';
 
 interface CloseDiscussionDialogProps {
   post: Post | null;
@@ -52,10 +52,13 @@ export function CloseDiscussionDialog({
                 "{postToClose.title}"
               </p>
               <p>
-                Closing this discussion will <strong>prevent new replies</strong> from being posted by care partners.
+                Closing this discussion will{' '}
+                <strong>prevent new replies</strong> from being posted by care
+                partners.
               </p>
               <p className="text-emerald-700 dark:text-emerald-300 font-medium">
-                ✓ All {postToClose.commentCount} existing replies will be preserved and remain readable.
+                ✓ All {postToClose.commentCount} existing replies will be
+                preserved and remain readable.
               </p>
             </div>
 
@@ -74,14 +77,14 @@ export function CloseDiscussionDialog({
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>{isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}</span>
+                <span>
+                  {isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}
+                </span>
               </button>
             </div>
           </div>
         </div>
       )}
-
     </>
   );
 }
-

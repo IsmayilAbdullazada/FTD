@@ -7,7 +7,9 @@ export function filterQueueByAudience(
 ) {
   if (audienceFilter === 'all') return items;
   return items.filter((item) => {
-    const author = members.find((member) => member.userId === item.author.userId);
+    const author = members.find(
+      (member) => member.userId === item.author.userId,
+    );
     return (
       (item.condition ?? author?.condition) === audienceFilter ||
       item.condition === 'BOTH'

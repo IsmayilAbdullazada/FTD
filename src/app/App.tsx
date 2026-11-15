@@ -10,28 +10,40 @@ import { useAppController } from '@/app/hooks/useAppController';
 const ClinicianDashboard = lazy(() =>
   import('@/features/clinician-workspace').then((module) => ({
     default: module.ClinicianDashboard,
-  }))
+  })),
 );
 const AuthScreens = lazy(() =>
-  import('@/features/auth').then((module) => ({ default: module.AuthScreens }))
+  import('@/features/auth').then((module) => ({ default: module.AuthScreens })),
 );
 const CarePartnerFeed = lazy(() =>
-  import('@/features/discussions').then((module) => ({ default: module.CarePartnerFeed }))
+  import('@/features/discussions').then((module) => ({
+    default: module.CarePartnerFeed,
+  })),
 );
 const PostComposer = lazy(() =>
-  import('@/features/discussions').then((module) => ({ default: module.PostComposer }))
+  import('@/features/discussions').then((module) => ({
+    default: module.PostComposer,
+  })),
 );
 const KnowledgeBaseExplorer = lazy(() =>
-  import('@/features/knowledge').then((module) => ({ default: module.KnowledgeBaseExplorer }))
+  import('@/features/knowledge').then((module) => ({
+    default: module.KnowledgeBaseExplorer,
+  })),
 );
 const FloatingChatbotAssistant = lazy(() =>
-  import('@/features/knowledge').then((module) => ({ default: module.FloatingChatbotAssistant }))
+  import('@/features/knowledge').then((module) => ({
+    default: module.FloatingChatbotAssistant,
+  })),
 );
 const UpdatesPage = lazy(() =>
-  import('@/features/content').then((module) => ({ default: module.UpdatesPage }))
+  import('@/features/content').then((module) => ({
+    default: module.UpdatesPage,
+  })),
 );
 const CalendarPage = lazy(() =>
-  import('@/features/content').then((module) => ({ default: module.CalendarPage }))
+  import('@/features/content').then((module) => ({
+    default: module.CalendarPage,
+  })),
 );
 
 export default function App() {
@@ -74,7 +86,11 @@ export default function App() {
 
   if (isAuthOpen || !currentUser) {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19]" />}>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19]" />
+        }
+      >
         <AuthScreens
           initialMode={authMode}
           initialToken={authInviteToken}
@@ -105,90 +121,92 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 pb-10 md:pb-12 xl:pb-8">
         <Suspense
-          fallback={(
+          fallback={
             <div className="max-w-6xl mx-auto px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
               Loading...
             </div>
-          )}
+          }
         >
-        {activeTab === 'feed' && (
-          <CarePartnerFeed
-            currentUser={currentUser}
-            cohorts={cohorts}
-            resetKey={feedResetKey}
-            targetDiscussionId={targetDiscussionId}
-            onClearTargetDiscussion={actions.clearTargetDiscussion}
-            recentNotice={feedNotice}
-            onDismissNotice={actions.dismissFeedNotice}
-            onOpenComposer={actions.openComposer}
-            initialSection={feedSection}
-            onSectionChange={actions.changeFeedSection}
-          />
-        )}
-
-        {activeTab === 'compose' && (
-          <PostComposer
-            currentUser={currentUser}
-            cohorts={cohorts}
-            initialTitle={composerInitialTitle}
-            initialContent={composerInitialContent}
-            onOpenAssistant={actions.openAssistant}
-            onPostSubmitted={actions.postSubmitted}
-            onCancel={actions.cancelComposer}
-            onOpenResource={handleOpenResourceFromDeflection}
-            onOpenDiscussion={handleOpenDiscussionFromComposer}
-          />
-        )}
-
-        {activeTab === 'moderation' && (
-          <Suspense
-            fallback={(
-              <div className="max-w-6xl mx-auto px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-                Loading dashboard...
-              </div>
-            )}
-          >
-            <ClinicianDashboard
+          {activeTab === 'feed' && (
+            <CarePartnerFeed
               currentUser={currentUser}
               cohorts={cohorts}
-              onQueueUpdated={handleQueueUpdated}
-              onOpenAudit={actions.openAudit}
-              onOpenInvite={actions.openInvite}
-              onCohortCreated={actions.cohortCreated}
-              onOpenDiscussion={handleOpenDiscussion}
+              resetKey={feedResetKey}
+              targetDiscussionId={targetDiscussionId}
+              onClearTargetDiscussion={actions.clearTargetDiscussion}
+              recentNotice={feedNotice}
+              onDismissNotice={actions.dismissFeedNotice}
+              onOpenComposer={actions.openComposer}
+              initialSection={feedSection}
+              onSectionChange={actions.changeFeedSection}
             />
-          </Suspense>
-        )}
+          )}
 
-        {activeTab === 'knowledge' && (
-          <KnowledgeBaseExplorer
-            initialResourceId={inspectedResourceId}
-            onClearInitialResource={actions.clearInspectedResource}
-            currentUser={currentUser}
-          />
-        )}
+          {activeTab === 'compose' && (
+            <PostComposer
+              currentUser={currentUser}
+              cohorts={cohorts}
+              initialTitle={composerInitialTitle}
+              initialContent={composerInitialContent}
+              onOpenAssistant={actions.openAssistant}
+              onPostSubmitted={actions.postSubmitted}
+              onCancel={actions.cancelComposer}
+              onOpenResource={handleOpenResourceFromDeflection}
+              onOpenDiscussion={handleOpenDiscussionFromComposer}
+            />
+          )}
 
-        {activeTab === 'updates' && <UpdatesPage currentUser={currentUser} />}
-        {activeTab === 'calendar' && <CalendarPage currentUser={currentUser} />}
+          {activeTab === 'moderation' && (
+            <Suspense
+              fallback={
+                <div className="max-w-6xl mx-auto px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                  Loading dashboard...
+                </div>
+              }
+            >
+              <ClinicianDashboard
+                currentUser={currentUser}
+                cohorts={cohorts}
+                onQueueUpdated={handleQueueUpdated}
+                onOpenAudit={actions.openAudit}
+                onOpenInvite={actions.openInvite}
+                onCohortCreated={actions.cohortCreated}
+                onOpenDiscussion={handleOpenDiscussion}
+              />
+            </Suspense>
+          )}
 
-        {activeTab === 'audit' && (
-          <div className="max-w-2xl mx-auto px-4 py-6">
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 shadow-xs">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                Audit Ledger
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400 text-xs">
-                Inspect logged clinical reviews, approvals, and redactions.
-              </p>
-              <button
-                onClick={actions.openAudit}
-                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition"
-              >
-                Open Audit Ledger
-              </button>
+          {activeTab === 'knowledge' && (
+            <KnowledgeBaseExplorer
+              initialResourceId={inspectedResourceId}
+              onClearInitialResource={actions.clearInspectedResource}
+              currentUser={currentUser}
+            />
+          )}
+
+          {activeTab === 'updates' && <UpdatesPage currentUser={currentUser} />}
+          {activeTab === 'calendar' && (
+            <CalendarPage currentUser={currentUser} />
+          )}
+
+          {activeTab === 'audit' && (
+            <div className="max-w-2xl mx-auto px-4 py-6">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 shadow-xs">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+                  Audit Ledger
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-xs">
+                  Inspect logged clinical reviews, approvals, and redactions.
+                </p>
+                <button
+                  onClick={actions.openAudit}
+                  className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition"
+                >
+                  Open Audit Ledger
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </Suspense>
       </main>
 
@@ -213,10 +231,7 @@ export default function App() {
         cohorts={cohorts}
       />
 
-      <AuditLedgerModal
-        isOpen={isAuditOpen}
-        onClose={actions.closeAudit}
-      />
+      <AuditLedgerModal isOpen={isAuditOpen} onClose={actions.closeAudit} />
 
       <NotificationsModal
         isOpen={isNotificationsOpen}

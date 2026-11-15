@@ -1,19 +1,6 @@
-import { safeFetchJson } from "@/shared/api/httpClient";
-import {
-  collectPaginatedItems,
-  type PaginationMeta,
-} from "@/shared/api/pagination";
-import { communityFallbackStore } from "@/shared/dev/devFallbackStore";
-import { Audience, Comment, Post, QueueItem } from "@/types";
+import { safeFetchJson } from '@/shared/api/httpClient';
 
-const {
-  users: localUsers,
-  cohorts: localCohorts,
-  posts: localPosts,
-  comments: localComments,
-  moderationQueue: localQueue,
-  userCohortAssignments: localUserCohortAssignments,
-} = communityFallbackStore;
+import { Audience, Comment, Post } from '@/types';
 
 export const discussionApi = {
   // Posts Feed
@@ -23,61 +10,23 @@ export const discussionApi = {
     status?: string;
     userId?: string;
     condition?: string;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    section?: string;
+    policy?: string;
+    closed?: string;
   }): Promise<{ total: number; posts: Post[] }> => {
     const params = new URLSearchParams();
-    if (options.groupId) params.set("groupId", options.groupId);
-    if (options.status) params.set("status", options.status);
-    if (options.condition) params.set("condition", options.condition);
+    if (options.groupId) params.set('groupId', options.groupId);
+    if (options.status) params.set('status', options.status);
+    if (options.condition) params.set('condition', options.condition);
 
-    params.set("pageSize", "100");
-    const fallback = () => {
-      let filtered = localPosts.map((p) => ({
-        ...p,
-        commentCount: localComments.filter(
-          (c) => c.postId === p.id && (c.status === "APPROVED" || !c.status),
-        ).length,
-      }));
-      if (options.role === "CARE_PARTNER") {
-        const userAssigned =
-          localUserCohortAssignments[options.userId || "user-care-1"] ||
-          "group-central-maryland";
-        const allowed = ["group-general", userAssigned];
-        filtered = filtered.filter(
-          (p) =>
-            (p.status === "APPROVED" &&
-              p.assignedGroups.some((g) => allowed.includes(g.id))) ||
-            (options.userId &&
-              p.author.userId === options.userId &&
-              p.status === "PENDING_MODERATION"),
-        );
-      } else if (options.status) {
-        filtered = filtered.filter((p) => p.status === options.status);
-      } else {
-        // Clinicians and Admins in Discussions only see published discussions
-        filtered = filtered.filter((p) => p.status === "APPROVED");
-      }
-      if (options.groupId && options.groupId !== "all") {
-        filtered = filtered.filter((p) =>
-          p.assignedGroups.some((g) => g.id === options.groupId),
-        );
-      }
-      return {
-        total: filtered.length,
-        posts: filtered,
-      };
-    };
-    const { first, items } = await collectPaginatedItems(
-      (page) => {
-        params.set("page", String(page));
-        return safeFetchJson<{
-          total: number;
-          posts: Post[];
-          pagination?: PaginationMeta;
-        }>(`/api/v1/posts?${params.toString()}`, undefined, fallback);
-      },
-      (response) => response.posts,
-    );
-    return { total: first.total, posts: items };
+    params.set('page', String(options.page ?? 1));
+    params.set('pageSize', String(options.pageSize ?? 10));
+    for (const key of ['search', 'section', 'policy', 'closed'] as const)
+      if (options[key]) params.set(key, options[key]);
+    return safeFetchJson(`/api/v1/posts?${params}`, undefined);
   },
 
   getPostDetails: async (
@@ -85,20 +34,7 @@ export const discussionApi = {
     role: string,
     userId: string,
   ): Promise<{ post: Post; comments: Comment[] }> => {
-    return safeFetchJson(`/api/v1/posts/${postId}`, undefined, () => {
-      const found = localPosts.find((p) => p.id === postId);
-      const post = found
-        ? {
-            ...found,
-            commentCount: localComments.filter(
-              (c) =>
-                c.postId === found.id && (c.status === "APPROVED" || !c.status),
-            ).length,
-          }
-        : localPosts[0];
-      const comments = localComments.filter((c) => c.postId === postId);
-      return { post, comments };
-    });
+    return safeFetchJson(`/api/v1/posts/${postId}`, undefined);
   },
 
   createPost: async (payload: {
@@ -115,71 +51,11 @@ export const discussionApi = {
     phiAlertsCount: number;
   }> => {
     const { authorId: _authorId, ...requestPayload } = payload;
-    return safeFetchJson(
-      "/api/v1/posts",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestPayload),
-      },
-      () => {
-        const author =
-          localUsers.find((u) => u.id === payload.authorId) || localUsers[1];
-        const assignedCohort =
-          localCohorts.find((c) => c.id === payload.targetCohortId) ||
-          localCohorts[0];
-
-        const newPost: Post = {
-          id: `post-${Date.now()}`,
-          title: payload.title,
-          content: payload.content,
-          status: "PENDING_MODERATION",
-          author: {
-            userId: author.id,
-            anonymousHandle: author.anonymousHandle,
-            badgeLabel: author.badgeLabel,
-            avatarColor: author.avatarColor,
-          },
-          assignedGroups: [assignedCohort],
-          createdAt: new Date().toISOString(),
-          commentCount: 0,
-          upvotes: 0,
-        };
-        localPosts.unshift(newPost);
-
-        const queueItem: QueueItem = {
-          id: newPost.id,
-          type: "POST",
-          author: {
-            userId: author.id,
-            realName: `${author.firstName} ${author.lastName}`,
-            email: author.email,
-            phone: author.phoneNumber || "(410) 555-8841",
-            clinicPatientId: author.clinicPatientId || "JHM-99210-FTD",
-            anonymousHandle: author.anonymousHandle,
-            avatarColor: author.avatarColor,
-          },
-          title: payload.title,
-          rawContent: payload.content,
-          sanitizedContent: payload.content,
-          suggestedCohort: assignedCohort,
-          assignedGroupIds: [assignedCohort.id],
-          phiAlerts: [],
-          createdAt: new Date().toISOString(),
-        };
-
-        localQueue.unshift(queueItem);
-
-        return {
-          postId: newPost.id,
-          status: "PENDING_MODERATION",
-          message:
-            "Your question was submitted for Dr. Seema to review within 24 hours.",
-          hasPhiAlerts: false,
-          phiAlertsCount: 0,
-        };
-      },
-    );
+    return safeFetchJson('/api/v1/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestPayload),
+    });
   },
 
   addComment: async (
@@ -188,55 +64,11 @@ export const discussionApi = {
     authorId: string,
     parentCommentId?: string,
   ): Promise<{ comment: Comment; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}/comments`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, parentCommentId }),
-      },
-      () => {
-        const post = localPosts.find((p) => p.id === postId);
-        if (post?.isClosed) {
-          throw new Error(
-            "This discussion has been closed by a clinician moderator. New replies are no longer accepted.",
-          );
-        }
-
-        const author =
-          localUsers.find((u) => u.id === authorId) || localUsers[1];
-        const isClinician =
-          author.role === "CLINICIAN_MODERATOR" ||
-          author.role === "SYSTEM_ADMIN";
-        const isUnmoderated = post?.allowUnmoderatedReplies === true;
-        const newStatus =
-          isClinician || isUnmoderated ? "APPROVED" : "PENDING_MODERATION";
-
-        const newComm: Comment = {
-          id: `comm-${Date.now()}`,
-          postId,
-          parentCommentId,
-          content,
-          author: {
-            userId: author.id,
-            anonymousHandle: author.anonymousHandle,
-            badgeLabel: author.badgeLabel,
-            avatarColor: author.avatarColor,
-          },
-          status: newStatus,
-          createdAt: new Date().toISOString(),
-        };
-        localComments.push(newComm);
-        if (post && newComm.status === "APPROVED") post.commentCount += 1;
-        return {
-          comment: newComm,
-          message:
-            isClinician || isUnmoderated
-              ? "Reply posted."
-              : "Reply submitted for moderation review.",
-        };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, parentCommentId }),
+    });
   },
 
   closePost: async (
@@ -244,139 +76,50 @@ export const discussionApi = {
     isClosed: boolean,
     moderatorId?: string,
   ): Promise<{ post: Post; isClosed: boolean; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}/close`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isClosed }),
-      },
-      () => {
-        const post = localPosts.find((p) => p.id === postId);
-        if (post) {
-          post.isClosed = isClosed;
-          post.closedAt = isClosed ? new Date().toISOString() : undefined;
-          post.closedBy = isClosed ? moderatorId : undefined;
-        }
-        return {
-          post: post || localPosts[0],
-          isClosed,
-          message: isClosed
-            ? "Discussion closed to new replies. Existing replies are preserved."
-            : "Discussion reopened. Care partners can now post replies again.",
-        };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}/close`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isClosed }),
+    });
   },
 
   togglePostUnmoderatedReplies: async (
     postId: string,
     allowUnmoderated: boolean,
   ): Promise<{ post: Post; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}/unmoderated-replies`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allowUnmoderatedReplies: allowUnmoderated }),
-      },
-      () => {
-        const post = localPosts.find((p) => p.id === postId);
-        if (post) {
-          post.allowUnmoderatedReplies = allowUnmoderated;
-          if (allowUnmoderated) {
-            localComments
-              .filter(
-                (c) => c.postId === postId && c.status === "PENDING_MODERATION",
-              )
-              .forEach((c) => {
-                c.status = "APPROVED";
-              });
-            post.commentCount = localComments.filter(
-              (c) => c.postId === postId && c.status === "APPROVED",
-            ).length;
-          }
-        }
-        return {
-          post: post || localPosts[0],
-          message: allowUnmoderated
-            ? "Post updated: Anyone can now reply without moderation."
-            : "Post updated: All new replies now require moderation.",
-        };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}/unmoderated-replies`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ allowUnmoderatedReplies: allowUnmoderated }),
+    });
   },
 
   togglePostUpvote: async (
     postId: string,
     userId: string,
   ): Promise<{ success: boolean; upvotes: number; isUpvoted: boolean }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}/upvote`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      },
-      () => {
-        const post = localPosts.find((p) => p.id === postId);
-        if (post) {
-          const isCurrentlyUpvoted = Boolean(post.isUpvoted);
-          post.isUpvoted = !isCurrentlyUpvoted;
-          post.upvotes = isCurrentlyUpvoted
-            ? Math.max(0, post.upvotes - 1)
-            : post.upvotes + 1;
-          return {
-            success: true,
-            upvotes: post.upvotes,
-            isUpvoted: post.isUpvoted,
-          };
-        }
-        return { success: true, upvotes: 1, isUpvoted: true };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}/upvote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
   },
 
   updatePost: async (
     postId: string,
     payload: { title?: string; content?: string; targetCohortId?: string },
   ): Promise<{ post: Post; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-      () => {
-        const post = localPosts.find((p) => p.id === postId);
-        if (post) {
-          if (payload.title) post.title = payload.title;
-          if (payload.content) post.content = payload.content;
-          if (payload.targetCohortId) {
-            const grp = localCohorts.find(
-              (c) => c.id === payload.targetCohortId,
-            );
-            if (grp) post.assignedGroups = [grp];
-          }
-        }
-        return { post: post || localPosts[0], message: "Question updated." };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
   },
 
   deletePost: async (
     postId: string,
   ): Promise<{ success: boolean; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}`,
-      { method: "DELETE" },
-      () => {
-        const idx = localPosts.findIndex((p) => p.id === postId);
-        if (idx !== -1) localPosts.splice(idx, 1);
-        return { success: true, message: "Question withdrawn successfully." };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}`, { method: 'DELETE' });
   },
 
   updateComment: async (
@@ -384,43 +127,19 @@ export const discussionApi = {
     commentId: string,
     content: string,
   ): Promise<{ comment: Comment; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}/comments/${commentId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      },
-      () => {
-        const comment = localComments.find((c) => c.id === commentId);
-        if (comment) comment.content = content;
-        return {
-          comment: comment || localComments[0],
-          message: "Reply updated.",
-        };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
   },
 
   deleteComment: async (
     postId: string,
     commentId: string,
   ): Promise<{ success: boolean; message: string }> => {
-    return safeFetchJson(
-      `/api/v1/posts/${postId}/comments/${commentId}`,
-      { method: "DELETE" },
-      () => {
-        const idx = localComments.findIndex((c) => c.id === commentId);
-        if (idx !== -1) {
-          const comm = localComments[idx];
-          const post = localPosts.find((p) => p.id === postId);
-          if (post && comm.status === "APPROVED" && post.commentCount > 0) {
-            post.commentCount -= 1;
-          }
-          localComments.splice(idx, 1);
-        }
-        return { success: true, message: "Reply removed successfully." };
-      },
-    );
+    return safeFetchJson(`/api/v1/posts/${postId}/comments/${commentId}`, {
+      method: 'DELETE',
+    });
   },
 };

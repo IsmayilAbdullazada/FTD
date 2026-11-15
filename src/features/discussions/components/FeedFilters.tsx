@@ -1,4 +1,4 @@
-import { getProperGroupName } from "@/types";
+import { getProperGroupName } from '@/types';
 import {
   ChevronDown,
   Lock,
@@ -8,32 +8,32 @@ import {
   SlidersHorizontal,
   Users,
   X,
-} from "lucide-react";
+} from 'lucide-react';
 
 import type {
   CarePartnerFeedProps,
   useCarePartnerFeed,
-} from "../hooks/useCarePartnerFeed";
+} from '../hooks/useCarePartnerFeed';
 
 type Props = Pick<
   ReturnType<typeof useCarePartnerFeed>,
-  | "posts"
-  | "viewSection"
-  | "selectedGroupTab"
-  | "setSelectedGroupTab"
-  | "selectedStatusFilter"
-  | "setSelectedStatusFilter"
-  | "searchQuery"
-  | "setSearchQuery"
-  | "setCurrentPage"
-  | "isStaff"
-  | "selectedCondition"
-  | "setSelectedCondition"
-  | "isFilterMenuOpen"
-  | "setIsFilterMenuOpen"
-  | "filterPopoverRef"
+  | 'posts'
+  | 'viewSection'
+  | 'selectedGroupTab'
+  | 'setSelectedGroupTab'
+  | 'selectedStatusFilter'
+  | 'setSelectedStatusFilter'
+  | 'searchQuery'
+  | 'setSearchQuery'
+  | 'setCurrentPage'
+  | 'isStaff'
+  | 'selectedCondition'
+  | 'setSelectedCondition'
+  | 'isFilterMenuOpen'
+  | 'setIsFilterMenuOpen'
+  | 'filterPopoverRef'
 > &
-  Pick<CarePartnerFeedProps, "cohorts">;
+  Pick<CarePartnerFeedProps, 'cohorts'>;
 
 export function FeedFilters({
   posts,
@@ -69,9 +69,9 @@ export function FeedFilters({
                 setCurrentPage(1);
               }}
               placeholder={
-                viewSection === "my-posts"
-                  ? "Search your posts by title or keyword..."
-                  : "Search discussions by topic, symptoms, or keyword..."
+                viewSection === 'my-posts'
+                  ? 'Search your posts by title or keyword...'
+                  : 'Search discussions by topic, symptoms, or keyword...'
               }
               className="w-full pl-9.5 pr-8 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition shadow-2xs"
             />
@@ -79,7 +79,7 @@ export function FeedFilters({
               <button
                 type="button"
                 onClick={() => {
-                  setSearchQuery("");
+                  setSearchQuery('');
                   setCurrentPage(1);
                 }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
@@ -96,23 +96,23 @@ export function FeedFilters({
               type="button"
               onClick={() => setIsFilterMenuOpen((prev) => !prev)}
               className={`min-h-11 px-3.5 py-2.5 rounded-xl border text-sm font-semibold flex items-center gap-2 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 ${
-                selectedGroupTab !== "all" || selectedStatusFilter !== "all"
-                  ? "bg-blue-50 dark:bg-blue-950/60 border-[#002D72] dark:border-blue-500 text-[#002D72] dark:text-blue-300"
-                  : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750"
+                selectedGroupTab !== 'all' || selectedStatusFilter !== 'all'
+                  ? 'bg-blue-50 dark:bg-blue-950/60 border-[#002D72] dark:border-blue-500 text-[#002D72] dark:text-blue-300'
+                  : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750'
               }`}
               aria-label="Filter discussions"
             >
               <SlidersHorizontal className="w-4 h-4 shrink-0" />
               <span>Filters</span>
-              {(selectedGroupTab !== "all" ||
-                selectedStatusFilter !== "all") && (
+              {(selectedGroupTab !== 'all' ||
+                selectedStatusFilter !== 'all') && (
                 <span className="w-5 h-5 rounded-full bg-[#002D72] dark:bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
-                  {(selectedGroupTab !== "all" ? 1 : 0) +
-                    (selectedStatusFilter !== "all" ? 1 : 0)}
+                  {(selectedGroupTab !== 'all' ? 1 : 0) +
+                    (selectedStatusFilter !== 'all' ? 1 : 0)}
                 </span>
               )}
               <ChevronDown
-                className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFilterMenuOpen ? "rotate-180" : ""}`}
+                className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isFilterMenuOpen ? 'rotate-180' : ''}`}
               />
             </button>
 
@@ -124,13 +124,13 @@ export function FeedFilters({
                     <SlidersHorizontal className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
                     <span>Filter Discussions</span>
                   </div>
-                  {(selectedGroupTab !== "all" ||
-                    selectedStatusFilter !== "all") && (
+                  {(selectedGroupTab !== 'all' ||
+                    selectedStatusFilter !== 'all') && (
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedGroupTab("all");
-                        setSelectedStatusFilter("all");
+                        setSelectedGroupTab('all');
+                        setSelectedStatusFilter('all');
                         setCurrentPage(1);
                       }}
                       className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
@@ -170,7 +170,7 @@ export function FeedFilters({
                       Condition
                     </label>
                     <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                      {(["all", "FTD", "AD"] as const).map((opt) => (
+                      {(['all', 'FTD', 'AD'] as const).map((opt) => (
                         <button
                           key={opt}
                           type="button"
@@ -180,11 +180,11 @@ export function FeedFilters({
                           }}
                           className={`min-h-11 py-2.5 px-3 text-sm font-semibold rounded-lg transition cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] ${
                             selectedCondition === opt
-                              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                           }`}
                         >
-                          {opt === "all" ? "All" : opt}
+                          {opt === 'all' ? 'All' : opt}
                         </button>
                       ))}
                     </div>
@@ -200,13 +200,13 @@ export function FeedFilters({
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedStatusFilter("all");
+                        setSelectedStatusFilter('all');
                         setCurrentPage(1);
                       }}
                       className={`min-h-11 py-2.5 px-3 text-sm font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] ${
-                        selectedStatusFilter === "all"
-                          ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        selectedStatusFilter === 'all'
+                          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <span>All</span>
@@ -214,13 +214,13 @@ export function FeedFilters({
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedStatusFilter("open");
+                        setSelectedStatusFilter('open');
                         setCurrentPage(1);
                       }}
                       className={`min-h-11 py-2.5 px-3 text-sm font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
-                        selectedStatusFilter === "open"
-                          ? "bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        selectedStatusFilter === 'open'
+                          ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <LockOpen className="w-3.5 h-3.5" />
@@ -229,13 +229,13 @@ export function FeedFilters({
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedStatusFilter("closed");
+                        setSelectedStatusFilter('closed');
                         setCurrentPage(1);
                       }}
                       className={`min-h-11 py-2.5 px-3 text-sm font-semibold rounded-lg transition cursor-pointer flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700 ${
-                        selectedStatusFilter === "closed"
-                          ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        selectedStatusFilter === 'closed'
+                          ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <Lock className="w-3.5 h-3.5" />
@@ -260,8 +260,8 @@ export function FeedFilters({
         </div>
 
         {/* Active Filter Chips Bar */}
-        {(selectedGroupTab !== "all" ||
-          selectedStatusFilter !== "all" ||
+        {(selectedGroupTab !== 'all' ||
+          selectedStatusFilter !== 'all' ||
           searchQuery) && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400 mr-1">
@@ -269,19 +269,19 @@ export function FeedFilters({
             </span>
 
             {/* Group chip */}
-            {selectedGroupTab !== "all" && (
+            {selectedGroupTab !== 'all' && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
                 <Users className="w-3.5 h-3.5 text-slate-500" />
                 <span>
-                  Group:{" "}
+                  Group:{' '}
                   {getProperGroupName(
                     cohorts.find((c) => c.id === selectedGroupTab),
-                  ) || "Selected Group"}
+                  ) || 'Selected Group'}
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedGroupTab("all");
+                    setSelectedGroupTab('all');
                     setCurrentPage(1);
                   }}
                   className="p-1 hover:text-slate-900 dark:hover:text-white rounded-full cursor-pointer ml-0.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
@@ -293,23 +293,23 @@ export function FeedFilters({
             )}
 
             {/* Status chip */}
-            {selectedStatusFilter !== "all" && (
+            {selectedStatusFilter !== 'all' && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                {selectedStatusFilter === "closed" ? (
+                {selectedStatusFilter === 'closed' ? (
                   <Lock className="w-3.5 h-3.5 text-slate-500" />
                 ) : (
                   <LockOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 )}
                 <span>
-                  Status:{" "}
-                  {selectedStatusFilter === "closed"
-                    ? "Closed Only"
-                    : "Open Only"}
+                  Status:{' '}
+                  {selectedStatusFilter === 'closed'
+                    ? 'Closed Only'
+                    : 'Open Only'}
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedStatusFilter("all");
+                    setSelectedStatusFilter('all');
                     setCurrentPage(1);
                   }}
                   className="p-1 hover:text-slate-900 dark:hover:text-white rounded-full cursor-pointer ml-0.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
@@ -328,7 +328,7 @@ export function FeedFilters({
                 <button
                   type="button"
                   onClick={() => {
-                    setSearchQuery("");
+                    setSearchQuery('');
                     setCurrentPage(1);
                   }}
                   className="p-1 hover:text-slate-900 dark:hover:text-white rounded-full cursor-pointer ml-0.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
@@ -343,9 +343,9 @@ export function FeedFilters({
             <button
               type="button"
               onClick={() => {
-                setSearchQuery("");
-                setSelectedGroupTab("all");
-                setSelectedStatusFilter("all");
+                setSearchQuery('');
+                setSelectedGroupTab('all');
+                setSelectedStatusFilter('all');
                 setCurrentPage(1);
               }}
               className="text-sm text-[#002D72] dark:text-blue-400 hover:underline font-semibold ml-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"

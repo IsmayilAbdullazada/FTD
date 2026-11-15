@@ -17,12 +17,11 @@ interface DatabaseStatus {
   counts: DatabaseCounts;
   securityStatus: {
     port: number;
-    helmetActive: boolean;
-    jwtActive: boolean;
-    bcryptRounds: number;
-    rateLimitersActive: boolean;
-    phiFilterActive: boolean;
-    corsActive: boolean;
+    environment: string;
+    databaseTlsConfigured: boolean;
+    developmentAuthPreviewsEnabled: boolean;
+    databaseResetEnabled: boolean;
+    allowedOrigins: string[];
   };
 }
 
@@ -35,29 +34,7 @@ interface ResetDatabaseResponse {
 
 export const adminApi = {
   getDatabaseStatus(): Promise<DatabaseStatus> {
-    return safeFetchJson('/api/v1/admin/database-status', undefined, () => ({
-      isCleanLaunch: true,
-      counts: {
-        users: 2,
-        carePartners: 0,
-        staff: 2,
-        posts: 0,
-        pendingQueue: 0,
-        comments: 0,
-        auditEvents: 0,
-        invitations: 0,
-        guides: 10,
-      },
-      securityStatus: {
-        port: 3000,
-        helmetActive: true,
-        jwtActive: true,
-        bcryptRounds: 12,
-        rateLimitersActive: true,
-        phiFilterActive: true,
-        corsActive: true,
-      },
-    }));
+    return safeFetchJson('/api/v1/admin/database-status', undefined);
   },
 
   async resetDatabase(mode: 'clean' | 'demo'): Promise<ResetDatabaseResponse> {

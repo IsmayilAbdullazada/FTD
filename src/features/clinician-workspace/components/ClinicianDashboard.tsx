@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  CurrentUser,
-  Condition,
-  CommunityGroup,
-} from '@/types';
+import { CurrentUser, Condition, CommunityGroup } from '@/types';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useGuideManagement } from '@/features/knowledge/hooks/useGuideManagement';
 import { useMemberManagement } from '@/features/community/hooks/useMemberManagement';
@@ -49,10 +45,15 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   onOpenDiscussion,
 }) => {
   const [activeTab, setActiveTab] = useState<ClinicianDashboardTab>('queue');
-  const [audienceFilter, setAudienceFilter] = useState<'all' | Condition>('all');
-  const [actionSuccessNotice, setActionSuccessNotice] = useState<string | null>(null);
+  const [audienceFilter, setAudienceFilter] = useState<'all' | Condition>(
+    'all',
+  );
+  const [actionSuccessNotice, setActionSuccessNotice] = useState<string | null>(
+    null,
+  );
 
   const {
+    discussionPage,
     publishedPosts,
     filteredDiscussions,
     loadingPosts,
@@ -237,9 +238,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   });
 
   useEffect(() => {
-    loadQueue();
     loadMembers();
-    loadPublishedPosts();
     loadChatbotGuides();
   }, [audienceFilter]);
 
@@ -249,10 +248,17 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     previousTab.current = activeTab;
   }, [activeTab]);
 
-  const discussionPage = usePagination(filteredDiscussions, 10, JSON.stringify([audienceFilter, postsPolicyFilter, searchPostsQuery]));
   const groupPage = usePagination(cohorts, 12);
-  const memberPage = usePagination(filteredMembers, 15, JSON.stringify([audienceFilter, selectedCohortFilter, searchMemberQuery]));
-  const guidePage = usePagination(filteredGuides, 10, JSON.stringify([guideStatusFilter, guideSearchFilter]));
+  const memberPage = usePagination(
+    filteredMembers,
+    15,
+    JSON.stringify([audienceFilter, selectedCohortFilter, searchMemberQuery]),
+  );
+  const guidePage = usePagination(
+    filteredGuides,
+    10,
+    JSON.stringify([guideStatusFilter, guideSearchFilter]),
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-3.5 sm:px-4 py-3.5 sm:py-6 space-y-4 sm:space-y-5 transition-colors">
@@ -268,9 +274,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
       />
       <DashboardNavigation
         activeTab={activeTab}
-        pendingCount={queueItems.length}
-        discussionCount={publishedPosts.length}
-        activeGuideCount={chatbotGuides.filter((guide) => guide.isActive).length}
+        pendingCount={queuePage.total}
+        discussionCount={discussionPage.total}
+        activeGuideCount={
+          chatbotGuides.filter((guide) => guide.isActive).length
+        }
         guideCount={chatbotGuides.length}
         cohortCount={cohorts.length}
         memberCount={members.length}
@@ -494,4 +502,3 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     </div>
   );
 };
-

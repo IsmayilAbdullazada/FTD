@@ -1,6 +1,6 @@
-import { Eye, Search, X } from "lucide-react";
-import React from "react";
-import type { RealtimeMatchItem } from "../lib/discussionSearch";
+import { Eye, Search, X } from 'lucide-react';
+import React from 'react';
+import type { RealtimeMatchItem } from '../lib/discussionSearch';
 
 /**
  * Highlights matching keywords directly in the post headline link.
@@ -23,11 +23,11 @@ function highlightTitleText(
 
   // Sort longest terms first to match full phrases before sub-words
   const escapedTerms = validTerms
-    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .sort((a, b) => b.length - a.length);
 
   try {
-    const pattern = new RegExp(`(${escapedTerms.join("|")})`, "gi");
+    const pattern = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
     const parts = title.split(pattern);
 
     return (
@@ -129,7 +129,7 @@ export const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
                   >
                     {snippet.hasLeadingEllipsis && (
                       <span className="text-slate-400 dark:text-slate-500 font-bold">
-                        ...{" "}
+                        ...{' '}
                       </span>
                     )}
                     <span>{snippet.beforeMatch}</span>
@@ -139,7 +139,7 @@ export const SimilarDiscussionsBox: React.FC<SimilarDiscussionsBoxProps> = ({
                     <span>{snippet.afterMatch}</span>
                     {snippet.hasTrailingEllipsis && (
                       <span className="text-slate-400 dark:text-slate-500 font-bold">
-                        {" "}
+                        {' '}
                         ...
                       </span>
                     )}

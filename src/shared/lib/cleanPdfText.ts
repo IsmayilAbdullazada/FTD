@@ -60,14 +60,19 @@ export function cleanPdfText(rawText: string): string {
 
     // Common newsletter running headers & footers
     if (
-      /^(the\s+)?association for frontotemporal degeneration\b/i.test(trimmedLine) ||
+      /^(the\s+)?association for frontotemporal degeneration\b/i.test(
+        trimmedLine,
+      ) ||
       /^partners in ftd care\b/i.test(trimmedLine) ||
       /^aftd\s+educational\s+newsletter/i.test(trimmedLine) ||
       /^www\.theaftd\.org\b/i.test(trimmedLine) ||
       /^help and hope\b/i.test(trimmedLine) ||
       /^issue\s+\d+\s*[-–—|•]/i.test(trimmedLine) ||
-      (/^(winter|spring|summer|fall)\s+\d{4}\b/i.test(trimmedLine) && trimmedLine.length < 35) ||
-      /^\d{4}\s+the association for frontotemporal degeneration/i.test(trimmedLine) ||
+      (/^(winter|spring|summer|fall)\s+\d{4}\b/i.test(trimmedLine) &&
+        trimmedLine.length < 35) ||
+      /^\d{4}\s+the association for frontotemporal degeneration/i.test(
+        trimmedLine,
+      ) ||
       /^all rights reserved/i.test(trimmedLine)
     ) {
       continue;

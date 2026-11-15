@@ -1,4 +1,10 @@
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
+import { reportError } from '@/shared/lib/logger';
+import {
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from 'react';
 import { communityApi } from '@/features/community/api/communityApi';
 
 interface UseCreateCohortFormOptions {
@@ -32,7 +38,9 @@ export function useCreateCohortForm({
       await communityApi.createCohort({
         name: newGroupName.trim(),
         slug,
-        description: newGroupDescription.trim() || `Local group for ${newGroupRegion.trim() || newGroupName.trim()} caregivers.`,
+        description:
+          newGroupDescription.trim() ||
+          `Local group for ${newGroupRegion.trim() || newGroupName.trim()} caregivers.`,
         geographicRegion: newGroupRegion.trim() || 'Local Area',
         radiusMiles: 35,
         tag: 'GEO_CUSTOM',
@@ -47,8 +55,10 @@ export function useCreateCohortForm({
       onCohortCreated?.();
       loadMembers();
     } catch (error) {
-      console.error('Failed to create group:', error);
-      setActionSuccessNotice('Could not create group. Please check inputs and try again.');
+      reportError('Failed to create group:', error);
+      setActionSuccessNotice(
+        'Could not create group. Please check inputs and try again.',
+      );
       setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {
       setIsSubmittingGroup(false);

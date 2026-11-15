@@ -20,8 +20,12 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   const [remainingSeconds, setRemainingSeconds] = useState(warningSeconds);
 
   const lastActivityRef = useRef<number>(Date.now());
-  const timerCheckIntervalRef = useRef<any>(null);
-  const warningCountdownIntervalRef = useRef<any>(null);
+  const timerCheckIntervalRef = useRef<ReturnType<
+    typeof window.setInterval
+  > | null>(null);
+  const warningCountdownIntervalRef = useRef<ReturnType<
+    typeof window.setInterval
+  > | null>(null);
 
   // Keep session alive when user explicitly clicks "Stay Signed In"
   const handleStaySignedIn = () => {
@@ -39,8 +43,12 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
   useEffect(() => {
     if (!isAuthenticated) {
       setShowWarning(false);
-      if (timerCheckIntervalRef.current) clearInterval(timerCheckIntervalRef.current);
-      if (warningCountdownIntervalRef.current) clearInterval(warningCountdownIntervalRef.current);
+      if (timerCheckIntervalRef.current)
+        if (timerCheckIntervalRef.current !== null)
+          clearInterval(timerCheckIntervalRef.current);
+      if (warningCountdownIntervalRef.current)
+        if (warningCountdownIntervalRef.current !== null)
+          clearInterval(warningCountdownIntervalRef.current);
       return;
     }
 
@@ -60,7 +68,9 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
     };
 
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
-    events.forEach((ev) => window.addEventListener(ev, handleUserInteraction, { passive: true }));
+    events.forEach((ev) =>
+      window.addEventListener(ev, handleUserInteraction, { passive: true }),
+    );
 
     // Check inactivity periodically (every 5 seconds)
     timerCheckIntervalRef.current = setInterval(() => {
@@ -69,21 +79,31 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
 
       if (inactiveMs >= timeoutMs) {
         // Complete timeout
-        clearInterval(timerCheckIntervalRef.current);
+        if (timerCheckIntervalRef.current !== null)
+          clearInterval(timerCheckIntervalRef.current);
         setShowWarning(false);
         onTimeout();
       } else if (inactiveMs >= warningThresholdMs && !showWarning) {
         // Trigger countdown warning
-        const secondsLeft = Math.max(1, Math.ceil((timeoutMs - inactiveMs) / 1000));
+        const secondsLeft = Math.max(
+          1,
+          Math.ceil((timeoutMs - inactiveMs) / 1000),
+        );
         setRemainingSeconds(secondsLeft);
         setShowWarning(true);
       }
     }, 3000);
 
     return () => {
-      events.forEach((ev) => window.removeEventListener(ev, handleUserInteraction));
-      if (timerCheckIntervalRef.current) clearInterval(timerCheckIntervalRef.current);
-      if (warningCountdownIntervalRef.current) clearInterval(warningCountdownIntervalRef.current);
+      events.forEach((ev) =>
+        window.removeEventListener(ev, handleUserInteraction),
+      );
+      if (timerCheckIntervalRef.current)
+        if (timerCheckIntervalRef.current !== null)
+          clearInterval(timerCheckIntervalRef.current);
+      if (warningCountdownIntervalRef.current)
+        if (warningCountdownIntervalRef.current !== null)
+          clearInterval(warningCountdownIntervalRef.current);
     };
   }, [isAuthenticated, timeoutMs, warningSeconds, onTimeout, showWarning]);
 
@@ -93,7 +113,8 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       warningCountdownIntervalRef.current = setInterval(() => {
         setRemainingSeconds((prev) => {
           if (prev <= 1) {
-            clearInterval(warningCountdownIntervalRef.current);
+            if (warningCountdownIntervalRef.current !== null)
+              clearInterval(warningCountdownIntervalRef.current);
             setShowWarning(false);
             onTimeout();
             return 0;
@@ -103,13 +124,15 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       }, 1000);
     } else {
       if (warningCountdownIntervalRef.current) {
-        clearInterval(warningCountdownIntervalRef.current);
+        if (warningCountdownIntervalRef.current !== null)
+          clearInterval(warningCountdownIntervalRef.current);
       }
     }
 
     return () => {
       if (warningCountdownIntervalRef.current) {
-        clearInterval(warningCountdownIntervalRef.current);
+        if (warningCountdownIntervalRef.current !== null)
+          clearInterval(warningCountdownIntervalRef.current);
       }
     };
   }, [showWarning, onTimeout]);
@@ -130,11 +153,15 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
         </div>
 
         <div>
-          <h3 id="session-timeout-title" className="text-base font-bold text-slate-900 dark:text-white">
+          <h3
+            id="session-timeout-title"
+            className="text-base font-bold text-slate-900 dark:text-white"
+          >
             Session Expiring Soon
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-            For your security and privacy, your session will automatically time out due to inactivity.
+            For your security and privacy, your session will automatically time
+            out due to inactivity.
           </p>
         </div>
 

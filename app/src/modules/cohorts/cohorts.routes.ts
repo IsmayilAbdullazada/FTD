@@ -1,16 +1,16 @@
-import crypto from "node:crypto";
-import { Router } from "express";
-import { z } from "zod";
-import { query, transaction } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { cohort } from "../../lib/serializers.js";
-import { isStaffRole } from "../../lib/roles.js";
-import { authenticateToken, requireStaff } from "../../middleware/auth.js";
+import crypto from 'node:crypto';
+import { Router } from 'express';
+import { z } from 'zod';
+import { query, transaction } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { cohort } from '../../lib/serializers.js';
+import { isStaffRole } from '../../lib/roles.js';
+import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 
 const router = Router();
 
 router.get(
-  "/",
+  '/',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const staff = isStaffRole(req.user!.role);
@@ -20,12 +20,14 @@ router.get(
        SELECT 1 FROM cohort_members cm WHERE cm.cohort_id=c.id AND cm.user_id=$2)) ORDER BY c.is_general_board DESC,c.name`,
       [staff, req.user!.id],
     );
-    res.json(result.rows.map(cohort));
+    res.json(
+      result.rows.map((row) => cohort(row as Parameters<typeof cohort>[0])),
+    );
   }),
 );
 
 router.post(
-  "/",
+  '/',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -52,20 +54,22 @@ router.post(
         input.description,
         input.geographicRegion,
         input.radiusMiles ?? null,
-        input.tag ?? "GEO_CUSTOM",
+        input.tag ?? 'GEO_CUSTOM',
       ],
     );
-    res.status(201).json(cohort(result.rows[0]));
+    res
+      .status(201)
+      .json(cohort(result.rows[0] as Parameters<typeof cohort>[0]));
   }),
 );
 
 router.get(
-  "/members",
+  '/members',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const groupId =
-      typeof req.query.groupId === "string" ? req.query.groupId : undefined;
+      typeof req.query.groupId === 'string' ? req.query.groupId : undefined;
     const result = await query(
       `SELECT u.*,cm.cohort_id primary_group_id,c.name primary_group_name,cm.status,cm.joined_at
      FROM users u JOIN cohort_members cm ON cm.user_id=u.id AND cm.is_primary JOIN cohorts c ON c.id=cm.cohort_id
@@ -92,7 +96,7 @@ router.get(
 );
 
 router.post(
-  "/members/reassign",
+  '/members/reassign',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -103,7 +107,7 @@ router.post(
       `SELECT id,name FROM cohorts WHERE id=$1 AND is_active`,
       [input.newGroupId],
     );
-    if (!target.rows[0]) throw new HttpError(404, "Target cohort not found");
+    if (!target.rows[0]) throw new HttpError(404, 'Target cohort not found');
     await transaction(async (client) => {
       await client.query(
         `UPDATE cohort_members SET is_primary=false WHERE user_id=$1 AND is_primary`,

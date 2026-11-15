@@ -1,11 +1,8 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
-import { communityApi } from '@/features/community/api/communityApi';
+import { useRef } from 'react';
+import { reportError } from '@/shared/lib/logger';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
-import { usePagination } from '@/shared/hooks/usePagination';
-import {
-  filterQueueByAudience,
-  sanitizePersonalInfo,
-} from '@/features/moderation/lib/moderationQueue';
+import { sanitizePersonalInfo } from '@/features/moderation/lib/moderationQueue';
 import type {
   Audience,
   CommunityGroup,
@@ -41,15 +38,35 @@ export function useModerationQueue({
   const [allowUnmoderatedReplies, setAllowUnmoderatedReplies] = useState(false);
   const [moderatorNotes, setModeratorNotes] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectionCode, setRejectionCode] = useState<RejectionReason>('CLINICAL_MEDICATION_QUERY');
+  const [rejectionCode, setRejectionCode] = useState<RejectionReason>(
+    'CLINICAL_MEDICATION_QUERY',
+  );
   const [customRejectionText, setCustomRejectionText] = useState('');
   const [showPrivateReplyModal, setShowPrivateReplyModal] = useState(false);
   const [privateReplyMessage, setPrivateReplyMessage] = useState('');
-  const [privateReplyAction, setPrivateReplyAction] = useState<'KEEP_PENDING' | 'PUBLISH'>('KEEP_PENDING');
+  const [privateReplyAction, setPrivateReplyAction] = useState<
+    'KEEP_PENDING' | 'PUBLISH'
+  >('KEEP_PENDING');
   const [isSendingPrivateReply, setIsSendingPrivateReply] = useState(false);
 
   const activeItem = queueItems[selectedIndex] || null;
-  const queuePage = usePagination(queueItems, 6, audienceFilter);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const queuePage = {
+    items: queueItems,
+    page,
+    pageCount: Math.max(1, Math.ceil(total / 6)),
+    start: (page - 1) * 6,
+    total,
+    pageSize: 6,
+    setPage,
+  };
+  useEffect(() => {
+    setPage(1);
+  }, [audienceFilter]);
+  useEffect(() => {
+    void loadQueue();
+  }, [page, audienceFilter]);
 
   const initItemState = (item: QueueItem) => {
     setApproveAudience(item.condition ?? 'FTD');
@@ -57,37 +74,34 @@ export function useModerationQueue({
     setSelectedGroupIds(
       item.assignedGroupIds && item.assignedGroupIds.length > 0
         ? item.assignedGroupIds
-        : cohorts.slice(0, 1).map((cohort) => cohort.id)
+        : cohorts.slice(0, 1).map((cohort) => cohort.id),
     );
     setAllowUnmoderatedReplies(item.allowUnmoderatedReplies ?? false);
     setModeratorNotes('');
   };
 
+  const requestVersion = useRef(0);
   const loadQueue = async () => {
+    const version = ++requestVersion.current;
     setLoadingQueue(true);
     try {
-      const [queueResponse, members] = await Promise.all([
-        moderationApi.getModerationQueue(),
-        communityApi.getGroupMembers(),
-      ]);
-
-      const filteredItems = filterQueueByAudience(
-        queueResponse.items || [],
-        members,
+      const queueResponse = await moderationApi.getModerationQueue(
+        page,
+        6,
         audienceFilter,
       );
 
+      if (version !== requestVersion.current) return;
+      const filteredItems = queueResponse.items;
       setQueueItems(filteredItems);
-      const page = Math.min(
-        queuePage.page,
-        Math.max(1, Math.ceil(filteredItems.length / queuePage.pageSize))
-      );
-      const index = (page - 1) * queuePage.pageSize;
-      setSelectedIndex(index);
-      if (filteredItems.length > 0) initItemState(filteredItems[index]);
+      setTotal(queueResponse.totalPending);
+      setSelectedIndex(0);
+      if (filteredItems.length > 0) initItemState(filteredItems[0]);
+      else if (page > 1) setPage(page - 1);
     } catch (error) {
-      console.error(error);
+      reportError('Request failed', error);
     } finally {
+      if (version !== requestVersion.current) return;
       setLoadingQueue(false);
     }
   };
@@ -116,7 +130,7 @@ export function useModerationQueue({
       await loadQueue();
       await onPublishedPostsChanged();
     } catch (error) {
-      console.error('Failed to publish:', error);
+      reportError('Failed to publish:', error);
       setActionSuccessNotice('Error publishing post. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
     }
@@ -142,14 +156,15 @@ export function useModerationQueue({
       onQueueUpdated();
       await loadQueue();
     } catch (error) {
-      console.error('Failed to reject:', error);
+      reportError('Failed to reject:', error);
       setActionSuccessNotice('Error rejecting post. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
 
   const handleSendPrivateReply = async () => {
-    if (!activeItem || !privateReplyMessage.trim() || isSendingPrivateReply) return;
+    if (!activeItem || !privateReplyMessage.trim() || isSendingPrivateReply)
+      return;
     setIsSendingPrivateReply(true);
     try {
       const response = await moderationApi.sendPostPrivateNote(activeItem.id, {
@@ -159,7 +174,9 @@ export function useModerationQueue({
       });
       setShowPrivateReplyModal(false);
       setPrivateReplyMessage('');
-      setActionSuccessNotice(response.message || 'Private message sent to care partner.');
+      setActionSuccessNotice(
+        response.message || 'Private message sent to care partner.',
+      );
       setTimeout(() => setActionSuccessNotice(null), 3500);
 
       const addedNote = response.note || {
@@ -173,17 +190,25 @@ export function useModerationQueue({
       setQueueItems((previous) =>
         previous.map((item) =>
           item.id === activeItem.id
-            ? { ...item, moderatorPrivateNotes: [...(item.moderatorPrivateNotes || []), addedNote] }
-            : item
-        )
+            ? {
+                ...item,
+                moderatorPrivateNotes: [
+                  ...(item.moderatorPrivateNotes || []),
+                  addedNote,
+                ],
+              }
+            : item,
+        ),
       );
       onQueueUpdated();
       await loadQueue();
       if (privateReplyAction === 'PUBLISH') await onPublishedPostsChanged();
     } catch (error) {
-      console.error('Failed to send private reply:', error);
+      reportError('Failed to send private reply:', error);
       setActionSuccessNotice(
-        error instanceof Error ? error.message : 'Error sending private message.'
+        error instanceof Error
+          ? error.message
+          : 'Error sending private message.',
       );
       setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {
@@ -193,9 +218,8 @@ export function useModerationQueue({
 
   const handleCleanPersonalInfo = () => {
     if (!activeItem) return;
-    const source = sanitizedDraft.trim().length > 0
-      ? sanitizedDraft
-      : activeItem.rawContent;
+    const source =
+      sanitizedDraft.trim().length > 0 ? sanitizedDraft : activeItem.rawContent;
     const cleaned = sanitizePersonalInfo(source, activeItem.phiAlerts);
     setSanitizedDraft(cleaned);
     setActionSuccessNotice('Personal details removed from draft.');
@@ -204,9 +228,7 @@ export function useModerationQueue({
 
   const changeQueuePage = (page: number) => {
     queuePage.setPage(page);
-    const index = (page - 1) * queuePage.pageSize;
-    setSelectedIndex(index);
-    if (queueItems[index]) initItemState(queueItems[index]);
+    setSelectedIndex(0);
   };
 
   return {

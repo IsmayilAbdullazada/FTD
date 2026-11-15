@@ -1,4 +1,4 @@
-import { AudienceBadge } from "@/shared/components/AudienceBadge";
+import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -14,15 +14,15 @@ import {
   Sparkles,
   Trash2,
   X,
-} from "lucide-react";
-import React from "react";
-import { DiscussionActionDialogs } from "./DiscussionActionDialogs";
-import { DiscussionReplies } from "./DiscussionReplies";
+} from 'lucide-react';
+import React from 'react';
+import { DiscussionActionDialogs } from './DiscussionActionDialogs';
+import { DiscussionReplies } from './DiscussionReplies';
 
 import {
   useDiscussionDetail,
   type DiscussionDetailProps,
-} from "../hooks/useDiscussionDetail";
+} from '../hooks/useDiscussionDetail';
 
 export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
   post: initialPost,
@@ -231,8 +231,8 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
       <article
         className={`rounded-2xl border p-5 sm:p-7 space-y-4 shadow-xs transition-colors ${
           isMainPostPending
-            ? "bg-amber-50/20 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60"
-            : "bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800"
+            ? 'bg-amber-50/20 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
+            : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800'
         }`}
       >
         {/* Author Metadata */}
@@ -252,7 +252,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 <span className="truncate">{regionName}</span>
               </>
             )}
-            {isClinician && post.condition && post.condition !== "BOTH" && (
+            {isClinician && post.condition && post.condition !== 'BOTH' && (
               <>
                 <span
                   aria-hidden="true"
@@ -280,9 +280,9 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
           </div>
           <span className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm shrink-0 pl-2">
             {new Date(post.createdAt).toLocaleDateString([], {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
             })}
           </span>
         </div>
@@ -331,7 +331,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 }
                 className="min-h-11 px-5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition cursor-pointer"
               >
-                {isSavingMainPost ? "Saving..." : "Save Updates"}
+                {isSavingMainPost ? 'Saving...' : 'Save Updates'}
               </button>
             </div>
           </form>
@@ -370,12 +370,12 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                 {post.moderatorPrivateNotes.map((note) => {
                   const isFromCarePartner =
-                    note.senderRole !== "CLINICIAN_MODERATOR" &&
-                    note.senderName !== "Clinical Moderator" &&
-                    note.senderName !== "Moderator" &&
-                    note.senderId !== "user-clinician-1" &&
-                    note.senderId !== "user-admin-1" &&
-                    (note.senderRole === "CARE_PARTNER" ||
+                    note.senderRole !== 'CLINICIAN_MODERATOR' &&
+                    note.senderName !== 'Clinical Moderator' &&
+                    note.senderName !== 'Moderator' &&
+                    note.senderId !== 'user-clinician-1' &&
+                    note.senderId !== 'user-admin-1' &&
+                    (note.senderRole === 'CARE_PARTNER' ||
                       note.senderId === post.author.userId ||
                       note.senderId === currentUser.id);
                   return (
@@ -383,28 +383,28 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                       key={note.id}
                       className={`p-3.5 rounded-xl border text-xs sm:text-sm leading-relaxed ${
                         isFromCarePartner
-                          ? "bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/60 text-slate-800 dark:text-slate-200 ml-4 sm:ml-8"
-                          : "bg-white dark:bg-slate-900 border-blue-200/80 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 mr-2 sm:mr-6 shadow-2xs"
+                          ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/60 text-slate-800 dark:text-slate-200 ml-4 sm:ml-8'
+                          : 'bg-white dark:bg-slate-900 border-blue-200/80 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 mr-2 sm:mr-6 shadow-2xs'
                       }`}
                     >
                       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-medium">
                         <span
                           className={
                             isFromCarePartner
-                              ? "text-amber-800 dark:text-amber-300 font-semibold"
-                              : "text-[#002D72] dark:text-blue-300 font-semibold"
+                              ? 'text-amber-800 dark:text-amber-300 font-semibold'
+                              : 'text-[#002D72] dark:text-blue-300 font-semibold'
                           }
                         >
                           {isFromCarePartner
-                            ? "You (Care Partner)"
-                            : "Moderator"}
+                            ? 'You (Care Partner)'
+                            : 'Moderator'}
                         </span>
                         <span className="text-[11px]">
                           {new Date(note.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            month: "short",
-                            day: "numeric",
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            month: 'short',
+                            day: 'numeric',
                           })}
                         </span>
                       </div>
@@ -507,7 +507,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium text-sm">
               <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500" />
               <span>
-                {comments.length} {comments.length === 1 ? "reply" : "replies"}
+                {comments.length} {comments.length === 1 ? 'reply' : 'replies'}
               </span>
             </div>
 
@@ -515,12 +515,12 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
               onClick={handleToggleLike}
               className={`min-h-11 flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-sm transition cursor-pointer ${
                 isLiked
-                  ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold"
-                  : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold'
+                  : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
               <Heart
-                className={`w-4 h-4 ${isLiked ? "fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400" : ""}`}
+                className={`w-4 h-4 ${isLiked ? 'fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400' : ''}`}
               />
               <span>{currentLikes} helpful</span>
             </button>

@@ -25,7 +25,7 @@ export function DashboardNavigation({
 }: DashboardNavigationProps) {
   const handleCardKeyDown = (
     event: KeyboardEvent<HTMLDivElement>,
-    tab: ClinicianDashboardTab
+    tab: ClinicianDashboardTab,
   ) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -49,11 +49,15 @@ export function DashboardNavigation({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Pending</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Pending
+            </span>
             <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
-            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{pendingCount}</span>
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
+              {pendingCount}
+            </span>
             <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
               {pendingCount === 1 ? 'review' : 'review'}
             </span>
@@ -72,12 +76,18 @@ export function DashboardNavigation({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Discussions</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Discussions
+            </span>
             <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
-            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{discussionCount}</span>
-            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">posts</span>
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
+              {discussionCount}
+            </span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+              posts
+            </span>
           </div>
         </div>
 
@@ -93,7 +103,9 @@ export function DashboardNavigation({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Guides</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Guides
+            </span>
             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#002D72] dark:text-blue-400" />
           </div>
           <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
@@ -118,12 +130,18 @@ export function DashboardNavigation({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Groups</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Groups
+            </span>
             <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#002D72] dark:text-blue-400" />
           </div>
           <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
-            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{cohortCount}</span>
-            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">regions</span>
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
+              {cohortCount}
+            </span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+              regions
+            </span>
           </div>
         </div>
 
@@ -139,12 +157,18 @@ export function DashboardNavigation({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Members</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Members
+            </span>
             <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="mt-1.5 sm:mt-2 flex items-baseline gap-1 sm:gap-1.5">
-            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{memberCount}</span>
-            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">caregivers</span>
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
+              {memberCount}
+            </span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+              caregivers
+            </span>
           </div>
         </div>
       </div>
@@ -225,8 +249,6 @@ export function DashboardNavigation({
           </button>
         </div>
       </div>
-
     </>
   );
 }
-

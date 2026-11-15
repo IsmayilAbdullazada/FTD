@@ -1,14 +1,14 @@
-import { Router } from "express";
-import { z } from "zod";
-import { query } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { isStaffRole } from "../../lib/roles.js";
-import { authenticateToken, requireStaff } from "../../middleware/auth.js";
-import { httpUrl } from "../../lib/urlValidation.js";
+import { Router } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { isStaffRole } from '../../lib/roles.js';
+import { authenticateToken, requireStaff } from '../../middleware/auth.js';
+import { httpUrl } from '../../lib/urlValidation.js';
 
 const router = Router();
 router.get(
-  "/updates",
+  '/updates',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
@@ -38,7 +38,7 @@ router.get(
   }),
 );
 router.post(
-  "/updates",
+  '/updates',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -48,14 +48,14 @@ router.post(
         summary: z.string().min(3),
         body: z.string().min(3),
         category: z.enum([
-          "CLINICAL_TRIAL",
-          "MEDICATION",
-          "RESEARCH",
-          "ANNOUNCEMENT",
+          'CLINICAL_TRIAL',
+          'MEDICATION',
+          'RESEARCH',
+          'ANNOUNCEMENT',
         ]),
-        condition: z.enum(["FTD", "AD", "BOTH"]),
-        trialStatus: z.enum(["RECRUITING", "CLOSED"]).optional(),
-        externalUrl: httpUrl.or(z.literal("")).optional(),
+        condition: z.enum(['FTD', 'AD', 'BOTH']),
+        trialStatus: z.enum(['RECRUITING', 'CLOSED']).optional(),
+        externalUrl: httpUrl.or(z.literal('')).optional(),
       })
       .parse(req.body);
     const r = (
@@ -89,7 +89,7 @@ router.post(
   }),
 );
 router.delete(
-  "/updates/:id",
+  '/updates/:id',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -97,13 +97,13 @@ router.delete(
       `DELETE FROM clinic_updates WHERE id=$1 RETURNING id`,
       [req.params.id],
     );
-    if (!r.rows[0]) throw new HttpError(404, "Update not found");
+    if (!r.rows[0]) throw new HttpError(404, 'Update not found');
     res.json({ success: true });
   }),
 );
 
 router.get(
-  "/events",
+  '/events',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
@@ -131,18 +131,18 @@ router.get(
   }),
 );
 router.post(
-  "/events",
+  '/events',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
     const i = z
       .object({
         title: z.string().min(3),
-        type: z.enum(["CARE_PARTNER_CONFERENCE", "SUPPORT_GROUP", "SOCIAL"]),
+        type: z.enum(['CARE_PARTNER_CONFERENCE', 'SUPPORT_GROUP', 'SOCIAL']),
         startsAt: z.coerce.date(),
         location: z.string().min(2),
         description: z.string().optional(),
-        condition: z.enum(["FTD", "AD", "BOTH"]).optional(),
+        condition: z.enum(['FTD', 'AD', 'BOTH']).optional(),
       })
       .parse(req.body);
     const r = (
@@ -173,7 +173,7 @@ router.post(
   }),
 );
 router.delete(
-  "/events/:id",
+  '/events/:id',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -181,7 +181,7 @@ router.delete(
       `DELETE FROM calendar_events WHERE id=$1 RETURNING id`,
       [req.params.id],
     );
-    if (!r.rows[0]) throw new HttpError(404, "Event not found");
+    if (!r.rows[0]) throw new HttpError(404, 'Event not found');
     res.json({ success: true });
   }),
 );

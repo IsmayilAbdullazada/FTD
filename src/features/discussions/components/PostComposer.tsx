@@ -1,12 +1,12 @@
-import { discussionApi } from "@/features/discussions/api/discussionApi";
-import { knowledgeApi } from "@/features/knowledge/api/knowledgeApi";
-import { INITIAL_COMMENTS, INITIAL_POSTS } from "@/shared/dev/clinicalStore";
+import { reportError } from '@/shared/lib/logger';
+import { discussionApi } from '@/features/discussions/api/discussionApi';
+import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
 import {
   Audience,
   CommunityGroup,
   CurrentUser,
   getProperGroupName,
-} from "@/types";
+} from '@/types';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -20,13 +20,13 @@ import {
   Send,
   ShieldCheck,
   X,
-} from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   findRealtimeKeywordMatches,
   type DiscussionSearchItem,
-} from "../lib/discussionSearch";
-import { SimilarDiscussionsBox } from "./SimilarDiscussionsBox";
+} from '../lib/discussionSearch';
+import { SimilarDiscussionsBox } from './SimilarDiscussionsBox';
 
 interface PostComposerProps {
   currentUser: CurrentUser;
@@ -51,10 +51,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   onOpenDiscussion,
   onOpenAssistant,
 }) => {
-  const [title, setTitle] = useState(initialTitle || "");
-  const [content, setContent] = useState(initialContent || "");
+  const [title, setTitle] = useState(initialTitle || '');
+  const [content, setContent] = useState(initialContent || '');
   const [selectedCohortId, setSelectedCohortId] = useState(
-    cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || "",
+    cohorts.find((c) => !c.isGeneralBoard)?.id || cohorts[0]?.id || '',
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -64,51 +64,19 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    setTitle(initialTitle || "");
-    setContent(initialContent || "");
+    setTitle(initialTitle || '');
+    setContent(initialContent || '');
   }, [initialTitle, initialContent]);
 
-  const canSeeClient = (user: CurrentUser, audience: Audience = "FTD") =>
-    user.role !== "CARE_PARTNER" ||
-    audience === "BOTH" ||
+  const canSeeClient = (user: CurrentUser, audience: Audience = 'FTD') =>
+    user.role !== 'CARE_PARTNER' ||
+    audience === 'BOTH' ||
     audience === user.condition;
 
   // Pool of all old discussions (seeded immediately from in-memory clinical store for 0ms startup)
   const [discussionsPool, setDiscussionsPool] = useState<
     DiscussionSearchItem[]
-  >(() => {
-    if (
-      !import.meta.env.DEV ||
-      import.meta.env.VITE_ENABLE_API_FALLBACK !== "true"
-    )
-      return [];
-    return INITIAL_POSTS.filter(
-      (p) =>
-        p.status === "APPROVED" &&
-        canSeeClient(currentUser, p.condition ?? "FTD"),
-    ).map((p) => {
-      const postComments = INITIAL_COMMENTS.filter(
-        (c) => c.postId === p.id && (c.status === "APPROVED" || !c.status),
-      );
-      const cohort = p.assignedGroups?.[0];
-      return {
-        id: p.id,
-        title: p.title,
-        content: p.content,
-        authorHandle: p.author.anonymousHandle,
-        authorBadge: p.author.badgeLabel,
-        cohortName: cohort?.properName || cohort?.name || "General Forum",
-        createdAt: p.createdAt,
-        replies: postComments.map((c) => ({
-          id: c.id,
-          content: c.content,
-          authorHandle: c.author.anonymousHandle,
-          authorBadge: c.author.badgeLabel,
-          createdAt: c.createdAt,
-        })),
-      };
-    });
-  });
+  >([]);
 
   // Load latest pool from backend to ensure any new posts/comments in session are included
   useEffect(() => {
@@ -118,14 +86,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({
       .then((res) => {
         if (isMounted) setDiscussionsPool(res.pool ?? []);
       })
-      .catch((err) => console.warn("Could not fetch discussions pool:", err));
+      .catch((err) => reportError('Could not fetch discussions pool:', err));
     return () => {
       isMounted = false;
     };
   }, [currentUser.id]);
 
   // Debounced search query (300ms debounce across title & content, starting at 4 characters)
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
   useEffect(() => {
     const text =
@@ -133,7 +101,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         ? title.trim()
         : content.trim().length >= 4
           ? content.trim()
-          : "";
+          : '';
     const timer = setTimeout(() => {
       setDebouncedQuery(text);
     }, 300);
@@ -151,21 +119,21 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   const [solvedByDeflection, setSolvedByDeflection] = useState(false);
 
   // audience state
-  const isStaff = currentUser.role !== "CARE_PARTNER";
-  const [audience, setAudience] = useState<Audience>("BOTH");
+  const isStaff = currentUser.role !== 'CARE_PARTNER';
+  const [audience, setAudience] = useState<Audience>('BOTH');
 
   // Keyboard shortcut listener to dismiss suggestions on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         setSuggestionsDismissed(true);
         setPreviewPostId(null);
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -189,11 +157,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({
         title: title.trim(),
         cohortName: assignedCohort
           ? getProperGroupName(assignedCohort)
-          : "General Forum",
+          : 'General Forum',
       });
     } catch (err) {
-      console.error("Failed to submit post:", err);
-      setSubmitError("Failed to submit question. Please try again.");
+      reportError('Failed to submit post:', err);
+      setSubmitError('Failed to submit question. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -201,8 +169,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
   const handleDiscardDraft = () => {
     setSolvedByDeflection(true);
-    setTitle("");
-    setContent("");
+    setTitle('');
+    setContent('');
     setTimeout(() => {
       onCancel();
     }, 1500);
@@ -226,7 +194,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           <span>Back to discussions</span>
         </button>
         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Posting as:{" "}
+          Posting as:{' '}
           <strong className="text-slate-800 dark:text-slate-200">
             {currentUser.anonymousHandle}
           </strong>
@@ -295,8 +263,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             <button
               onClick={() => {
                 setSubmittedPostData(null);
-                setTitle("");
-                setContent("");
+                setTitle('');
+                setContent('');
               }}
               className="w-full sm:w-auto px-5 py-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-semibold transition cursor-pointer"
             >
@@ -338,13 +306,13 @@ export const PostComposer: React.FC<PostComposerProps> = ({
             >
               <Phone className="w-5 h-5 text-red-700 dark:text-red-400 shrink-0 mt-0.5" />
               <p className="text-base sm:text-lg font-bold text-red-900 dark:text-red-200 leading-snug">
-                For a life-threatening emergency, call{" "}
+                For a life-threatening emergency, call{' '}
                 <a
                   href="tel:911"
                   className="underline underline-offset-2 hover:text-red-950 dark:hover:text-red-100"
                 >
                   911
-                </a>{" "}
+                </a>{' '}
                 right away.
               </p>
             </div>
@@ -357,13 +325,13 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <p className="text-sm leading-relaxed font-sans">
                 This platform is not intended for urgent messages to your
                 clinician. If you need to reach your clinician, please call your
-                clinic at{" "}
+                clinic at{' '}
                 <a
                   href="tel:4109555147"
                   className="font-bold text-[#002D72] dark:text-sky-400 underline"
                 >
                   (410) 955-5147, option 2
-                </a>{" "}
+                </a>{' '}
                 or send a message through EPIC.
               </p>
               <p className="text-sm leading-relaxed font-sans">
@@ -383,8 +351,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>
-                    {similarMatches.length} similar{" "}
-                    {similarMatches.length === 1 ? "discussion" : "discussions"}{" "}
+                    {similarMatches.length} similar{' '}
+                    {similarMatches.length === 1 ? 'discussion' : 'discussions'}{' '}
                     found
                   </span>
                 </span>
@@ -456,8 +424,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 onOpenAssistant(
                   [title.trim(), content.trim()]
                     .filter(Boolean)
-                    .join(" — ")
-                    .replace(/\s+/g, " "),
+                    .join(' — ')
+                    .replace(/\s+/g, ' '),
                 )
               }
               className="min-h-11 shrink-0 rounded-lg bg-[#002D72] dark:bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
@@ -492,9 +460,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <div className="grid grid-cols-3 gap-2">
                 {(
                   [
-                    ["FTD", "FTD only"],
-                    ["AD", "AD only"],
-                    ["BOTH", "Both groups"],
+                    ['FTD', 'FTD only'],
+                    ['AD', 'AD only'],
+                    ['BOTH', 'Both groups'],
                   ] as [Audience, string][]
                 ).map(([value, label]) => (
                   <button
@@ -503,8 +471,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                     onClick={() => setAudience(value)}
                     className={`min-h-11 px-3 py-2.5 rounded-xl text-sm font-semibold border transition cursor-pointer ${
                       audience === value
-                        ? "bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600"
-                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-slate-400"
+                        ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-slate-400'
                     }`}
                   >
                     {label}
@@ -524,7 +492,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               className="w-full min-h-12 py-3 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-base font-semibold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? "Submitting..." : "Submit Question"}</span>
+              <span>{isSubmitting ? 'Submitting...' : 'Submit Question'}</span>
             </button>
           </div>
         </form>
@@ -563,7 +531,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2">
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                   <span>
-                    Original question by{" "}
+                    Original question by{' '}
                     <strong className="text-slate-800 dark:text-slate-200">
                       {activePreviewPost.authorHandle}
                     </strong>
@@ -591,24 +559,24 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                   <div className="space-y-2.5">
                     {activePreviewPost.replies.map((reply) => {
                       const isModerator =
-                        reply.authorHandle.includes("Moderator") ||
-                        reply.authorHandle.includes("Dr. Seema") ||
-                        reply.authorBadge?.includes("Moderator") ||
-                        reply.authorBadge?.includes("Clinician");
+                        reply.authorHandle.includes('Moderator') ||
+                        reply.authorHandle.includes('Dr. Seema') ||
+                        reply.authorBadge?.includes('Moderator') ||
+                        reply.authorBadge?.includes('Clinician');
                       return (
                         <div
                           key={reply.id}
                           className={`p-3.5 rounded-xl border text-sm leading-relaxed space-y-1.5 ${
                             isModerator
-                              ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100"
-                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                              ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-slate-100'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
                           }`}
                         >
                           <div className="flex items-center justify-between text-xs">
                             <span
-                              className={`font-semibold ${isModerator ? "text-[#002D72] dark:text-blue-400" : "text-slate-700 dark:text-slate-300"}`}
+                              className={`font-semibold ${isModerator ? 'text-[#002D72] dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}
                             >
-                              {reply.authorHandle} {isModerator && "⭐"}
+                              {reply.authorHandle} {isModerator && '⭐'}
                             </span>
                             {reply.authorBadge && (
                               <span className="text-xs text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-medium">

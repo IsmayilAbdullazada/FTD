@@ -7,7 +7,7 @@ export function replaceGuide(
   replacement: ChatbotGuideFile,
 ) {
   return guides.map((guide) =>
-    guide.id === replacement.id ? replacement : guide
+    guide.id === replacement.id ? replacement : guide,
   );
 }
 

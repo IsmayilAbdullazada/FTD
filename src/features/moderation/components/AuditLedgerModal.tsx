@@ -1,11 +1,6 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { useState, useEffect } from 'react';
-import {
-  FileCheck,
-  Clock,
-  User,
-  X,
-  RefreshCw,
-} from 'lucide-react';
+import { FileCheck, Clock, User, X, RefreshCw } from 'lucide-react';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
 import { ModerationAuditEvent } from '@/types';
 
@@ -27,7 +22,7 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
       const data = await moderationApi.getAuditEvents();
       setEvents(data);
     } catch (err) {
-      console.error('Failed to load audit ledger:', err);
+      reportError('Failed to load audit ledger:', err);
     } finally {
       setLoading(false);
     }
@@ -70,7 +65,10 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 cursor-pointer">
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -78,23 +76,32 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
 
         <div className="p-5 overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
           {loading ? (
-            <div className="text-center py-12 text-slate-400 dark:text-slate-500">Loading audit records...</div>
+            <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+              Loading audit records...
+            </div>
           ) : events.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 dark:text-slate-500">No audit events recorded yet.</div>
+            <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+              No audit events recorded yet.
+            </div>
           ) : (
             events.map((evt) => (
-              <div key={evt.id} className="py-3.5 space-y-1.5 first:pt-0 last:pb-0">
+              <div
+                key={evt.id}
+                className="py-3.5 space-y-1.5 first:pt-0 last:pb-0"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
-                      evt.actionTaken === 'APPROVE'
-                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                        : evt.actionTaken === 'REJECT'
-                        ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
-                        : evt.actionTaken === 'CLINICAL_REDIRECT'
-                        ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
-                    }`}>
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+                        evt.actionTaken === 'APPROVE'
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                          : evt.actionTaken === 'REJECT'
+                            ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
+                            : evt.actionTaken === 'CLINICAL_REDIRECT'
+                              ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                      }`}
+                    >
                       {evt.actionTaken}
                     </span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
@@ -109,7 +116,12 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
 
                 <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs">
                   <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Moderator: <strong className="text-slate-700 dark:text-slate-200">{evt.moderatorName}</strong></span>
+                  <span>
+                    Moderator:{' '}
+                    <strong className="text-slate-700 dark:text-slate-200">
+                      {evt.moderatorName}
+                    </strong>
+                  </span>
                   {evt.reason && (
                     <span className="text-slate-500 dark:text-slate-400 font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                       Reason: {evt.reason}

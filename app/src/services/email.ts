@@ -1,10 +1,10 @@
-import crypto from "node:crypto";
-import nodemailer from "nodemailer";
-import { env } from "../config/env.js";
-import { query } from "../config/db.js";
+import crypto from 'node:crypto';
+import nodemailer from 'nodemailer';
+import { env } from '../config/env.js';
+import { query } from '../config/db.js';
 
 const sha256 = (value: string) =>
-  crypto.createHash("sha256").update(value).digest("hex");
+  crypto.createHash('sha256').update(value).digest('hex');
 
 export async function sendEmail(message: {
   to: string;
@@ -12,15 +12,15 @@ export async function sendEmail(message: {
   text: string;
   html: string;
 }) {
-  const previewToken = crypto.randomBytes(24).toString("base64url");
+  const previewToken = crypto.randomBytes(24).toString('base64url');
   const inserted = await query(
     `INSERT INTO email_outbox(recipient,subject,text_body,html_body,preview_token_hash,delivery_status)
     VALUES($1,$2,$3,$4,$5,'QUEUED') RETURNING id`,
     [
       message.to,
       message.subject,
-      message.text,
-      message.html,
+      '[Content not retained]',
+      '[Content not retained]',
       sha256(previewToken),
     ],
   );
@@ -46,7 +46,7 @@ export async function sendEmail(message: {
       );
     } catch (caught) {
       error =
-        caught instanceof Error ? caught.message : "Email delivery failed";
+        caught instanceof Error ? caught.message : 'Email delivery failed';
       await query(
         `UPDATE email_outbox SET delivery_status='FAILED',delivery_error=$2 WHERE id=$1`,
         [id, error],
@@ -57,7 +57,7 @@ export async function sendEmail(message: {
     emailSent,
     emailError: error,
     previewUrl:
-      env.NODE_ENV === "production"
+      env.NODE_ENV === 'production' || env.ENABLE_DEV_AUTH_PREVIEWS !== 'true'
         ? undefined
         : `/api/v1/auth/emails/preview/${id}?token=${previewToken}`,
   };

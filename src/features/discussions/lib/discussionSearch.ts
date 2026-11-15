@@ -35,93 +35,93 @@ export interface RealtimeMatchItem {
 }
 
 const STOP_WORDS = new Set([
-  "a",
-  "an",
-  "the",
-  "and",
-  "or",
-  "for",
-  "to",
-  "of",
-  "in",
-  "on",
-  "at",
-  "by",
-  "with",
-  "is",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "being",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "that",
-  "this",
-  "these",
-  "those",
-  "it",
-  "its",
-  "my",
-  "your",
-  "his",
-  "her",
-  "their",
-  "our",
-  "what",
-  "when",
-  "where",
-  "which",
-  "who",
-  "whom",
-  "whose",
-  "why",
-  "how",
-  "all",
-  "any",
-  "both",
-  "each",
-  "few",
-  "more",
-  "most",
-  "other",
-  "some",
-  "such",
-  "no",
-  "nor",
-  "not",
-  "only",
-  "own",
-  "same",
-  "so",
-  "than",
-  "too",
-  "very",
-  "can",
-  "will",
-  "just",
-  "should",
-  "now",
-  "into",
-  "onto",
-  "from",
-  "about",
-  "need",
-  "help",
-  "want",
-  "trying",
-  "tried",
-  "like",
-  "i",
-  "me",
-  "we",
-  "us",
-  "you",
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'for',
+  'to',
+  'of',
+  'in',
+  'on',
+  'at',
+  'by',
+  'with',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'that',
+  'this',
+  'these',
+  'those',
+  'it',
+  'its',
+  'my',
+  'your',
+  'his',
+  'her',
+  'their',
+  'our',
+  'what',
+  'when',
+  'where',
+  'which',
+  'who',
+  'whom',
+  'whose',
+  'why',
+  'how',
+  'all',
+  'any',
+  'both',
+  'each',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'nor',
+  'not',
+  'only',
+  'own',
+  'same',
+  'so',
+  'than',
+  'too',
+  'very',
+  'can',
+  'will',
+  'just',
+  'should',
+  'now',
+  'into',
+  'onto',
+  'from',
+  'about',
+  'need',
+  'help',
+  'want',
+  'trying',
+  'tried',
+  'like',
+  'i',
+  'me',
+  'we',
+  'us',
+  'you',
 ]);
 
 /**
@@ -149,7 +149,7 @@ function extractSentenceSnippets(
     let sentenceStart = 0;
     for (let i = matchIndex - 1; i >= 0; i--) {
       const char = text[i];
-      if (char === "." || char === "!" || char === "?" || char === "\n") {
+      if (char === '.' || char === '!' || char === '?' || char === '\n') {
         sentenceStart = i + 1;
         break;
       }
@@ -158,7 +158,7 @@ function extractSentenceSnippets(
     let sentenceEnd = text.length;
     for (let i = matchIndex + queryLen; i < text.length; i++) {
       const char = text[i];
-      if (char === "." || char === "!" || char === "?" || char === "\n") {
+      if (char === '.' || char === '!' || char === '?' || char === '\n') {
         sentenceEnd = i + 1;
         break;
       }
@@ -184,14 +184,14 @@ function extractSentenceSnippets(
       let windowEnd = Math.min(sentenceEnd, matchIndex + queryLen + 45);
 
       if (windowStart > sentenceStart) {
-        const spaceIdx = text.indexOf(" ", windowStart);
+        const spaceIdx = text.indexOf(' ', windowStart);
         if (spaceIdx !== -1 && spaceIdx < matchIndex) {
           windowStart = spaceIdx + 1;
         }
       }
 
       if (windowEnd < sentenceEnd) {
-        const spaceIdx = text.lastIndexOf(" ", windowEnd);
+        const spaceIdx = text.lastIndexOf(' ', windowEnd);
         if (spaceIdx !== -1 && spaceIdx > matchIndex + queryLen) {
           windowEnd = spaceIdx;
         }
@@ -247,7 +247,7 @@ export function findRealtimeKeywordMatches(
 
   // 2. Meaningful keywords >= 3 chars
   const words = lowerInput
-    .replace(/[^a-z0-9'-]+/g, " ")
+    .replace(/[^a-z0-9'-]+/g, ' ')
     .split(/\s+/)
     .filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
 

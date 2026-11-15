@@ -1,5 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { Check, Copy, FileCode, ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  FileCode,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import type { ChatbotGuideFile } from '@/features/knowledge/types';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
@@ -50,7 +58,9 @@ export function GuideInspectorDialog({
                     <h3 className="font-serif font-semibold text-base sm:text-lg text-slate-900 dark:text-white truncate">
                       {inspectGuideModal.title}
                     </h3>
-                    <AudienceBadge condition={inspectGuideModal.condition || 'FTD'} />
+                    <AudienceBadge
+                      condition={inspectGuideModal.condition || 'FTD'}
+                    />
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         inspectGuideModal.isActive
@@ -62,7 +72,12 @@ export function GuideInspectorDialog({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                    {inspectGuideModal.fileName}{inspectGuideModal.topicTag ? ` · #${inspectGuideModal.topicTag}` : inspectGuideModal.category ? ` · ${inspectGuideModal.category.replace(/_/g, ' ')}` : ''}
+                    {inspectGuideModal.fileName}
+                    {inspectGuideModal.topicTag
+                      ? ` · #${inspectGuideModal.topicTag}`
+                      : inspectGuideModal.category
+                        ? ` · ${inspectGuideModal.category.replace(/_/g, ' ')}`
+                        : ''}
                   </p>
                 </div>
               </div>
@@ -80,16 +95,29 @@ export function GuideInspectorDialog({
             <div className="px-5 py-3 bg-slate-50 dark:bg-slate-850/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-300">
                 <span>
-                  <strong>{inspectGuideModal.wordCount?.toLocaleString() || inspectGuideModal.content.split(/\s+/).filter(Boolean).length.toLocaleString()}</strong> words
+                  <strong>
+                    {inspectGuideModal.wordCount?.toLocaleString() ||
+                      inspectGuideModal.content
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .length.toLocaleString()}
+                  </strong>{' '}
+                  words
                 </span>
                 <span>•</span>
                 <span>
-                  <strong>{inspectGuideModal.sectionCount || 1}</strong> sections
+                  <strong>{inspectGuideModal.sectionCount || 1}</strong>{' '}
+                  sections
                 </span>
                 <span>•</span>
-                <span>Uploaded by {inspectGuideModal.uploadedByName || 'Dr. Seema Gulyani'}</span>
+                <span>
+                  Uploaded by{' '}
+                  {inspectGuideModal.uploadedByName || 'Dr. Seema Gulyani'}
+                </span>
                 <span>•</span>
-                <span>{new Date(inspectGuideModal.createdAt).toLocaleDateString()}</span>
+                <span>
+                  {new Date(inspectGuideModal.createdAt).toLocaleDateString()}
+                </span>
               </div>
 
               {/* Action Toolbar */}
@@ -120,7 +148,9 @@ export function GuideInspectorDialog({
                   type="button"
                   onClick={async () => {
                     await handleToggleGuide(inspectGuideModal);
-                    setInspectGuideModal((prev) => (prev ? { ...prev, isActive: !prev.isActive } : null));
+                    setInspectGuideModal((prev) =>
+                      prev ? { ...prev, isActive: !prev.isActive } : null,
+                    );
                   }}
                   className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                     inspectGuideModal.isActive
@@ -161,7 +191,9 @@ export function GuideInspectorDialog({
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
               {inspectGuideModal.description && (
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">Summary: </span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    Summary:{' '}
+                  </span>
                   {inspectGuideModal.description}
                 </div>
               )}
@@ -175,7 +207,7 @@ export function GuideInspectorDialog({
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 {inspectGuideModal.isActive
-                  ? '✓ Dr. Seema\'s Assistant is currently using this document for caregiver queries'
+                  ? "✓ Dr. Seema's Assistant is currently using this document for caregiver queries"
                   : '⚠ This document is paused and not currently used by the chatbot'}
               </span>
               <button
@@ -189,8 +221,6 @@ export function GuideInspectorDialog({
           </div>
         </div>
       )}
-
     </>
   );
 }
-

@@ -1,8 +1,14 @@
 export type UserRole = 'CARE_PARTNER' | 'CLINICIAN_MODERATOR' | 'SYSTEM_ADMIN';
 
-export type PostStatus = 'DRAFT' | 'PENDING_MODERATION' | 'APPROVED' | 'REJECTED' | 'CLINICAL_REDIRECT';
+export type PostStatus =
+  | 'DRAFT'
+  | 'PENDING_MODERATION'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CLINICAL_REDIRECT';
 
-export type UpdateCategory = 'CLINICAL_TRIAL' | 'MEDICATION' | 'RESEARCH' | 'ANNOUNCEMENT';
+export type UpdateCategory =
+  'CLINICAL_TRIAL' | 'MEDICATION' | 'RESEARCH' | 'ANNOUNCEMENT';
 
 export type TrialStatus = 'RECRUITING' | 'CLOSED';
 
@@ -58,7 +64,8 @@ export const REGION_PROPER_NAMES: Record<string, string> = {
 export const REGION_FULL_NAMES: Record<string, string> = {
   'group-central-maryland': 'Central Maryland (Baltimore Metro)',
   'group-eastern-maryland': 'Eastern Maryland (Eastern Shore)',
-  'group-western-maryland': 'Western Maryland (Frederick and surrounding areas)',
+  'group-western-maryland':
+    'Western Maryland (Frederick and surrounding areas)',
   'group-southern-maryland': 'Southern Maryland / DC / Northern Virginia',
   'group-northern-maryland': 'Northern Maryland / Pennsylvania / Delaware',
   'group-general': 'General Forum (All Regions)',
@@ -175,7 +182,7 @@ export interface ClinicalResource {
     | 'NUTRITION_DIET'
     | 'CAREGIVER_SUPPORT'
     | 'DAILY_CARE'
-    | 'GENERAL_EDUCATION'
+    | 'GENERAL_EDUCATION';
   keyTakeaways: string[];
   createdAt: string;
 }
@@ -241,7 +248,6 @@ export interface GroupMember {
   joinedAt: string;
 }
 
-
 export interface CurrentUser {
   id: string;
   email: string;
@@ -287,4 +293,3 @@ export interface CalendarEvent {
   authorId: string;
   condition?: Audience;
 }
-

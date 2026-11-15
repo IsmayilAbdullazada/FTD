@@ -1,8 +1,9 @@
-import { query } from "../../config/db.js";
-import { HttpError } from "../../lib/http.js";
-import { author, cohort } from "../../lib/serializers.js";
+import type { PostRow, CommentRow, UserRow, CohortRow } from '../../db/rows.js';
+import { query } from '../../config/db.js';
+import { HttpError } from '../../lib/http.js';
+import { author, cohort } from '../../lib/serializers.js';
 
-export const postSelect = `SELECT p.*,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,
+export const postSelect = `SELECT p.*,$1::text viewer_id,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,
  u.anonymous_handle,u.badge_label,u.avatar_color,
  (SELECT COUNT(*) FROM comments c WHERE c.post_id=p.id AND c.status='APPROVED')::int comment_count,
  (SELECT COUNT(*) FROM post_upvotes v WHERE v.post_id=p.id)::int upvotes,
@@ -17,7 +18,18 @@ export const commentSelect = `SELECT c.*,u.first_name,u.last_name,u.email,u.phon
  u.anonymous_handle,u.badge_label,u.avatar_color,c.author_id
  FROM comments c JOIN users u ON u.id=c.author_id`;
 
-export function mapPost(row: any, privileged: boolean) {
+export function mapPost(
+  row: PostRow &
+    UserRow & {
+      viewer_id: string;
+      comment_count: number;
+      upvotes: number;
+      is_upvoted: boolean;
+      groups: CohortRow[];
+      private_notes: unknown[];
+    },
+  privileged: boolean,
+) {
   return {
     id: row.id,
     title: row.title,
@@ -27,8 +39,10 @@ export function mapPost(row: any, privileged: boolean) {
     isClosed: row.is_closed,
     closedAt: row.closed_at ?? undefined,
     closedBy: row.closed_by ?? undefined,
-    author: author(row, privileged),
-    assignedGroups: (row.groups ?? []).map(cohort),
+    author: author(row as Parameters<typeof author>[0], privileged),
+    assignedGroups: (row.groups ?? []).map((row) =>
+      cohort(row as Parameters<typeof cohort>[0]),
+    ),
     isUrgentClinical: row.is_urgent_clinical,
     allowUnmoderatedReplies: row.allow_unmoderated_replies,
     createdAt: row.created_at,
@@ -37,17 +51,20 @@ export function mapPost(row: any, privileged: boolean) {
     isUpvoted: row.is_upvoted,
     condition: row.condition,
     phiAlerts: privileged ? row.phi_alerts : undefined,
-    moderatorPrivateNotes: privileged ? row.private_notes : undefined,
+    moderatorPrivateNotes:
+      privileged || row.author_id === row.viewer_id
+        ? row.private_notes
+        : undefined,
   };
 }
 
-export function mapComment(row: any, privileged: boolean) {
+export function mapComment(row: CommentRow & UserRow, privileged: boolean) {
   return {
     id: row.id,
     parentCommentId: row.parent_comment_id ?? undefined,
     postId: row.post_id,
     content: row.sanitized_content,
-    author: author(row, privileged),
+    author: author(row as Parameters<typeof author>[0], privileged),
     status: row.status,
     createdAt: row.created_at,
   };
@@ -59,12 +76,15 @@ export async function findPost(
   privileged: boolean,
 ) {
   const result = await query(`${postSelect} WHERE p.id=$2`, [viewerId, id]);
-  if (!result.rows[0]) throw new HttpError(404, "Discussion not found");
-  return mapPost(result.rows[0], privileged);
+  if (!result.rows[0]) throw new HttpError(404, 'Discussion not found');
+  return mapPost(result.rows[0] as Parameters<typeof mapPost>[0], privileged);
 }
 
 export async function findComment(id: string, privileged: boolean) {
   const result = await query(`${commentSelect} WHERE c.id=$1`, [id]);
-  if (!result.rows[0]) throw new HttpError(404, "Reply not found");
-  return mapComment(result.rows[0], privileged);
+  if (!result.rows[0]) throw new HttpError(404, 'Reply not found');
+  return mapComment(
+    result.rows[0] as Parameters<typeof mapComment>[0],
+    privileged,
+  );
 }

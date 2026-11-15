@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -14,7 +14,7 @@
   font-style: normal;
   font-weight: 200 800;
   font-display: swap;
-  src: url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src: url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -25,7 +25,7 @@
   font-style: italic;
   font-weight: 200 800;
   font-display: swap;
-  src: url('https://fonts.gstatic.com/l/font?kit=UcC53FwrK3iLTcvneQg7Ca725JhhKnNqk5L7Q0cB&skey=e5dfd0c3910c7ec9&v=v20') format('woff2');
+  src: url('/fonts/font-1.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -36,8 +36,11 @@
   font-style: normal;
   font-weight: 200;
   font-display: swap;
-  src: local('Inter ExtraLight'), local('Inter-ExtraLight'), local('Roboto Thin'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter ExtraLight'),
+    local('Inter-ExtraLight'),
+    local('Roboto Thin'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -48,8 +51,12 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: local('Inter Light'), local('Inter-Light'), local('Roboto Light'), local('Segoe UI Light'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter Light'),
+    local('Inter-Light'),
+    local('Roboto Light'),
+    local('Segoe UI Light'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -60,8 +67,13 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: local('Inter Regular'), local('Inter'), local('Roboto'), local('Segoe UI'), local('Arial'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter Regular'),
+    local('Inter'),
+    local('Roboto'),
+    local('Segoe UI'),
+    local('Arial'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -72,8 +84,11 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: local('Inter Medium'), local('Inter-Medium'), local('Roboto Medium'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter Medium'),
+    local('Inter-Medium'),
+    local('Roboto Medium'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -84,8 +99,12 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: local('Inter SemiBold'), local('Inter-SemiBold'), local('Segoe UI Semibold'), local('Roboto Medium'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter SemiBold'),
+    local('Inter-SemiBold'),
+    local('Segoe UI Semibold'),
+    local('Roboto Medium'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -96,8 +115,14 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: local('Inter Bold'), local('Inter-Bold'), local('Roboto Bold'), local('Segoe UI Bold'), local('Arial-BoldMT'), local('Arial Bold'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter Bold'),
+    local('Inter-Bold'),
+    local('Roboto Bold'),
+    local('Segoe UI Bold'),
+    local('Arial-BoldMT'),
+    local('Arial Bold'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -108,8 +133,13 @@
   font-style: normal;
   font-weight: 800 900;
   font-display: swap;
-  src: local('Inter ExtraBold'), local('Inter-ExtraBold'), local('Inter Black'), local('Roboto Black'), local('Segoe UI Black'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC73FwrK3iLTeHuS_nVMrMxCp50SjIq14D_QQ&skey=c491285d6722e4fa&v=v20') format('woff2');
+  src:
+    local('Inter ExtraBold'),
+    local('Inter-ExtraBold'),
+    local('Inter Black'),
+    local('Roboto Black'),
+    local('Segoe UI Black'),
+    url('/fonts/font-0.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -120,8 +150,12 @@
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: local('Inter Italic'), local('Inter-Italic'), local('Roboto Italic'), local('Arial Italic'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC53FwrK3iLTcvneQg7Ca725JhhKnNqk5L7Q0cB&skey=e5dfd0c3910c7ec9&v=v20') format('woff2');
+  src:
+    local('Inter Italic'),
+    local('Inter-Italic'),
+    local('Roboto Italic'),
+    local('Arial Italic'),
+    url('/fonts/font-1.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -132,8 +166,12 @@
   font-style: italic;
   font-weight: 600 800;
   font-display: swap;
-  src: local('Inter Bold Italic'), local('Inter-BoldItalic'), local('Roboto Bold Italic'), local('Arial Bold Italic'),
-       url('https://fonts.gstatic.com/l/font?kit=UcC53FwrK3iLTcvneQg7Ca725JhhKnNqk5L7Q0cB&skey=e5dfd0c3910c7ec9&v=v20') format('woff2');
+  src:
+    local('Inter Bold Italic'),
+    local('Inter-BoldItalic'),
+    local('Roboto Bold Italic'),
+    local('Arial Bold Italic'),
+    url('/fonts/font-1.woff2') format('woff2');
   unicode-range: U+0030;
   size-adjust: 94%;
 }
@@ -141,7 +179,9 @@
 @theme {
   --color-slate-750: #243044;
   --color-slate-850: #131d2e;
-  --font-sans: 'CleanZero', 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans:
+    'CleanZero', 'Atkinson Hyperlegible Next', 'Atkinson Hyperlegible',
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Lora', Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --text-xs: 0.8125rem;
@@ -161,20 +201,27 @@
   }
 
   body {
-    background-color: #F8F9FA;
-    color: #1E293B;
+    background-color: #f8f9fa;
+    color: #1e293b;
     overflow-x: hidden;
     line-height: 1.625;
     letter-spacing: 0;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 
   html.dark body {
-    background-color: #0B0F19;
-    color: #E2E8F0;
+    background-color: #0b0f19;
+    color: #e2e8f0;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     letter-spacing: 0;
     font-weight: 700;
     text-wrap: balance;
@@ -200,9 +247,262 @@
 
 /* A brief introduction highlight; never animate when reduced motion is requested. */
 @keyframes companion-attention {
-  0% { box-shadow: 0 0 0 0 rgb(59 130 246 / 35%); }
-  100% { box-shadow: 0 0 0 10px rgb(59 130 246 / 0%); }
+  0% {
+    box-shadow: 0 0 0 0 rgb(59 130 246 / 35%);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(59 130 246 / 0%);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .companion-attention { animation: companion-attention 2s ease-out 2; }
+  .companion-attention {
+    animation: companion-attention 2s ease-out 2;
+  }
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 200;
+  font-display: swap;
+  src: url(/fonts/font-2.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/fonts/font-3.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-4.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/font-5.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/font-6.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/font-7.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: italic;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/fonts/font-8.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url(/fonts/font-9.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/fonts/font-10.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-11.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/font-12.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/font-13.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/font-14.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/fonts/font-15.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-16.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/font-17.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-18.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-19.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/font-20.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/font-21.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/font-22.woff2) format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 200;
+  font-display: swap;
+  src: url(/fonts/font-23.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/fonts/font-24.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-25.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/font-26.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/font-27.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/font-28.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/fonts/font-29.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url(/fonts/font-30.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url(/fonts/font-31.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/font-32.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/fonts/font-33.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/font-34.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/font-35.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/fonts/font-36.woff2) format('truetype');
 }

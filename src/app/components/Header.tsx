@@ -62,7 +62,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-2.5 xl:gap-3.5 min-w-0">
             {/* Branding - Responsive title avoids mobile & tablet overflow */}
             <button
-              onClick={() => setActiveTab(isClinician || isAdmin ? 'moderation' : 'feed')}
+              onClick={() =>
+                setActiveTab(isClinician || isAdmin ? 'moderation' : 'feed')
+              }
               className="flex items-center gap-2 sm:gap-2.5 text-left group shrink-0 cursor-pointer"
               title="Hopkins Care Partner Connect"
             >
@@ -74,7 +76,9 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="leading-tight shrink-0">
                 <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight whitespace-nowrap block">
                   <span className="sm:hidden">Hopkins Connect</span>
-                  <span className="hidden sm:inline">Hopkins Care Partner Connect</span>
+                  <span className="hidden sm:inline">
+                    Hopkins Care Partner Connect
+                  </span>
                 </span>
                 <span className="hidden 2xl:block text-xs text-slate-500 dark:text-slate-400 font-normal whitespace-nowrap">
                   Johns Hopkins Medicine
@@ -131,8 +135,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>Guides</span>
               </button>
 
-              <button 
-                onClick={() => setActiveTab('updates')} 
+              <button
+                onClick={() => setActiveTab('updates')}
                 className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                   activeTab === 'updates'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
@@ -143,8 +147,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>Updates</span>
               </button>
 
-              <button 
-                onClick={() => setActiveTab('calendar')} 
+              <button
+                onClick={() => setActiveTab('calendar')}
                 className={`px-2.5 lg:px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer min-h-11 ${
                   activeTab === 'calendar'
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
@@ -179,8 +183,16 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={toggleTheme}
               className="w-11 h-11 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={
+                theme === 'dark'
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode'
+              }
+              title={
+                theme === 'dark'
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode'
+              }
             >
               {theme === 'dark' ? (
                 <Sun className="w-5 h-5 text-amber-400 transition-transform hover:rotate-45" />
@@ -217,7 +229,9 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <div
                   className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 shadow-2xs"
-                  style={{ backgroundColor: currentUser.avatarColor || '#002D72' }}
+                  style={{
+                    backgroundColor: currentUser.avatarColor || '#002D72',
+                  }}
                 >
                   {currentUser.firstName[0]}
                 </div>
@@ -227,8 +241,8 @@ export const Header: React.FC<HeaderProps> = ({
                     {isAdmin
                       ? 'CS Admin'
                       : isClinician
-                      ? 'Dr. Seema'
-                      : `${currentUser.firstName} ${currentUser.lastName[0]}.`}
+                        ? 'Dr. Seema'
+                        : `${currentUser.firstName} ${currentUser.lastName[0]}.`}
                   </div>
                 </div>
 
@@ -257,8 +271,8 @@ export const Header: React.FC<HeaderProps> = ({
                         {isAdmin
                           ? 'System Administrator'
                           : isClinician
-                          ? 'Community Moderator'
-                          : currentUser.anonymousHandle}
+                            ? 'Community Moderator'
+                            : currentUser.anonymousHandle}
                       </div>
                     </div>
 
@@ -278,7 +292,9 @@ export const Header: React.FC<HeaderProps> = ({
                       >
                         <div className="flex items-center gap-2">
                           <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
-                          <span className="font-semibold text-xs">My Posts</span>
+                          <span className="font-semibold text-xs">
+                            My Posts
+                          </span>
                         </div>
                         <span className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
                           Track your posts →
@@ -353,16 +369,20 @@ export const Header: React.FC<HeaderProps> = ({
                             }`}
                           >
                             <div>
-                              <div className="text-xs sm:text-sm font-semibold">{p.name}</div>
+                              <div className="text-xs sm:text-sm font-semibold">
+                                {p.name}
+                              </div>
                               <div className="text-xs text-slate-400 dark:text-slate-500">
                                 {p.role === 'SYSTEM_ADMIN'
                                   ? 'System Administrator'
                                   : p.role === 'CLINICIAN_MODERATOR'
-                                  ? 'Clinician Moderator'
-                                  : `${p.handle} · ${p.condition ?? ''}`}
+                                    ? 'Clinician Moderator'
+                                    : `${p.handle} · ${p.condition ?? ''}`}
                               </div>
                             </div>
-                            {isCurrent && <Check className="w-4 h-4 text-[#002D72] dark:text-blue-400" />}
+                            {isCurrent && (
+                              <Check className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
+                            )}
                           </button>
                         );
                       })}
@@ -401,7 +421,9 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={() => setActiveTab('moderation')}
                 className={`flex flex-col items-center justify-center py-1.5 transition relative cursor-pointer min-w-0 flex-1 min-h-12 ${
-                  activeTab === 'moderation' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                  activeTab === 'moderation'
+                    ? 'text-[#002D72] dark:text-blue-400 font-semibold'
+                    : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 <div className="relative">
@@ -412,28 +434,38 @@ export const Header: React.FC<HeaderProps> = ({
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Dashboard</span>
+                <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+                  Dashboard
+                </span>
               </button>
             )}
 
             <button
               onClick={() => setActiveTab('feed')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
-                activeTab === 'feed' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                activeTab === 'feed'
+                  ? 'text-[#002D72] dark:text-blue-400 font-semibold'
+                  : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <MessageSquare className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Discussions</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+                Discussions
+              </span>
             </button>
 
             <button
               onClick={() => setActiveTab('knowledge')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
-                activeTab === 'knowledge' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                activeTab === 'knowledge'
+                  ? 'text-[#002D72] dark:text-blue-400 font-semibold'
+                  : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <BookOpen className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Guides</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+                Guides
+              </span>
             </button>
           </div>
 
@@ -459,21 +491,29 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setActiveTab('updates')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
-                activeTab === 'updates' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                activeTab === 'updates'
+                  ? 'text-[#002D72] dark:text-blue-400 font-semibold'
+                  : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <Stethoscope className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Updates</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+                Updates
+              </span>
             </button>
 
             <button
               onClick={() => setActiveTab('calendar')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
-                activeTab === 'calendar' ? 'text-[#002D72] dark:text-blue-400 font-semibold' : 'text-slate-500 dark:text-slate-400'
+                activeTab === 'calendar'
+                  ? 'text-[#002D72] dark:text-blue-400 font-semibold'
+                  : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               <CalendarDays className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">Events</span>
+              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+                Events
+              </span>
             </button>
           </div>
         </div>

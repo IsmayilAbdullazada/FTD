@@ -1,17 +1,17 @@
-import { Router } from "express";
-import { z } from "zod";
-import { query } from "../../config/db.js";
-import { asyncHandler } from "../../lib/http.js";
-import { isStaffRole } from "../../lib/roles.js";
-import { authenticateToken } from "../../middleware/auth.js";
+import { Router } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { asyncHandler } from '../../lib/http.js';
+import { isStaffRole } from '../../lib/roles.js';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
 router.post(
-  "/discussions",
+  '/discussions',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const { title, content } = z
-      .object({ title: z.string().default(""), content: z.string().min(1) })
+      .object({ title: z.string().default(''), content: z.string().min(1) })
       .parse(req.body);
     const term = `${title} ${content}`.trim();
     const staff = isStaffRole(req.user!.role);
@@ -41,7 +41,7 @@ router.post(
   }),
 );
 router.get(
-  "/discussions-pool",
+  '/discussions-pool',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const staff = isStaffRole(req.user!.role);

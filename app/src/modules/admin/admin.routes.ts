@@ -1,12 +1,12 @@
-import { Router } from "express";
-import { z } from "zod";
-import { env } from "../../config/env.js";
-import { query, transaction } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { authenticateToken, requireRole } from "../../middleware/auth.js";
+import { Router } from 'express';
+import { z } from 'zod';
+import { env } from '../../config/env.js';
+import { query, transaction } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { authenticateToken, requireRole } from '../../middleware/auth.js';
 
 const router = Router();
-router.use(authenticateToken, requireRole(["SYSTEM_ADMIN"]));
+router.use(authenticateToken, requireRole(['SYSTEM_ADMIN']));
 
 async function counts() {
   const r = await query(`SELECT
@@ -18,14 +18,14 @@ async function counts() {
   return r.rows[0];
 }
 router.get(
-  "/database-status",
+  '/database-status',
   asyncHandler(async (_req, res) => {
     const c = await counts();
     const setting = await query(
       `SELECT value FROM app_settings WHERE key='seed_mode'`,
     );
     res.json({
-      isCleanLaunch: setting.rows[0]?.value !== "demo",
+      isCleanLaunch: setting.rows[0]?.value !== 'demo',
       counts: {
         users: c.users,
         carePartners: c.care_partners,
@@ -39,37 +39,36 @@ router.get(
       },
       securityStatus: {
         port: env.PORT,
-        helmetActive: true,
-        jwtActive: true,
-        bcryptRounds: 12,
-        rateLimitersActive: true,
-        phiFilterActive: true,
-        corsActive: true,
+        environment: env.NODE_ENV,
+        databaseTlsConfigured: env.DB_SSL === 'true',
+        developmentAuthPreviewsEnabled: env.ENABLE_DEV_AUTH_PREVIEWS === 'true',
+        databaseResetEnabled: env.ENABLE_DATABASE_RESET === 'true',
+        allowedOrigins: env.CORS_ORIGIN.split(','),
       },
     });
   }),
 );
 router.post(
-  "/reset-database",
+  '/reset-database',
   asyncHandler(async (req, res) => {
-    if (env.ENABLE_DATABASE_RESET !== "true")
-      throw new HttpError(404, "Database reset is disabled");
+    if (env.ENABLE_DATABASE_RESET !== 'true')
+      throw new HttpError(404, 'Database reset is disabled');
     const { mode } = z
-      .object({ mode: z.enum(["clean", "demo"]) })
+      .object({ mode: z.enum(['clean', 'demo']) })
       .parse(req.body);
     await transaction(async (client) => {
       for (const table of [
-        "moderator_private_notes",
-        "post_upvotes",
-        "comments",
-        "post_groups",
-        "posts",
-        "notifications",
-        "private_messages",
-        "moderation_audit",
+        'moderator_private_notes',
+        'post_upvotes',
+        'comments',
+        'post_groups',
+        'posts',
+        'notifications',
+        'private_messages',
+        'moderation_audit',
       ])
         await client.query(`DELETE FROM ${table}`);
-      if (mode === "demo") {
+      if (mode === 'demo') {
         const p = (
           await client.query(`INSERT INTO posts(id,author_id,title,raw_content,sanitized_content,status,condition)
         VALUES('post-demo-1','user-care-1','Managing evening routines','What routines have helped with difficult evenings?','What routines have helped with difficult evenings?','APPROVED','FTD') RETURNING id`)
@@ -93,9 +92,9 @@ router.post(
       success: true,
       mode,
       message:
-        mode === "clean"
-          ? "Database reset to clean release data."
-          : "Database seeded with a demonstration discussion.",
+        mode === 'clean'
+          ? 'Database reset to clean release data.'
+          : 'Database seeded with a demonstration discussion.',
       counts: await counts(),
     });
   }),

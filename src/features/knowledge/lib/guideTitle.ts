@@ -1,22 +1,49 @@
 export const INSTITUTIONAL_RESOURCE_FILES = [
-  { fileName: 'Managing-Aggressive-Behavior.pdf', label: 'Managing Aggressive Behavior' },
+  {
+    fileName: 'Managing-Aggressive-Behavior.pdf',
+    label: 'Managing Aggressive Behavior',
+  },
   { fileName: 'SleepIssuesFTD-090623.pdf', label: 'Sleep Issues in FTD' },
-  { fileName: 'PinFTDcare_Newsletter_Fall_2016.pdf', label: 'Partners in FTD Care - Fall 2016' },
-  { fileName: 'PinFTDcare_Newsletter_Winter_2018.pdf', label: 'Partners in FTD Care - Winter 2018' },
-  { fileName: 'PinFTDcare_Newsletter_Winter_2019.pdf', label: 'Partners in FTD Care - Winter 2019' },
-  { fileName: 'PinFTDcare_sprng_2020.pdf', label: 'Partners in FTD Care - Spring 2020' },
-  { fileName: 'January-2014.pdf', label: 'Partners in FTD Care - January 2014' },
+  {
+    fileName: 'PinFTDcare_Newsletter_Fall_2016.pdf',
+    label: 'Partners in FTD Care - Fall 2016',
+  },
+  {
+    fileName: 'PinFTDcare_Newsletter_Winter_2018.pdf',
+    label: 'Partners in FTD Care - Winter 2018',
+  },
+  {
+    fileName: 'PinFTDcare_Newsletter_Winter_2019.pdf',
+    label: 'Partners in FTD Care - Winter 2019',
+  },
+  {
+    fileName: 'PinFTDcare_sprng_2020.pdf',
+    label: 'Partners in FTD Care - Spring 2020',
+  },
+  {
+    fileName: 'January-2014.pdf',
+    label: 'Partners in FTD Care - January 2014',
+  },
   { fileName: 'July-2012.pdf', label: 'Partners in FTD Care - July 2012' },
-  { fileName: 'PiC-fall-2014-WTDA.pdf', label: 'Partners in FTD Care - Fall 2014' },
-  { fileName: 'Summer-2014-Newsletter_Final.pdf', label: 'Partners in FTD Care - Summer 2014' },
+  {
+    fileName: 'PiC-fall-2014-WTDA.pdf',
+    label: 'Partners in FTD Care - Fall 2014',
+  },
+  {
+    fileName: 'Summer-2014-Newsletter_Final.pdf',
+    label: 'Partners in FTD Care - Summer 2014',
+  },
 ];
 
-export function suggestGuideTitle(fileName: string, firstPageText?: string): string {
+export function suggestGuideTitle(
+  fileName: string,
+  firstPageText?: string,
+): string {
   if (!fileName) return '';
 
   // 1. Direct match from known institutional library resources
   const match = INSTITUTIONAL_RESOURCE_FILES.find(
-    (f) => f.fileName.toLowerCase() === fileName.toLowerCase()
+    (f) => f.fileName.toLowerCase() === fileName.toLowerCase(),
   );
   if (match) return match.label;
 
@@ -76,14 +103,10 @@ export function suggestGuideTitle(fileName: string, firstPageText?: string): str
   if (p4) return `Partners in FTD Care - ${p4[1]} ${p4[2]}`;
 
   // Beautify underscores and dashes
-  name = name
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  name = name.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 
   return name
     .split(' ')
     .map((w) => (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w))
     .join(' ');
 }
-

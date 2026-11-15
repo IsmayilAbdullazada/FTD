@@ -1,7 +1,8 @@
-import { discussionApi } from "@/features/discussions/api/discussionApi";
-import { moderationApi } from "@/features/moderation/api/moderationApi";
-import { CommunityGroup, CurrentUser, Post } from "@/types";
-import React, { useEffect, useRef, useState } from "react";
+import { reportError } from '@/shared/lib/logger';
+import { discussionApi } from '@/features/discussions/api/discussionApi';
+import { moderationApi } from '@/features/moderation/api/moderationApi';
+import { CommunityGroup, CurrentUser, Post } from '@/types';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface CarePartnerFeedProps {
   currentUser: CurrentUser;
@@ -12,8 +13,8 @@ export interface CarePartnerFeedProps {
   recentNotice?: string | null;
   onDismissNotice?: () => void;
   onOpenComposer: () => void;
-  initialSection?: "all" | "my-posts";
-  onSectionChange?: (section: "all" | "my-posts") => void;
+  initialSection?: 'all' | 'my-posts';
+  onSectionChange?: (section: 'all' | 'my-posts') => void;
 }
 
 export function useCarePartnerFeed({
@@ -30,16 +31,17 @@ export function useCarePartnerFeed({
 }: CarePartnerFeedProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewSection, setViewSection] = useState<"all" | "my-posts">(
-    initialSection || "all",
+  const [viewSection, setViewSection] = useState<'all' | 'my-posts'>(
+    initialSection || 'all',
   );
-  const [selectedGroupTab, setSelectedGroupTab] = useState<string>("all");
+  const [selectedGroupTab, setSelectedGroupTab] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<
-    "all" | "open" | "closed"
-  >("all");
-  const [searchQuery, setSearchQuery] = useState("");
+    'all' | 'open' | 'closed'
+  >('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const POSTS_PER_PAGE = 5;
+  const [totalPosts, setTotalPosts] = useState(0);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
@@ -51,18 +53,18 @@ export function useCarePartnerFeed({
     }
   }, [initialSection]);
 
-  const handleSectionChange = (sec: "all" | "my-posts") => {
+  const handleSectionChange = (sec: 'all' | 'my-posts') => {
     setViewSection(sec);
     setCurrentPage(1);
     if (onSectionChange) onSectionChange(sec);
   };
 
   // Check user role
-  const isStaff = currentUser.role !== "CARE_PARTNER";
-  const isCarePartner = currentUser.role === "CARE_PARTNER";
+  const isStaff = currentUser.role !== 'CARE_PARTNER';
+  const isCarePartner = currentUser.role === 'CARE_PARTNER';
   const [selectedCondition, setSelectedCondition] = useState<
-    "all" | "FTD" | "AD"
-  >("all");
+    'all' | 'FTD' | 'AD'
+  >('all');
 
   // Filter Popover Menu State
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
@@ -79,10 +81,10 @@ export function useCarePartnerFeed({
       }
     };
     if (isFilterMenuOpen) {
-      document.addEventListener("mousedown", handleOutsideClick);
+      document.addEventListener('mousedown', handleOutsideClick);
     }
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener('mousedown', handleOutsideClick);
     };
   }, [isFilterMenuOpen]);
 
@@ -90,7 +92,7 @@ export function useCarePartnerFeed({
   useEffect(() => {
     const handlePopState = async () => {
       const params = new URLSearchParams(window.location.search);
-      const postId = params.get("post");
+      const postId = params.get('post');
       if (!postId) {
         setSelectedPost(null);
       } else if (selectedPost?.id !== postId) {
@@ -108,20 +110,20 @@ export function useCarePartnerFeed({
               setSelectedPost(details.post);
             }
           } catch (err) {
-            console.error("Failed to load deep-linked post:", err);
+            reportError('Failed to load deep-linked post:', err);
           }
         }
       }
     };
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [posts, selectedPost, currentUser.role, currentUser.id]);
 
   // Deep-linking or target discussion navigation
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const urlPostId = params.get("post");
+    const urlPostId = params.get('post');
     const effectiveTargetId = targetDiscussionId || urlPostId;
 
     if (effectiveTargetId) {
@@ -138,13 +140,14 @@ export function useCarePartnerFeed({
               if (onClearTargetDiscussion) onClearTargetDiscussion();
             }
           })
-          .catch((err) => console.error("Failed to load target post:", err));
+          .catch((err) => reportError('Failed to load target post:', err));
       }
     } else if (!urlPostId && !targetDiscussionId) {
       setSelectedPost(null);
     }
   }, [
     targetDiscussionId,
+    totalPosts,
     posts,
     loading,
     onClearTargetDiscussion,
@@ -154,9 +157,9 @@ export function useCarePartnerFeed({
 
   // Editing pending post
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [editCohortId, setEditCohortId] = useState("");
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editCohortId, setEditCohortId] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
@@ -194,11 +197,11 @@ export function useCarePartnerFeed({
   const handleOpenDiscussion = (post: Post) => {
     setSelectedPost(post);
     const url = new URL(window.location.href);
-    url.searchParams.set("tab", "feed");
-    url.searchParams.set("post", post.id);
+    url.searchParams.set('tab', 'feed');
+    url.searchParams.set('post', post.id);
     window.history.pushState(
-      { tab: "feed", post: post.id },
-      "",
+      { tab: 'feed', post: post.id },
+      '',
       url.toString(),
     );
   };
@@ -206,35 +209,44 @@ export function useCarePartnerFeed({
   const handleBackToFeed = () => {
     setSelectedPost(null);
     const url = new URL(window.location.href);
-    if (url.searchParams.has("post")) {
-      url.searchParams.delete("post");
-      window.history.pushState({ tab: "feed", post: null }, "", url.toString());
+    if (url.searchParams.has('post')) {
+      url.searchParams.delete('post');
+      window.history.pushState({ tab: 'feed', post: null }, '', url.toString());
     }
     if (onClearTargetDiscussion) onClearTargetDiscussion();
     loadFeed(selectedGroupTab);
   };
 
+  const requestVersion = useRef(0);
   const loadFeed = async (groupId?: string) => {
+    const version = ++requestVersion.current;
     setLoading(true);
     try {
       const res = await discussionApi.getPosts({
+        page: currentPage,
+        pageSize: POSTS_PER_PAGE,
+        search: searchQuery,
+        section: viewSection,
+        closed: selectedStatusFilter,
         role: currentUser.role,
-        groupId: groupId === "all" ? undefined : groupId,
+        groupId: groupId === 'all' ? undefined : groupId,
         userId: currentUser.id,
         condition:
-          isStaff && selectedCondition !== "all"
+          isStaff && selectedCondition !== 'all'
             ? selectedCondition
             : undefined,
       });
+      if (version !== requestVersion.current) return;
       let feedPosts = res.posts || [];
       // Clinician moderators and admins only view published discussions in the discussions tab
       if (
-        currentUser.role === "CLINICIAN_MODERATOR" ||
-        currentUser.role === "SYSTEM_ADMIN"
+        currentUser.role === 'CLINICIAN_MODERATOR' ||
+        currentUser.role === 'SYSTEM_ADMIN'
       ) {
-        feedPosts = feedPosts.filter((p) => p.status === "APPROVED");
+        feedPosts = feedPosts.filter((p) => p.status === 'APPROVED');
       }
       setPosts(feedPosts);
+      setTotalPosts(res.total);
 
       // Sync upvote states from server
       const initialLikes: Record<string, boolean> = {};
@@ -245,15 +257,25 @@ export function useCarePartnerFeed({
       });
       setLikedPosts((prev) => ({ ...initialLikes, ...prev }));
     } catch (err) {
-      console.error("Failed to load feed:", err);
+      reportError('Failed to load feed:', err);
     } finally {
+      if (version !== requestVersion.current) return;
       setLoading(false);
     }
   };
 
   useEffect(() => {
     loadFeed(selectedGroupTab);
-  }, [selectedGroupTab, selectedCondition, currentUser.role, currentUser.id]);
+  }, [
+    selectedGroupTab,
+    selectedCondition,
+    currentUser.role,
+    currentUser.id,
+    currentPage,
+    searchQuery,
+    viewSection,
+    selectedStatusFilter,
+  ]);
 
   const handleToggleLike = async (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
@@ -290,7 +312,7 @@ export function useCarePartnerFeed({
       );
       setLikedPosts((prev) => ({ ...prev, [postId]: res.isUpvoted }));
     } catch (err) {
-      console.error("Failed to upvote post:", err);
+      reportError('Failed to upvote post:', err);
     }
   };
 
@@ -298,7 +320,7 @@ export function useCarePartnerFeed({
     setEditingPost(post);
     setEditTitle(post.title);
     setEditContent(post.content);
-    setEditCohortId(post.assignedGroups[0]?.id || cohorts[0]?.id || "");
+    setEditCohortId(post.assignedGroups[0]?.id || cohorts[0]?.id || '');
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -314,11 +336,11 @@ export function useCarePartnerFeed({
       });
       setEditingPost(null);
       if (onDismissNotice) onDismissNotice();
-      setActionNotice("Your question was updated and remains under review.");
+      setActionNotice('Your question was updated and remains under review.');
       await loadFeed(selectedGroupTab);
     } catch (err) {
-      console.error("Failed to update post:", err);
-      setActionNotice("Failed to update question. Please try again.");
+      reportError('Failed to update post:', err);
+      setActionNotice('Failed to update question. Please try again.');
     } finally {
       setIsSavingEdit(false);
     }
@@ -336,15 +358,15 @@ export function useCarePartnerFeed({
 
     // 2. Clear any prior notices and show immediate confirmation toast
     if (onDismissNotice) onDismissNotice();
-    setActionNotice("Your question has been withdrawn.");
+    setActionNotice('Your question has been withdrawn.');
 
     // 3. Delete on server
     try {
       await discussionApi.deletePost(targetPostId);
       await loadFeed(selectedGroupTab);
     } catch (err) {
-      console.error("Failed to withdraw post:", err);
-      setActionNotice("Unable to withdraw question. Please try again.");
+      reportError('Failed to withdraw post:', err);
+      setActionNotice('Unable to withdraw question. Please try again.');
     } finally {
       setIsDeletingPost(false);
     }
@@ -359,7 +381,7 @@ export function useCarePartnerFeed({
       const res = await moderationApi.sendPostPrivateNote(postId, {
         message,
         senderId: currentUser.id,
-        action: "KEEP_PENDING",
+        action: 'KEEP_PENDING',
       });
 
       setPosts((prev) =>
@@ -376,17 +398,21 @@ export function useCarePartnerFeed({
         ),
       );
 
-      setCarePartnerReplyText((prev) => ({ ...prev, [postId]: "" }));
-      setActionNotice("Your private reply was sent to the moderator.");
-    } catch (err: any) {
-      console.error("Failed to send private reply:", err);
-      setActionNotice(err.message || "Could not send reply. Please try again.");
+      setCarePartnerReplyText((prev) => ({ ...prev, [postId]: '' }));
+      setActionNotice('Your private reply was sent to the moderator.');
+    } catch (err: unknown) {
+      reportError('Failed to send private reply:', err);
+      setActionNotice(
+        (err instanceof Error ? err.message : undefined) ||
+          'Could not send reply. Please try again.',
+      );
     } finally {
       setIsSendingCareReply((prev) => ({ ...prev, [postId]: false }));
     }
   };
 
   return {
+    totalPosts,
     posts,
     setPosts,
     loading,

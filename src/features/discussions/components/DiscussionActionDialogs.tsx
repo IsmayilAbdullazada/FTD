@@ -1,23 +1,23 @@
-import { Lock, Trash2 } from "lucide-react";
+import { Lock, Trash2 } from 'lucide-react';
 
-import type { useDiscussionDetail } from "../hooks/useDiscussionDetail";
+import type { useDiscussionDetail } from '../hooks/useDiscussionDetail';
 
 type Props = Pick<
   ReturnType<typeof useDiscussionDetail>,
-  | "post"
-  | "comments"
-  | "showConfirmCloseModal"
-  | "setShowConfirmCloseModal"
-  | "isTogglingClose"
-  | "showWithdrawPostModal"
-  | "setShowWithdrawPostModal"
-  | "isWithdrawingPost"
-  | "deletingCommentId"
-  | "commentToDelete"
-  | "setCommentToDelete"
-  | "handleConfirmWithdrawPost"
-  | "handleConfirmModeratorRemoveReply"
-  | "handleToggleCloseDiscussion"
+  | 'post'
+  | 'comments'
+  | 'showConfirmCloseModal'
+  | 'setShowConfirmCloseModal'
+  | 'isTogglingClose'
+  | 'showWithdrawPostModal'
+  | 'setShowWithdrawPostModal'
+  | 'isWithdrawingPost'
+  | 'deletingCommentId'
+  | 'commentToDelete'
+  | 'setCommentToDelete'
+  | 'handleConfirmWithdrawPost'
+  | 'handleConfirmModeratorRemoveReply'
+  | 'handleToggleCloseDiscussion'
 >;
 
 export function DiscussionActionDialogs({
@@ -67,7 +67,7 @@ export function DiscussionActionDialogs({
 
             <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
               <p>
-                Closing this discussion will{" "}
+                Closing this discussion will{' '}
                 <strong>prevent new replies</strong> from being posted by care
                 partners.
               </p>
@@ -93,7 +93,7 @@ export function DiscussionActionDialogs({
               >
                 <Lock className="w-4 h-4" />
                 <span>
-                  {isTogglingClose ? "Closing..." : "Yes, Close Discussion"}
+                  {isTogglingClose ? 'Closing...' : 'Yes, Close Discussion'}
                 </span>
               </button>
             </div>
@@ -149,8 +149,8 @@ export function DiscussionActionDialogs({
                 <Trash2 className="w-4 h-4" />
                 <span>
                   {isWithdrawingPost
-                    ? "Withdrawing..."
-                    : "Yes, Withdraw Question"}
+                    ? 'Withdrawing...'
+                    : 'Yes, Withdraw Question'}
                 </span>
               </button>
             </div>
@@ -209,7 +209,7 @@ export function DiscussionActionDialogs({
               >
                 <Trash2 className="w-4 h-4" />
                 <span>
-                  {deletingCommentId ? "Removing..." : "Remove Reply"}
+                  {deletingCommentId ? 'Removing...' : 'Remove Reply'}
                 </span>
               </button>
             </div>

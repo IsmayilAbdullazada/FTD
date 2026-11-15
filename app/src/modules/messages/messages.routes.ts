@@ -1,13 +1,20 @@
-import { Router } from "express";
-import { z } from "zod";
-import { query } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { paginationMeta, parsePagination } from "../../lib/pagination.js";
-import { isStaffRole } from "../../lib/roles.js";
-import { authenticateToken } from "../../middleware/auth.js";
+import type { MessageRow } from '../../db/rows.js';
+import { Router } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { paginationMeta, parsePagination } from '../../lib/pagination.js';
+import { isStaffRole } from '../../lib/roles.js';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
-const map = (r: any) => ({
+const map = (
+  r: MessageRow & {
+    sender_name: string;
+    sender_role: string;
+    recipient_name: string;
+  },
+) => ({
   id: r.id,
   conversationId: r.conversation_id,
   senderId: r.sender_id,
@@ -20,15 +27,15 @@ const map = (r: any) => ({
   read: Boolean(r.read_at),
 });
 router.get(
-  "/",
+  '/',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const requested =
-      typeof req.query.caregiverId === "string"
+      typeof req.query.caregiverId === 'string'
         ? req.query.caregiverId
         : req.user!.id;
     if (!isStaffRole(req.user!.role) && requested !== req.user!.id)
-      throw new HttpError(403, "Conversation access denied");
+      throw new HttpError(403, 'Conversation access denied');
     const { page, pageSize, limit, offset } = parsePagination(req.query, 50);
     const [result, countResult] = await Promise.all([
       query(
@@ -51,13 +58,13 @@ router.get(
     ]);
     const total = countResult.rows[0].total as number;
     res.json({
-      messages: result.rows.map(map),
+      messages: result.rows.map((row) => map(row as Parameters<typeof map>[0])),
       pagination: paginationMeta(page, pageSize, total),
     });
   }),
 );
 router.post(
-  "/",
+  '/',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const input = z
@@ -67,18 +74,18 @@ router.post(
       })
       .parse(req.body);
     if (!isStaffRole(req.user!.role) && input.caregiverId !== req.user!.id)
-      throw new HttpError(403, "Conversation access denied");
-    const recipientId =
-      !isStaffRole(req.user!.role)
-        ? (
-            await query(
-              `SELECT id FROM users WHERE role='CLINICIAN_MODERATOR' AND is_active ORDER BY created_at LIMIT 1`,
-            )
-          ).rows[0]?.id
-        : input.caregiverId;
-    if (!recipientId) throw new HttpError(404, "Message recipient not found");
-    const caregiverId =
-      !isStaffRole(req.user!.role) ? req.user!.id : input.caregiverId;
+      throw new HttpError(403, 'Conversation access denied');
+    const recipientId = !isStaffRole(req.user!.role)
+      ? (
+          await query(
+            `SELECT id FROM users WHERE role='CLINICIAN_MODERATOR' AND is_active ORDER BY created_at LIMIT 1`,
+          )
+        ).rows[0]?.id
+      : input.caregiverId;
+    if (!recipientId) throw new HttpError(404, 'Message recipient not found');
+    const caregiverId = !isStaffRole(req.user!.role)
+      ? req.user!.id
+      : input.caregiverId;
     const r = (
       await query(
         `INSERT INTO private_messages(conversation_id,sender_id,recipient_id,content)
@@ -97,7 +104,7 @@ router.post(
         sender_name: byId.get(req.user!.id)?.name,
         sender_role: req.user!.role,
         recipient_name: byId.get(recipientId)?.name,
-      }),
+      } as Parameters<typeof map>[0]),
     );
   }),
 );

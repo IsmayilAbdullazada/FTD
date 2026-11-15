@@ -1,16 +1,18 @@
-import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
-import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
-import { app } from "../src/app.js";
-import { pool } from "../src/config/db.js";
+import bcrypt from 'bcryptjs';
+import assert from 'node:assert/strict';
+import { after, before, test } from 'node:test';
+import type { AddressInfo } from 'node:net';
+import type { Server } from 'node:http';
+import { app } from '../src/app.js';
+import { pool } from '../src/config/db.js';
 
 let server: Server;
-let baseUrl = "";
-let careToken = "";
-let clinicianToken = "";
-let adminToken = "";
-let postId = "";
+let baseUrl = '';
+let careToken = '';
+let clinicianToken = '';
+let adminToken = '';
+let postId = '';
+let originalPasswords: Array<{ id: string; password_hash: string }> = [];
 const cleanup: Array<() => Promise<unknown>> = [];
 
 async function request(path: string, init: RequestInit = {}) {
@@ -21,24 +23,37 @@ async function request(path: string, init: RequestInit = {}) {
 const json = (
   token: string | undefined,
   body: unknown,
-  method = "POST",
+  method = 'POST',
 ): RequestInit => ({
   method,
   headers: {
-    "content-type": "application/json",
+    'content-type': 'application/json',
     ...(token ? { authorization: `Bearer ${token}` } : {}),
   },
   body: JSON.stringify(body),
 });
 
 before(async () => {
-  server = app.listen(0, "127.0.0.1");
-  await new Promise<void>((resolve) => server.once("listening", resolve));
+  originalPasswords = (
+    await pool.query(
+      'SELECT id,password_hash FROM users WHERE id=ANY($1::text[])',
+      [['user-care-1', 'user-clinician-1', 'user-admin-1']],
+    )
+  ).rows;
+  await pool.query(
+    'UPDATE users SET password_hash=$1 WHERE id=ANY($2::text[])',
+    [
+      await bcrypt.hash('Hopkins2026!', 12),
+      ['user-care-1', 'user-clinician-1', 'user-admin-1'],
+    ],
+  );
+  server = app.listen(0, '127.0.0.1');
+  await new Promise<void>((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 
 after(async () => {
-  if (postId) await pool.query("DELETE FROM posts WHERE id=$1", [postId]);
+  if (postId) await pool.query('DELETE FROM posts WHERE id=$1', [postId]);
   for (const task of cleanup.reverse()) await task();
   await pool.query(
     `DELETE FROM private_messages WHERE content='Secure sender identity check.'`,
@@ -46,72 +61,77 @@ after(async () => {
   await new Promise<void>((resolve, reject) =>
     server.close((error) => (error ? reject(error) : resolve())),
   );
+  for (const row of originalPasswords)
+    await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [
+      row.password_hash,
+      row.id,
+    ]);
   await pool.end();
 });
 
-test("health reports the PostgreSQL connection and protected APIs reject anonymous requests", async () => {
-  assert.equal((await request("/api/v1/health")).status, 200);
-  assert.equal((await request("/api/v1/users/me")).status, 401);
+test('health reports the PostgreSQL connection and protected APIs reject anonymous requests', async () => {
+  assert.equal((await request('/api/v1/health')).status, 200);
+  assert.equal((await request('/api/v1/users/me')).status, 401);
   assert.equal(
     (
-      await request("/api/v1/health", {
-        headers: { origin: "https://attacker.invalid" },
+      await request('/api/v1/health', {
+        headers: { origin: 'https://attacker.invalid' },
       })
     ).status,
     403,
   );
 });
 
-test("care partner and clinician authenticate with the frontend contract", async () => {
+test('care partner and clinician authenticate with the frontend contract', async () => {
   const care = await request(
-    "/api/v1/auth/login",
+    '/api/v1/auth/login',
     json(undefined, {
-      identifier: "sarah.smith@example.com",
-      password: "Hopkins2026!",
+      identifier: 'sarah.smith@example.com',
+      password: 'Hopkins2026!',
     }),
   );
   const clinician = await request(
-    "/api/v1/auth/login",
+    '/api/v1/auth/login',
     json(undefined, {
-      identifier: "sgulyan1@jhmi.edu",
-      password: "Hopkins2026!",
+      identifier: 'sgulyan1@jhmi.edu',
+      password: 'Hopkins2026!',
     }),
   );
   assert.equal(care.status, 200);
   assert.equal(clinician.status, 200);
   assert.match(
-    care.headers.get("set-cookie") ?? "",
+    care.headers.get('set-cookie') ?? '',
     /^jh_session=.*HttpOnly.*SameSite=Strict/i,
   );
   careToken = care.body.token;
   clinicianToken = clinician.body.token;
-  assert.equal(care.body.user.role, "CARE_PARTNER");
-  assert.equal(clinician.body.user.role, "CLINICIAN_MODERATOR");
+  assert.equal(care.body.user.role, 'CARE_PARTNER');
+  assert.equal(clinician.body.user.role, 'CLINICIAN_MODERATOR');
   const admin = await request(
-    "/api/v1/auth/login",
+    '/api/v1/auth/login',
     json(undefined, {
-      identifier: "cs-admin@cs.jhu.edu",
-      password: "Hopkins2026!",
+      identifier: 'cs-admin@cs.jhu.edu',
+      password: 'Hopkins2026!',
     }),
   );
   assert.equal(admin.status, 200);
   adminToken = admin.body.token;
 });
 
-test("logout clears the HttpOnly session cookie", async () => {
+test('logout clears the HttpOnly session cookie', async () => {
   const login = await request(
-    "/api/v1/auth/login",
+    '/api/v1/auth/login',
     json(undefined, {
-      identifier: "sarah.smith@example.com",
-      password: "Hopkins2026!",
+      identifier: 'sarah.smith@example.com',
+      password: 'Hopkins2026!',
       rememberMe: true,
     }),
   );
-  const sessionCookie = (login.headers.get("set-cookie") ?? "").split(";")[0];
-  assert.ok(sessionCookie.startsWith("jh_session="));
+  const sessionCookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
+  assert.ok(sessionCookie.startsWith('jh_session='));
   assert.equal(
     (
-      await request("/api/v1/users/me", {
+      await request('/api/v1/users/me', {
         headers: { cookie: sessionCookie },
       })
     ).status,
@@ -119,24 +139,24 @@ test("logout clears the HttpOnly session cookie", async () => {
   );
   assert.equal(
     (
-      await request("/api/v1/auth/logout", {
-        method: "POST",
+      await request('/api/v1/auth/logout', {
+        method: 'POST',
         headers: { cookie: sessionCookie },
       })
     ).status,
     403,
   );
-  const logout = await request("/api/v1/auth/logout", {
-    method: "POST",
-    headers: { cookie: sessionCookie, origin: "http://localhost:5173" },
+  const logout = await request('/api/v1/auth/logout', {
+    method: 'POST',
+    headers: { cookie: sessionCookie, origin: 'http://localhost:5173' },
   });
   assert.equal(logout.status, 200);
-  assert.match(logout.headers.get("set-cookie") ?? "", /jh_session=;/);
+  assert.match(logout.headers.get('set-cookie') ?? '', /jh_session=;/);
 });
 
-test("condition and cohort boundaries apply to direct access, interactions, and search", async () => {
-  const hiddenCohortId = "security-hidden-cohort-post";
-  const hiddenConditionId = "security-hidden-condition-post";
+test('condition and cohort boundaries apply to direct access, interactions, and search', async () => {
+  const hiddenCohortId = 'security-hidden-cohort-post';
+  const hiddenConditionId = 'security-hidden-condition-post';
   await pool.query(
     `INSERT INTO posts(id,author_id,title,raw_content,sanitized_content,status,condition)
      VALUES
@@ -164,7 +184,7 @@ test("condition and cohort boundaries apply to direct access, interactions, and 
       (
         await request(
           `/api/v1/posts/${hiddenCohortId}/comments`,
-          json(careToken, { content: "This must not be accepted." }),
+          json(careToken, { content: 'This must not be accepted.' }),
         )
       ).status,
       404,
@@ -187,18 +207,18 @@ test("condition and cohort boundaries apply to direct access, interactions, and 
       404,
     );
 
-    const feed = await request("/api/v1/posts", { headers: careHeaders });
+    const feed = await request('/api/v1/posts', { headers: careHeaders });
     assert.ok(
       !feed.body.posts.some((post: any) =>
         [hiddenCohortId, hiddenConditionId].includes(post.id),
       ),
     );
     const matches = await request(
-      "/api/v1/deflection/discussions",
-      json(careToken, { title: "Quasar", content: "security" }),
+      '/api/v1/deflection/discussions',
+      json(careToken, { title: 'Quasar', content: 'security' }),
     );
     assert.deepEqual(matches.body.matches, []);
-    const poolResult = await request("/api/v1/deflection/discussions-pool", {
+    const poolResult = await request('/api/v1/deflection/discussions-pool', {
       headers: careHeaders,
     });
     assert.ok(
@@ -221,79 +241,79 @@ test("condition and cohort boundaries apply to direct access, interactions, and 
   }
 });
 
-test("JWT identity overrides forged user IDs through posting, moderation, and messaging", async () => {
+test('JWT identity overrides forged user IDs through posting, moderation, and messaging', async () => {
   const created = await request(
-    "/api/v1/posts",
+    '/api/v1/posts',
     json(careToken, {
-      title: "Integration migration check",
+      title: 'Integration migration check',
       content:
         "Does this PostgreSQL moderation workflow persist correctly? Contact test.person@example.com about a 25 mg dose. <script>alert('unsafe')</script>",
-      targetCohortId: "group-general",
-      condition: "AD",
-      authorId: "user-clinician-1",
+      targetCohortId: 'group-general',
+      condition: 'AD',
+      authorId: 'user-clinician-1',
     }),
   );
   assert.equal(created.status, 201);
   postId = created.body.postId;
-  assert.equal(created.body.status, "PENDING_MODERATION");
+  assert.equal(created.body.status, 'PENDING_MODERATION');
   assert.equal(created.body.hasPhiAlerts, true);
   assert.ok(created.body.phiAlertsCount > 0);
   assert.equal(
     (
-      await request("/api/v1/moderation/queue", {
+      await request('/api/v1/moderation/queue', {
         headers: { authorization: `Bearer ${careToken}` },
       })
     ).status,
     403,
   );
 
-  const queue = await request("/api/v1/moderation/queue", {
+  const queue = await request('/api/v1/moderation/queue', {
     headers: { authorization: `Bearer ${clinicianToken}` },
   });
   const post = queue.body.items.find((item: any) => item.id === postId);
-  assert.equal(post.author.userId, "user-care-1");
-  assert.equal(post.condition, "FTD");
+  assert.equal(post.author.userId, 'user-care-1');
+  assert.equal(post.condition, 'FTD');
   assert.equal(post.isUrgentClinical, true);
-  assert.ok(post.phiAlerts.some((alert: any) => alert.type === "EMAIL"));
-  assert.ok(!post.rawContent.includes("<script>"));
+  assert.ok(post.phiAlerts.some((alert: any) => alert.type === 'EMAIL'));
+  assert.ok(!post.rawContent.includes('<script>'));
   const approval = await request(
-    "/api/v1/moderation/action",
+    '/api/v1/moderation/action',
     json(clinicianToken, {
       entityId: post.id,
-      entityType: "POST",
-      action: "APPROVE",
-      assignedGroupIds: ["group-general"],
+      entityType: 'POST',
+      action: 'APPROVE',
+      assignedGroupIds: ['group-general'],
       sanitizedContent:
-        "Does this PostgreSQL moderation workflow persist correctly?",
+        'Does this PostgreSQL moderation workflow persist correctly?',
     }),
   );
-  assert.equal(approval.body.newEntityStatus, "APPROVED");
+  assert.equal(approval.body.newEntityStatus, 'APPROVED');
 
   const comment = await request(
     `/api/v1/posts/${postId}/comments`,
     json(careToken, {
-      content: "Nested workflow test reply.",
-      authorId: "user-clinician-1",
+      content: 'Nested workflow test reply.',
+      authorId: 'user-clinician-1',
     }),
   );
-  assert.equal(comment.body.comment.author.userId, "user-care-1");
-  assert.equal(comment.body.comment.status, "PENDING_MODERATION");
-  const secondQueue = await request("/api/v1/moderation/queue", {
+  assert.equal(comment.body.comment.author.userId, 'user-care-1');
+  assert.equal(comment.body.comment.status, 'PENDING_MODERATION');
+  const secondQueue = await request('/api/v1/moderation/queue', {
     headers: { authorization: `Bearer ${clinicianToken}` },
   });
   const reply = secondQueue.body.items.find(
     (item: any) => item.id === comment.body.comment.id,
   );
   const replyApproval = await request(
-    "/api/v1/moderation/action",
+    '/api/v1/moderation/action',
     json(clinicianToken, {
       entityId: reply.id,
-      entityType: "COMMENT",
-      action: "APPROVE",
+      entityType: 'COMMENT',
+      action: 'APPROVE',
       sanitizedContent: reply.rawContent,
     }),
   );
-  assert.equal(replyApproval.body.newEntityStatus, "APPROVED");
+  assert.equal(replyApproval.body.newEntityStatus, 'APPROVED');
 
   const details = await request(
     `/api/v1/posts/${postId}?role=SYSTEM_ADMIN&userId=user-clinician-1`,
@@ -303,23 +323,23 @@ test("JWT identity overrides forged user IDs through posting, moderation, and me
   assert.equal(details.body.post.rawContent, undefined);
 
   const message = await request(
-    "/api/v1/chat/private",
+    '/api/v1/chat/private',
     json(careToken, {
-      caregiverId: "user-care-1",
-      senderId: "user-clinician-1",
-      content: "Secure sender identity check.",
+      caregiverId: 'user-care-1',
+      senderId: 'user-clinician-1',
+      content: 'Secure sender identity check.',
     }),
   );
-  assert.equal(message.body.senderId, "user-care-1");
+  assert.equal(message.body.senderId, 'user-care-1');
 });
 
-test("private staff notes can publish and care-partner edits return content to moderation", async () => {
+test('private staff notes can publish and care-partner edits return content to moderation', async () => {
   const created = await request(
-    "/api/v1/posts",
+    '/api/v1/posts',
     json(careToken, {
-      title: "Moderation transition check",
-      content: "This discussion verifies secure editing transitions.",
-      targetCohortId: "group-general",
+      title: 'Moderation transition check',
+      content: 'This discussion verifies secure editing transitions.',
+      targetCohortId: 'group-general',
     }),
   );
   const transitionPostId = created.body.postId;
@@ -327,133 +347,150 @@ test("private staff notes can publish and care-partner edits return content to m
     const note = await request(
       `/api/v1/posts/${transitionPostId}/private-note`,
       json(clinicianToken, {
-        message: "Reviewed through the integration workflow.",
-        action: "PUBLISH",
+        message: 'Reviewed through the integration workflow.',
+        action: 'PUBLISH',
       }),
     );
     assert.equal(note.status, 201);
     assert.equal(note.body.success, true);
-    assert.equal(note.body.postStatus, "APPROVED");
+    assert.equal(note.body.postStatus, 'APPROVED');
     assert.equal(note.body.notes.length, 1);
 
+    const ownerView = await request(`/api/v1/posts/${transitionPostId}`, {
+      headers: { authorization: `Bearer ${careToken}` },
+    });
+    assert.equal(ownerView.body.post.moderatorPrivateNotes.length, 1);
+    const reply = await request(
+      `/api/v1/posts/${transitionPostId}/private-note`,
+      json(careToken, {
+        message: 'Private owner reply',
+        action: 'KEEP_PENDING',
+      }),
+    );
+    assert.equal(reply.status, 201);
+    const escalation = await request(
+      `/api/v1/posts/${transitionPostId}/private-note`,
+      json(careToken, { message: 'Forbidden publish', action: 'PUBLISH' }),
+    );
+    assert.equal(escalation.status, 403);
     const edited = await request(
       `/api/v1/posts/${transitionPostId}`,
       json(
         careToken,
-        { content: "This edited discussion requires moderation again." },
-        "PUT",
+        { content: 'This edited discussion requires moderation again.' },
+        'PUT',
       ),
     );
     assert.equal(edited.status, 200);
-    assert.equal(edited.body.post.status, "PENDING_MODERATION");
+    assert.equal(edited.body.post.status, 'PENDING_MODERATION');
 
     const forbiddenMove = await request(
       `/api/v1/posts/${transitionPostId}`,
-      json(careToken, { targetCohortId: "group-eastern-maryland" }, "PUT"),
+      json(careToken, { targetCohortId: 'group-eastern-maryland' }, 'PUT'),
     );
     assert.equal(forbiddenMove.status, 403);
   } finally {
-    await pool.query("DELETE FROM posts WHERE id=$1", [transitionPostId]);
+    await pool.query('DELETE FROM posts WHERE id=$1', [transitionPostId]);
   }
 });
 
-test("frontend collection endpoints return their expected top-level shapes", async () => {
+test('frontend collection endpoints return their expected top-level shapes', async () => {
   const headers = { authorization: `Bearer ${careToken}` };
   const [me, cohorts, feed, resources, notifications] = await Promise.all([
-    request("/api/v1/users/me", { headers }),
-    request("/api/v1/cohorts?role=SYSTEM_ADMIN&userId=user-clinician-1", {
+    request('/api/v1/users/me', { headers }),
+    request('/api/v1/cohorts?role=SYSTEM_ADMIN&userId=user-clinician-1', {
       headers,
     }),
-    request("/api/v1/posts?role=SYSTEM_ADMIN&userId=user-clinician-1", {
+    request('/api/v1/posts?role=SYSTEM_ADMIN&userId=user-clinician-1', {
       headers,
     }),
-    request("/api/v1/resources?userId=user-care-2", { headers }),
-    request("/api/v1/notifications?userId=user-care-2", { headers }),
+    request('/api/v1/resources?userId=user-care-2', { headers }),
+    request('/api/v1/notifications?userId=user-care-2', { headers }),
   ]);
-  assert.equal(me.body.user.id, "user-care-1");
+  assert.equal(me.body.user.id, 'user-care-1');
   assert.ok(Array.isArray(cohorts.body));
   assert.ok(feed.body.posts.some((post: any) => post.id === postId));
   assert.ok(Array.isArray(resources.body));
   assert.ok(Array.isArray(notifications.body.messages));
 });
 
-test("staff content, invitation, guide retrieval, and admin contracts use PostgreSQL", async () => {
+test('staff content, invitation, guide retrieval, and admin contracts use PostgreSQL', async () => {
   const unsafeResource = await request(
-    "/api/v1/resources",
+    '/api/v1/resources',
     json(clinicianToken, {
-      title: "Unsafe resource URL",
-      summary: "This request must be rejected.",
-      contentBody: "The URL protocol is not safe for browser navigation.",
-      category: "DAILY_CARE",
-      diseaseDomain: "FTD",
-      externalUrl: "javascript:alert(1)",
+      title: 'Unsafe resource URL',
+      summary: 'This request must be rejected.',
+      contentBody: 'The URL protocol is not safe for browser navigation.',
+      category: 'DAILY_CARE',
+      diseaseDomain: 'FTD',
+      externalUrl: 'javascript:alert(1)',
     }),
   );
   assert.equal(unsafeResource.status, 400);
 
   const invalidPdf = await request(
-    "/api/v1/chatbot/extract-pdf",
+    '/api/v1/chatbot/extract-pdf',
     json(clinicianToken, {
-      fileName: "invalid.pdf",
-      fileBase64: Buffer.from("This is not a PDF document.").toString("base64"),
+      fileName: 'invalid.pdf',
+      fileBase64: Buffer.from('This is not a PDF document.').toString('base64'),
     }),
   );
   assert.equal(invalidPdf.status, 400);
 
   const resource = await request(
-    "/api/v1/resources",
+    '/api/v1/resources',
     json(clinicianToken, {
-      title: "Integration resource",
-      summary: "Database-backed resource contract.",
+      title: 'Integration resource',
+      summary: 'Database-backed resource contract.',
       contentBody:
-        "A unique integration phrase about structured evening routines.",
-      category: "DAILY_CARE",
-      diseaseDomain: "FTD",
+        'A unique integration phrase about structured evening routines.',
+      category: 'DAILY_CARE',
+      diseaseDomain: 'FTD',
     }),
   );
   assert.equal(resource.status, 201);
   cleanup.push(() =>
-    pool.query("DELETE FROM resources WHERE id=$1", [resource.body.id]),
+    pool.query('DELETE FROM resources WHERE id=$1', [resource.body.id]),
   );
 
   const update = await request(
-    "/api/v1/updates",
+    '/api/v1/updates',
     json(clinicianToken, {
-      title: "Integration update",
-      summary: "Update summary",
-      body: "Update body",
-      category: "ANNOUNCEMENT",
-      condition: "BOTH",
+      title: 'Integration update',
+      summary: 'Update summary',
+      body: 'Update body',
+      category: 'ANNOUNCEMENT',
+      condition: 'BOTH',
     }),
   );
   assert.equal(update.status, 201);
   cleanup.push(() =>
-    pool.query("DELETE FROM clinic_updates WHERE id=$1", [update.body.id]),
+    pool.query('DELETE FROM clinic_updates WHERE id=$1', [update.body.id]),
   );
 
   const event = await request(
-    "/api/v1/events",
+    '/api/v1/events',
     json(clinicianToken, {
-      title: "Integration event",
-      type: "SUPPORT_GROUP",
-      startsAt: "2027-01-15T18:00:00Z",
-      location: "Test room",
-      condition: "FTD",
+      title: 'Integration event',
+      type: 'SUPPORT_GROUP',
+      startsAt: '2027-01-15T18:00:00Z',
+      location: 'Test room',
+      condition: 'FTD',
     }),
   );
   assert.equal(event.status, 201);
   cleanup.push(() =>
-    pool.query("DELETE FROM calendar_events WHERE id=$1", [event.body.id]),
+    pool.query('DELETE FROM calendar_events WHERE id=$1', [event.body.id]),
   );
 
   const invitation = await request(
-    "/api/v1/auth/invitations",
+    '/api/v1/auth/invitations',
     json(clinicianToken, {
-      email: "integration.invite@example.com",
-      firstName: "Integration",
-      lastName: "Invite",
-      primaryCohortSlug: "central-maryland",
-      condition: "FTD",
+      email: 'integration.invite@example.com',
+      firstName: 'Integration',
+      lastName: 'Invite',
+      primaryCohortSlug: 'central-maryland',
+      condition: 'FTD',
     }),
   );
   assert.equal(invitation.status, 201);
@@ -465,49 +502,49 @@ test("staff content, invitation, guide retrieval, and admin contracts use Postgr
     ).status,
     200,
   );
-  assert.equal((await request(invitation.body.previewUrl)).status, 200);
+  assert.equal(invitation.body.previewUrl, undefined);
   cleanup.push(() =>
-    pool.query("DELETE FROM invitations WHERE email=$1", [
-      "integration.invite@example.com",
+    pool.query('DELETE FROM invitations WHERE email=$1', [
+      'integration.invite@example.com',
     ]),
   );
   cleanup.push(() =>
-    pool.query("DELETE FROM email_outbox WHERE recipient=$1", [
-      "integration.invite@example.com",
+    pool.query('DELETE FROM email_outbox WHERE recipient=$1', [
+      'integration.invite@example.com',
     ]),
   );
 
   const guide = await request(
-    "/api/v1/chatbot/guides",
+    '/api/v1/chatbot/guides',
     json(clinicianToken, {
-      title: "Integration guide",
-      condition: "FTD",
-      fileName: "integration.pdf",
+      title: 'Integration guide',
+      condition: 'FTD',
+      fileName: 'integration.pdf',
       content:
-        "Structured evening routines can reduce avoidable transitions and distress.",
+        'Structured evening routines can reduce avoidable transitions and distress.',
       pages: [
         {
           pageNumber: 1,
-          text: "Structured evening routines can reduce avoidable transitions and distress.",
+          text: 'Structured evening routines can reduce avoidable transitions and distress.',
         },
       ],
-      status: "DRAFT",
-      uploadedBy: "forged-user",
-      uploadedByName: "Forged User",
+      status: 'DRAFT',
+      uploadedBy: 'forged-user',
+      uploadedByName: 'Forged User',
     }),
   );
   assert.equal(guide.status, 201);
   cleanup.push(() =>
-    pool.query("DELETE FROM chatbot_guides WHERE id=$1", [guide.body.id]),
+    pool.query('DELETE FROM chatbot_guides WHERE id=$1', [guide.body.id]),
   );
   const approved = await request(
     `/api/v1/chatbot/guides/${guide.body.id}/approve`,
-    json(clinicianToken, {}, "PATCH"),
+    json(clinicianToken, {}, 'PATCH'),
   );
-  assert.equal(approved.body.guide.status, "APPROVED");
+  assert.equal(approved.body.guide.status, 'APPROVED');
   const knowledge = await request(
-    "/api/v1/knowledge/chat",
-    json(careToken, { query: "structured evening routines" }),
+    '/api/v1/knowledge/chat',
+    json(careToken, { query: 'structured evening routines' }),
   );
   assert.ok(
     knowledge.body.citedResources.some(
@@ -515,66 +552,57 @@ test("staff content, invitation, guide retrieval, and admin contracts use Postgr
     ),
   );
 
-  const status = await request("/api/v1/admin/database-status", {
+  const status = await request('/api/v1/admin/database-status', {
     headers: { authorization: `Bearer ${adminToken}` },
   });
   assert.equal(status.status, 200);
-  assert.equal(typeof status.body.counts.users, "number");
+  assert.equal(typeof status.body.counts.users, 'number');
   assert.equal(
     (
       await request(
-        "/api/v1/admin/reset-database",
-        json(adminToken, { mode: "clean" }),
+        '/api/v1/admin/reset-database',
+        json(adminToken, { mode: 'clean' }),
       )
     ).status,
     404,
   );
 });
 
-test("password reset creates a private development preview without account enumeration", async () => {
+test('password reset does not expose credentials or persist email bodies', async () => {
   const known = await request(
-    "/api/v1/auth/forgot-password",
-    json(undefined, { email: "sarah.smith@example.com" }),
+    '/api/v1/auth/forgot-password',
+    json(undefined, { email: 'sarah.smith@example.com' }),
   );
   const unknown = await request(
-    "/api/v1/auth/forgot-password",
-    json(undefined, { email: "absent@example.com" }),
+    '/api/v1/auth/forgot-password',
+    json(undefined, { email: 'absent@example.com' }),
   );
   assert.equal(known.status, 200);
   assert.equal(unknown.status, 200);
   assert.equal(known.body.message, unknown.body.message);
-  assert.equal((await request(known.body.previewUrl)).status, 200);
-  const reset = await request(
-    "/api/v1/auth/reset-password",
-    json(undefined, {
-      email: "sarah.smith@example.com",
-      code: known.body.testCode,
-      token: known.body.resetToken,
-      newPassword: "Hopkins2026!",
-    }),
+  assert.equal(known.body.resetToken, undefined);
+  assert.equal(known.body.testCode, undefined);
+  assert.equal(known.body.previewUrl, undefined);
+  const outbox = await pool.query(
+    'SELECT text_body,html_body FROM email_outbox WHERE recipient=$1',
+    ['sarah.smith@example.com'],
   );
-  assert.equal(reset.status, 200);
-  assert.equal(
-    (
-      await request("/api/v1/users/me", {
-        headers: { authorization: `Bearer ${careToken}` },
-      })
-    ).status,
-    401,
+  assert.ok(
+    outbox.rows.every((row) => row.text_body === '[Content not retained]'),
   );
   cleanup.push(() =>
-    pool.query("DELETE FROM password_resets WHERE user_id=$1", ["user-care-1"]),
+    pool.query('DELETE FROM password_resets WHERE user_id=$1', ['user-care-1']),
   );
   cleanup.push(() =>
-    pool.query("DELETE FROM email_outbox WHERE recipient=$1", [
-      "sarah.smith@example.com",
+    pool.query('DELETE FROM email_outbox WHERE recipient=$1', [
+      'sarah.smith@example.com',
     ]),
   );
 });
 
-test("collection pagination bounds results, preserves totals, and rejects invalid pages", async () => {
+test('collection pagination bounds results, preserves totals, and rejects invalid pages', async () => {
   const headers = { authorization: `Bearer ${clinicianToken}` };
-  const ids = ["pagination-post-a", "pagination-post-b", "pagination-post-c"];
+  const ids = ['pagination-post-a', 'pagination-post-b', 'pagination-post-c'];
   try {
     for (const id of ids) {
       await pool.query(
@@ -583,26 +611,46 @@ test("collection pagination bounds results, preserves totals, and rejects invali
         [id],
       );
     }
-    const queue = await request("/api/v1/moderation/queue?pageSize=1", {
+    const firstPosts = await request(
+      '/api/v1/posts?status=PENDING_MODERATION&search=Pagination%20fixture&pageSize=1&page=1',
+      { headers },
+    );
+    const secondPosts = await request(
+      '/api/v1/posts?status=PENDING_MODERATION&search=Pagination%20fixture&pageSize=1&page=2',
+      { headers },
+    );
+    assert.equal(firstPosts.body.total, 3);
+    assert.equal(secondPosts.body.total, 3);
+    assert.equal(firstPosts.body.posts.length, 1);
+    assert.notEqual(firstPosts.body.posts[0].id, secondPosts.body.posts[0].id);
+    const adQueue = await request('/api/v1/moderation/queue?condition=AD', {
+      headers,
+    });
+    assert.ok(
+      adQueue.body.items.every(
+        (item: { condition: string }) => item.condition !== 'FTD',
+      ),
+    );
+    const queue = await request('/api/v1/moderation/queue?pageSize=1', {
       headers,
     });
     assert.equal(queue.status, 200);
     assert.equal(queue.body.items.length, 1);
     assert.ok(queue.body.totalPending >= 3);
-    const next = await request("/api/v1/moderation/queue?pageSize=1&page=2", {
+    const next = await request('/api/v1/moderation/queue?pageSize=1&page=2', {
       headers,
     });
     assert.notEqual(queue.body.items[0].id, next.body.items[0].id);
-    const empty = await request("/api/v1/posts?pageSize=1&page=999999", {
+    const empty = await request('/api/v1/posts?pageSize=1&page=999999', {
       headers,
     });
     assert.equal(empty.status, 200);
     assert.deepEqual(empty.body.posts, []);
     assert.equal(empty.body.pagination.pageSize, 1);
     for (const endpoint of [
-      "/api/v1/posts",
-      "/api/v1/moderation/queue",
-      "/api/v1/chat/private",
+      '/api/v1/posts',
+      '/api/v1/moderation/queue',
+      '/api/v1/chat/private',
     ]) {
       assert.equal(
         (await request(`${endpoint}?page=0`, { headers })).status,
@@ -612,6 +660,17 @@ test("collection pagination bounds results, preserves totals, and rejects invali
       assert.equal(bounded.body.pagination.pageSize, 100);
     }
   } finally {
-    await pool.query("DELETE FROM posts WHERE id=ANY($1::text[])", [ids]);
+    await pool.query('DELETE FROM posts WHERE id=ANY($1::text[])', [ids]);
   }
+});
+
+test('knowledge rejects missing text and health is exempt from throttling', async () => {
+  for (const endpoint of ['chat', 'deflect'])
+    assert.equal(
+      (await request(`/api/v1/knowledge/${endpoint}`, json(clinicianToken, {})))
+        .status,
+      400,
+    );
+  for (let index = 0; index < 110; index++)
+    assert.equal((await request('/api/v1/health')).status, 200);
 });

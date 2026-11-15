@@ -1,15 +1,16 @@
-import { Router } from "express";
-import { z } from "zod";
-import { query, transaction } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { paginationMeta, parsePagination } from "../../lib/pagination.js";
-import { isStaffRole } from "../../lib/roles.js";
+import type { NoteRow } from '../../db/rows.js';
+import { Router } from 'express';
+import { z } from 'zod';
+import { query, transaction } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { paginationMeta, parsePagination } from '../../lib/pagination.js';
+import { isStaffRole } from '../../lib/roles.js';
 import {
   isUrgentClinicalContent,
   sanitizeUserContent,
   scanForPhi,
-} from "../../lib/contentSafety.js";
-import { authenticateToken, requireStaff } from "../../middleware/auth.js";
+} from '../../lib/contentSafety.js';
+import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 import {
   commentSelect,
   findComment,
@@ -17,7 +18,7 @@ import {
   mapComment,
   mapPost,
   postSelect,
-} from "./postQueries.js";
+} from './postQueries.js';
 
 const router = Router();
 
@@ -29,7 +30,15 @@ const postListWhere = `WHERE
     AND p.condition IN (COALESCE((SELECT condition FROM users WHERE id=$1),'FTD'),'BOTH'))
     OR (p.author_id=$1 AND p.status='PENDING_MODERATION'))))
  AND ($4::text IS NULL OR EXISTS(SELECT 1 FROM post_groups filter_pg WHERE filter_pg.post_id=p.id AND filter_pg.cohort_id=$4))
- AND ($5::text IS NULL OR p.condition IN ($5,'BOTH'))`;
+ AND ($5::text IS NULL OR p.condition IN ($5,'BOTH'))
+ AND ($6::text = '' OR p.title ILIKE '%'||$6||'%' OR p.sanitized_content ILIKE '%'||$6||'%' OR EXISTS(SELECT 1 FROM users su WHERE su.id=p.author_id AND su.anonymous_handle ILIKE '%'||$6||'%') OR EXISTS(SELECT 1 FROM post_groups sg JOIN cohorts sc ON sc.id=sg.cohort_id WHERE sg.post_id=p.id AND (sc.name ILIKE '%'||$6||'%' OR sc.geographic_region ILIKE '%'||$6||'%')))
+ AND ($7::text <> 'my-posts' OR p.author_id=$1)
+ AND ($7::text <> 'all' OR p.status='APPROVED')
+ AND ($8::text <> 'closed' OR p.is_closed)
+ AND ($8::text <> 'open' OR NOT p.is_closed)
+ AND ($9::text <> 'closed' OR p.is_closed)
+ AND ($9::text <> 'moderated' OR (NOT p.allow_unmoderated_replies AND NOT p.is_closed))
+ AND ($9::text <> 'unmoderated' OR (p.allow_unmoderated_replies AND NOT p.is_closed))`;
 
 async function canViewPost(postId: string, userId: string, role: string) {
   if (isStaffRole(role)) return true;
@@ -48,18 +57,18 @@ async function canViewPost(postId: string, userId: string, role: string) {
 }
 
 router.get(
-  "/",
+  '/',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const staff = isStaffRole(req.user!.role);
     const status =
-      typeof req.query.status === "string" ? req.query.status : undefined;
+      typeof req.query.status === 'string' ? req.query.status : undefined;
     const groupId =
-      typeof req.query.groupId === "string" && req.query.groupId !== "all"
+      typeof req.query.groupId === 'string' && req.query.groupId !== 'all'
         ? req.query.groupId
         : undefined;
     const condition =
-      typeof req.query.condition === "string" ? req.query.condition : undefined;
+      typeof req.query.condition === 'string' ? req.query.condition : undefined;
     const { page, pageSize, limit, offset } = parsePagination(req.query);
     const values = [
       req.user!.id,
@@ -67,29 +76,39 @@ router.get(
       status ?? null,
       groupId ?? null,
       condition ?? null,
+      String(req.query.search ?? '').slice(0, 500),
+      String(req.query.section ?? ''),
+      String(req.query.closed ?? ''),
+      String(req.query.policy ?? ''),
     ];
     const [result, countResult] = await Promise.all([
       query(
-        `${postSelect} ${postListWhere} ORDER BY p.created_at DESC,p.id DESC LIMIT $6 OFFSET $7`,
+        `${postSelect} ${postListWhere} ORDER BY CASE WHEN $7='my-posts' AND p.status='PENDING_MODERATION' THEN 0 ELSE 1 END,p.created_at DESC,p.id DESC LIMIT $10 OFFSET $11`,
         [...values, limit, offset],
       ),
       query(`SELECT COUNT(*)::int total FROM posts p ${postListWhere}`, values),
     ]);
-    const posts = result.rows.map((r) => mapPost(r, staff));
+    const posts = result.rows.map((r) =>
+      mapPost(r as Parameters<typeof mapPost>[0], staff),
+    );
     const total = countResult.rows[0].total as number;
-    res.json({ total, posts, pagination: paginationMeta(page, pageSize, total) });
+    res.json({
+      total,
+      posts,
+      pagination: paginationMeta(page, pageSize, total),
+    });
   }),
 );
 
 router.get(
-  "/:id",
+  '/:id',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const staff = isStaffRole(req.user!.role);
     if (
       !(await canViewPost(String(req.params.id), req.user!.id, req.user!.role))
     )
-      throw new HttpError(404, "Discussion not found");
+      throw new HttpError(404, 'Discussion not found');
     const post = await findPost(String(req.params.id), req.user!.id, staff);
     const comments = await query(
       `${commentSelect} WHERE c.post_id=$1 AND ($2::boolean OR c.status='APPROVED' OR c.author_id=$3) ORDER BY c.created_at`,
@@ -97,21 +116,23 @@ router.get(
     );
     res.json({
       post,
-      comments: comments.rows.map((row) => mapComment(row, staff)),
+      comments: comments.rows.map((row) =>
+        mapComment(row as Parameters<typeof mapComment>[0], staff),
+      ),
     });
   }),
 );
 
 router.post(
-  "/",
+  '/',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const input = z
       .object({
         title: z.string().trim().min(3).max(255),
         content: z.string().trim().min(5).max(20000),
-        targetCohortId: z.string().default("group-general"),
-        condition: z.enum(["FTD", "AD", "BOTH"]).optional(),
+        targetCohortId: z.string().default('group-general'),
+        condition: z.enum(['FTD', 'AD', 'BOTH']).optional(),
       })
       .parse(req.body);
     const allowed = await query(
@@ -120,11 +141,11 @@ router.post(
       [input.targetCohortId, isStaffRole(req.user!.role), req.user!.id],
     );
     if (!allowed.rows[0])
-      throw new HttpError(403, "You cannot post to this cohort");
+      throw new HttpError(403, 'You cannot post to this cohort');
     const cleanTitle = sanitizeUserContent(input.title);
     const cleanContent = sanitizeUserContent(input.content);
     if (!cleanTitle || !cleanContent)
-      throw new HttpError(400, "Title and content are required");
+      throw new HttpError(400, 'Title and content are required');
     const phiAlerts = scanForPhi(`${cleanTitle} ${cleanContent}`);
     const urgent = isUrgentClinicalContent(`${cleanTitle} ${cleanContent}`);
     const requestedCondition = isStaffRole(req.user!.role)
@@ -138,7 +159,7 @@ router.post(
           req.user!.id,
           cleanTitle,
           cleanContent,
-          isStaffRole(req.user!.role) ? "APPROVED" : "PENDING_MODERATION",
+          isStaffRole(req.user!.role) ? 'APPROVED' : 'PENDING_MODERATION',
           requestedCondition,
           urgent,
           JSON.stringify(phiAlerts),
@@ -154,9 +175,9 @@ router.post(
       postId: created.id,
       status: created.status,
       message:
-        created.status === "APPROVED"
-          ? "Discussion posted."
-          : "Your question was submitted for clinician review.",
+        created.status === 'APPROVED'
+          ? 'Discussion posted.'
+          : 'Your question was submitted for clinician review.',
       hasPhiAlerts: phiAlerts.length > 0,
       phiAlertsCount: phiAlerts.length,
     });
@@ -164,7 +185,7 @@ router.post(
 );
 
 router.post(
-  "/:id/comments",
+  '/:id/comments',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const input = z
@@ -178,27 +199,27 @@ router.post(
       [req.params.id],
     );
     const post = postResult.rows[0];
-    if (!post) throw new HttpError(404, "Discussion not found");
+    if (!post) throw new HttpError(404, 'Discussion not found');
     if (
       !(await canViewPost(String(req.params.id), req.user!.id, req.user!.role))
     )
-      throw new HttpError(404, "Discussion not found");
+      throw new HttpError(404, 'Discussion not found');
     if (post.is_closed)
-      throw new HttpError(409, "This discussion is closed to new replies");
+      throw new HttpError(409, 'This discussion is closed to new replies');
     if (input.parentCommentId) {
       const parent = await query(
         `SELECT id FROM comments WHERE id=$1 AND post_id=$2 AND status='APPROVED'`,
         [input.parentCommentId, req.params.id],
       );
       if (!parent.rows[0])
-        throw new HttpError(400, "Reply parent is unavailable");
+        throw new HttpError(400, 'Reply parent is unavailable');
     }
     const status =
       isStaffRole(req.user!.role) || post.allow_unmoderated_replies
-        ? "APPROVED"
-        : "PENDING_MODERATION";
+        ? 'APPROVED'
+        : 'PENDING_MODERATION';
     const cleanContent = sanitizeUserContent(input.content);
-    if (!cleanContent) throw new HttpError(400, "Reply text is required");
+    if (!cleanContent) throw new HttpError(400, 'Reply text is required');
     const phiAlerts = scanForPhi(cleanContent);
     const result = await query(
       `INSERT INTO comments(post_id,parent_comment_id,author_id,raw_content,sanitized_content,status,phi_alerts)
@@ -218,21 +239,21 @@ router.post(
         isStaffRole(req.user!.role),
       ),
       message:
-        status === "APPROVED"
-          ? "Reply posted."
-          : "Reply submitted for moderation review.",
+        status === 'APPROVED'
+          ? 'Reply posted.'
+          : 'Reply submitted for moderation review.',
     });
   }),
 );
 
 router.post(
-  "/:id/upvote",
+  '/:id/upvote',
   authenticateToken,
   asyncHandler(async (req, res) => {
     if (
       !(await canViewPost(String(req.params.id), req.user!.id, req.user!.role))
     )
-      throw new HttpError(404, "Discussion not found");
+      throw new HttpError(404, 'Discussion not found');
     const outcome = await transaction(async (client) => {
       const deleted = await client.query(
         `DELETE FROM post_upvotes WHERE post_id=$1 AND user_id=$2 RETURNING post_id`,
@@ -261,7 +282,7 @@ router.post(
 );
 
 router.put(
-  "/:id/close",
+  '/:id/close',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -271,17 +292,17 @@ router.put(
     closed_by=CASE WHEN $1 THEN $2 ELSE NULL END,updated_at=NOW() WHERE id=$3 RETURNING id`,
       [isClosed, req.user!.id, req.params.id],
     );
-    if (!result.rows[0]) throw new HttpError(404, "Discussion not found");
+    if (!result.rows[0]) throw new HttpError(404, 'Discussion not found');
     res.json({
       post: await findPost(String(req.params.id), req.user!.id, true),
       isClosed,
-      message: isClosed ? "Discussion closed." : "Discussion reopened.",
+      message: isClosed ? 'Discussion closed.' : 'Discussion reopened.',
     });
   }),
 );
 
 router.put(
-  "/:id/unmoderated-replies",
+  '/:id/unmoderated-replies',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -293,7 +314,7 @@ router.put(
         `UPDATE posts SET allow_unmoderated_replies=$1,updated_at=NOW() WHERE id=$2 RETURNING id`,
         [allowUnmoderatedReplies, req.params.id],
       );
-      if (!updated.rows[0]) throw new HttpError(404, "Discussion not found");
+      if (!updated.rows[0]) throw new HttpError(404, 'Discussion not found');
       if (allowUnmoderatedReplies)
         await client.query(
           `UPDATE comments SET status='APPROVED',moderated_by=$1,moderated_at=NOW()
@@ -303,13 +324,13 @@ router.put(
     });
     res.json({
       post: await findPost(String(req.params.id), req.user!.id, true),
-      message: "Reply moderation setting updated.",
+      message: 'Reply moderation setting updated.',
     });
   }),
 );
 
 router.put(
-  "/:id",
+  '/:id',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const input = z
@@ -321,7 +342,7 @@ router.put(
       .refine(
         (value) => Object.values(value).some((item) => item !== undefined),
         {
-          message: "At least one change is required",
+          message: 'At least one change is required',
         },
       )
       .parse(req.body);
@@ -329,9 +350,12 @@ router.put(
       `SELECT author_id,title,raw_content FROM posts WHERE id=$1`,
       [req.params.id],
     );
-    if (!owner.rows[0]) throw new HttpError(404, "Discussion not found");
-    if (owner.rows[0].author_id !== req.user!.id && !isStaffRole(req.user!.role))
-      throw new HttpError(403, "Not allowed to edit this discussion");
+    if (!owner.rows[0]) throw new HttpError(404, 'Discussion not found');
+    if (
+      owner.rows[0].author_id !== req.user!.id &&
+      !isStaffRole(req.user!.role)
+    )
+      throw new HttpError(403, 'Not allowed to edit this discussion');
     if (input.targetCohortId) {
       const allowed = await query(
         `SELECT c.id FROM cohorts c WHERE c.id=$1 AND c.is_active AND
@@ -342,7 +366,7 @@ router.put(
       if (!allowed.rows[0])
         throw new HttpError(
           403,
-          "You cannot move this discussion to that cohort",
+          'You cannot move this discussion to that cohort',
         );
     }
     const cleanTitle = sanitizeUserContent(input.title ?? owner.rows[0].title);
@@ -350,7 +374,7 @@ router.put(
       input.content ?? owner.rows[0].raw_content,
     );
     if (!cleanTitle || !cleanContent)
-      throw new HttpError(400, "Title and content are required");
+      throw new HttpError(400, 'Title and content are required');
     const phiAlerts = scanForPhi(`${cleanTitle} ${cleanContent}`);
     const urgent = isUrgentClinicalContent(`${cleanTitle} ${cleanContent}`);
     await transaction(async (client) => {
@@ -385,13 +409,13 @@ router.put(
         req.user!.id,
         isStaffRole(req.user!.role),
       ),
-      message: "Question updated.",
+      message: 'Question updated.',
     });
   }),
 );
 
 router.delete(
-  "/:id",
+  '/:id',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const result = await query(
@@ -399,20 +423,20 @@ router.delete(
       [req.params.id, req.user!.id, isStaffRole(req.user!.role)],
     );
     if (!result.rows[0])
-      throw new HttpError(404, "Discussion not found or not editable");
-    res.json({ success: true, message: "Question withdrawn successfully." });
+      throw new HttpError(404, 'Discussion not found or not editable');
+    res.json({ success: true, message: 'Question withdrawn successfully.' });
   }),
 );
 
 router.put(
-  "/:postId/comments/:commentId",
+  '/:postId/comments/:commentId',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const { content } = z
       .object({ content: z.string().trim().min(1).max(10000) })
       .parse(req.body);
     const cleanContent = sanitizeUserContent(content);
-    if (!cleanContent) throw new HttpError(400, "Reply text is required");
+    if (!cleanContent) throw new HttpError(400, 'Reply text is required');
     const phiAlerts = scanForPhi(cleanContent);
     const result = await query(
       `UPDATE comments SET raw_content=$1,sanitized_content=$1,phi_alerts=$6,
@@ -430,19 +454,19 @@ router.put(
       ],
     );
     if (!result.rows[0])
-      throw new HttpError(404, "Reply not found or not editable");
+      throw new HttpError(404, 'Reply not found or not editable');
     res.json({
       comment: await findComment(
         result.rows[0].id,
         isStaffRole(req.user!.role),
       ),
-      message: "Reply updated.",
+      message: 'Reply updated.',
     });
   }),
 );
 
 router.delete(
-  "/:postId/comments/:commentId",
+  '/:postId/comments/:commentId',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const result = await query(
@@ -455,34 +479,38 @@ router.delete(
       ],
     );
     if (!result.rows[0])
-      throw new HttpError(404, "Reply not found or not editable");
-    res.json({ success: true, message: "Reply removed successfully." });
+      throw new HttpError(404, 'Reply not found or not editable');
+    res.json({ success: true, message: 'Reply removed successfully.' });
   }),
 );
 
 router.post(
-  "/:id/private-note",
+  '/:id/private-note',
   authenticateToken,
-  requireStaff,
   asyncHandler(async (req, res) => {
     const { message, action } = z
       .object({
         message: z.string().trim().min(1).max(5000),
-        action: z.enum(["KEEP_PENDING", "PUBLISH"]).default("KEEP_PENDING"),
+        action: z.enum(['KEEP_PENDING', 'PUBLISH']).default('KEEP_PENDING'),
       })
       .parse(req.body);
     const outcome = await transaction(async (client) => {
       const post = await client.query(
-        `SELECT id,status FROM posts WHERE id=$1 FOR UPDATE`,
+        `SELECT id,status,author_id FROM posts WHERE id=$1 FOR UPDATE`,
         [req.params.id],
       );
-      if (!post.rows[0]) throw new HttpError(404, "Discussion not found");
+      if (!post.rows[0]) throw new HttpError(404, 'Discussion not found');
+      if (
+        !isStaffRole(req.user!.role) &&
+        (post.rows[0].author_id !== req.user!.id || action !== 'KEEP_PENDING')
+      )
+        throw new HttpError(403, 'Private discussion access denied');
       const inserted = await client.query(
         `INSERT INTO moderator_private_notes(post_id,sender_id,message) VALUES($1,$2,$3) RETURNING *`,
         [req.params.id, req.user!.id, message],
       );
       let postStatus = post.rows[0].status;
-      if (action === "PUBLISH") {
+      if (action === 'PUBLISH') {
         const published = await client.query(
           `UPDATE posts SET status='APPROVED',moderated_by=$1,moderated_at=NOW(),updated_at=NOW()
            WHERE id=$2 RETURNING status`,
@@ -497,7 +525,9 @@ router.post(
       );
       return { inserted: inserted.rows[0], notes: notes.rows, postStatus };
     });
-    const toNote = (n: any) => ({
+    const toNote = (
+      n: NoteRow & { first_name: string; last_name: string; role: string },
+    ) => ({
       id: n.id,
       senderId: n.sender_id,
       senderName: `${n.first_name} ${n.last_name}`,
@@ -512,9 +542,9 @@ router.post(
       postStatus: outcome.postStatus,
       notes,
       message:
-        action === "PUBLISH"
-          ? "Private message sent and post published!"
-          : "Private message sent to care partner.",
+        action === 'PUBLISH'
+          ? 'Private message sent and post published!'
+          : 'Private message sent to care partner.',
     });
   }),
 );

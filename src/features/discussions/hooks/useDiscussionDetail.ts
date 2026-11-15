@@ -1,7 +1,8 @@
-import { discussionApi } from "@/features/discussions/api/discussionApi";
-import { moderationApi } from "@/features/moderation/api/moderationApi";
-import { Comment, CurrentUser, Post, getProperGroupName } from "@/types";
-import React, { useEffect, useRef, useState } from "react";
+import { reportError } from '@/shared/lib/logger';
+import { discussionApi } from '@/features/discussions/api/discussionApi';
+import { moderationApi } from '@/features/moderation/api/moderationApi';
+import { Comment, CurrentUser, Post, getProperGroupName } from '@/types';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface DiscussionDetailProps {
   post: Post;
@@ -19,7 +20,7 @@ export function useDiscussionDetail({
   const [post, setPost] = useState<Post>(initialPost);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
-  const [replyText, setReplyText] = useState("");
+  const [replyText, setReplyText] = useState('');
   const [replyTarget, setReplyTarget] = useState<Comment | null>(null);
   const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(
     new Set(),
@@ -47,7 +48,7 @@ export function useDiscussionDetail({
 
   // Comment editing
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editCommentText, setEditCommentText] = useState("");
+  const [editCommentText, setEditCommentText] = useState('');
   const [isSavingComment, setIsSavingComment] = useState(false);
 
   // Moderator reply policy & inappropriate reply removal
@@ -57,16 +58,16 @@ export function useDiscussionDetail({
   const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
 
   // Care partner private replies to moderators
-  const [carePrivateReplyText, setCarePrivateReplyText] = useState("");
+  const [carePrivateReplyText, setCarePrivateReplyText] = useState('');
   const [isSendingCarePrivateReply, setIsSendingCarePrivateReply] =
     useState(false);
   const [showCarePrivateReplyBox, setShowCarePrivateReplyBox] = useState(false);
 
   const replyFormRef = useRef<HTMLFormElement | null>(null);
   const isClinician =
-    currentUser.role === "CLINICIAN_MODERATOR" ||
-    currentUser.role === "SYSTEM_ADMIN";
-  const isMainPostPending = post.status === "PENDING_MODERATION";
+    currentUser.role === 'CLINICIAN_MODERATOR' ||
+    currentUser.role === 'SYSTEM_ADMIN';
+  const isMainPostPending = post.status === 'PENDING_MODERATION';
   const isMainPostAuthor =
     !isClinician &&
     (post.author.userId === currentUser.id ||
@@ -89,7 +90,7 @@ export function useDiscussionDetail({
         setIsLiked(Boolean(res.post.isUpvoted));
       }
     } catch (err) {
-      console.error("Failed to load discussion comments:", err);
+      reportError('Failed to load discussion comments:', err);
     } finally {
       setLoadingComments(false);
     }
@@ -97,7 +98,7 @@ export function useDiscussionDetail({
 
   useEffect(() => {
     loadComments();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [post.id]);
 
   const handleSaveMainPost = async (e: React.FormEvent) => {
@@ -116,7 +117,7 @@ export function useDiscussionDetail({
         content: mainPostContent.trim(),
       });
       setIsEditingMainPost(false);
-      setReplySuccessMessage(res.message || "Question updated successfully.");
+      setReplySuccessMessage(res.message || 'Question updated successfully.');
       setTimeout(() => setReplySuccessMessage(null), 3500);
       if (onPostUpdated) {
         onPostUpdated({
@@ -126,8 +127,8 @@ export function useDiscussionDetail({
         });
       }
     } catch (err) {
-      console.error("Failed to update question:", err);
-      setReplyErrorMessage("Unable to update question. Please try again.");
+      reportError('Failed to update question:', err);
+      setReplyErrorMessage('Unable to update question. Please try again.');
       setTimeout(() => setReplyErrorMessage(null), 3500);
     } finally {
       setIsSavingMainPost(false);
@@ -141,8 +142,8 @@ export function useDiscussionDetail({
       setShowWithdrawPostModal(false);
       onBack();
     } catch (err) {
-      console.error("Failed to withdraw question:", err);
-      setReplyErrorMessage("Unable to withdraw question.");
+      reportError('Failed to withdraw question:', err);
+      setReplyErrorMessage('Unable to withdraw question.');
       setTimeout(() => setReplyErrorMessage(null), 3500);
       setIsWithdrawingPost(false);
     }
@@ -168,11 +169,11 @@ export function useDiscussionDetail({
         ),
       );
       setEditingCommentId(null);
-      setReplySuccessMessage("Reply updated successfully.");
+      setReplySuccessMessage('Reply updated successfully.');
       setTimeout(() => setReplySuccessMessage(null), 3500);
     } catch (err) {
-      console.error("Failed to update reply:", err);
-      setReplyErrorMessage("Failed to update reply.");
+      reportError('Failed to update reply:', err);
+      setReplyErrorMessage('Failed to update reply.');
       setTimeout(() => setReplyErrorMessage(null), 3500);
     } finally {
       setIsSavingComment(false);
@@ -193,14 +194,14 @@ export function useDiscussionDetail({
           commentCount: Math.max(0, post.commentCount - 1),
         });
       }
-      setReplySuccessMessage("Reply withdrawn successfully.");
+      setReplySuccessMessage('Reply withdrawn successfully.');
       setTimeout(() => setReplySuccessMessage(null), 3500);
     } catch (err) {
       // Rollback to previous state on error
       setComments(previousComments);
-      setReplyErrorMessage("Unable to withdraw reply. Please try again.");
+      setReplyErrorMessage('Unable to withdraw reply. Please try again.');
       setTimeout(() => setReplyErrorMessage(null), 4000);
-      console.error("Failed to delete comment:", err);
+      reportError('Failed to delete comment:', err);
     }
   };
 
@@ -213,7 +214,7 @@ export function useDiscussionDetail({
       const res = await moderationApi.sendPostPrivateNote(post.id, {
         message: carePrivateReplyText.trim(),
         senderId: currentUser.id,
-        action: "KEEP_PENDING",
+        action: 'KEEP_PENDING',
       });
 
       const updated = {
@@ -225,15 +226,15 @@ export function useDiscussionDetail({
       };
       setPost(updated);
       if (onPostUpdated) onPostUpdated(updated);
-      setCarePrivateReplyText("");
+      setCarePrivateReplyText('');
       setShowCarePrivateReplyBox(false);
       setReplySuccessMessage(
-        "Your private reply has been sent to the moderator.",
+        'Your private reply has been sent to the moderator.',
       );
       setTimeout(() => setReplySuccessMessage(null), 3500);
-    } catch (err: any) {
-      console.error("Failed to send private reply:", err);
-      setReplyErrorMessage("Unable to send private message.");
+    } catch (err: unknown) {
+      reportError('Failed to send private reply:', err);
+      setReplyErrorMessage('Unable to send private message.');
       setTimeout(() => setReplyErrorMessage(null), 3500);
     } finally {
       setIsSendingCarePrivateReply(false);
@@ -262,8 +263,8 @@ export function useDiscussionDetail({
       setReplySuccessMessage(
         res.message ||
           (newAllowUnmoderated
-            ? "Open replies enabled: Anyone can now reply without moderation."
-            : "Moderated mode enabled: Replies now require clinical verification."),
+            ? 'Open replies enabled: Anyone can now reply without moderation.'
+            : 'Moderated mode enabled: Replies now require clinical verification.'),
       );
       setTimeout(() => setReplySuccessMessage(null), 3500);
       await loadComments();
@@ -275,8 +276,8 @@ export function useDiscussionDetail({
       };
       setPost(revertedPost);
       if (onPostUpdated) onPostUpdated(revertedPost);
-      console.error("Failed to update reply moderation policy:", err);
-      setReplyErrorMessage("Failed to update reply moderation policy.");
+      reportError('Failed to update reply moderation policy:', err);
+      setReplyErrorMessage('Failed to update reply moderation policy.');
       setTimeout(() => setReplyErrorMessage(null), 3500);
     }
   };
@@ -302,11 +303,11 @@ export function useDiscussionDetail({
       if (onPostUpdated) onPostUpdated(updatedPost);
 
       setCommentToDelete(null);
-      setReplySuccessMessage("Inappropriate reply removed by moderator.");
+      setReplySuccessMessage('Inappropriate reply removed by moderator.');
       setTimeout(() => setReplySuccessMessage(null), 3500);
     } catch (err) {
-      console.error("Failed to remove inappropriate reply:", err);
-      setReplyErrorMessage("Failed to remove reply.");
+      reportError('Failed to remove inappropriate reply:', err);
+      setReplyErrorMessage('Failed to remove reply.');
       setTimeout(() => setReplyErrorMessage(null), 4000);
     } finally {
       setDeletingCommentId(null);
@@ -337,13 +338,13 @@ export function useDiscussionDetail({
       setReplySuccessMessage(
         res.message ||
           (newClosed
-            ? "Discussion closed to new replies. All existing replies remain preserved."
-            : "Discussion reopened. Care partners can now post replies."),
+            ? 'Discussion closed to new replies. All existing replies remain preserved.'
+            : 'Discussion reopened. Care partners can now post replies.'),
       );
       setTimeout(() => setReplySuccessMessage(null), 4000);
     } catch (err) {
-      console.error("Failed to toggle discussion close status:", err);
-      setReplyErrorMessage("Failed to update discussion status.");
+      reportError('Failed to toggle discussion close status:', err);
+      setReplyErrorMessage('Failed to update discussion status.');
       setTimeout(() => setReplyErrorMessage(null), 4000);
     } finally {
       setIsTogglingClose(false);
@@ -367,13 +368,13 @@ export function useDiscussionDetail({
         currentUser.id,
         replyTarget?.id,
       );
-      setReplyText("");
+      setReplyText('');
       setReplyTarget(null);
 
       const confirmationText =
         isClinician || isUnmoderated
-          ? "Your reply has been published."
-          : "Your reply was submitted successfully and sent to Dr. Seema for clinical safety review.";
+          ? 'Your reply has been published.'
+          : 'Your reply was submitted successfully and sent to Dr. Seema for clinical safety review.';
 
       setReplySuccessMessage(confirmationText);
       setTimeout(() => setReplySuccessMessage(null), 6000);
@@ -388,8 +389,8 @@ export function useDiscussionDetail({
               ...res.comment,
               status:
                 isClinician || isUnmoderated
-                  ? "APPROVED"
-                  : "PENDING_MODERATION",
+                  ? 'APPROVED'
+                  : 'PENDING_MODERATION',
             },
           ];
         });
@@ -405,11 +406,11 @@ export function useDiscussionDetail({
         });
       }
     } catch (err) {
-      console.error("Failed to send reply:", err);
+      reportError('Failed to send reply:', err);
       setReplyErrorMessage(
         err instanceof Error
           ? err.message
-          : "Unable to submit your reply right now. Please try again.",
+          : 'Unable to submit your reply right now. Please try again.',
       );
       setTimeout(() => setReplyErrorMessage(null), 5000);
     } finally {
@@ -437,7 +438,7 @@ export function useDiscussionDetail({
       setIsLiked(res.isUpvoted);
       if (onPostUpdated) onPostUpdated(syncedPost);
     } catch (err) {
-      console.error("Failed to upvote post:", err);
+      reportError('Failed to upvote post:', err);
     }
   };
 

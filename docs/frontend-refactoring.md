@@ -108,7 +108,4 @@ with separate replies and action-dialog components. Composer matching rules live
 in `lib/discussionSearch.ts`, and suggestions render in `SimilarDiscussionsBox`.
 Development fixtures are grouped by domain under `shared/dev/fixtures`.
 
-Collection adapters traverse bounded backend pages to preserve existing display
-and filtering semantics. This is a compatibility strategy; future incremental
-loading should move search/filter policy to the server before fetching only one
-page at a time.
+Collection adapters request one server page at a time. The feed and clinician workspace apply search, audience, ownership, and discussion policy filters on the server before counting and selecting a page.

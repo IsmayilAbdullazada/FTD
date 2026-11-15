@@ -43,7 +43,8 @@ export function DeleteGuideDialog({
                   Remove Guide?
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                  Are you sure you want to delete this document from Dr. Seema's Assistant knowledge base?
+                  Are you sure you want to delete this document from Dr. Seema's
+                  Assistant knowledge base?
                 </p>
               </div>
             </div>
@@ -56,16 +57,25 @@ export function DeleteGuideDialog({
               <div className="text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2 text-[11px]">
                 <span className="font-mono">{guideToDelete.fileName}</span>
                 <span>•</span>
-                <span>{guideToDelete.wordCount?.toLocaleString() || '—'} words</span>
+                <span>
+                  {guideToDelete.wordCount?.toLocaleString() || '—'} words
+                </span>
                 <span>•</span>
                 <span className="px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-750 text-slate-700 dark:text-slate-300">
-                  {(guideToDelete.topicTag || guideToDelete.category || guideToDelete.condition || 'General Guide').replace(/_/g, ' ')}
+                  {(
+                    guideToDelete.topicTag ||
+                    guideToDelete.category ||
+                    guideToDelete.condition ||
+                    'General Guide'
+                  ).replace(/_/g, ' ')}
                 </span>
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-              Once removed, the assistant will immediately stop indexing this document or referencing its protocols when responding to caregiver queries. This deletion will be recorded in the audit trail.
+              Once removed, the assistant will immediately stop indexing this
+              document or referencing its protocols when responding to caregiver
+              queries. This deletion will be recorded in the audit trail.
             </div>
 
             {/* Action Buttons */}
@@ -103,4 +113,3 @@ export function DeleteGuideDialog({
     </>
   );
 }
-

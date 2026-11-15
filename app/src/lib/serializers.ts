@@ -1,4 +1,5 @@
-export const currentUser = (row: any) => ({
+import type { UserRow, CohortRow, ResourceRow } from '../db/rows.js';
+export const currentUser = (row: UserRow) => ({
   id: row.id,
   email: row.email,
   role: row.role,
@@ -11,7 +12,7 @@ export const currentUser = (row: any) => ({
   condition: row.condition ?? undefined,
 });
 
-export const persona = (row: any) => ({
+export const persona = (row: UserRow) => ({
   id: row.id,
   name: `${row.first_name} ${row.last_name}`,
   role: row.role,
@@ -20,7 +21,7 @@ export const persona = (row: any) => ({
   condition: row.condition ?? undefined,
 });
 
-export const cohort = (row: any) => ({
+export const cohort = (row: CohortRow & { member_count?: number }) => ({
   id: row.id,
   name: row.name,
   fullName: row.full_name ?? undefined,
@@ -35,7 +36,10 @@ export const cohort = (row: any) => ({
   memberCount: Number(row.member_count ?? 0),
 });
 
-export const author = (row: any, privileged = false) => ({
+export const author = (
+  row: UserRow & { author_id: string },
+  privileged = false,
+) => ({
   userId: row.author_id,
   ...(privileged
     ? {
@@ -50,7 +54,7 @@ export const author = (row: any, privileged = false) => ({
   avatarColor: row.avatar_color,
 });
 
-export const resource = (row: any) => ({
+export const resource = (row: ResourceRow) => ({
   id: row.id,
   title: row.title,
   summary: row.summary,

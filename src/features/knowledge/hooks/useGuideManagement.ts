@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { Dispatch, SetStateAction, useRef, useState } from 'react';
 import { guideApi } from '@/features/knowledge/api/guideApi';
 import { cleanPdfText } from '@/shared/lib/cleanPdfText';
@@ -8,9 +9,7 @@ import {
   GuidePageData,
 } from '@/features/knowledge/types';
 import type { CurrentUser } from '@/types';
-import {
-  suggestGuideTitle,
-} from '@/features/knowledge/lib/guideTitle';
+import { suggestGuideTitle } from '@/features/knowledge/lib/guideTitle';
 import {
   filterGuides,
   replaceGuide,
@@ -32,14 +31,21 @@ export function useGuideManagement({
   const [loadingGuides, setLoadingGuides] = useState(false);
   const [guideSearchFilter, setGuideSearchFilter] = useState('');
   const [showUploadGuideModal, setShowUploadGuideModal] = useState(false);
-  const [inspectGuideModal, setInspectGuideModal] = useState<ChatbotGuideFile | null>(null);
-  const [guideToDelete, setGuideToDelete] = useState<ChatbotGuideFile | null>(null);
+  const [inspectGuideModal, setInspectGuideModal] =
+    useState<ChatbotGuideFile | null>(null);
+  const [guideToDelete, setGuideToDelete] = useState<ChatbotGuideFile | null>(
+    null,
+  );
   const [isDeletingGuide, setIsDeletingGuide] = useState(false);
-  const [guideStatusFilter, setGuideStatusFilter] = useState<'ALL' | 'DRAFT' | 'APPROVED'>('ALL');
+  const [guideStatusFilter, setGuideStatusFilter] = useState<
+    'ALL' | 'DRAFT' | 'APPROVED'
+  >('ALL');
 
   // Upload Guide Form State (Condition, Title, Topic Tag, Page-by-Page Extraction)
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(null);
+  const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(
+    null,
+  );
   const [uploadTopicTag, setUploadTopicTag] = useState('');
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadContent, setUploadContent] = useState('');
@@ -48,18 +54,25 @@ export function useGuideManagement({
   const [selectedInspectPage, setSelectedInspectPage] = useState<number>(1);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showTechDetails, setShowTechDetails] = useState(false);
-  const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(null);
+  const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(
+    null,
+  );
   const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
   const [isUploadingGuide, setIsUploadingGuide] = useState(false);
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
-  const [extractedPdfStats, setExtractedPdfStats] = useState<{ pages: number; words: number } | null>(null);
+  const [extractedPdfStats, setExtractedPdfStats] = useState<{
+    pages: number;
+    words: number;
+  } | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Live Chatbot Test Simulator State
   const [testQuery, setTestQuery] = useState('');
   const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<ChatbotGuideTestResult | null>(null);
+  const [testResult, setTestResult] = useState<ChatbotGuideTestResult | null>(
+    null,
+  );
   const [copiedInspect, setCopiedInspect] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -96,7 +109,7 @@ export function useGuideManagement({
       }
       setChatbotGuides(deduped);
     } catch (err) {
-      console.error('Failed to load chatbot guides:', err);
+      reportError('Failed to load chatbot guides:', err);
     } finally {
       setLoadingGuides(false);
     }
@@ -109,12 +122,12 @@ export function useGuideManagement({
       setActionSuccessNotice(
         res.guide.isActive
           ? `Guide "${guide.title}" activated. Assistant will now use this document.`
-          : `Guide "${guide.title}" paused. Assistant will not use this document.`
+          : `Guide "${guide.title}" paused. Assistant will not use this document.`,
       );
       setTimeout(() => setActionSuccessNotice(null), 3500);
       loadChatbotGuides();
     } catch (err) {
-      console.error('Failed to toggle guide:', err);
+      reportError('Failed to toggle guide:', err);
       setActionSuccessNotice('Could not update guide status.');
       setTimeout(() => setActionSuccessNotice(null), 3500);
     }
@@ -130,13 +143,15 @@ export function useGuideManagement({
     try {
       await guideApi.deleteChatbotGuide(guideToDelete.id);
       setChatbotGuides((prev) => prev.filter((g) => g.id !== guideToDelete.id));
-      setActionSuccessNotice(`Guide "${guideToDelete.title}" successfully removed.`);
+      setActionSuccessNotice(
+        `Guide "${guideToDelete.title}" successfully removed.`,
+      );
       setTimeout(() => setActionSuccessNotice(null), 3500);
       setGuideToDelete(null);
       await loadChatbotGuides();
       onQueueUpdated();
     } catch (err) {
-      console.error('Failed to delete guide:', err);
+      reportError('Failed to delete guide:', err);
       setActionSuccessNotice('Could not delete guide. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 3500);
     } finally {
@@ -175,7 +190,10 @@ export function useGuideManagement({
 
     if (guide.pages && guide.pages.length > 0) {
       setUploadPages(guide.pages);
-      setExtractedPdfStats({ pages: guide.pages.length, words: guide.wordCount || 0 });
+      setExtractedPdfStats({
+        pages: guide.pages.length,
+        words: guide.wordCount || 0,
+      });
     } else {
       // Reconstruct pages if older guide record didn't save page array
       const rawPages = guide.content.split(/(?=^##\s+)/m).filter(Boolean);
@@ -188,8 +206,22 @@ export function useGuideManagement({
           chunkCount: Math.max(1, Math.ceil(words / 340)),
         };
       });
-      setUploadPages(builtPages.length > 0 ? builtPages : [{ pageNumber: 1, text: guide.content, wordCount: guide.wordCount || 0, chunkCount: 1 }]);
-      setExtractedPdfStats({ pages: builtPages.length || 1, words: guide.wordCount || 0 });
+      setUploadPages(
+        builtPages.length > 0
+          ? builtPages
+          : [
+              {
+                pageNumber: 1,
+                text: guide.content,
+                wordCount: guide.wordCount || 0,
+                chunkCount: 1,
+              },
+            ],
+      );
+      setExtractedPdfStats({
+        pages: builtPages.length || 1,
+        words: guide.wordCount || 0,
+      });
     }
 
     setUploadPdfPreviewUrl(guide.pdfUrl || `/resources/${guide.fileName}`);
@@ -204,7 +236,7 @@ export function useGuideManagement({
       setTimeout(() => setActionSuccessNotice(null), 3500);
       loadChatbotGuides();
     } catch (err) {
-      console.error('Failed to approve guide:', err);
+      reportError('Failed to approve guide:', err);
       setActionSuccessNotice('Could not approve guide.');
       setTimeout(() => setActionSuccessNotice(null), 3000);
     }
@@ -224,10 +256,12 @@ export function useGuideManagement({
 
       const res = await fetch(`/resources/${resourceFileName}`);
       const blob = await res.blob();
-      const file = new File([blob], resourceFileName, { type: 'application/pdf' });
+      const file = new File([blob], resourceFileName, {
+        type: 'application/pdf',
+      });
       handleProcessFile(file);
     } catch (err) {
-      console.error('Failed to load resource file:', err);
+      reportError('Failed to load resource file:', err);
       setIsExtractingPdf(false);
       setActionSuccessNotice('Could not load library PDF file.');
       setTimeout(() => setActionSuccessNotice(null), 3000);
@@ -235,10 +269,14 @@ export function useGuideManagement({
   };
 
   const handleProcessFile = (file: File) => {
-    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+    const isPdf =
+      file.name.toLowerCase().endsWith('.pdf') ||
+      file.type === 'application/pdf';
     setUploadFileName(file.name);
     // Suggest title immediately from filename or known library entry
-    setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name)));
+    setUploadTitle((prev) =>
+      prev && prev.trim() ? prev : suggestGuideTitle(file.name),
+    );
     setUploadCondition(null); // Start with NOTHING selected so reviewer must make a deliberate choice
     setUploadTopicTag('');
     setUploadPages([]);
@@ -260,7 +298,10 @@ export function useGuideManagement({
           const chunkSize = 8192;
           for (let i = 0; i < len; i += chunkSize) {
             const sub = bytes.subarray(i, Math.min(i + chunkSize, len));
-            binary += String.fromCharCode.apply(null, sub as unknown as number[]);
+            binary += String.fromCharCode.apply(
+              null,
+              sub as unknown as number[],
+            );
           }
           const base64 = btoa(binary);
 
@@ -277,14 +318,25 @@ export function useGuideManagement({
           } else {
             setUploadPdfPreviewUrl(`/resources/${file.name}`);
           }
-          setExtractedPdfStats({ pages: result.pageCount, words: result.wordCount });
+          setExtractedPdfStats({
+            pages: result.pageCount,
+            words: result.wordCount,
+          });
           // If title was empty, refine from page 1 text
-          setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name, result.pages?.[0]?.text)));
-          setActionSuccessNotice(`Extracted ${result.pageCount} pages (${result.wordCount.toLocaleString()} words) from "${file.name}".`);
+          setUploadTitle((prev) =>
+            prev && prev.trim()
+              ? prev
+              : suggestGuideTitle(file.name, result.pages?.[0]?.text),
+          );
+          setActionSuccessNotice(
+            `Extracted ${result.pageCount} pages (${result.wordCount.toLocaleString()} words) from "${file.name}".`,
+          );
           setTimeout(() => setActionSuccessNotice(null), 3500);
         } catch (err) {
-          console.error('PDF extraction failed:', err);
-          setActionSuccessNotice('Failed to extract PDF text. Please check the file.');
+          reportError('PDF extraction failed:', err);
+          setActionSuccessNotice(
+            'Failed to extract PDF text. Please check the file.',
+          );
           setTimeout(() => setActionSuccessNotice(null), 3500);
         } finally {
           setIsExtractingPdf(false);
@@ -306,8 +358,17 @@ export function useGuideManagement({
         const cleaned = cleanPdfText(text);
         setUploadContent(cleaned);
         const words = cleaned.trim().split(/\s+/).filter(Boolean).length;
-        setUploadPages([{ pageNumber: 1, text: cleaned, wordCount: words, chunkCount: Math.max(1, Math.ceil(words / 340)) }]);
-        setUploadTitle((prev) => (prev && prev.trim() ? prev : suggestGuideTitle(file.name, cleaned)));
+        setUploadPages([
+          {
+            pageNumber: 1,
+            text: cleaned,
+            wordCount: words,
+            chunkCount: Math.max(1, Math.ceil(words / 340)),
+          },
+        ]);
+        setUploadTitle((prev) =>
+          prev && prev.trim() ? prev : suggestGuideTitle(file.name, cleaned),
+        );
       };
       reader.readAsText(file);
     }
@@ -315,18 +376,24 @@ export function useGuideManagement({
 
   const handleSaveGuide = async (statusToSet: 'DRAFT' | 'APPROVED') => {
     if (!uploadCondition) {
-      setActionSuccessNotice('Please select a Target Condition (FTD, AD, or General) before saving.');
+      setActionSuccessNotice(
+        'Please select a Target Condition (FTD, AD, or General) before saving.',
+      );
       setTimeout(() => setActionSuccessNotice(null), 3500);
       return;
     }
     if (!uploadTitle.trim() || isUploadingGuide) return;
-    const finalContent = uploadContent.trim() || uploadPages.map((p) => p.text).join('\n\n');
+    const finalContent =
+      uploadContent.trim() || uploadPages.map((p) => p.text).join('\n\n');
     if (!finalContent && uploadPages.length === 0) return;
 
     setIsUploadingGuide(true);
     try {
       const isApproved = statusToSet === 'APPROVED';
-      const totalChunksCalc = uploadPages.reduce((acc, p) => acc + p.chunkCount, 0);
+      const totalChunksCalc = uploadPages.reduce(
+        (acc, p) => acc + p.chunkCount,
+        0,
+      );
 
       if (editingGuideId) {
         await guideApi.updateChatbotGuide(editingGuideId, {
@@ -342,35 +409,41 @@ export function useGuideManagement({
         setActionSuccessNotice(
           isApproved
             ? `Guide "${uploadTitle}" approved for chatbot!`
-            : `Guide "${uploadTitle}" draft updated.`
+            : `Guide "${uploadTitle}" draft updated.`,
         );
       } else {
         const res = await guideApi.uploadChatbotGuide({
           title: uploadTitle.trim(),
           condition: uploadCondition,
           topicTag: uploadTopicTag.trim() || undefined,
-          fileName: uploadFileName.trim() || `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
+          fileName:
+            uploadFileName.trim() ||
+            `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
           content: finalContent,
           pages: uploadPages,
           totalChunks: totalChunksCalc,
           status: statusToSet,
           pdfUrl: uploadPdfPreviewUrl || undefined,
-          mimeType: uploadFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain',
+          mimeType: uploadFileName.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'text/plain',
           uploadedBy: currentUser.id,
           uploadedByName: `${currentUser.firstName} ${currentUser.lastName}`,
         });
         setActionSuccessNotice(
           isApproved
             ? `Guide "${res.title}" approved for chatbot!`
-            : `Guide "${res.title}" saved as draft.`
+            : `Guide "${res.title}" saved as draft.`,
         );
       }
       resetUploadModal();
       setTimeout(() => setActionSuccessNotice(null), 4500);
       loadChatbotGuides();
     } catch (err) {
-      console.error('Failed to save guide:', err);
-      setActionSuccessNotice('Could not save guide document. Please try again.');
+      reportError('Failed to save guide:', err);
+      setActionSuccessNotice(
+        'Could not save guide document. Please try again.',
+      );
       setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {
       setIsUploadingGuide(false);
@@ -386,7 +459,7 @@ export function useGuideManagement({
       const res = await guideApi.testChatbotGuideRetrieval(q);
       setTestResult(res);
     } catch (err) {
-      console.error('Test query failed:', err);
+      reportError('Test query failed:', err);
       setActionSuccessNotice('Test query failed.');
       setTimeout(() => setActionSuccessNotice(null), 3000);
     } finally {
@@ -460,4 +533,3 @@ export function useGuideManagement({
     handleRunTestQuery,
   };
 }
-

@@ -1,12 +1,6 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { useState } from 'react';
-import {
-  Bell,
-  CheckCircle,
-  Clock,
-  X,
-  Check,
-  ArrowRight,
-} from 'lucide-react';
+import { Bell, CheckCircle, Clock, X, Check, ArrowRight } from 'lucide-react';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
 import { notificationApi } from '@/features/notifications/api/notificationApi';
 import { CurrentUser, DirectMessage, QueueItem } from '@/types';
@@ -39,14 +33,16 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isClinician = currentUser.role === 'CLINICIAN_MODERATOR' || currentUser.role === 'SYSTEM_ADMIN';
+  const isClinician =
+    currentUser.role === 'CLINICIAN_MODERATOR' ||
+    currentUser.role === 'SYSTEM_ADMIN';
 
   const handleMarkRead = async (id: string) => {
     try {
       await notificationApi.markNotificationRead(id);
       onRefreshNotifications();
     } catch (e) {
-      console.error(e);
+      reportError('Request failed', e);
     }
   };
 
@@ -65,7 +61,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
       setTimeout(() => setFeedbackToast(null), 3000);
       onQueueUpdated();
     } catch (err) {
-      console.error('Failed to quick approve:', err);
+      reportError('Failed to quick approve:', err);
     } finally {
       setProcessingId(null);
     }
@@ -87,7 +83,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
       setTimeout(() => setFeedbackToast(null), 3000);
       onQueueUpdated();
     } catch (err) {
-      console.error('Failed to quick reject:', err);
+      reportError('Failed to quick reject:', err);
     } finally {
       setProcessingId(null);
     }
@@ -216,72 +212,73 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
           {/* SECTION 2: DIRECT NOTIFICATIONS & UPDATES */}
           <div className="space-y-3">
-            {notifications.length === 0 ? (
-              !isClinician && (
-                <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">
-                  No notifications in your inbox.
-                </div>
-              )
-            ) : (
-              notifications.map((msg) => (
-                <div
-                  key={msg.id}
-                  onClick={() => !msg.read && handleMarkRead(msg.id)}
-                  className={`p-4 rounded-xl border text-sm space-y-2 cursor-pointer transition ${
-                    msg.read
-                      ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
-                      : 'bg-blue-50/40 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 font-medium">
-                      {msg.type === 'APPROVAL' && (
-                        <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      )}
-                      {msg.type === 'REJECTION' && (
-                        <X className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                      )}
-                      {msg.type !== 'APPROVAL' && msg.type !== 'REJECTION' && (
-                        <Bell className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
-                      )}
-                      <span className="text-slate-900 dark:text-white text-sm font-semibold">{msg.title}</span>
-                    </div>
-                    {!msg.read && (
-                      <span className="w-2 h-2 rounded-full bg-[#002D72] dark:bg-blue-400 shrink-0" />
-                    )}
+            {notifications.length === 0
+              ? !isClinician && (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">
+                    No notifications in your inbox.
                   </div>
-
-                  <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 font-sans">
-                    {msg.message}
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-                      <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                )
+              : notifications.map((msg) => (
+                  <div
+                    key={msg.id}
+                    onClick={() => !msg.read && handleMarkRead(msg.id)}
+                    className={`p-4 rounded-xl border text-sm space-y-2 cursor-pointer transition ${
+                      msg.read
+                        ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        : 'bg-blue-50/40 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60 text-slate-900 dark:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 font-medium">
+                        {msg.type === 'APPROVAL' && (
+                          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        )}
+                        {msg.type === 'REJECTION' && (
+                          <X className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                        )}
+                        {msg.type !== 'APPROVAL' &&
+                          msg.type !== 'REJECTION' && (
+                            <Bell className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
+                          )}
+                        <span className="text-slate-900 dark:text-white text-sm font-semibold">
+                          {msg.title}
+                        </span>
+                      </div>
+                      {!msg.read && (
+                        <span className="w-2 h-2 rounded-full bg-[#002D72] dark:bg-blue-400 shrink-0" />
+                      )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!msg.read) handleMarkRead(msg.id);
-                        onClose();
-                        if (msg.type === 'APPROVAL' && onNavigateToFeed) {
-                          onNavigateToFeed();
-                        } else if (onNavigateToFeed) {
-                          onNavigateToFeed();
-                        }
-                      }}
-                      className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
-                    >
-                      <span>Open Discussions</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
+                    <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 font-sans">
+                      {msg.message}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
+                        <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!msg.read) handleMarkRead(msg.id);
+                          onClose();
+                          if (msg.type === 'APPROVAL' && onNavigateToFeed) {
+                            onNavigateToFeed();
+                          } else if (onNavigateToFeed) {
+                            onNavigateToFeed();
+                          }
+                        }}
+                        className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <span>Open Discussions</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))}
           </div>
         </div>
 

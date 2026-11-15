@@ -1,12 +1,13 @@
-import { createHash } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { pool } from "../config/db.js";
+import { logger } from '../lib/logger.js';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { pool } from '../config/db.js';
 
 const migrationsDirectory = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
-  "migrations",
+  'migrations',
 );
 
 interface AppliedMigration {
@@ -15,7 +16,7 @@ interface AppliedMigration {
 }
 
 function checksum(sql: string): string {
-  return createHash("sha256").update(sql).digest("hex");
+  return createHash('sha256').update(sql).digest('hex');
 }
 
 async function runMigrations() {
@@ -25,12 +26,12 @@ async function runMigrations() {
     .sort();
 
   if (!migrationFiles.length) {
-    throw new Error("No numbered SQL migrations were found");
+    throw new Error('No numbered SQL migrations were found');
   }
 
   const client = await pool.connect();
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtext('ftdcare_database_migrations'))",
     );
@@ -45,11 +46,11 @@ async function runMigrations() {
     // Earlier deployments recorded labels without checksums. Keep those records,
     // and apply the idempotent baseline before tracking numbered migrations.
     await client.query(
-      "ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT",
+      'ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT',
     );
 
     const appliedResult = await client.query<AppliedMigration>(
-      "SELECT version, checksum FROM schema_migrations",
+      'SELECT version, checksum FROM schema_migrations',
     );
     const applied = new Map(
       appliedResult.rows.map((migration) => [
@@ -59,8 +60,8 @@ async function runMigrations() {
     );
 
     for (const file of migrationFiles) {
-      const version = file.replace(/\.sql$/, "");
-      const sql = fs.readFileSync(path.join(migrationsDirectory, file), "utf8");
+      const version = file.replace(/\.sql$/, '');
+      const sql = fs.readFileSync(path.join(migrationsDirectory, file), 'utf8');
       const migrationChecksum = checksum(sql);
       const recordedChecksum = applied.get(version);
 
@@ -71,19 +72,19 @@ async function runMigrations() {
         continue;
       }
 
-      console.log(`[Migration] Applying ${version}...`);
+      logger.info(`[Migration] Applying ${version}...`);
       await client.query(sql);
       await client.query(
-        "INSERT INTO schema_migrations(version, checksum) VALUES($1, $2)",
+        'INSERT INTO schema_migrations(version, checksum) VALUES($1, $2)',
         [version, migrationChecksum],
       );
     }
 
-    await client.query("COMMIT");
-    console.log("[Migration] Database is up to date.");
+    await client.query('COMMIT');
+    logger.info('[Migration] Database is up to date.');
   } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("[Migration Error]", error);
+    await client.query('ROLLBACK');
+    logger.error('[Migration Error]', error);
     process.exitCode = 1;
   } finally {
     client.release();

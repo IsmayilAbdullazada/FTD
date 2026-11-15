@@ -1,5 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { getProperGroupName, type CommunityGroup, type GroupMember } from '@/types';
+import {
+  getProperGroupName,
+  type CommunityGroup,
+  type GroupMember,
+} from '@/types';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 
 interface ReassignMemberDialogProps {
@@ -42,7 +46,11 @@ export function ReassignMemberDialog({
                 Move Member to Another Group
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Moving <strong className="text-slate-800 dark:text-slate-200">{reassigningUser.realName}</strong>.
+                Moving{' '}
+                <strong className="text-slate-800 dark:text-slate-200">
+                  {reassigningUser.realName}
+                </strong>
+                .
               </p>
             </div>
 
@@ -56,7 +64,11 @@ export function ReassignMemberDialog({
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
               >
                 {cohorts.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                  <option
+                    key={c.id}
+                    value={c.id}
+                    className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
                     {getProperGroupName(c)}
                   </option>
                 ))}
@@ -82,8 +94,6 @@ export function ReassignMemberDialog({
           </div>
         </div>
       )}
-
     </>
   );
 }
-

@@ -1,29 +1,38 @@
-import crypto from "node:crypto";
-import { Router } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { z } from "zod";
-import { env } from "../../config/env.js";
-import { query, transaction } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { currentUser } from "../../lib/serializers.js";
-import { readPreview, sendEmail } from "../../services/email.js";
-import { authenticateToken, requireStaff } from "../../middleware/auth.js";
-import { authLimiter } from "../../middleware/rateLimiter.js";
-import { clearSessionCookie, setSessionCookie } from "../../lib/session.js";
+const dummyPasswordHash = bcrypt.hashSync(
+  crypto.randomBytes(32).toString('hex'),
+  12,
+);
+import crypto from 'node:crypto';
+import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { env } from '../../config/env.js';
+import { query, transaction } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { currentUser } from '../../lib/serializers.js';
+import { readPreview, sendEmail } from '../../services/email.js';
+import { authenticateToken, requireStaff } from '../../middleware/auth.js';
+import { authLimiter } from '../../middleware/rateLimiter.js';
+import { clearSessionCookie, setSessionCookie } from '../../lib/session.js';
 
 const router = Router();
 const sha256 = (value: string) =>
-  crypto.createHash("sha256").update(value).digest("hex");
+  crypto.createHash('sha256').update(value).digest('hex');
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,
     (char) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
         char
       ]!,
   );
-const tokenFor = (user: any) =>
+const tokenFor = (user: {
+  id: string;
+  email: string;
+  role: string;
+  session_version: number;
+}) =>
   jwt.sign(
     {
       id: user.id,
@@ -33,15 +42,15 @@ const tokenFor = (user: any) =>
     },
     env.JWT_SECRET,
     {
-      algorithm: "HS256",
-      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-      issuer: "ftdcare-api",
-      audience: "ftdcare-web",
+      algorithm: 'HS256',
+      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+      issuer: 'ftdcare-api',
+      audience: 'ftdcare-web',
     },
   );
 
 router.post(
-  "/login",
+  '/login',
   authLimiter,
   asyncHandler(async (req, res) => {
     const { identifier, password, rememberMe } = z
@@ -56,25 +65,29 @@ router.post(
       [identifier],
     );
     const user = result.rows[0];
-    if (!user || !(await bcrypt.compare(password, user.password_hash)))
-      throw new HttpError(401, "Invalid email, Clinic Patient ID, or password");
-    const token = tokenFor(user);
+    const validPassword = await bcrypt.compare(
+      password,
+      user?.password_hash ?? dummyPasswordHash,
+    );
+    if (!user || !validPassword)
+      throw new HttpError(401, 'Invalid email, Clinic Patient ID, or password');
+    const token = tokenFor(user as Parameters<typeof tokenFor>[0]);
     setSessionCookie(res, token, rememberMe);
     res.json({
       success: true,
-      ...(env.NODE_ENV === "test" ? { token } : {}),
-      user: currentUser(user),
+      ...(env.NODE_ENV === 'test' ? { token } : {}),
+      user: currentUser(user as Parameters<typeof currentUser>[0]),
     });
   }),
 );
 
-router.post("/logout", (_req, res) => {
+router.post('/logout', (_req, res) => {
   clearSessionCookie(res);
   res.json({ success: true });
 });
 
 router.post(
-  "/invitations",
+  '/invitations',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -85,11 +98,11 @@ router.post(
         lastName: z.string().trim().optional(),
         clinicPatientId: z.string().trim().optional(),
         primaryCohortSlug: z.string().trim().min(1),
-        condition: z.enum(["FTD", "AD"]),
+        condition: z.enum(['FTD', 'AD']),
         phoneNumber: z.string().trim().optional(),
       })
       .parse(req.body);
-    const token = crypto.randomBytes(32).toString("base64url");
+    const token = crypto.randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
     const result = await query(
       `INSERT INTO invitations(token_hash,email,first_name,last_name,phone_number,clinic_patient_id,primary_cohort_slug,condition,issued_by,expires_at)
@@ -108,10 +121,10 @@ router.post(
       ],
     );
     const invitation = result.rows[0];
-    const registrationUrl = `${env.APP_URL.replace(/\/$/, "")}/register?token=${encodeURIComponent(token)}`;
+    const registrationUrl = `${env.APP_URL.replace(/\/$/, '')}/register?token=${encodeURIComponent(token)}`;
     const delivery = await sendEmail({
       to: input.email,
-      subject: "Your Hopkins Care Partner Connect invitation",
+      subject: 'Your Hopkins Care Partner Connect invitation',
       text: `You have been invited to Hopkins Care Partner Connect. Register: ${registrationUrl}`,
       html: `<p>You have been invited to Hopkins Care Partner Connect.</p><p><a href="${escapeHtml(registrationUrl)}">Create your account</a></p>`,
     });
@@ -127,7 +140,7 @@ router.post(
 );
 
 router.get(
-  "/invitations/:token",
+  '/invitations/:token',
   asyncHandler(async (req, res) => {
     const result = await query(
       `SELECT email,first_name,last_name,condition,primary_cohort_slug,status,expires_at FROM invitations WHERE token_hash=$1`,
@@ -136,17 +149,17 @@ router.get(
     const invitation = result.rows[0];
     if (
       !invitation ||
-      invitation.status !== "DISPATCHED" ||
+      invitation.status !== 'DISPATCHED' ||
       new Date(invitation.expires_at) <= new Date()
     ) {
-      throw new HttpError(404, "Invitation not found or expired");
+      throw new HttpError(404, 'Invitation not found or expired');
     }
     res.json({
       valid: true,
       invitation: {
         email: invitation.email,
-        firstName: invitation.first_name ?? "",
-        lastName: invitation.last_name ?? "",
+        firstName: invitation.first_name ?? '',
+        lastName: invitation.last_name ?? '',
         condition: invitation.condition,
         primaryCohortSlug: invitation.primary_cohort_slug,
       },
@@ -155,7 +168,7 @@ router.get(
 );
 
 router.post(
-  "/register",
+  '/register',
   authLimiter,
   asyncHandler(async (req, res) => {
     const input = z
@@ -178,10 +191,10 @@ router.post(
       const invite = inviteResult.rows[0];
       if (
         !invite ||
-        invite.status !== "DISPATCHED" ||
+        invite.status !== 'DISPATCHED' ||
         new Date(invite.expires_at) <= new Date()
       )
-        throw new HttpError(400, "Invitation not found or expired");
+        throw new HttpError(400, 'Invitation not found or expired');
       const id = `user-care-${crypto.randomUUID()}`;
       const inserted = await client.query(
         `INSERT INTO users(id,email,password_hash,role,first_name,last_name,phone_number,clinic_patient_id,condition,anonymous_handle,avatar_color,badge_label)
@@ -190,8 +203,8 @@ router.post(
           id,
           invite.email,
           passwordHash,
-          input.firstName || invite.first_name || "Care",
-          input.lastName || invite.last_name || "Partner",
+          input.firstName || invite.first_name || 'Care',
+          input.lastName || invite.last_name || 'Partner',
           input.phoneNumber || invite.phone_number,
           invite.clinic_patient_id,
           invite.condition,
@@ -208,18 +221,18 @@ router.post(
       );
       return inserted.rows[0];
     });
-    const token = tokenFor(user);
+    const token = tokenFor(user as Parameters<typeof tokenFor>[0]);
     setSessionCookie(res, token, true);
     res.status(201).json({
       success: true,
-      ...(env.NODE_ENV === "test" ? { token } : {}),
-      user: currentUser(user),
+      ...(env.NODE_ENV === 'test' ? { token } : {}),
+      user: currentUser(user as Parameters<typeof currentUser>[0]),
     });
   }),
 );
 
 router.post(
-  "/forgot-password",
+  '/forgot-password',
   authLimiter,
   asyncHandler(async (req, res) => {
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
@@ -229,15 +242,15 @@ router.post(
     );
     const generic = {
       success: true,
-      message: "If that account exists, a reset code has been issued.",
+      message: 'If that account exists, a reset code has been issued.',
     };
     if (!found.rows[0]) {
       res.json(generic);
       return;
     }
-    const resetToken = crypto.randomBytes(32).toString("base64url");
+    const resetToken = crypto.randomBytes(32).toString('base64url');
     const code = String(crypto.randomInt(100000, 1_000_000));
-    const resetUrl = `${env.APP_URL.replace(/\/$/, "")}/?tab=reset-password&email=${encodeURIComponent(email)}&resetToken=${encodeURIComponent(resetToken)}`;
+    const resetUrl = `${env.APP_URL.replace(/\/$/, '')}/?tab=reset-password&email=${encodeURIComponent(email)}&resetToken=${encodeURIComponent(resetToken)}`;
     await query(
       `DELETE FROM password_resets WHERE user_id=$1 AND consumed_at IS NULL`,
       [found.rows[0].id],
@@ -248,12 +261,18 @@ router.post(
     );
     const delivery = await sendEmail({
       to: email,
-      subject: "Hopkins Care Partner Connect password reset",
-      text: `Open this password reset link: ${resetUrl}\n\nYour verification code is ${code}. Both expire in 20 minutes.`,
-      html: `<p><a href="${escapeHtml(resetUrl)}">Reset your password</a></p><p>Your verification code is <strong>${escapeHtml(code)}</strong>.</p><p>Both expire in 20 minutes.</p>`,
+      subject: 'Hopkins Care Partner Connect password reset',
+      text: `Open this password reset link: ${resetUrl}\n\nThe link expires in 20 minutes.`,
+      html: `<p><a href="${escapeHtml(resetUrl)}">Reset your password</a></p><p>Both expire in 20 minutes.</p>`,
+    });
+    await sendEmail({
+      to: email,
+      subject: 'Password reset verification code',
+      text: `Your verification code is ${code}. It expires in 20 minutes.`,
+      html: `<p>Your verification code is ${escapeHtml(code)}. It expires in 20 minutes.</p>`,
     });
     res.json(
-      env.NODE_ENV === "production"
+      env.NODE_ENV === 'production' || env.ENABLE_DEV_AUTH_PREVIEWS !== 'true'
         ? { ...generic, requiresEmailLink: true }
         : {
             ...generic,
@@ -267,7 +286,7 @@ router.post(
 );
 
 router.post(
-  "/reset-password",
+  '/reset-password',
   authLimiter,
   asyncHandler(async (req, res) => {
     const input = z
@@ -285,7 +304,7 @@ router.post(
     );
     const record = reset.rows[0];
     if (!record || !(await bcrypt.compare(input.code, record.code_hash)))
-      throw new HttpError(400, "Reset code is invalid or expired");
+      throw new HttpError(400, 'Reset code is invalid or expired');
     await transaction(async (client) => {
       await client.query(
         `UPDATE users SET password_hash=$1,session_version=session_version+1,updated_at=NOW() WHERE id=$2`,
@@ -296,20 +315,23 @@ router.post(
         [record.id],
       );
     });
-    res.json({ success: true, message: "Password updated successfully." });
+    res.json({ success: true, message: 'Password updated successfully.' });
   }),
 );
 
 router.get(
-  "/emails/preview/:id",
+  '/emails/preview/:id',
   asyncHandler(async (req, res) => {
-    if (env.NODE_ENV === "production")
-      throw new HttpError(404, "Email preview is unavailable");
-    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (
+      env.NODE_ENV === 'production' ||
+      env.ENABLE_DEV_AUTH_PREVIEWS !== 'true'
+    )
+      throw new HttpError(404, 'Email preview is unavailable');
+    const token = typeof req.query.token === 'string' ? req.query.token : '';
     const preview = await readPreview(String(req.params.id), token);
-    if (!preview) throw new HttpError(404, "Email preview not found");
+    if (!preview) throw new HttpError(404, 'Email preview not found');
     res
-      .type("html")
+      .type('html')
       .send(
         `<!doctype html><meta charset="utf-8"><title>${escapeHtml(preview.subject)}</title>${preview.html_body}`,
       );
@@ -317,12 +339,15 @@ router.get(
 );
 
 router.get(
-  "/emails/recent",
+  '/emails/recent',
   authenticateToken,
   requireStaff,
   asyncHandler(async (_req, res) => {
-    if (env.NODE_ENV === "production")
-      throw new HttpError(404, "Email previews are unavailable");
+    if (
+      env.NODE_ENV === 'production' ||
+      env.ENABLE_DEV_AUTH_PREVIEWS !== 'true'
+    )
+      throw new HttpError(404, 'Email previews are unavailable');
     const result = await query(
       `SELECT id,recipient,subject,delivery_status,created_at FROM email_outbox ORDER BY created_at DESC LIMIT 25`,
     );

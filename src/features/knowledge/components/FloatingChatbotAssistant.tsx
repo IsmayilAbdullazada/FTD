@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -32,7 +33,12 @@ interface ChatMessage {
   text: string;
   isMedicationRefusal?: boolean;
   discussionDraft?: { title: string; content: string };
-  discussions?: { id: string; title: string; url: string; replyCount: number }[];
+  discussions?: {
+    id: string;
+    title: string;
+    url: string;
+    replyCount: number;
+  }[];
   matchedGuide?: {
     id: string;
     title: string;
@@ -91,9 +97,7 @@ const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
             </ol>
           ),
           li: ({ children }) => (
-            <li className="leading-relaxed text-base pl-0.5">
-              {children}
-            </li>
+            <li className="leading-relaxed text-base pl-0.5">{children}</li>
           ),
           strong: ({ children }) => (
             <strong className="font-semibold text-slate-900 dark:text-white">
@@ -119,11 +123,12 @@ const FormattedMessageText: React.FC<{ text: string }> = ({ text }) => {
 };
 
 const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
-  const conditionDescription = user?.condition === 'AD'
-    ? "Alzheimer's disease (AD)"
-    : user?.condition === 'FTD'
-    ? 'Frontotemporal Dementia (FTD)'
-    : null;
+  const conditionDescription =
+    user?.condition === 'AD'
+      ? "Alzheimer's disease (AD)"
+      : user?.condition === 'FTD'
+        ? 'Frontotemporal Dementia (FTD)'
+        : null;
   const openingLine = conditionDescription
     ? `Hello! I am your Care Companion, here to support you as a care partner supporting a loved one with ${conditionDescription}.`
     : 'Hello! I am your Care Companion, here to support you as a care partner.';
@@ -136,7 +141,9 @@ const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
   };
 };
 
-export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> = ({
+export const FloatingChatbotAssistant: React.FC<
+  FloatingChatbotAssistantProps
+> = ({
   currentUser,
   isOpen,
   onToggle,
@@ -158,17 +165,24 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
   const hintDismissedRef = useRef(false);
   const wasOpenRef = useRef(isOpen);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(currentUser)]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    createWelcomeMessage(currentUser),
+  ]);
 
   // Introduce the companion once per session, without interrupting moderators.
   useEffect(() => {
     if (isOpen) {
       hintDismissedRef.current = true;
       setShowHint(false);
-      try { sessionStorage.setItem('jh_companion_hint_dismissed', 'true'); } catch {}
+      try {
+        sessionStorage.setItem('jh_companion_hint_dismissed', 'true');
+      } catch {}
       return;
     }
-    if (currentUser?.role !== 'CARE_PARTNER') { setShowHint(false); return; }
+    if (currentUser?.role !== 'CARE_PARTNER') {
+      setShowHint(false);
+      return;
+    }
     if (hintDismissedRef.current) return;
     try {
       if (sessionStorage.getItem('jh_companion_hint_dismissed')) return;
@@ -217,7 +231,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         if (isOpen) onClose();
-        else if (showHint) { handleDismissHint(); triggerRef.current?.focus(); }
+        else if (showHint) {
+          handleDismissHint();
+          triggerRef.current?.focus();
+        }
       }
     };
 
@@ -253,7 +270,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       id: `user-${Date.now()}`,
       sender: 'user',
       text: q.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -272,7 +292,7 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       const res = await knowledgeApi.chatWithAssistant(
         q.trim(),
         currentUser?.id || 'anonymous',
-        historyPayload
+        historyPayload,
       );
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
@@ -282,12 +302,18 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,
         discussions: res.discussions,
-        discussionDraft: res.discussionDraft || { title: '', content: q.trim() },
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        discussionDraft: res.discussionDraft || {
+          title: '',
+          content: q.trim(),
+        },
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
       };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      console.error('Care companion error:', err);
+      reportError('Care companion error:', err);
       setMessages((prev) => [
         ...prev,
         {
@@ -295,7 +321,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           sender: 'assistant',
           text: 'Unable to search the guides right now. You can try again or create a discussion post.',
           discussionDraft: { title: '', content: q.trim() },
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
         },
       ]);
     } finally {
@@ -312,7 +341,11 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
       {/* ------------------------------------------------------------- */}
       {/* 1. FLOATING CHATBOT TRIGGER BUTTON & HINT CALLOUT */}
       {/* ------------------------------------------------------------- */}
-      <div ref={launcherRef} style={{ transform: `translateY(-${footerOffset}px)` }} className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto flex items-end justify-end">
+      <div
+        ref={launcherRef}
+        style={{ transform: `translateY(-${footerOffset}px)` }}
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] xl:bottom-6 right-3 sm:right-6 z-40 pointer-events-auto flex items-end justify-end"
+      >
         {showHint && !isOpen && footerOffset === 0 && (
           <aside
             aria-label="Care Companion introduction"
@@ -320,7 +353,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
           >
             <button
               type="button"
-              onClick={() => { handleDismissHint(); triggerRef.current?.focus(); }}
+              onClick={() => {
+                handleDismissHint();
+                triggerRef.current?.focus();
+              }}
               title="Dismiss introduction"
               aria-label="Dismiss Care Companion introduction"
               className="absolute top-1 right-1 min-w-11 min-h-11 inline-flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -331,16 +367,21 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               Have a caregiving question?
             </p>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Ask Care Companion first. Find helpful guide pages and community discussions before starting a new post.
+              Ask Care Companion first. Find helpful guide pages and community
+              discussions before starting a new post.
             </p>
             <button
               type="button"
               onClick={handleOpenFromHint}
               className="mt-3 min-h-11 inline-flex items-center gap-2 rounded-lg bg-[#002D72] dark:bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-900 dark:hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
-              Ask Care Companion <ChevronRight className="w-4 h-4" aria-hidden="true" />
+              Ask Care Companion{' '}
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
-            <span aria-hidden="true" className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 border-b border-r border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 border-b border-r border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
           </aside>
         )}
 
@@ -358,10 +399,21 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               : 'w-14 bg-[#002D72] dark:bg-blue-600 text-white hover:bg-[#001D4A] dark:hover:bg-blue-500'
           }`}
         >
-          {isOpen ? <X className="w-6 h-6" aria-hidden="true" /> : (
+          {isOpen ? (
+            <X className="w-6 h-6" aria-hidden="true" />
+          ) : (
             <>
-              {showHint && <span aria-hidden="true" className="companion-attention absolute inset-0 rounded-2xl pointer-events-none" />}
-              <MessageCircleHeart className="w-7 h-7 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+              {showHint && (
+                <span
+                  aria-hidden="true"
+                  className="companion-attention absolute inset-0 rounded-2xl pointer-events-none"
+                />
+              )}
+              <MessageCircleHeart
+                className="w-7 h-7 shrink-0"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
             </>
           )}
         </button>
@@ -393,7 +445,10 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                   <h2 className="font-serif font-bold text-sm sm:text-base text-white truncate">
                     Care Companion
                   </h2>
-                  <span title="Verified Care Knowledge" className="inline-flex items-center">
+                  <span
+                    title="Verified Care Knowledge"
+                    className="inline-flex items-center"
+                  >
                     <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                   </span>
                 </div>
@@ -430,7 +485,17 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
             <div className="flex items-center gap-2 truncate">
               <Phone className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span className="truncate">
-                Emergency: <a href="tel:911" className="font-bold underline text-rose-700 dark:text-rose-400 hover:text-rose-800">911</a> · Clinic: <a href="tel:4109555147" className="font-semibold underline">(410) 955-5147</a>
+                Emergency:{' '}
+                <a
+                  href="tel:911"
+                  className="font-bold underline text-rose-700 dark:text-rose-400 hover:text-rose-800"
+                >
+                  911
+                </a>{' '}
+                · Clinic:{' '}
+                <a href="tel:4109555147" className="font-semibold underline">
+                  (410) 955-5147
+                </a>
               </span>
             </div>
             <button
@@ -445,8 +510,11 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
           {showUrgentNotice && (
             <div className="p-3 bg-amber-100/90 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800/60 text-xs sm:text-sm leading-relaxed text-amber-950 dark:text-amber-100 shrink-0 animate-in fade-in duration-150">
-              <strong className="font-semibold block">Not for emergency messages:</strong>
-              This assistant finds relevant pages in approved care guides. It does not provide personalized medical advice.
+              <strong className="font-semibold block">
+                Not for emergency messages:
+              </strong>
+              This assistant finds relevant pages in approved care guides. It
+              does not provide personalized medical advice.
             </div>
           )}
 
@@ -460,14 +528,17 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
               const isUser = msg.sender === 'user';
 
               return (
-                <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+                >
                   <div
                     className={`max-w-[92%] sm:max-w-[88%] rounded-2xl p-3 sm:p-3.5 leading-relaxed space-y-2 font-sans ${
                       isUser
                         ? 'bg-[#002D72] dark:bg-blue-600 text-white rounded-br-xs shadow-xs'
                         : msg.isMedicationRefusal
-                        ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/80 text-rose-950 dark:text-rose-100 rounded-bl-xs'
-                        : 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs shadow-2xs'
+                          ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/80 text-rose-950 dark:text-rose-100 rounded-bl-xs'
+                          : 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs shadow-2xs'
                     }`}
                   >
                     {/* Message Body */}
@@ -480,72 +551,101 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
                     ) : null}
 
                     {/* Institutional Grounded Guide Citation */}
-                    {!isUser && (msg.matchedGuide || (msg.citedResources && msg.citedResources.length > 0)) && (
-                      <div className="pt-2.5 pb-0.5 space-y-1.5 text-xs">
-                        <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
-                          You may find what you're looking for on these guide pages.
-                        </p>
-                        <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
-                          <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
-                          <span>Care Sources:</span>
+                    {!isUser &&
+                      (msg.matchedGuide ||
+                        (msg.citedResources &&
+                          msg.citedResources.length > 0)) && (
+                        <div className="pt-2.5 pb-0.5 space-y-1.5 text-xs">
+                          <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
+                            You may find what you're looking for on these guide
+                            pages.
+                          </p>
+                          <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
+                            <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
+                            <span>Care Sources:</span>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            {(msg.citedResources &&
+                            msg.citedResources.length > 0
+                              ? msg.citedResources
+                              : msg.matchedGuide
+                                ? [
+                                    {
+                                      id: msg.matchedGuide.id,
+                                      title: msg.matchedGuide.title,
+                                      fileName: msg.matchedGuide.fileName,
+                                      page: msg.matchedGuide.page,
+                                      url: `/resources/${msg.matchedGuide.fileName}${msg.matchedGuide.page ? `#page=${msg.matchedGuide.page}` : ''}`,
+                                    },
+                                  ]
+                                : []
+                            ).map((res, cIdx) => (
+                              <div
+                                key={`${res.id || 'res'}-p${res.page ?? ''}-${cIdx}`}
+                                className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 p-1.5 px-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60"
+                              >
+                                <span className="truncate text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
+                                  <span className="font-semibold text-[#002D72] dark:text-sky-300 mr-1.5">
+                                    [{cIdx + 1}]
+                                  </span>
+                                  {res.title}
+                                  {res.page ? ` (Page ${res.page})` : ''}
+                                </span>
+                                {res.url && (
+                                  <a
+                                    href={res.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-semibold text-xs ml-1"
+                                    title="Open institutional guide PDF at page"
+                                  >
+                                    <span>PDF</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                          {(msg.citedResources && msg.citedResources.length > 0
-                            ? msg.citedResources
-                            : msg.matchedGuide
-                            ? [{
-                                id: msg.matchedGuide.id,
-                                title: msg.matchedGuide.title,
-                                fileName: msg.matchedGuide.fileName,
-                                page: msg.matchedGuide.page,
-                                url: `/resources/${msg.matchedGuide.fileName}${msg.matchedGuide.page ? `#page=${msg.matchedGuide.page}` : ''}`,
-                              }]
-                            : []
-                          ).map((res, cIdx) => (
-                            <div key={`${res.id || 'res'}-p${res.page ?? ''}-${cIdx}`} className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 p-1.5 px-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
-                              <span className="truncate text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                                <span className="font-semibold text-[#002D72] dark:text-sky-300 mr-1.5">[{cIdx + 1}]</span>
-                                {res.title}
-                                {res.page ? ` (Page ${res.page})` : ''}
-                              </span>
-                              {res.url && (
-                                <a
-                                  href={res.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[#002D72] dark:text-sky-400 hover:underline shrink-0 font-semibold text-xs ml-1"
-                                  title="Open institutional guide PDF at page"
-                                >
-                                  <span>PDF</span>
-                                  <ExternalLink className="w-3 h-3" />
-                                </a>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      )}
 
                     {!!msg.discussions?.length && (
                       <div className="space-y-2">
                         <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
-                          You may also find helpful replies in these discussions.
+                          You may also find helpful replies in these
+                          discussions.
                         </p>
                         {msg.discussions.map((discussion) => (
-                          <a key={discussion.id} href={discussion.url}
-                            className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-[#002D72] dark:text-sky-400 hover:underline">
+                          <a
+                            key={discussion.id}
+                            href={discussion.url}
+                            className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-[#002D72] dark:text-sky-400 hover:underline"
+                          >
                             <MessageSquare className="w-4 h-4 shrink-0" />
-                            <span>{discussion.title} <span className="text-xs">({discussion.replyCount} {discussion.replyCount === 1 ? 'reply' : 'replies'})</span></span>
+                            <span>
+                              {discussion.title}{' '}
+                              <span className="text-xs">
+                                ({discussion.replyCount}{' '}
+                                {discussion.replyCount === 1
+                                  ? 'reply'
+                                  : 'replies'}
+                                )
+                              </span>
+                            </span>
                           </a>
                         ))}
                       </div>
                     )}
 
-                    {msg.discussionDraft && (msg.citedResources?.length || msg.matchedGuide || !!msg.discussions?.length) && (
-                      <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                        Still haven't found what you need? Ask the community by creating a discussion post.
-                      </p>
-                    )}
+                    {msg.discussionDraft &&
+                      (msg.citedResources?.length ||
+                        msg.matchedGuide ||
+                        !!msg.discussions?.length) && (
+                        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                          Still haven't found what you need? Ask the community
+                          by creating a discussion post.
+                        </p>
+                      )}
 
                     {msg.discussionDraft && (
                       <a
@@ -563,7 +663,9 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
                     <div
                       className={`text-xs pt-1 ${
-                        isUser ? 'text-blue-200 text-right' : 'text-slate-400 dark:text-slate-500'
+                        isUser
+                          ? 'text-blue-200 text-right'
+                          : 'text-slate-400 dark:text-slate-500'
                       }`}
                     >
                       {msg.timestamp}
@@ -611,7 +713,15 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
 
             <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-1 px-1">
               <span>Johns Hopkins Care Companion</span>
-              <span>Crisis: <a href="tel:911" className="underline hover:text-rose-600 font-semibold">911</a></span>
+              <span>
+                Crisis:{' '}
+                <a
+                  href="tel:911"
+                  className="underline hover:text-rose-600 font-semibold"
+                >
+                  911
+                </a>
+              </span>
             </div>
           </div>
         </div>
@@ -619,4 +729,3 @@ export const FloatingChatbotAssistant: React.FC<FloatingChatbotAssistantProps> =
     </>
   );
 };
-

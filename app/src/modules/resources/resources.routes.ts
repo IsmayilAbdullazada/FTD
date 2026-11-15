@@ -1,15 +1,15 @@
-import { Router } from "express";
-import { z } from "zod";
-import { query } from "../../config/db.js";
-import { asyncHandler, HttpError } from "../../lib/http.js";
-import { resource } from "../../lib/serializers.js";
-import { isStaffRole } from "../../lib/roles.js";
-import { authenticateToken, requireStaff } from "../../middleware/auth.js";
-import { httpUrl, publicAssetUrl } from "../../lib/urlValidation.js";
+import { Router } from 'express';
+import { z } from 'zod';
+import { query } from '../../config/db.js';
+import { asyncHandler, HttpError } from '../../lib/http.js';
+import { resource } from '../../lib/serializers.js';
+import { isStaffRole } from '../../lib/roles.js';
+import { authenticateToken, requireStaff } from '../../middleware/auth.js';
+import { httpUrl, publicAssetUrl } from '../../lib/urlValidation.js';
 
 const router = Router();
 router.get(
-  "/",
+  '/',
   authenticateToken,
   asyncHandler(async (req, res) => {
     const user = await query(`SELECT condition FROM users WHERE id=$1`, [
@@ -22,11 +22,13 @@ router.get(
       `SELECT * FROM resources WHERE $1::text IS NULL OR disease_domain IN ($1,'BOTH') ORDER BY created_at DESC`,
       [condition],
     );
-    res.json(result.rows.map(resource));
+    res.json(
+      result.rows.map((row) => resource(row as Parameters<typeof resource>[0])),
+    );
   }),
 );
 router.post(
-  "/",
+  '/',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -36,8 +38,8 @@ router.post(
         summary: z.string().trim().min(3),
         contentBody: z.string().trim().min(3),
         category: z.string().trim().min(2),
-        diseaseDomain: z.enum(["FTD", "AD", "BOTH"]).default("FTD"),
-        externalUrl: httpUrl.or(z.literal("")).optional(),
+        diseaseDomain: z.enum(['FTD', 'AD', 'BOTH']).default('FTD'),
+        externalUrl: httpUrl.or(z.literal('')).optional(),
         fileAttachmentUrl: publicAssetUrl.optional(),
         additionalLinks: z
           .array(z.object({ label: z.string(), url: httpUrl }))
@@ -61,11 +63,13 @@ router.post(
         req.user!.id,
       ],
     );
-    res.status(201).json(resource(result.rows[0]));
+    res
+      .status(201)
+      .json(resource(result.rows[0] as Parameters<typeof resource>[0]));
   }),
 );
 router.delete(
-  "/:id",
+  '/:id',
   authenticateToken,
   requireStaff,
   asyncHandler(async (req, res) => {
@@ -73,7 +77,7 @@ router.delete(
       `DELETE FROM resources WHERE id=$1 RETURNING id`,
       [req.params.id],
     );
-    if (!result.rows[0]) throw new HttpError(404, "Resource not found");
+    if (!result.rows[0]) throw new HttpError(404, 'Resource not found');
     res.json({ success: true });
   }),
 );

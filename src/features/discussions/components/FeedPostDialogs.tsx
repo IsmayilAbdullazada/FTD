@@ -1,28 +1,28 @@
-import { Trash2, X } from "lucide-react";
+import { Trash2, X } from 'lucide-react';
 
 import type {
   CarePartnerFeedProps,
   useCarePartnerFeed,
-} from "../hooks/useCarePartnerFeed";
+} from '../hooks/useCarePartnerFeed';
 
 type Props = Pick<
   ReturnType<typeof useCarePartnerFeed>,
-  | "editingPost"
-  | "setEditingPost"
-  | "editTitle"
-  | "setEditTitle"
-  | "editContent"
-  | "setEditContent"
-  | "editCohortId"
-  | "setEditCohortId"
-  | "isSavingEdit"
-  | "confirmDeletePost"
-  | "setConfirmDeletePost"
-  | "isDeletingPost"
-  | "handleSaveEdit"
-  | "handleConfirmWithdraw"
+  | 'editingPost'
+  | 'setEditingPost'
+  | 'editTitle'
+  | 'setEditTitle'
+  | 'editContent'
+  | 'setEditContent'
+  | 'editCohortId'
+  | 'setEditCohortId'
+  | 'isSavingEdit'
+  | 'confirmDeletePost'
+  | 'setConfirmDeletePost'
+  | 'isDeletingPost'
+  | 'handleSaveEdit'
+  | 'handleConfirmWithdraw'
 > &
-  Pick<CarePartnerFeedProps, "cohorts">;
+  Pick<CarePartnerFeedProps, 'cohorts'>;
 
 export function FeedPostDialogs({
   editingPost,
@@ -103,7 +103,7 @@ export function FeedPostDialogs({
                 >
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.properName || c.name.replace(/\s+Cohort$/i, "")}
+                      {c.properName || c.name.replace(/\s+Cohort$/i, '')}
                     </option>
                   ))}
                 </select>
@@ -124,7 +124,7 @@ export function FeedPostDialogs({
                   }
                   className="min-h-11 px-6 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-sm font-semibold transition cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72]"
                 >
-                  {isSavingEdit ? "Saving..." : "Save Updates"}
+                  {isSavingEdit ? 'Saving...' : 'Save Updates'}
                 </button>
               </div>
             </form>
@@ -176,7 +176,7 @@ export function FeedPostDialogs({
               >
                 <Trash2 className="w-4 h-4" />
                 <span>
-                  {isDeletingPost ? "Withdrawing..." : "Yes, Withdraw Question"}
+                  {isDeletingPost ? 'Withdrawing...' : 'Yes, Withdraw Question'}
                 </span>
               </button>
             </div>

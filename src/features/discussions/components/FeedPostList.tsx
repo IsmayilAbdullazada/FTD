@@ -1,5 +1,5 @@
-import { AudienceBadge } from "@/shared/components/AudienceBadge";
-import { getProperGroupName } from "@/types";
+import { AudienceBadge } from '@/shared/components/AudienceBadge';
+import { getProperGroupName } from '@/types';
 import {
   CheckCircle2,
   ChevronLeft,
@@ -13,41 +13,42 @@ import {
   Send,
   ShieldCheck,
   Trash2,
-} from "lucide-react";
+} from 'lucide-react';
 
 import type {
   CarePartnerFeedProps,
   useCarePartnerFeed,
-} from "../hooks/useCarePartnerFeed";
+} from '../hooks/useCarePartnerFeed';
 
-type Props = Pick<
+type Props = { totalPosts: number } & Pick<
   ReturnType<typeof useCarePartnerFeed>,
-  | "posts"
-  | "loading"
-  | "viewSection"
-  | "selectedStatusFilter"
-  | "setSelectedStatusFilter"
-  | "searchQuery"
-  | "setSearchQuery"
-  | "currentPage"
-  | "setCurrentPage"
-  | "POSTS_PER_PAGE"
-  | "likedPosts"
-  | "isStaff"
-  | "setConfirmDeletePost"
-  | "carePartnerReplyText"
-  | "setCarePartnerReplyText"
-  | "isSendingCareReply"
-  | "careReplyExpanded"
-  | "setCareReplyExpanded"
-  | "handleOpenDiscussion"
-  | "handleToggleLike"
-  | "handleStartEdit"
-  | "handleSendPrivateCareReply"
+  | 'posts'
+  | 'loading'
+  | 'viewSection'
+  | 'selectedStatusFilter'
+  | 'setSelectedStatusFilter'
+  | 'searchQuery'
+  | 'setSearchQuery'
+  | 'currentPage'
+  | 'setCurrentPage'
+  | 'POSTS_PER_PAGE'
+  | 'likedPosts'
+  | 'isStaff'
+  | 'setConfirmDeletePost'
+  | 'carePartnerReplyText'
+  | 'setCarePartnerReplyText'
+  | 'isSendingCareReply'
+  | 'careReplyExpanded'
+  | 'setCareReplyExpanded'
+  | 'handleOpenDiscussion'
+  | 'handleToggleLike'
+  | 'handleStartEdit'
+  | 'handleSendPrivateCareReply'
 > &
-  Pick<CarePartnerFeedProps, "currentUser" | "onOpenComposer">;
+  Pick<CarePartnerFeedProps, 'currentUser' | 'onOpenComposer'>;
 
 export function FeedPostList({
+  totalPosts,
   posts,
   loading,
   viewSection,
@@ -79,19 +80,19 @@ export function FeedPostList({
       {(() => {
         // Filter by section (all community discussions vs my posts only), status, and search query
         const filteredPosts = posts.filter((post) => {
-          if (viewSection === "my-posts") {
+          if (viewSection === 'my-posts') {
             const isMine =
               post.author.userId === currentUser.id ||
               post.author.anonymousHandle === currentUser.anonymousHandle ||
-              (post.author as any).id === currentUser.id;
+              false;
             if (!isMine) return false;
           } else {
             // Community Discussions MUST only show published, approved posts
-            if (post.status !== "APPROVED") return false;
+            if (post.status !== 'APPROVED') return false;
           }
 
-          if (selectedStatusFilter === "open" && post.isClosed) return false;
-          if (selectedStatusFilter === "closed" && !post.isClosed) return false;
+          if (selectedStatusFilter === 'open' && post.isClosed) return false;
+          if (selectedStatusFilter === 'closed' && !post.isClosed) return false;
 
           if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase().trim();
@@ -116,9 +117,9 @@ export function FeedPostList({
 
         // Sort logic: in My Posts, items Under Review (PENDING_MODERATION) MUST always be pinned to the top!
         const sortedPosts = [...filteredPosts].sort((a, b) => {
-          if (viewSection === "my-posts") {
-            const aPending = a.status === "PENDING_MODERATION";
-            const bPending = b.status === "PENDING_MODERATION";
+          if (viewSection === 'my-posts') {
+            const aPending = a.status === 'PENDING_MODERATION';
+            const bPending = b.status === 'PENDING_MODERATION';
             if (aPending && !bPending) return -1;
             if (!aPending && bPending) return 1;
           }
@@ -127,28 +128,25 @@ export function FeedPostList({
           );
         });
 
-        const totalFilteredCount = sortedPosts.length;
+        const totalFilteredCount = totalPosts;
         const totalPages = Math.max(
           1,
           Math.ceil(totalFilteredCount / POSTS_PER_PAGE),
         );
         const validCurrentPage = Math.min(currentPage, totalPages);
         const startIndex = (validCurrentPage - 1) * POSTS_PER_PAGE;
-        const paginatedPosts = sortedPosts.slice(
-          startIndex,
-          startIndex + POSTS_PER_PAGE,
-        );
+        const paginatedPosts = sortedPosts;
 
         return (
           <>
             <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400 px-0.5 font-medium">
               <span>
                 {totalFilteredCount === 0
-                  ? viewSection === "my-posts"
-                    ? "0 posts found"
-                    : "0 discussions found"
+                  ? viewSection === 'my-posts'
+                    ? '0 posts found'
+                    : '0 discussions found'
                   : `Showing ${startIndex + 1}–${Math.min(startIndex + POSTS_PER_PAGE, totalFilteredCount)} of ${totalFilteredCount} ${
-                      viewSection === "my-posts" ? "posts" : "discussions"
+                      viewSection === 'my-posts' ? 'posts' : 'discussions'
                     }`}
               </span>
             </div>
@@ -163,24 +161,24 @@ export function FeedPostList({
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center text-slate-500 dark:text-slate-400 text-base space-y-3 shadow-xs">
                   <div className="font-serif font-semibold text-lg sm:text-xl text-slate-800 dark:text-slate-200">
                     {searchQuery
-                      ? `No ${viewSection === "my-posts" ? "posts" : "discussions"} matching "${searchQuery}"`
-                      : viewSection === "my-posts"
+                      ? `No ${viewSection === 'my-posts' ? 'posts' : 'discussions'} matching "${searchQuery}"`
+                      : viewSection === 'my-posts'
                         ? "You haven't submitted any posts yet."
-                        : "No discussions found in this channel."}
+                        : 'No discussions found in this channel.'}
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
                     {searchQuery
-                      ? "Try adjusting your search terms or resetting filters."
-                      : viewSection === "my-posts"
-                        ? "When you share a question or care advice, your post will appear here with its real-time review status and any private responses from the moderator."
-                        : "You can start the first conversation or check the Guides for guidance."}
+                      ? 'Try adjusting your search terms or resetting filters.'
+                      : viewSection === 'my-posts'
+                        ? 'When you share a question or care advice, your post will appear here with its real-time review status and any private responses from the moderator.'
+                        : 'You can start the first conversation or check the Guides for guidance.'}
                   </p>
                   {searchQuery ? (
                     <button
                       type="button"
                       onClick={() => {
-                        setSearchQuery("");
-                        setSelectedStatusFilter("all");
+                        setSearchQuery('');
+                        setSelectedStatusFilter('all');
                         setCurrentPage(1);
                       }}
                       className="text-[#002D72] dark:text-blue-400 font-semibold hover:underline text-sm inline-block pt-1 cursor-pointer"
@@ -195,9 +193,9 @@ export function FeedPostList({
                     >
                       <Plus className="w-4 h-4" />
                       <span>
-                        {viewSection === "my-posts"
-                          ? "Create a Post"
-                          : "Start the first discussion"}
+                        {viewSection === 'my-posts'
+                          ? 'Create a Post'
+                          : 'Start the first discussion'}
                       </span>
                     </button>
                   )}
@@ -211,12 +209,12 @@ export function FeedPostList({
                   const currentLikes = post.upvotes;
                   const regionName = getProperGroupName(post.assignedGroups[0]);
                   const isAuthor =
-                    currentUser.role === "CARE_PARTNER" &&
+                    currentUser.role === 'CARE_PARTNER' &&
                     (post.author.userId === currentUser.id ||
                       post.author.anonymousHandle ===
                         currentUser.anonymousHandle);
                   const isPending =
-                    post.status === "PENDING_MODERATION" && isAuthor;
+                    post.status === 'PENDING_MODERATION' && isAuthor;
 
                   return (
                     <article
@@ -226,10 +224,10 @@ export function FeedPostList({
                       aria-label={`Open discussion: ${post.title}`}
                       onClick={() => handleOpenDiscussion(post)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
+                        if (e.key === 'Enter' || e.key === ' ') {
                           if (
-                            (e.target as HTMLElement).tagName === "BUTTON" ||
-                            (e.target as HTMLElement).closest("button")
+                            (e.target as HTMLElement).tagName === 'BUTTON' ||
+                            (e.target as HTMLElement).closest('button')
                           ) {
                             return;
                           }
@@ -239,8 +237,8 @@ export function FeedPostList({
                       }}
                       className={`rounded-2xl border p-5 sm:p-6 space-y-3.5 transition-all cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
                         isPending
-                          ? "bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:border-amber-300 dark:hover:border-amber-700/80 shadow-2xs"
-                          : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs"
+                          ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:border-amber-300 dark:hover:border-amber-700/80 shadow-2xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
                       }`}
                     >
                       {/* Author Metadata & Closed Badge */}
@@ -264,7 +262,7 @@ export function FeedPostList({
                           )}
                           {isStaff &&
                             post.condition &&
-                            post.condition !== "BOTH" && (
+                            post.condition !== 'BOTH' && (
                               <>
                                 <span
                                   aria-hidden="true"
@@ -289,7 +287,7 @@ export function FeedPostList({
                               </span>
                             </>
                           )}
-                          {viewSection === "my-posts" && (
+                          {viewSection === 'my-posts' && (
                             <>
                               <span
                                 aria-hidden="true"
@@ -313,8 +311,8 @@ export function FeedPostList({
                         </div>
                         <span className="text-slate-500 dark:text-slate-400 text-sm shrink-0 pl-2">
                           {new Date(post.createdAt).toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
+                            month: 'short',
+                            day: 'numeric',
                           })}
                         </span>
                       </div>
@@ -357,12 +355,12 @@ export function FeedPostList({
                             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                               {post.moderatorPrivateNotes.map((note) => {
                                 const isFromCarePartner =
-                                  note.senderRole !== "CLINICIAN_MODERATOR" &&
-                                  note.senderName !== "Clinical Moderator" &&
-                                  note.senderName !== "Moderator" &&
-                                  note.senderId !== "user-clinician-1" &&
-                                  note.senderId !== "user-admin-1" &&
-                                  (note.senderRole === "CARE_PARTNER" ||
+                                  note.senderRole !== 'CLINICIAN_MODERATOR' &&
+                                  note.senderName !== 'Clinical Moderator' &&
+                                  note.senderName !== 'Moderator' &&
+                                  note.senderId !== 'user-clinician-1' &&
+                                  note.senderId !== 'user-admin-1' &&
+                                  (note.senderRole === 'CARE_PARTNER' ||
                                     note.senderId === post.author.userId ||
                                     note.senderId === currentUser.id);
                                 return (
@@ -370,30 +368,30 @@ export function FeedPostList({
                                     key={note.id}
                                     className={`p-3 rounded-xl border text-xs sm:text-[13px] leading-relaxed ${
                                       isFromCarePartner
-                                        ? "bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/60 text-slate-800 dark:text-slate-200 ml-4"
-                                        : "bg-white dark:bg-slate-900 border-blue-200/80 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 mr-2 shadow-2xs"
+                                        ? 'bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/60 text-slate-800 dark:text-slate-200 ml-4'
+                                        : 'bg-white dark:bg-slate-900 border-blue-200/80 dark:border-blue-900/60 text-slate-900 dark:text-slate-100 mr-2 shadow-2xs'
                                     }`}
                                   >
                                     <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1 font-medium">
                                       <span
                                         className={
                                           isFromCarePartner
-                                            ? "text-amber-800 dark:text-amber-300 font-semibold"
-                                            : "text-[#002D72] dark:text-blue-300 font-semibold"
+                                            ? 'text-amber-800 dark:text-amber-300 font-semibold'
+                                            : 'text-[#002D72] dark:text-blue-300 font-semibold'
                                         }
                                       >
                                         {isFromCarePartner
-                                          ? "You (Care Partner)"
-                                          : "Moderator"}
+                                          ? 'You (Care Partner)'
+                                          : 'Moderator'}
                                       </span>
                                       <span>
                                         {new Date(
                                           note.createdAt,
                                         ).toLocaleTimeString([], {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                          month: "short",
-                                          day: "numeric",
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          month: 'short',
+                                          day: 'numeric',
                                         })}
                                       </span>
                                     </div>
@@ -434,7 +432,7 @@ export function FeedPostList({
                                 >
                                   <textarea
                                     rows={2}
-                                    value={carePartnerReplyText[post.id] || ""}
+                                    value={carePartnerReplyText[post.id] || ''}
                                     onChange={(e) =>
                                       setCarePartnerReplyText((prev) => ({
                                         ...prev,
@@ -523,8 +521,8 @@ export function FeedPostList({
                           <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-medium group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
                             <MessageSquare className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#002D72] dark:group-hover:text-blue-400" />
                             <span>
-                              {post.commentCount}{" "}
-                              {post.commentCount === 1 ? "reply" : "replies"}
+                              {post.commentCount}{' '}
+                              {post.commentCount === 1 ? 'reply' : 'replies'}
                             </span>
                             {post.allowUnmoderatedReplies && !post.isClosed && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-900/40">
@@ -539,12 +537,12 @@ export function FeedPostList({
                             onClick={(e) => handleToggleLike(e, post.id)}
                             className={`min-h-11 flex items-center gap-1.5 transition py-2 px-3.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 ${
                               isLiked
-                                ? "text-rose-600 dark:text-rose-400 font-semibold"
-                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                           >
                             <Heart
-                              className={`w-4 h-4 ${isLiked ? "fill-rose-600 dark:fill-rose-400" : ""}`}
+                              className={`w-4 h-4 ${isLiked ? 'fill-rose-600 dark:fill-rose-400' : ''}`}
                             />
                             <span>{currentLikes} helpful</span>
                           </button>
@@ -567,7 +565,7 @@ export function FeedPostList({
                     type="button"
                     onClick={() => {
                       setCurrentPage((p) => Math.max(1, p - 1));
-                      window.scrollTo({ top: 0, behavior: "smooth" });
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     disabled={validCurrentPage === 1}
                     aria-label="Previous Page"
@@ -592,16 +590,16 @@ export function FeedPostList({
                           type="button"
                           onClick={() => {
                             setCurrentPage(page);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           aria-label={`Go to page ${page}`}
                           aria-current={
-                            validCurrentPage === page ? "page" : undefined
+                            validCurrentPage === page ? 'page' : undefined
                           }
                           className={`min-w-11 h-11 px-3 text-sm font-semibold rounded-xl transition cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 ${
                             validCurrentPage === page
-                              ? "bg-[#002D72] dark:bg-blue-600 text-white shadow-2xs font-bold"
-                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              ? 'bg-[#002D72] dark:bg-blue-600 text-white shadow-2xs font-bold'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
                           {page}
@@ -615,7 +613,7 @@ export function FeedPostList({
                     type="button"
                     onClick={() => {
                       setCurrentPage((p) => Math.min(totalPages, p + 1));
-                      window.scrollTo({ top: 0, behavior: "smooth" });
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     disabled={validCurrentPage === totalPages}
                     aria-label="Next Page"

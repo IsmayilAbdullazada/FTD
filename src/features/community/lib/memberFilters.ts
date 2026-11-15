@@ -17,7 +17,8 @@ export function filterMembers(
       member.anonymousHandle.toLowerCase().includes(query) ||
       (member.email || '').toLowerCase().includes(query) ||
       (member.phone || '').toLowerCase().includes(query);
-    const matchesGroup = cohortId === 'all' || member.primaryGroupId === cohortId;
+    const matchesGroup =
+      cohortId === 'all' || member.primaryGroupId === cohortId;
     const matchesCondition =
       audienceFilter === 'all' || member.condition === audienceFilter;
     return matchesSearch && matchesGroup && matchesCondition;
@@ -30,8 +31,6 @@ export function moveMemberToGroup(
   groupId: string,
 ) {
   return members.map((member) =>
-    member.userId === userId
-      ? { ...member, primaryGroupId: groupId }
-      : member
+    member.userId === userId ? { ...member, primaryGroupId: groupId } : member,
   );
 }

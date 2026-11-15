@@ -1,7 +1,7 @@
 import {
   buildCommentTree,
   type CommentNode,
-} from "@/features/discussions/lib/commentTree";
+} from '@/features/discussions/lib/commentTree';
 import {
   AlertCircle,
   Clock,
@@ -12,42 +12,42 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
-} from "lucide-react";
-import React from "react";
+} from 'lucide-react';
+import React from 'react';
 
 import {
   useDiscussionDetail,
   type DiscussionDetailProps,
-} from "../hooks/useDiscussionDetail";
+} from '../hooks/useDiscussionDetail';
 
 type Props = Pick<
   ReturnType<typeof useDiscussionDetail>,
-  | "post"
-  | "comments"
-  | "loadingComments"
-  | "replyText"
-  | "setReplyText"
-  | "replyTarget"
-  | "setReplyTarget"
-  | "collapsedThreads"
-  | "setCollapsedThreads"
-  | "isSubmitting"
-  | "replyErrorMessage"
-  | "editingCommentId"
-  | "setEditingCommentId"
-  | "editCommentText"
-  | "setEditCommentText"
-  | "isSavingComment"
-  | "deletingCommentId"
-  | "replyFormRef"
-  | "isClinician"
-  | "handleStartEditComment"
-  | "handleSaveComment"
-  | "handleDeleteComment"
-  | "handleOpenRemoveReplyModal"
-  | "handleSendReply"
+  | 'post'
+  | 'comments'
+  | 'loadingComments'
+  | 'replyText'
+  | 'setReplyText'
+  | 'replyTarget'
+  | 'setReplyTarget'
+  | 'collapsedThreads'
+  | 'setCollapsedThreads'
+  | 'isSubmitting'
+  | 'replyErrorMessage'
+  | 'editingCommentId'
+  | 'setEditingCommentId'
+  | 'editCommentText'
+  | 'setEditCommentText'
+  | 'isSavingComment'
+  | 'deletingCommentId'
+  | 'replyFormRef'
+  | 'isClinician'
+  | 'handleStartEditComment'
+  | 'handleSaveComment'
+  | 'handleDeleteComment'
+  | 'handleOpenRemoveReplyModal'
+  | 'handleSendReply'
 > &
-  Pick<DiscussionDetailProps, "currentUser">;
+  Pick<DiscussionDetailProps, 'currentUser'>;
 export function DiscussionReplies({
   post,
   comments,
@@ -85,17 +85,17 @@ export function DiscussionReplies({
         <span className="font-semibold text-slate-800 dark:text-slate-200">
           {replyTarget
             ? `Reply to ${replyTarget.author.anonymousHandle}`
-            : "Reply to the question"}
+            : 'Reply to the question'}
         </span>
         <span>
-          Replying as:{" "}
+          Replying as:{' '}
           <strong className="text-slate-900 dark:text-slate-100">
             {currentUser.anonymousHandle}
           </strong>
         </span>
       </div>
 
-      {post.condition === "BOTH" && (
+      {post.condition === 'BOTH' && (
         <div className="text-sm text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
           This discussion is shared with both FTD and Alzheimer's care partners.
           Your reply will be visible to both groups.
@@ -138,7 +138,7 @@ export function DiscussionReplies({
             disabled={isSubmitting}
             onClick={() => {
               setReplyTarget(null);
-              setReplyText("");
+              setReplyText('');
             }}
             className="shrink-0 min-h-11 px-3 font-semibold text-slate-600 dark:text-slate-300"
           >
@@ -150,7 +150,7 @@ export function DiscussionReplies({
         aria-label={
           replyTarget
             ? `Reply to ${replyTarget.author.anonymousHandle}`
-            : "Reply to the question"
+            : 'Reply to the question'
         }
         rows={3}
         value={replyText}
@@ -201,9 +201,9 @@ export function DiscussionReplies({
   const renderThread = (node: CommentNode, depth = 0): React.ReactNode => {
     const comm = node.comment;
     const isCommentClinician =
-      comm.author.badgeLabel === "Clinician Moderator" ||
-      comm.author.anonymousHandle.includes("Dr. Seema");
-    const isPending = comm.status === "PENDING_MODERATION";
+      comm.author.badgeLabel === 'Clinician Moderator' ||
+      comm.author.anonymousHandle.includes('Dr. Seema');
+    const isPending = comm.status === 'PENDING_MODERATION';
     const isAuthor =
       comm.author.anonymousHandle === currentUser.anonymousHandle;
     const isEditingThis = editingCommentId === comm.id;
@@ -212,9 +212,9 @@ export function DiscussionReplies({
       <div key={comm.id} data-comment-id={comm.id} className="min-w-0">
         {depth > 4 && (
           <p className="mb-2 text-xs text-slate-500">
-            In reply to{" "}
+            In reply to{' '}
             {comments.find((c) => c.id === comm.parentCommentId)?.author
-              .anonymousHandle || "an earlier reply"}
+              .anonymousHandle || 'an earlier reply'}
           </p>
         )}
         {node.unavailableParent && (
@@ -225,10 +225,10 @@ export function DiscussionReplies({
         <div
           className={`rounded-2xl p-4 sm:p-5 text-sm space-y-2.5 border transition ${
             isCommentClinician
-              ? "bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60"
+              ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/60'
               : isPending
-                ? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/60 shadow-2xs"
-                : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs"
+                ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/60 shadow-2xs'
+                : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-2xs'
           }`}
         >
           <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -249,8 +249,8 @@ export function DiscussionReplies({
             </div>
             <span className="text-xs text-slate-400 dark:text-slate-500">
               {new Date(comm.createdAt).toLocaleDateString([], {
-                month: "short",
-                day: "numeric",
+                month: 'short',
+                day: 'numeric',
               })}
             </span>
           </div>
@@ -277,7 +277,7 @@ export function DiscussionReplies({
                   disabled={isSavingComment || !editCommentText.trim()}
                   className="min-h-11 px-5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition cursor-pointer"
                 >
-                  {isSavingComment ? "Saving..." : "Save"}
+                  {isSavingComment ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
@@ -288,7 +288,7 @@ export function DiscussionReplies({
           )}
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            {!post.isClosed && comm.status !== "REJECTED" && (
+            {!post.isClosed && comm.status !== 'REJECTED' && (
               <button
                 type="button"
                 disabled={isSubmitting}
@@ -296,7 +296,7 @@ export function DiscussionReplies({
                   setReplyTarget(comm);
                   setTimeout(
                     () =>
-                      replyFormRef.current?.querySelector("textarea")?.focus(),
+                      replyFormRef.current?.querySelector('textarea')?.focus(),
                     0,
                   );
                 }}
@@ -321,8 +321,8 @@ export function DiscussionReplies({
                 className="min-h-11 text-slate-500 hover:underline"
               >
                 {collapsedThreads.has(comm.id)
-                  ? "Show replies"
-                  : "Hide replies"}{" "}
+                  ? 'Show replies'
+                  : 'Hide replies'}{' '}
                 ({node.children.length})
               </button>
             )}
@@ -331,7 +331,7 @@ export function DiscussionReplies({
           {((isPending && isAuthor && !isEditingThis) ||
             (isClinician &&
               (post.allowUnmoderatedReplies ||
-                comm.status === "APPROVED"))) && (
+                comm.status === 'APPROVED'))) && (
             <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
               <div className="text-xs text-slate-500 dark:text-slate-400">
                 {post.allowUnmoderatedReplies && !isPending && (
@@ -368,7 +368,7 @@ export function DiscussionReplies({
                 {/* Clinician Moderator Remove Reply Button */}
                 {isClinician &&
                   (post.allowUnmoderatedReplies ||
-                    comm.status === "APPROVED") && (
+                    comm.status === 'APPROVED') && (
                     <button
                       type="button"
                       onClick={() => handleOpenRemoveReplyModal(comm)}
@@ -391,7 +391,7 @@ export function DiscussionReplies({
           <div
             id={`thread-${comm.id}`}
             hidden={collapsedThreads.has(comm.id)}
-            className={`mt-3 space-y-3 ${depth < 4 ? "border-l-2 border-slate-200 dark:border-slate-700 ml-2 pl-3 sm:ml-4 sm:pl-4" : ""}`}
+            className={`mt-3 space-y-3 ${depth < 4 ? 'border-l-2 border-slate-200 dark:border-slate-700 ml-2 pl-3 sm:ml-4 sm:pl-4' : ''}`}
           >
             {node.children.map((child) => renderThread(child, depth + 1))}
           </div>
@@ -414,7 +414,7 @@ export function DiscussionReplies({
             onClick={() => {
               setReplyTarget(null);
               setTimeout(
-                () => replyFormRef.current?.querySelector("textarea")?.focus(),
+                () => replyFormRef.current?.querySelector('textarea')?.focus(),
                 0,
               );
             }}
@@ -457,8 +457,8 @@ export function DiscussionReplies({
                 New replies are disabled because this discussion was closed by
                 the moderator
                 {post.closedAt
-                  ? ` on ${new Date(post.closedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}`
-                  : ""}
+                  ? ` on ${new Date(post.closedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+                  : ''}
                 . All {comments.length} existing replies above are preserved for
                 community reference.
               </p>

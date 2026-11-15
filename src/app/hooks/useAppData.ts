@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import { useState } from 'react';
 import { communityApi } from '@/features/community/api/communityApi';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
@@ -48,7 +49,7 @@ export function useAppData() {
       );
       setNotifications(notificationResult.messages || []);
     } catch (error) {
-      console.error('Failed to bootstrap app data:', error);
+      reportError('Failed to bootstrap app data:', error);
     }
   }
 
@@ -69,7 +70,7 @@ export function useAppData() {
         setNotifications(result.messages || []);
       }
     } catch (error) {
-      console.error(error);
+      reportError('Request failed', error);
     }
   }
 

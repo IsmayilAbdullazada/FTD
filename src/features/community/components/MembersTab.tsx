@@ -1,7 +1,11 @@
 import { Search, X } from 'lucide-react';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import { Pagination } from '@/shared/components/Pagination';
-import { getProperGroupName, type CommunityGroup, type GroupMember } from '@/types';
+import {
+  getProperGroupName,
+  type CommunityGroup,
+  type GroupMember,
+} from '@/types';
 
 interface PaginationModel<T> {
   items: T[];
@@ -47,7 +51,14 @@ export function MembersTab({
               </h2>
               {selectedCohortFilter !== 'all' && (
                 <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-100 dark:border-blue-900/60 text-xs font-medium flex items-center gap-1">
-                  <span>Group: {getProperGroupName(cohorts.find((cohort) => cohort.id === selectedCohortFilter))}</span>
+                  <span>
+                    Group:{' '}
+                    {getProperGroupName(
+                      cohorts.find(
+                        (cohort) => cohort.id === selectedCohortFilter,
+                      ),
+                    )}
+                  </span>
                   <button
                     onClick={() => onCohortFilterChange('all')}
                     className="hover:text-rose-600 dark:hover:text-rose-400 p-0.5 ml-0.5 cursor-pointer"
@@ -80,9 +91,18 @@ export function MembersTab({
               onChange={(event) => onCohortFilterChange(event.target.value)}
               className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
             >
-              <option value="all" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">All Groups</option>
+              <option
+                value="all"
+                className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
+                All Groups
+              </option>
               {cohorts.map((cohort) => (
-                <option key={cohort.id} value={cohort.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option
+                  key={cohort.id}
+                  value={cohort.id}
+                  className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
                   {getProperGroupName(cohort)}
                 </option>
               ))}
@@ -96,7 +116,9 @@ export function MembersTab({
           </div>
         ) : filteredMembers.length === 0 ? (
           <div className="py-12 text-center space-y-2">
-            <p className="text-slate-500 dark:text-slate-400 text-xs">No members found matching your search or filter.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-xs">
+              No members found matching your search or filter.
+            </p>
             {selectedCohortFilter !== 'all' && (
               <button
                 onClick={() => onCohortFilterChange('all')}
@@ -120,21 +142,36 @@ export function MembersTab({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
                 {pagination.items.map((member) => (
-                  <tr key={member.userId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                  <tr
+                    key={member.userId}
+                    className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition"
+                  >
                     <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-semibold text-slate-900 dark:text-white">{member.realName}</div>
-                      <div className="text-xs text-slate-400 dark:text-slate-500">{member.anonymousHandle}</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">
+                        {member.realName}
+                      </div>
+                      <div className="text-xs text-slate-400 dark:text-slate-500">
+                        {member.anonymousHandle}
+                      </div>
                     </td>
                     <td className="py-3 px-3 whitespace-nowrap">
                       {member.phone ? (
-                        <a href={`tel:${member.phone.replace(/[^\d+]/g, '')}`} className="text-[#002D72] dark:text-blue-400 hover:underline font-medium">
+                        <a
+                          href={`tel:${member.phone.replace(/[^\d+]/g, '')}`}
+                          className="text-[#002D72] dark:text-blue-400 hover:underline font-medium"
+                        >
                           {member.phone}
                         </a>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-500">No phone on file</span>
+                        <span className="text-slate-400 dark:text-slate-500">
+                          No phone on file
+                        </span>
                       )}
                       <div>
-                        <a href={`mailto:${member.email}`} className="text-xs text-[#002D72] dark:text-blue-400 hover:underline">
+                        <a
+                          href={`mailto:${member.email}`}
+                          className="text-xs text-[#002D72] dark:text-blue-400 hover:underline"
+                        >
                           {member.email}
                         </a>
                       </div>
@@ -166,4 +203,3 @@ export function MembersTab({
     </div>
   );
 }
-

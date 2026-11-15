@@ -1,9 +1,18 @@
 import type { Comment } from '@/types';
-export interface CommentNode { comment: Comment; children: CommentNode[]; unavailableParent: boolean }
+export interface CommentNode {
+  comment: Comment;
+  children: CommentNode[];
+  unavailableParent: boolean;
+}
 
 /** Preserve server order; unavailable parents and malformed cycles must not hide replies. */
 export function buildCommentTree(comments: Comment[]): CommentNode[] {
-  const nodes = new Map(comments.map((comment) => [comment.id, { comment, children: [], unavailableParent: false } as CommentNode]));
+  const nodes = new Map(
+    comments.map((comment) => [
+      comment.id,
+      { comment, children: [], unavailableParent: false } as CommentNode,
+    ]),
+  );
   const roots: CommentNode[] = [];
   for (const node of nodes.values()) {
     const parent = nodes.get(node.comment.parentCommentId || '');

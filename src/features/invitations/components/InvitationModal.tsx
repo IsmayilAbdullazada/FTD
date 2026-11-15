@@ -1,3 +1,4 @@
+import { reportError } from '@/shared/lib/logger';
 import React, { useState } from 'react';
 import {
   Mail,
@@ -27,7 +28,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [primaryCohortSlug, setPrimaryCohortSlug] = useState(
-    cohorts.find((c) => !c.isGeneralBoard)?.slug || 'central-maryland'
+    cohorts.find((c) => !c.isGeneralBoard)?.slug || 'central-maryland',
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
@@ -69,9 +70,16 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
         emailPreviewUrl: res.emailPreviewUrl,
         recipientEmail: email.trim(),
       });
-    } catch (err: any) {
-      console.error('Failed to issue invitation:', err);
-      setErrorNotice(err?.message || 'Unable to issue invitation. Please verify the email and try again.');
+    } catch (err: unknown) {
+      reportError('Failed to issue invitation:', err);
+      setErrorNotice(
+        (err instanceof Error
+          ? err instanceof Error
+            ? err.message
+            : undefined
+          : undefined) ||
+          'Unable to issue invitation. Please verify the email and try again.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +135,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 <span>Invitation Sent!</span>
               </div>
               <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                We sent an invitation email to <strong>{generatedInvite.recipientEmail}</strong> with a link to join.
+                We sent an invitation email to{' '}
+                <strong>{generatedInvite.recipientEmail}</strong> with a link to
+                join.
               </p>
               <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-400 pt-0.5">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -165,7 +175,11 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   onClick={handleCopyLink}
                   className="px-3.5 py-2 sm:py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0 transition cursor-pointer"
                 >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
                   <span>{copied ? 'Copied' : 'Copy Link'}</span>
                 </button>
               </div>
@@ -174,9 +188,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               <a
                 href={`mailto:${generatedInvite.recipientEmail}?subject=${encodeURIComponent(
-                  'Invitation to Johns Hopkins Care Partner Connect'
+                  'Invitation to Johns Hopkins Care Partner Connect',
                 )}&body=${encodeURIComponent(
-                  `Hello,\n\nYou have been invited to join Johns Hopkins Care Partner Connect.\n\nTo accept your invitation, please click your secure link:\n${generatedInvite.url}\n\nJohns Hopkins Memory and Alzheimer's Treatment Center`
+                  `Hello,\n\nYou have been invited to join Johns Hopkins Care Partner Connect.\n\nTo accept your invitation, please click your secure link:\n${generatedInvite.url}\n\nJohns Hopkins Memory and Alzheimer's Treatment Center`,
                 )}`}
                 className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 transition"
               >
@@ -201,10 +215,14 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           </div>
         ) : (
           /* Form View with Scrollable Content & Fixed Action Footer */
-          <form onSubmit={handleIssue} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <form
+            onSubmit={handleIssue}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden"
+          >
             <div className="p-3.5 sm:p-5 overflow-y-auto space-y-3 text-xs overscroll-contain flex-1">
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
-                Only vetted family members and verified caregivers can access this closed community.
+                Only vetted family members and verified caregivers can access
+                this closed community.
               </p>
 
               {errorNotice && (
@@ -258,7 +276,8 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 mb-1">
-                    Phone Number <span className="normal-case font-normal">(optional)</span>
+                    Phone Number{' '}
+                    <span className="normal-case font-normal">(optional)</span>
                   </label>
                   <input
                     type="tel"
@@ -275,7 +294,12 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   Which community?
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {([['FTD', 'FTD'], ['AD', 'Alzheimer\'s (AD)']] as [Condition, string][]).map(([value, label]) => (
+                  {(
+                    [
+                      ['FTD', 'FTD'],
+                      ['AD', "Alzheimer's (AD)"],
+                    ] as [Condition, string][]
+                  ).map(([value, label]) => (
                     <button
                       key={value}
                       type="button"
@@ -304,7 +328,11 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   {cohorts
                     .filter((c) => !c.isGeneralBoard)
                     .map((c) => (
-                      <option key={c.id} value={c.slug} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                      <option
+                        key={c.id}
+                        value={c.slug}
+                        className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
                         {getProperGroupName(c)}
                       </option>
                     ))}

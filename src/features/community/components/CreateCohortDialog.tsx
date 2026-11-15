@@ -59,7 +59,10 @@ export function CreateCohortDialog({
               </button>
             </div>
 
-            <form onSubmit={handleCreateGroup} className="p-4 space-y-3 text-xs">
+            <form
+              onSubmit={handleCreateGroup}
+              className="p-4 space-y-3 text-xs"
+            >
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Group name
@@ -121,8 +124,6 @@ export function CreateCohortDialog({
           </div>
         </div>
       )}
-
     </>
   );
 }
-

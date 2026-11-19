@@ -1,6 +1,7 @@
 import { useAuthState } from '../hooks/AuthStateContext';
 import {
   AlertCircle,
+  CheckCircle2,
   ArrowRight,
   Clock,
   Eye,
@@ -23,6 +24,7 @@ export function LoginPanel() {
     setRememberMe,
     isLoggingIn,
     loginError,
+    loginSuccessMessage,
     setForgotEmail,
     setResetError,
     setResetSuccessMessage,
@@ -55,6 +57,16 @@ export function LoginPanel() {
                   {sessionNotice}
                 </div>
               </div>
+            </div>
+          )}
+
+          {loginSuccessMessage && (
+            <div
+              role="status"
+              className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs flex items-start gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <div>{loginSuccessMessage}</div>
             </div>
           )}
 

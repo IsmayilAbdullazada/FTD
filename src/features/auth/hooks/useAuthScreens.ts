@@ -27,11 +27,13 @@ export function useAuthScreens({
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginSuccessMessage, setLoginSuccessMessage] = useState<string | null>(
+    null,
+  );
 
   // Forgot Password State
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotStep, setForgotStep] = useState<'request' | 'verify'>('request');
-  const [resetCode, setResetCode] = useState('');
+  const [forgotStep, setForgotStep] = useState<'request' | 'reset'>('request');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSendingReset, setIsSendingReset] = useState(false);
@@ -69,19 +71,21 @@ export function useAuthScreens({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const resetTokenParam = params.get('resetToken');
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const resetTokenParam =
+      fragment.get('resetToken') ?? params.get('resetToken');
     const resetEmailParam = params.get('email');
-    if (!resetTokenParam || !resetEmailParam) return;
+    if (!resetTokenParam) return;
     setMode('forgot-password');
-    setForgotStep('verify');
-    setForgotEmail(resetEmailParam);
+    setForgotStep('reset');
+    setForgotEmail(resetEmailParam || '');
     setResetToken(resetTokenParam);
-    setResetSuccessMessage(
-      'Enter the 6-digit verification code from your email.',
-    );
+    setResetSuccessMessage('Choose a new password for your account.');
     const cleanUrl = new URL(window.location.href);
     cleanUrl.searchParams.delete('resetToken');
     cleanUrl.searchParams.delete('email');
+    fragment.delete('resetToken');
+    cleanUrl.hash = fragment.toString();
     window.history.replaceState(window.history.state, '', cleanUrl.toString());
   }, []);
 
@@ -115,6 +119,7 @@ export function useAuthScreens({
 
     setIsLoggingIn(true);
     setLoginError(null);
+    setLoginSuccessMessage(null);
     try {
       const res = await authApi.login({
         identifier: loginIdentifier.trim(),
@@ -161,8 +166,8 @@ export function useAuthScreens({
 
   const handleConfirmPasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetCode.trim()) {
-      setResetError('Please enter the 6-digit verification code.');
+    if (!resetToken) {
+      setResetError('Reset link is missing. Request a new link.');
       return;
     }
     if (!newPassword || newPassword.length < 8) {
@@ -177,26 +182,37 @@ export function useAuthScreens({
     setIsSendingReset(true);
     setResetError(null);
     try {
-      const res = await authApi.resetPassword({
-        email: forgotEmail.trim(),
-        code: resetCode.trim(),
-        token: resetToken || undefined,
+      await authApi.resetPassword({
+        token: resetToken,
         newPassword,
       });
 
-      setResetSuccessMessage(res.message || 'Password successfully updated.');
-      setTimeout(() => {
-        setMode('login');
-        setLoginIdentifier(forgotEmail.trim());
-        setLoginPassword(newPassword);
-        setForgotStep('request');
-        setResetSuccessMessage(null);
-      }, 1500);
+      setMode('login');
+      setLoginIdentifier(forgotEmail.trim());
+      setLoginPassword('');
+      setLoginError(null);
+      setLoginSuccessMessage(
+        'Your password has been reset. Sign in with your new password.',
+      );
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetToken(null);
+      setForgotStep('request');
+      setResetSuccessMessage(null);
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.set('tab', 'login');
+      cleanUrl.searchParams.delete('resetToken');
+      cleanUrl.searchParams.delete('email');
+      window.history.replaceState(
+        window.history.state,
+        '',
+        cleanUrl.toString(),
+      );
     } catch (err: unknown) {
       reportError('Reset confirmation failed:', err);
       setResetError(
         (err instanceof Error ? err.message : undefined) ||
-          'Invalid or expired code. Please try again.',
+          'Reset link is invalid or expired. Request a new link.',
       );
     } finally {
       setIsSendingReset(false);
@@ -257,12 +273,11 @@ export function useAuthScreens({
     setIsLoggingIn,
     loginError,
     setLoginError,
+    loginSuccessMessage,
     forgotEmail,
     setForgotEmail,
     forgotStep,
     setForgotStep,
-    resetCode,
-    setResetCode,
     newPassword,
     setNewPassword,
     confirmPassword,

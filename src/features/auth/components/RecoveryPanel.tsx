@@ -15,8 +15,7 @@ export function RecoveryPanel() {
     setForgotEmail,
     forgotStep,
     setForgotStep,
-    resetCode,
-    setResetCode,
+    setResetToken,
     newPassword,
     setNewPassword,
     confirmPassword,
@@ -53,8 +52,8 @@ export function RecoveryPanel() {
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {forgotStep === 'request'
-                ? "Enter your email and we'll send a reset link and verification code."
-                : `Enter the 6-digit code sent to ${forgotEmail}.`}
+                ? "Enter your email and we'll send a password reset link."
+                : 'Choose a new password using your secure reset link.'}
             </p>
           </div>
 
@@ -103,66 +102,65 @@ export function RecoveryPanel() {
                 {isSendingReset ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Sending code...</span>
+                    <span>Sending link...</span>
                   </>
                 ) : (
                   <>
                     <Mail className="w-3.5 h-3.5" />
-                    <span>Send reset code</span>
+                    <span>Send reset link</span>
                   </>
                 )}
               </button>
             </form>
           ) : (
             <form onSubmit={handleConfirmPasswordReset} className="space-y-3.5">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    6-digit code
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setForgotStep('request')}
-                    className="text-[11px] text-[#002D72] dark:text-blue-400 hover:underline cursor-pointer"
-                  >
-                    Resend code
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={resetCode}
-                  onChange={(e) =>
-                    setResetCode(e.target.value.replace(/[^0-9]/g, ''))
-                  }
-                  placeholder="e.g. 481920"
-                  className="block w-full px-3 py-2 text-center tracking-widest font-mono text-sm font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotStep('request');
+                  setResetToken(null);
+                  setResetError(null);
+                  setResetSuccessMessage(null);
+                }}
+                className="text-[11px] text-[#002D72] dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                Request a new link
+              </button>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label
+                  htmlFor="reset-new-password"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+                >
                   New password
                 </label>
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={8}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  id="reset-new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   className="block w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label
+                  htmlFor="reset-confirm-password"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
+                >
                   Confirm new password
                 </label>
                 <input
                   type="password"
                   required
+                  id="reset-confirm-password"
+                  autoComplete="new-password"
+                  maxLength={128}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter your new password"
@@ -183,7 +181,7 @@ export function RecoveryPanel() {
                 ) : (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Reset password & sign in</span>
+                    <span>Reset password</span>
                   </>
                 )}
               </button>

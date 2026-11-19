@@ -80,9 +80,7 @@ export const authApi = {
   },
 
   resetPassword(payload: {
-    email?: string;
-    code?: string;
-    token?: string;
+    token: string;
     newPassword: string;
   }): Promise<{ success: boolean; message: string }> {
     return requestJson(

@@ -30,8 +30,6 @@ const schema = z.object({
   APP_URL: z.string().url().default('http://localhost:5173'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
   SMTP_FROM: z
     .string()
     .default('Hopkins Care Partner Connect <no-reply@localhost>'),

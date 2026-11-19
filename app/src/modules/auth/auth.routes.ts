@@ -260,30 +260,46 @@ router.post(
   asyncHandler(async (req, res) => {
     const input = z
       .object({
-        email: z.string().email(),
-        code: z.string().regex(/^\d{6}$/),
-        token: z.string().min(20),
+        token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
         newPassword: z.string().min(8).max(128),
       })
       .parse(req.body);
-    const reset = await query(
-      `SELECT pr.*,u.email FROM password_resets pr JOIN users u ON u.id=pr.user_id
-     WHERE pr.token_hash=$1 AND LOWER(u.email)=LOWER($2) AND pr.consumed_at IS NULL AND pr.expires_at>NOW()`,
-      [sha256(input.token), input.email],
-    );
-    const record = reset.rows[0];
-    if (!record || !(await bcrypt.compare(input.code, record.code_hash)))
-      throw new HttpError(400, 'Reset code is invalid or expired');
+    const passwordHash = await bcrypt.hash(input.newPassword, 12);
     await transaction(async (client) => {
+      // Lock the user before their resets, matching the recovery worker's order.
+      const users = await client.query(
+        `SELECT u.id FROM users u JOIN password_resets pr ON pr.user_id=u.id
+         WHERE pr.token_hash=$1 AND u.is_active AND pr.consumed_at IS NULL AND pr.expires_at>NOW()
+         FOR UPDATE OF u`,
+        [sha256(input.token)],
+      );
+      const user = users.rows[0];
+      if (!user)
+        throw new HttpError(
+          400,
+          'Reset link is invalid or expired. Request a new link.',
+        );
+      const consumed = await client.query(
+        `UPDATE password_resets SET consumed_at=clock_timestamp()
+         WHERE token_hash=$1 AND user_id=$2 AND consumed_at IS NULL AND expires_at>clock_timestamp()
+         RETURNING id`,
+        [sha256(input.token), user.id],
+      );
+      if (!consumed.rowCount)
+        throw new HttpError(
+          400,
+          'Reset link is invalid or expired. Request a new link.',
+        );
       await client.query(
         `UPDATE users SET password_hash=$1,session_version=session_version+1,updated_at=NOW() WHERE id=$2`,
-        [await bcrypt.hash(input.newPassword, 12), record.user_id],
+        [passwordHash, user.id],
       );
       await client.query(
-        `UPDATE password_resets SET consumed_at=NOW() WHERE id=$1`,
-        [record.id],
+        'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id],
       );
     });
+    clearSessionCookie(res);
     res.json({ success: true, message: 'Password updated successfully.' });
   }),
 );

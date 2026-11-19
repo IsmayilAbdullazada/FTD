@@ -24,7 +24,7 @@ The frontend uses React 19, TypeScript, Vite, and Tailwind CSS. The backend uses
 
 - Node.js **24**, as specified in [.nvmrc](.nvmrc), and npm.
 - PostgreSQL **16 or 18**, with permission to create the `pgcrypto` extension in the application database.
-- An SMTP service with TLS for invitations and password recovery. The app can start without SMTP, but email-based account activation and recovery require working delivery.
+- An SMTP relay with TLS that permits mail from your server for invitations and password recovery. The app can start without SMTP, but email-based account activation and recovery require working delivery.
 
 Run commands from the repository root unless stated otherwise. Local development and deployment scripts assume a Unix-like shell. Clone the repository and enter it before proceeding:
 
@@ -102,22 +102,22 @@ Feature code owns its domain behavior; `shared` contains infrastructure and comp
 
 Backend npm scripts load `config/ftdcare.env` when present. Backend tests load `config/ftdcare.test.env` instead. Existing process environment variables take precedence over file values. The root `.env` is not the backend configuration file. Start with the [backend environment template](config/ftdcare.env.example); [env.ts](app/src/config/env.ts) defines defaults and validation.
 
-| Variables                                                       | Purpose / default                                                                                                   |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`                                                    | Required signing secret, at least 32 characters; generate a unique random value per environment.                    |
-| `DB_HOST`, `DB_PORT`                                            | PostgreSQL host and port; `127.0.0.1`, `5432`.                                                                      |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD`                             | Database name, role, and password; production requires a password of at least 12 characters.                        |
-| `DB_SSL`, `DB_POOL_MAX`                                         | Verified database TLS (`false` by default) and pool size (`20`).                                                    |
-| `NODE_ENV`, `PORT`                                              | Runtime mode (`development`) and API port (`3000`). Set `NODE_ENV=production` for deployments.                      |
-| `APP_URL`                                                       | Frontend URL used in emailed links; `http://localhost:5173`.                                                        |
-| `CORS_ORIGIN`                                                   | Comma-separated allowed frontend origins; `http://localhost:5173`. Production origins and `APP_URL` must use HTTPS. |
-| `TRUST_PROXY_HOPS`                                              | Trusted reverse-proxy hops; `1` for one nginx proxy, `0` for direct access. Match the actual network topology.      |
-| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`                   | Token lifetime (`8h`) and persistent-cookie lifetime (`28800000`).                                                  |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | SMTP delivery settings; port `587` by default, implicit TLS on `465`, TLS required for delivery.                    |
-| `GUIDE_UPLOAD_DIRECTORY`                                        | Optional absolute persistent upload path; defaults to `public/uploads/guides`.                                      |
-| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET`                  | Development-only switches; default `false`, rejected in production.                                                 |
-| `ENABLE_DEV_AUTH_PREVIEWS`                                      | Redacted development email previews; default `false`, rejected in production. Does not expose reset credentials.    |
-| `ALLOW_PRODUCTION_SEED`                                         | Explicit opt-in to run the seed script in production; default `false`.                                              |
+| Variables                                      | Purpose / default                                                                                                                                  |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                                   | Required signing secret, at least 32 characters; generate a unique random value per environment.                                                   |
+| `DB_HOST`, `DB_PORT`                           | PostgreSQL host and port; `127.0.0.1`, `5432`.                                                                                                     |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`            | Database name, role, and password; production requires a password of at least 12 characters.                                                       |
+| `DB_SSL`, `DB_POOL_MAX`                        | Verified database TLS (`false` by default) and pool size (`20`).                                                                                   |
+| `NODE_ENV`, `PORT`                             | Runtime mode (`development`) and API port (`3000`). Set `NODE_ENV=production` for deployments.                                                     |
+| `APP_URL`                                      | Frontend URL used in emailed links; `http://localhost:5173`.                                                                                       |
+| `CORS_ORIGIN`                                  | Comma-separated allowed frontend origins; `http://localhost:5173`. Production origins and `APP_URL` must use HTTPS.                                |
+| `TRUST_PROXY_HOPS`                             | Trusted reverse-proxy hops; `1` for one nginx proxy, `0` for direct access. Match the actual network topology.                                     |
+| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`  | Token lifetime (`8h`) and persistent-cookie lifetime (`28800000`).                                                                                 |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`          | SMTP relay settings with no authentication; port `587` by default, implicit TLS on `465`, TLS required. The relay must permit your server to send. |
+| `GUIDE_UPLOAD_DIRECTORY`                       | Optional absolute persistent upload path; defaults to `public/uploads/guides`.                                                                     |
+| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET` | Development-only switches; default `false`, rejected in production.                                                                                |
+| `ENABLE_DEV_AUTH_PREVIEWS`                     | Redacted development email previews; default `false`, rejected in production. Does not expose reset credentials.                                   |
+| `ALLOW_PRODUCTION_SEED`                        | Explicit opt-in to run the seed script in production; default `false`.                                                                             |
 
 `VITE_API_PROXY_TARGET` configures the Vite development proxy and defaults to `http://127.0.0.1:3000`. Set it in the frontend process environment when changing the API port. Frontend `VITE_*` configuration can be exposed to the browser; never put secrets in it. `GEMINI_API_KEY` is optional legacy configuration and does not enable model generation.
 
@@ -135,9 +135,9 @@ Seeding creates sample accounts and content for development. It does not provide
 UPDATE users SET email = 'you@your-domain.example' WHERE id = 'user-clinician-1';
 ```
 
-Replace the example email before running this statement. Configure SMTP, then use **Forgot password** for that address. Open the emailed reset link and enter the verification code from the separate message to choose a password. Rerunning the seed script restores seeded email addresses, so repeat this local override after reseeding. This is a development setup step; production account provisioning should use your approved administration process. Do not seed demonstration content into a real care community as an account-provisioning shortcut.
+Replace the example email before running this statement. Configure SMTP, then use **Forgot password** for that address. Open the single-use emailed reset link, choose a new password, and then sign in. No verification code is required. Rerunning the seed script restores seeded email addresses, so repeat this local override after reseeding. This is a development setup step; production account provisioning should use your approved administration process. Do not seed demonstration content into a real care community as an account-provisioning shortcut.
 
-New care partners register through a staff-issued invitation. Password recovery verifies one inbox; separate link and code emails are not multifactor authentication and do not protect against mailbox compromise. Standalone private chat and database-admin endpoints are API-only; per-post private dialogue has a frontend interface.
+New care partners register through a staff-issued invitation. Password recovery sends one single-use link that expires after 20 minutes. Only a SHA-256 hash of its 32-byte random token is stored. New email links carry the token in a URL fragment so it is not sent to web-server access logs; the frontend removes it from the address bar after reading it. A successful reset revokes existing sessions and returns the user to sign-in; it does not sign them in automatically. Email-based recovery does not protect against mailbox compromise. Standalone private chat and database-admin endpoints are API-only; per-post private dialogue has a frontend interface.
 
 ## Development commands
 
@@ -172,17 +172,20 @@ npm run build
 npm --prefix app run build
 ```
 
-Backend tests mutate data and require a separate, migrated, seeded database. Create a test database, copy `config/ftdcare.env.example` to `config/ftdcare.test.env`, and set `NODE_ENV=test` and the test database credentials there. Use a different database from development and production. Leave SMTP credentials unset or use an isolated test mail service; do not reuse production mail credentials.
+Backend tests mutate data and require a separate, migrated, seeded database. Create a test database, copy `config/ftdcare.env.example` to `config/ftdcare.test.env`, and set `NODE_ENV=test` and the test database credentials there. Use a different database from development and production. Leave `SMTP_HOST` unset or use an isolated test mail service; do not use the production relay for tests. Backend tests also require the OpenSSL CLI to generate temporary certificates for their local SMTP relay.
 
 Load the test configuration explicitly when initializing that database:
 
 ```bash
-node --env-file=config/ftdcare.test.env --run backend:migrate
-node --env-file=config/ftdcare.test.env --run backend:seed
+(
+  cd app
+  node --env-file=../config/ftdcare.test.env --import tsx src/db/migrate.ts
+  node --env-file=../config/ftdcare.test.env --import tsx src/db/seed.ts
+)
 npm run backend:test
 ```
 
-Frontend tests use Vitest, Testing Library, and jsdom, including `<App/>` invitation and login regressions. Backend tests use Node's test runner and real PostgreSQL, covering authorization, sessions, moderation, messages, recovery, uploads, indexes, and legacy-password upgrades. Browser smoke checks and real SMTP delivery are separate from these automated suites.
+Frontend tests use Vitest, Testing Library, and jsdom, including `<App/>` invitation and login regressions. Backend tests use Node's test runner and real PostgreSQL, covering authorization, sessions, moderation, messages, recovery, uploads, indexes, and legacy-password upgrades. A local SMTP relay test verifies actual STARTTLS delivery without authentication or sending messages outside the test process. Browser smoke checks and delivery through your deployed SMTP relay are separate from these automated suites.
 
 [GitHub Actions](.github/workflows/ci.yml) runs checks against PostgreSQL 16 and 18, applies migrations twice, seeds the test database, runs both test suites, builds both packages and the Docker image, and audits dependencies. CI has read-only repository permissions; high and critical audit findings fail the workflow.
 
@@ -209,7 +212,7 @@ Posts, moderation queues, and private messages accept `page` and `pageSize`. Def
 
 Migrations live in [app/src/db/migrations](app/src/db/migrations). The runner applies numbered SQL files in filename order under one transaction and advisory lock, recording SHA-256 checksums. Applied files must not be edited; add a new numbered migration. The baseline supports existing installations, and later migrations include corrective account changes, foreign-key indexes, and durable recovery jobs.
 
-Run migrations as a deployment step before starting the new API version. Back up the database first. There is no automated down-migration command; plan rollback using a compatible application version or a tested database restore.
+Run migrations as a deployment step before starting the new API version. Migration `007_link_only_password_recovery` removes the old code hashes and invalidates outstanding link-and-code resets; affected users must request a fresh link. Deploy its matching frontend and backend together. Back up the database first. There is no automated down-migration command; plan rollback using a compatible application version or a tested database restore.
 
 Guide metadata and PDF URLs live in PostgreSQL; uploaded PDF bytes live on disk. Persist and back up `GUIDE_UPLOAD_DIRECTORY` along with the database. A URL in PostgreSQL does not preserve its target file. Bundled seed PDFs live in `public/resources`; external PDF URLs require their own durable storage and access policy.
 
@@ -268,15 +271,15 @@ Use the same database/network settings for migration and API containers. Runtime
 
 ## Operations and troubleshooting
 
-| Symptom / task                                         | What to check                                                                                                                                                                                                 |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Database health returns `503`                          | Database availability, credentials, TLS configuration, network access, and applied migrations.                                                                                                                |
-| Login fails after initial seeding                      | Seed passwords cannot be recovered. Configure SMTP and use recovery for an inbox you control.                                                                                                                 |
-| Login works but subsequent requests return `401`/`403` | Frontend origin, HTTPS, cookie settings, reverse-proxy topology, and consistent hostnames.                                                                                                                    |
-| Invitations or resets do not arrive                    | SMTP credentials, required TLS, sender configuration, delivery status, and the running API worker. Recovery polls every five seconds and makes up to five delivery attempts, one minute apart after failures. |
-| Guide PDFs disappear after a restart                   | Persistent upload mount, write permissions, and whether the guide/resource URL still references the file. Unsaved orphan uploads expire.                                                                      |
-| Request fails unexpectedly                             | Correlate `X-Request-ID` or the response's `requestId` with structured API logs.                                                                                                                              |
-| Preparing a release or restore                         | Back up PostgreSQL and uploaded files together; verify the restore procedure and migration compatibility.                                                                                                     |
+| Symptom / task                                         | What to check                                                                                                                                                                                                                                |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database health returns `503`                          | Database availability, credentials, TLS configuration, network access, and applied migrations.                                                                                                                                               |
+| Login fails after initial seeding                      | Seed passwords cannot be recovered. Configure SMTP and use recovery for an inbox you control.                                                                                                                                                |
+| Login works but subsequent requests return `401`/`403` | Frontend origin, HTTPS, cookie settings, reverse-proxy topology, and consistent hostnames.                                                                                                                                                   |
+| Invitations or resets do not arrive                    | SMTP host/port, relay permission for the server, required TLS, sender configuration, delivery status, and the running API worker. Recovery polls every five seconds and makes up to five delivery attempts, one minute apart after failures. |
+| Guide PDFs disappear after a restart                   | Persistent upload mount, write permissions, and whether the guide/resource URL still references the file. Unsaved orphan uploads expire.                                                                                                     |
+| Request fails unexpectedly                             | Correlate `X-Request-ID` or the response's `requestId` with structured API logs.                                                                                                                                                             |
+| Preparing a release or restore                         | Back up PostgreSQL and uploaded files together; verify the restore procedure and migration compatibility.                                                                                                                                    |
 
 Backend logs include request IDs, route templates, sanitized error messages, codes, and stack locations without serializing request bodies or cookies. Email bodies and reset credentials are not retained in the outbox. Monitor API health and mail delivery; a healthy database alone does not establish that SMTP or every user flow works.
 

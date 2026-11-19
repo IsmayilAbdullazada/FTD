@@ -48,6 +48,11 @@ export function useAppController() {
   }
 
   function applyInitialLocation(user: CurrentUser): void {
+    if (
+      new URLSearchParams(window.location.search).get('notifications') ===
+      'open'
+    )
+      setIsNotificationsOpen(true);
     const { tab, postId, inviteToken, discussionDraft } = readAppLocation();
 
     if (inviteToken) {
@@ -75,6 +80,11 @@ export function useAppController() {
   }
 
   function syncNavigationFromLocation(): void {
+    if (
+      new URLSearchParams(window.location.search).get('notifications') ===
+      'open'
+    )
+      setIsNotificationsOpen(true);
     const location = readAppLocation('feed');
     const tab = location.tab || 'feed';
     const { postId, inviteToken, discussionDraft } = location;
@@ -236,7 +246,12 @@ export function useAppController() {
       createDiscussion,
       closeAuth: () => setIsAuthOpen(false),
       openNotifications: () => setIsNotificationsOpen(true),
-      closeNotifications: () => setIsNotificationsOpen(false),
+      closeNotifications: () => {
+        setIsNotificationsOpen(false);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('notifications');
+        window.history.replaceState(window.history.state, '', url.toString());
+      },
       clearTargetDiscussion: () => setTargetDiscussionId(null),
       dismissFeedNotice: () => setFeedNotice(null),
       changeFeedSection: setFeedSection,

@@ -265,15 +265,23 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           e.stopPropagation();
                           if (!msg.read) handleMarkRead(msg.id);
                           onClose();
-                          if (msg.type === 'APPROVAL' && onNavigateToFeed) {
-                            onNavigateToFeed();
+                          if (
+                            msg.type === 'MODERATION' &&
+                            isClinician &&
+                            onNavigateToConsole
+                          ) {
+                            onNavigateToConsole();
                           } else if (onNavigateToFeed) {
                             onNavigateToFeed();
                           }
                         }}
                         className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
                       >
-                        <span>Open Discussions</span>
+                        <span>
+                          {msg.type === 'MODERATION' && isClinician
+                            ? 'Open Dashboard'
+                            : 'Open Discussions'}
+                        </span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>

@@ -215,7 +215,14 @@ export interface DirectMessage {
   recipientUserId: string;
   title: string;
   message: string;
-  type: 'APPROVAL' | 'REJECTION' | 'CLINICAL_ESCALATION' | 'DIRECT_CHAT';
+  type:
+    | 'APPROVAL'
+    | 'REJECTION'
+    | 'CLINICAL_ESCALATION'
+    | 'DIRECT_CHAT'
+    | 'MODERATION'
+    | 'ACTIVITY'
+    | 'SECURITY';
   createdAt: string;
   read: boolean;
 }

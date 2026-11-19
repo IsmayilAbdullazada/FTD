@@ -1,3 +1,5 @@
+import { composeEmail, escapeHtml } from '../../services/emailTemplates.js';
+import { notify } from '../../services/notifications.js';
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -20,14 +22,6 @@ const router = Router();
 router.use(authLimiter);
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
-const escapeHtml = (value: string) =>
-  value.replace(
-    /[&<>"']/g,
-    (char) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-        char
-      ]!,
-  );
 const tokenFor = (user: {
   id: string;
   email: string;
@@ -131,9 +125,16 @@ router.post(
     const registrationUrl = `${env.APP_URL.replace(/\/$/, '')}/register?token=${encodeURIComponent(token)}`;
     const delivery = await sendEmail({
       to: input.email,
-      subject: 'Your Hopkins Care Partner Connect invitation',
-      text: `You have been invited to Hopkins Care Partner Connect. Register: ${registrationUrl}`,
-      html: `<p>You have been invited to Hopkins Care Partner Connect.</p><p><a href="${escapeHtml(registrationUrl)}">Create your account</a></p>`,
+      ...composeEmail({
+        subject: 'You are invited to Care Partner Connect',
+        greeting: input.firstName ? `Hello ${input.firstName},` : 'Hello,',
+        paragraphs: [
+          'You have been invited to join Hopkins Care Partner Connect, a private community for care partners supported by a clinical moderation team.',
+          'To get started, create your account using the link below. Your invitation is valid for three days.',
+          'If you were not expecting this invitation, you can safely ignore this email.',
+        ],
+        action: { label: 'Create your account', url: registrationUrl },
+      }),
     });
     res.status(201).json({
       invitationId: invitation.id,
@@ -229,6 +230,17 @@ router.post(
         `UPDATE invitations SET status='ACCEPTED',accepted_at=NOW() WHERE id=$1`,
         [invite.id],
       );
+      await notify(client, {
+        kind: 'WELCOME',
+        recipients: [id],
+        eventKey: `welcome:${id}`,
+      });
+      await notify(client, {
+        kind: 'INVITATION_ACCEPTED',
+        recipients: [invite.issued_by],
+        actorId: id,
+        eventKey: `invitation-accepted:${invite.id}`,
+      });
       return inserted.rows[0];
     });
     const token = tokenFor(user as Parameters<typeof tokenFor>[0]);
@@ -298,6 +310,11 @@ router.post(
         'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
         [user.id],
       );
+      await notify(client, {
+        kind: 'PASSWORD_CHANGED',
+        recipients: [user.id],
+        eventKey: `password-changed:${consumed.rows[0].id}`,
+      });
     });
     clearSessionCookie(res);
     res.json({ success: true, message: 'Password updated successfully.' });

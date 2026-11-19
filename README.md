@@ -13,6 +13,7 @@ The frontend uses React 19, TypeScript, Vite, and Tailwind CSS. The backend uses
 - [Development commands](#development-commands)
 - [Testing and CI](#testing-and-ci)
 - [API conventions](#api-conventions)
+- [Email notifications](#email-notifications)
 - [Database and file storage](#database-and-file-storage)
 - [Production deployment](#production-deployment)
 - [Operations and troubleshooting](#operations-and-troubleshooting)
@@ -208,6 +209,30 @@ The last recorded audit on 2026-11-15 reported a moderate `minimatch` advisory t
 
 Posts, moderation queues, and private messages accept `page` and `pageSize`. Defaults are page 1 and 25 items (50 for messages), capped at 100. Responses include `pagination: { page, pageSize, total, totalPages }` alongside `posts`, `items`, or `messages`. Message pages select newest history and order each page chronologically. Frontend collection adapters request the selected page; feed filters run on the server before pagination.
 
+## Email notifications
+
+Primary account and community actions create in-app notifications and durable email jobs in the same database transaction. Activity emails use a shared, readable HTML and plain-text template, with a clear subject and a link back to the application. Discussion titles, post/reply text, private messages, moderation feedback, names, and condition labels are excluded from activity emails; those details stay behind sign-in.
+
+| Event                                                                                        | Who is notified                                                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New or edited discussion/reply awaiting moderation                                           | The submitting care partner receives a receipt; active clinicians and administrators receive a review alert.                                                                                                                                |
+| Approval, decline, or clinical redirection                                                   | The author receives the outcome. Detailed moderation feedback remains in their signed-in notification inbox.                                                                                                                                |
+| Published reply or nested response                                                           | The discussion owner and parent-reply author, once the discussion and ancestor replies are approved and accessible. The same person receives one reply alert if they own both.                                                              |
+| Moderator edits or removes content, closes/reopens a discussion, or changes reply moderation | The affected content owner. Bulk-approved replies also produce approval and reply alerts.                                                                                                                                                   |
+| Private discussion replies and direct messages                                               | The recipient or existing care-team participants; a first private follow-up alerts active staff if no clinician has joined the thread yet. Private message text stays inside the application. Standalone direct messaging remains API-only. |
+| Primary community group reassignment                                                         | The affected member, when the group actually changes.                                                                                                                                                                                       |
+| New draft guide / guide approval                                                             | Other active staff reviewers / the uploader when another staff member approves it.                                                                                                                                                          |
+| Completed invitation registration                                                            | The new member receives a welcome message and the inviter receives an acceptance update.                                                                                                                                                    |
+| Password reset completed                                                                     | The account owner receives a password-change security alert after existing sessions are revoked.                                                                                                                                            |
+
+Alerts go to the people involved, rather than every account. Self-alerts and duplicate reply recipients are suppressed; submission receipts and password-change alerts intentionally go to the account owner. Routine browsing and upvotes do not generate emails. Existing historical notifications are not bulk-emailed when the feature is enabled.
+
+The API checks the activity queue every five seconds, claiming up to 20 jobs and sending at most four concurrently. Jobs survive restarts and have up to five delivery attempts, with delays of one, two, four, and eight minutes after failures. SMTP failure does not undo the original action. Delivery rechecks active accounts, staff permissions, and reply visibility; stale or inaccessible reply alerts are skipped. Event/recipient keys prevent duplicate jobs, and a stable email Message-ID is reused on retry. SMTP delivery is at least once: a process crash after SMTP acceptance but before recording success can cause a duplicate email.
+
+Configure `SMTP_HOST`, `SMTP_PORT`, and `SMTP_FROM` and keep the API process running. Queue status is stored in `notification_email_jobs`; `attempts`, `completed_at`, `skipped_at`, and the sanitized `last_error` distinguish delivery outcomes. Check jobs with five attempts and no completion when monitoring mail failures. `email_outbox` records delivery status and recipient metadata without retaining message bodies.
+
+Apply migration `008_activity_email_notifications` before starting the updated API, and deploy the matching frontend so email links can open the notification inbox. Review the [activity definitions](app/src/services/activityDefinitions.ts) when changing notification wording or adding an event.
+
 ## Database and file storage
 
 Migrations live in [app/src/db/migrations](app/src/db/migrations). The runner applies numbered SQL files in filename order under one transaction and advisory lock, recording SHA-256 checksums. Applied files must not be edited; add a new numbered migration. The baseline supports existing installations, and later migrations include corrective account changes, foreign-key indexes, and durable recovery jobs.
@@ -245,7 +270,7 @@ Uploaded PDFs must be served through `/uploads/guides/` on the authenticated API
    curl --fail https://your-domain.com/api/v1/health
    ```
 
-Verify login, invitation registration, guide access, and email delivery over the deployed HTTPS origin before opening access to users. The API process also runs recovery and upload-cleanup jobs, so it must stay running for those jobs to execute.
+Verify login, invitation registration, guide access, and email delivery over the deployed HTTPS origin before opening access to users. The API process also runs recovery, activity email delivery, and upload-cleanup jobs, so it must stay running for those jobs to execute.
 
 ### Docker API image
 

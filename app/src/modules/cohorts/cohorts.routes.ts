@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { notify } from '../../services/notifications.js';
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -106,6 +108,18 @@ router.post(
     );
     if (!target.rows[0]) throw new HttpError(404, 'Target cohort not found');
     await transaction(async (client) => {
+      const user = (
+        await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [
+          input.userId,
+        ])
+      ).rows[0];
+      if (!user) throw new HttpError(404, 'Member not found');
+      const previous = (
+        await client.query(
+          'SELECT cohort_id FROM cohort_members WHERE user_id=$1 AND is_primary',
+          [input.userId],
+        )
+      ).rows[0];
       await client.query(
         `UPDATE cohort_members SET is_primary=false WHERE user_id=$1 AND is_primary`,
         [input.userId],
@@ -120,6 +134,13 @@ router.post(
       VALUES($1,'MEMBER_ASSIGNMENT',$2,'REASSIGNED_COHORT',$3)`,
         [req.user!.id, input.userId, `Assigned to ${target.rows[0].name}`],
       );
+      if (previous?.cohort_id !== input.newGroupId)
+        await notify(client, {
+          kind: 'COHORT_CHANGED',
+          recipients: [input.userId],
+          actorId: req.user!.id,
+          eventKey: `cohort-changed:${input.userId}:${randomUUID()}`,
+        });
     });
     res.json({
       success: true,

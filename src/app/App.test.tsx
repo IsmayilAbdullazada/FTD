@@ -114,3 +114,59 @@ test('the signed-out App accepts an email reset link without an email or code fi
   ]);
   expect(screen.queryByText('Session Expired')).toBeNull();
 });
+
+test('activity email links open the signed-in notification inbox and closing it clears the URL flag', async () => {
+  window.history.replaceState({}, '', '/?tab=feed&notifications=open');
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/users/me'))
+        return Response.json({
+          user: {
+            id: 'care-fixture',
+            email: 'care@example.test',
+            role: 'CARE_PARTNER',
+            firstName: 'Care',
+            lastName: 'Partner',
+            anonymousHandle: 'Care-fixture',
+            badgeLabel: 'Care Partner',
+            avatarColor: '#002D72',
+            condition: 'FTD',
+          },
+          allPersonas: [],
+        });
+      if (url.includes('/cohorts')) return Response.json([]);
+      if (url.includes('/notifications'))
+        return Response.json({
+          unreadCount: 1,
+          messages: [
+            {
+              id: 'notice-fixture',
+              recipientUserId: 'care-fixture',
+              title: 'An update on your discussion',
+              message: 'Please review the feedback from your moderation team.',
+              type: 'REJECTION',
+              createdAt: '2026-01-01T00:00:00Z',
+              read: false,
+            },
+          ],
+        });
+      if (url.includes('/posts'))
+        return Response.json({
+          posts: [],
+          total: 0,
+          pagination: { page: 1, pageSize: 5, total: 0, totalPages: 0 },
+        });
+      return Response.json([]);
+    }),
+  );
+  render(<App />);
+  expect(
+    await screen.findByText(
+      'Please review the feedback from your moderation team.',
+    ),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByLabelText('Close'));
+  expect(window.location.search).not.toContain('notifications');
+});

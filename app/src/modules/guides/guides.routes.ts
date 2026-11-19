@@ -1,3 +1,4 @@
+import { notify, notifyStaff } from '../../services/notifications.js';
 import { uploadsDirectory } from '../../services/uploads.js';
 import type { PoolClient } from 'pg';
 import type { GuideRow } from '../../db/rows.js';
@@ -163,6 +164,13 @@ router.post(
         )
       ).rows[0];
       inserted.total_chunks = await reindex(client, inserted);
+      if (inserted.status === 'DRAFT')
+        await notifyStaff(client, {
+          kind: 'GUIDE_REVIEW_REQUIRED',
+          actorId: req.user!.id,
+          eventKey: `guide-review:${inserted.id}`,
+          context: { guideId: inserted.id },
+        });
       return inserted;
     });
     const user = await query(
@@ -209,6 +217,13 @@ router.put(
       ).rows[0];
       if (!updated) throw new HttpError(404, 'Guide not found');
       updated.total_chunks = await reindex(client, updated);
+      if (updated.status === 'DRAFT')
+        await notifyStaff(client, {
+          kind: 'GUIDE_REVIEW_REQUIRED',
+          actorId: req.user!.id,
+          eventKey: `guide-review:${updated.id}:${updated.updated_at.toISOString()}`,
+          context: { guideId: updated.id },
+        });
       return updated;
     });
     const user = await query(
@@ -226,6 +241,12 @@ router.patch(
   requireStaff,
   asyncHandler(async (req, res) => {
     const r = await transaction(async (client) => {
+      const before = (
+        await client.query(
+          'SELECT status FROM chatbot_guides WHERE id=$1 FOR UPDATE',
+          [req.params.id],
+        )
+      ).rows[0];
       const g = (
         await client.query(
           `UPDATE chatbot_guides SET status='APPROVED',approved_at=NOW(),approved_by=$1,updated_at=NOW() WHERE id=$2 RETURNING *`,
@@ -234,6 +255,14 @@ router.patch(
       ).rows[0];
       if (!g) throw new HttpError(404, 'Guide not found');
       g.total_chunks = await reindex(client, g);
+      if (before?.status !== 'APPROVED')
+        await notify(client, {
+          kind: 'GUIDE_APPROVED',
+          recipients: [g.uploaded_by],
+          actorId: req.user!.id,
+          eventKey: `guide-approved:${g.id}`,
+          context: { guideId: g.id },
+        });
       return g;
     });
     const user = await query(

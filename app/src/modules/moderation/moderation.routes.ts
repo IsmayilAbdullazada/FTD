@@ -1,3 +1,8 @@
+import {
+  notify,
+  notifyPublishedPost,
+  notifyReplyPublished,
+} from '../../services/notifications.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { query, transaction } from '../../config/db.js';
@@ -124,7 +129,7 @@ router.post(
     const result = await transaction(async (client) => {
       const table = input.entityType === 'POST' ? 'posts' : 'comments';
       const current = await client.query(
-        `SELECT * FROM ${table} WHERE id=$1 FOR UPDATE`,
+        `SELECT *,updated_at::text notification_revision FROM ${table} WHERE id=$1 FOR UPDATE`,
         [input.entityId],
       );
       const entity = current.rows[0];
@@ -176,21 +181,33 @@ router.post(
             postId,
           ]);
       }
-      const authorId = entity.author_id;
-      await client.query(
-        `INSERT INTO notifications(recipient_user_id,title,message,type) VALUES($1,$2,$3,$4)`,
-        [
-          authorId,
-          `${input.entityType === 'POST' ? 'Discussion' : 'Reply'} ${nextStatus.toLowerCase().replace('clinical_redirect', 'redirected')}`,
-          input.rejectionMessage ||
-            `Your ${input.entityType.toLowerCase()} was ${nextStatus.toLowerCase().replace('clinical_redirect', 'redirected')} by the clinical moderation team.`,
-          input.action === 'APPROVE'
-            ? 'APPROVAL'
-            : input.action === 'REJECT'
-              ? 'REJECTION'
-              : 'CLINICAL_ESCALATION',
-        ],
-      );
+      if (input.entityType === 'POST' && input.action === 'APPROVE')
+        await notifyPublishedPost(client, postId, req.user!.id);
+      else {
+        const kind =
+          input.entityType === 'POST'
+            ? input.action === 'REJECT'
+              ? 'POST_NOT_PUBLISHED'
+              : 'POST_CLINICAL_FOLLOWUP'
+            : input.action === 'APPROVE'
+              ? 'REPLY_APPROVED'
+              : 'REPLY_NOT_PUBLISHED';
+        await notify(client, {
+          kind,
+          recipients: [entity.author_id],
+          actorId: req.user!.id,
+          eventKey: `moderated:${input.entityType}:${input.entityId}:${entity.notification_revision}`,
+          context: {
+            postId,
+            ...(input.entityType === 'COMMENT'
+              ? { commentId: input.entityId }
+              : {}),
+          },
+          message: input.rejectionMessage,
+        });
+        if (input.entityType === 'COMMENT' && input.action === 'APPROVE')
+          await notifyReplyPublished(client, input.entityId, req.user!.id);
+      }
       await client.query(
         `INSERT INTO moderation_audit(moderator_id,entity_type,entity_id,action_taken,reason,notes)
       VALUES($1,$2,$3,$4,$5,$6)`,
@@ -216,8 +233,8 @@ router.post(
         input.action === 'APPROVE'
           ? `${input.entityType === 'POST' ? 'Post' : 'Reply'} approved and published.`
           : input.action === 'REJECT'
-            ? `${input.entityType === 'POST' ? 'Post' : 'Reply'} rejected and feedback sent.`
-            : 'Discussion diverted to the clinical support workflow.',
+            ? `${input.entityType === 'POST' ? 'Discussion' : 'Reply'} not published. Feedback is available to the author.`
+            : 'Discussion referred for clinical follow-up.',
     });
   }),
 );

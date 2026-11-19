@@ -1,3 +1,6 @@
+import { transaction } from '../src/config/db.js';
+import { notify } from '../src/services/notifications.js';
+import { processNotificationEmails } from '../src/services/notificationEmails.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +35,29 @@ test('SMTP delivers invitations and recovery with only HOST, PORT and FROM over 
       });
       assert.equal(result.emailSent, true, result.emailError);
     }
-    assert.equal(relay.messages.length, 2);
+    const userId = email.split('@')[0];
+    await pool.query(
+      "INSERT INTO users(id,email,password_hash,role,first_name,last_name,anonymous_handle,badge_label) VALUES($1,$2,'disabled','CARE_PARTNER','Fixture','Reader',$1,'Fixture')",
+      [userId, email],
+    );
+    await transaction((client) =>
+      notify(client, {
+        kind: 'WELCOME',
+        recipients: [userId],
+        eventKey: `smtp-fixture:${userId}`,
+      }),
+    );
+    const notice = (
+      await pool.query(
+        'SELECT id FROM notifications WHERE recipient_user_id=$1',
+        [userId],
+      )
+    ).rows[0];
+    assert.equal(
+      (await processNotificationEmails({ notificationIds: [notice.id] })).sent,
+      1,
+    );
+    assert.equal(relay.messages.length, 3);
     assert.ok(
       relay.messages.every((message) =>
         message.includes('From: Care Partner Test <no-reply@example.test>'),
@@ -40,7 +65,7 @@ test('SMTP delivers invitations and recovery with only HOST, PORT and FROM over 
     );
     assert.equal(
       relay.commands.filter((command) => command === 'STARTTLS').length,
-      2,
+      3,
     );
     assert.equal(relay.commands.includes('AUTH'), false);
     const outbox = await pool.query(
@@ -74,6 +99,7 @@ test('SMTP delivers invitations and recovery with only HOST, PORT and FROM over 
     Object.assign(env, original);
     await relay.close();
     await pool.query('DELETE FROM email_outbox WHERE recipient=$1', [email]);
+    await pool.query('DELETE FROM users WHERE id=$1', [email.split('@')[0]]);
     await pool.end();
   }
 });

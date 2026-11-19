@@ -11,6 +11,7 @@ export async function sendEmail(message: {
   subject: string;
   text: string;
   html: string;
+  messageId?: string;
 }) {
   const previewToken = crypto.randomBytes(24).toString('base64url');
   const inserted = await query(

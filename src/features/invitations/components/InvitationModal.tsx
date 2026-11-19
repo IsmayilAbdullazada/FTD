@@ -65,7 +65,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
       setGeneratedInvite({
         token: res.inviteToken,
         expiresAt: res.inviteExpiresAt,
-        url: `${window.location.origin}${res.registrationUrl}`,
+        url: new URL(res.registrationUrl, window.location.origin).href,
         emailSent: res.emailSent,
         emailPreviewUrl: res.emailPreviewUrl,
         recipientEmail: email.trim(),
@@ -132,12 +132,26 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm space-y-2 text-emerald-950 dark:text-emerald-100 font-sans">
               <div className="flex items-center gap-2 font-semibold text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm">
                 <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>Invitation Sent!</span>
+                <span>
+                  {generatedInvite.emailSent
+                    ? 'Invitation emailed'
+                    : 'Invitation created'}
+                </span>
               </div>
               <p className="text-xs text-emerald-900 dark:text-emerald-300">
-                We sent an invitation email to{' '}
-                <strong>{generatedInvite.recipientEmail}</strong> with a link to
-                join.
+                {generatedInvite.emailSent ? (
+                  <>
+                    An invitation has been emailed to{' '}
+                    <strong>{generatedInvite.recipientEmail}</strong>. You can
+                    also share the secure link below.
+                  </>
+                ) : (
+                  <>
+                    Your invitation link is ready, but the email could not be
+                    sent. Please copy the link below or share it using your mail
+                    app.
+                  </>
+                )}
               </p>
               <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-400 pt-0.5">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -161,13 +175,17 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label
+                htmlFor="generated-invitation-url"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300"
+              >
                 Invite Link
               </label>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <input
                   type="text"
                   readOnly
+                  id="generated-invitation-url"
                   value={generatedInvite.url}
                   className="flex-1 p-2 sm:p-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono select-all"
                 />
@@ -188,9 +206,9 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               <a
                 href={`mailto:${generatedInvite.recipientEmail}?subject=${encodeURIComponent(
-                  'Invitation to Johns Hopkins Care Partner Connect',
+                  'You are invited to Care Partner Connect',
                 )}&body=${encodeURIComponent(
-                  `Hello,\n\nYou have been invited to join Johns Hopkins Care Partner Connect.\n\nTo accept your invitation, please click your secure link:\n${generatedInvite.url}\n\nJohns Hopkins Memory and Alzheimer's Treatment Center`,
+                  `Hello,\n\nYou have been invited to join Hopkins Care Partner Connect, a private community for care partners supported by a clinical moderation team.\n\nCreate your account using the secure link below. Your invitation is valid for three days.\n${generatedInvite.url}\n\nIf you were not expecting this invitation, you can safely ignore this email.\n\nWarm regards,\nThe Care Partner Connect team`,
                 )}`}
                 className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 transition"
               >

@@ -1,3 +1,4 @@
+import { composeEmail } from './emailTemplates.js';
 import crypto from 'node:crypto';
 import { pool } from '../config/db.js';
 import { env } from '../config/env.js';
@@ -49,9 +50,15 @@ export async function processRecoveryJob(jobId?: string): Promise<void> {
       released = true;
       const link = await sendEmail({
         to: job.email,
-        subject: 'Reset your password',
-        text: `Reset your password: ${url.href}\n\nThis link expires in 20 minutes and can be used once. If you did not request this, you can ignore this email.`,
-        html: `<p><a href="${url.href.replaceAll('&', '&amp;')}">Reset your password</a></p><p>This link expires in 20 minutes and can be used once. If you did not request this, you can ignore this email.</p>`,
+        ...composeEmail({
+          subject: 'Reset your Care Partner Connect password',
+          paragraphs: [
+            'We received a request to reset the password for your Care Partner Connect account.',
+            'Choose a new password using the link below. This link expires in 20 minutes and can be used once.',
+            'If you did not request a password reset, you can safely ignore this email. Your password will stay unchanged.',
+          ],
+          action: { label: 'Reset password', url: url.href },
+        }),
       });
       if (link.emailSent)
         await pool.query(

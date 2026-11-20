@@ -95,7 +95,12 @@ export const AuditLedgerModal: React.FC<AuditLedgerModalProps> = ({
           </div>
         </div>
 
-        <div className="p-5 overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Moderation activity records"
+          className="p-5 overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800 text-sm"
+        >
           {loading ? (
             <div className="text-center py-12 text-slate-400 dark:text-slate-500">
               Loading audit records...

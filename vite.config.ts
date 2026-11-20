@@ -1,11 +1,29 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { copyPublicAssets } from './scripts/public-assets.mjs';
+
+function publicAssets(): Plugin {
+  let root = '';
+  let output = '';
+  return {
+    name: 'public-assets-allowlist',
+    apply: 'build',
+    configResolved(config) {
+      root = config.root;
+      output = path.resolve(root, config.build.outDir);
+    },
+    async writeBundle() {
+      await copyPublicAssets(root, output);
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), publicAssets()],
+    build: { copyPublicDir: false },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname || process.cwd(), 'src'),
@@ -13,8 +31,9 @@ export default defineConfig(() => {
     },
     server: {
       host: '0.0.0.0',
-      port: 3000,
-      allowedHosts: true as const,
+      port: 5173,
+      strictPort: true,
+      allowedHosts: ['.run.app'],
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',

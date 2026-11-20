@@ -308,7 +308,13 @@ export const FloatingChatbotAssistant: React.FC<
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         sender: 'assistant',
-        text: res.answer,
+        text:
+          res.answer ||
+          (res.citedResources?.length
+            ? 'Here are relevant pages from the care guides. Review the source documents for details.'
+            : res.discussions?.length
+              ? 'These community discussions may help. You can also start a new discussion.'
+              : 'I could not find a matching guide or discussion. Try different keywords, or ask the community by creating a discussion post.'),
         isMedicationRefusal: res.isMedicationRefusal,
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,
@@ -438,7 +444,7 @@ export const FloatingChatbotAssistant: React.FC<
           ref={windowRef}
           id="care-companion-dialog"
           role="dialog"
-          aria-modal="true"
+          aria-modal="false"
           aria-label="Care Companion (Johns Hopkins)"
           className="fixed inset-0 sm:inset-auto sm:bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] xl:bottom-24 sm:right-6 w-full sm:w-[420px] md:w-[440px] h-[100dvh] sm:h-[620px] sm:max-h-[calc(100dvh-10rem)] xl:max-h-[calc(100dvh-7.5rem)] bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200/90 dark:border-slate-800 z-50 flex flex-col overflow-hidden animate-in fade-in duration-200 transition-colors"
         >

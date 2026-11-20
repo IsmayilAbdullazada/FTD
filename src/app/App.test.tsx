@@ -170,3 +170,60 @@ test('activity email links open the signed-in notification inbox and closing it 
   fireEvent.click(screen.getByLabelText('Close'));
   expect(window.location.search).not.toContain('notifications');
 });
+
+test('a care-partner staff URL resolves to the feed without requesting staff data', async () => {
+  window.history.replaceState({}, '', '/?tab=moderation');
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/users/me'))
+      return Response.json({
+        user: {
+          id: 'care-route',
+          email: 'care@example.test',
+          role: 'CARE_PARTNER',
+          firstName: 'Care',
+          lastName: 'Partner',
+          anonymousHandle: 'User-123',
+          badgeLabel: 'Care Partner',
+          avatarColor: '#002D72',
+          condition: 'FTD',
+        },
+        allPersonas: [],
+      });
+    if (url.includes('/cohorts')) return Response.json([]);
+    if (url.includes('/notifications'))
+      return Response.json({ messages: [], unreadCount: 0 });
+    if (url.includes('/posts'))
+      return Response.json({ posts: [], total: 0, page: 1, pageSize: 5 });
+    return Response.json({ pool: [] });
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  render(<App />);
+  await screen.findByRole('button', { name: 'New Post' });
+  expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull();
+  expect(
+    fetchMock.mock.calls.some(([url]) =>
+      String(url).includes('/moderation/queue'),
+    ),
+  ).toBe(false);
+});
+
+test('a bootstrap service failure shows retry feedback instead of a misleading sign-in screen', async () => {
+  const fetchMock = vi.fn(async () =>
+    Response.json(
+      { error: 'Service temporarily unavailable' },
+      { status: 503 },
+    ),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  render(<App />);
+  expect(
+    await screen.findByRole('button', { name: 'Retry loading' }),
+  ).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /^Sign in$/ })).toBeNull();
+  const requestsBeforeRetry = fetchMock.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading' }));
+  await waitFor(() =>
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(requestsBeforeRetry),
+  );
+});

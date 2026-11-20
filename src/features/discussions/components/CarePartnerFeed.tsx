@@ -30,6 +30,9 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
   onSectionChange,
 }) => {
   const {
+    feedError,
+    discussionError,
+    retryFeed,
     totalPosts,
     posts,
     setPosts,
@@ -111,6 +114,23 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
     );
   }
 
+  if (discussionError || feedError)
+    return (
+      <section className="max-w-3xl mx-auto p-6 space-y-4" role="alert">
+        <h1 className="text-lg font-semibold">
+          {discussionError
+            ? 'Discussion unavailable'
+            : 'Discussions could not be loaded'}
+        </h1>
+        <p>{discussionError || feedError}</p>
+        <button
+          className="min-h-11 px-4 py-2 rounded-lg bg-[#002D72] text-white"
+          onClick={discussionError ? handleBackToFeed : retryFeed}
+        >
+          {discussionError ? 'Back to discussions' : 'Try again'}
+        </button>
+      </section>
+    );
   const myPosts = posts.filter(
     (p) =>
       p.author.userId === currentUser.id ||

@@ -121,7 +121,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <Shield className="w-4 h-4 shrink-0" />
                   <span>Dashboard</span>
                   {pendingTriageCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold tabular-nums shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-700 text-white text-xs font-bold tabular-nums shrink-0">
                       {pendingTriageCount}
                     </span>
                   )}
@@ -467,7 +467,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="relative">
                   <Shield className="w-5 h-5" />
                   {pendingTriageCount > 0 && (
-                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-amber-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
+                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-amber-700 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
                       {pendingTriageCount > 99 ? '99+' : pendingTriageCount}
                     </span>
                   )}

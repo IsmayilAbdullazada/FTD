@@ -1,33 +1,9 @@
 import { logger } from '../lib/logger.js';
-import { createHash } from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readMigrations, type MigrationRecord } from './migrationCatalog.js';
 import { pool } from '../config/db.js';
 
-const migrationsDirectory = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  'migrations',
-);
-
-interface AppliedMigration {
-  version: string;
-  checksum: string;
-}
-
-function checksum(sql: string): string {
-  return createHash('sha256').update(sql).digest('hex');
-}
-
 async function runMigrations() {
-  const migrationFiles = fs
-    .readdirSync(migrationsDirectory)
-    .filter((file) => /^\d+_[a-z0-9_]+\.sql$/.test(file))
-    .sort();
-
-  if (!migrationFiles.length) {
-    throw new Error('No numbered SQL migrations were found');
-  }
+  const migrations = readMigrations();
 
   const client = await pool.connect();
   try {
@@ -49,7 +25,7 @@ async function runMigrations() {
       'ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT',
     );
 
-    const appliedResult = await client.query<AppliedMigration>(
+    const appliedResult = await client.query<MigrationRecord>(
       'SELECT version, checksum FROM schema_migrations',
     );
     const applied = new Map(
@@ -59,10 +35,8 @@ async function runMigrations() {
       ]),
     );
 
-    for (const file of migrationFiles) {
-      const version = file.replace(/\.sql$/, '');
-      const sql = fs.readFileSync(path.join(migrationsDirectory, file), 'utf8');
-      const migrationChecksum = checksum(sql);
+    for (const migration of migrations) {
+      const { version, sql, checksum: migrationChecksum } = migration;
       const recordedChecksum = applied.get(version);
 
       if (recordedChecksum) {

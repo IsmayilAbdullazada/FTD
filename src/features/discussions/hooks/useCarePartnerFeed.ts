@@ -28,6 +28,9 @@ export function useCarePartnerFeed({
   initialSection,
   onSectionChange,
 }: CarePartnerFeedProps) {
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [discussionError, setDiscussionError] = useState<string | null>(null);
+  const requestedDiscussion = useRef<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewSection, setViewSection] = useState<'all' | 'my-posts'>(
@@ -121,24 +124,39 @@ export function useCarePartnerFeed({
     const urlPostId = params.get('post');
     const effectiveTargetId = targetDiscussionId || urlPostId;
 
-    if (effectiveTargetId) {
+    if (
+      effectiveTargetId &&
+      requestedDiscussion.current !== effectiveTargetId
+    ) {
       const match = posts.find((p) => p.id === effectiveTargetId);
       if (match) {
+        requestedDiscussion.current = effectiveTargetId;
+        setDiscussionError(null);
         setSelectedPost(match);
         if (onClearTargetDiscussion) onClearTargetDiscussion();
       } else if (!loading) {
+        requestedDiscussion.current = effectiveTargetId;
+        setDiscussionError(null);
         discussionApi
           .getPostDetails(effectiveTargetId)
           .then((res) => {
-            if (res.post) {
+            if (requestedDiscussion.current === effectiveTargetId && res.post) {
               setSelectedPost(res.post);
               if (onClearTargetDiscussion) onClearTargetDiscussion();
             }
           })
-          .catch((err) => reportError('Failed to load target post:', err));
+          .catch((err) => {
+            reportError('Failed to load target post:', err);
+            if (requestedDiscussion.current === effectiveTargetId)
+              setDiscussionError(
+                'This discussion is unavailable. It may have been removed, or you may not have access.',
+              );
+          });
       }
     } else if (!urlPostId && !targetDiscussionId) {
       setSelectedPost(null);
+      requestedDiscussion.current = null;
+      setDiscussionError(null);
     }
   }, [
     targetDiscussionId,
@@ -190,6 +208,7 @@ export function useCarePartnerFeed({
   }, [resetKey]);
 
   const handleOpenDiscussion = (post: Post) => {
+    setDiscussionError(null);
     setSelectedPost(post);
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'feed');
@@ -202,6 +221,8 @@ export function useCarePartnerFeed({
   };
 
   const handleBackToFeed = () => {
+    setDiscussionError(null);
+    requestedDiscussion.current = null;
     setSelectedPost(null);
     const url = new URL(window.location.href);
     if (url.searchParams.has('post')) {
@@ -216,6 +237,7 @@ export function useCarePartnerFeed({
   const loadFeed = async (groupId?: string) => {
     const version = ++requestVersion.current;
     setLoading(true);
+    setFeedError(null);
     try {
       const res = await discussionApi.getPosts({
         page: currentPage,
@@ -251,6 +273,9 @@ export function useCarePartnerFeed({
       setLikedPosts((prev) => ({ ...initialLikes, ...prev }));
     } catch (err) {
       reportError('Failed to load feed:', err);
+      setFeedError(
+        'We could not load discussions. Check your connection and try again.',
+      );
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
@@ -404,6 +429,9 @@ export function useCarePartnerFeed({
   };
 
   return {
+    feedError,
+    discussionError,
+    retryFeed: () => loadFeed(selectedGroupTab),
     totalPosts,
     posts,
     setPosts,

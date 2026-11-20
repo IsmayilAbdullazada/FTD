@@ -118,6 +118,7 @@ export function CreateResourceDialog({
                   Title
                 </label>
                 <input
+                  aria-label="Title"
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
@@ -132,6 +133,7 @@ export function CreateResourceDialog({
                   Discipline / Category
                 </label>
                 <select
+                  aria-label="Discipline / Category"
                   value={newCategory}
                   onChange={(e) =>
                     setNewCategory(
@@ -169,6 +171,7 @@ export function CreateResourceDialog({
                   Brief Summary / Abstract
                 </label>
                 <textarea
+                  aria-label="Brief Summary / Abstract"
                   rows={2}
                   value={newSummary}
                   onChange={(e) => setNewSummary(e.target.value)}
@@ -183,6 +186,7 @@ export function CreateResourceDialog({
                   Full Care Protocol Content
                 </label>
                 <textarea
+                  aria-label="Full Care Protocol Content"
                   rows={6}
                   value={newContentBody}
                   onChange={(e) => setNewContentBody(e.target.value)}
@@ -197,6 +201,7 @@ export function CreateResourceDialog({
                   Key Recommendations (one per line)
                 </label>
                 <textarea
+                  aria-label="Key Recommendations (one per line)"
                   rows={3}
                   value={newKeyTakeaways}
                   onChange={(e) => setNewKeyTakeaways(e.target.value)}
@@ -244,6 +249,7 @@ export function CreateResourceDialog({
                   External Citation
                 </label>
                 <input
+                  aria-label="External Citation"
                   type="url"
                   value={newExternalUrl}
                   onChange={(e) => setNewExternalUrl(e.target.value)}
@@ -257,6 +263,7 @@ export function CreateResourceDialog({
                   Additional website links (one per line: Label | URL)
                 </label>
                 <textarea
+                  aria-label="Additional website links (one per line: Label | URL)"
                   rows={3}
                   value={newAdditionalLinks}
                   onChange={(e) => setNewAdditionalLinks(e.target.value)}
@@ -272,6 +279,7 @@ export function CreateResourceDialog({
                   PDF Resource (Optional)
                 </label>
                 <input
+                  aria-label="PDF Resource (Optional)"
                   type="file"
                   accept="application/pdf,.pdf"
                   onChange={(e) => setNewPdfFile(e.target.files?.[0] ?? null)}

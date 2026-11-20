@@ -1,3 +1,4 @@
+import { invitationToken } from '../lib/invitationToken';
 import { authApi } from '@/features/auth/api/authApi';
 import { reportError } from '@/shared/lib/logger';
 import { Condition, CurrentUser } from '@/types';
@@ -90,7 +91,11 @@ export function useAuthScreens({
     setLoadingInvite(true);
     setRegisterError(null);
     try {
-      const res = await authApi.getInvitation(token);
+      const normalized = invitationToken(token);
+      if (!normalized)
+        throw new Error('Enter a valid invitation code or link.');
+      const res = await authApi.getInvitation(normalized);
+      setInviteToken(normalized);
       setInviteData(res.invitation);
     } catch (err: unknown) {
       reportError('Failed to load invitation:', err);
@@ -227,7 +232,7 @@ export function useAuthScreens({
     setRegisterError(null);
     try {
       const res = await authApi.registerWithInvite({
-        token: inviteToken.trim(),
+        token: invitationToken(inviteToken),
         password: registerPassword,
         firstName: inviteData?.firstName,
         lastName: inviteData?.lastName,

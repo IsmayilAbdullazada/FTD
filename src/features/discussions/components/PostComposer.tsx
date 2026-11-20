@@ -1,3 +1,4 @@
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { reportError } from '@/shared/lib/logger';
 import { discussionApi } from '@/features/discussions/api/discussionApi';
 import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
@@ -175,6 +176,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
     if (!previewPostId) return null;
     return discussionsPool.find((p) => p.id === previewPostId) || null;
   }, [previewPostId, discussionsPool]);
+  const previewDialog = useDialogFocus(Boolean(activePreviewPost), () =>
+    setPreviewPostId(null),
+  );
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -248,7 +252,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
                   <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-                  <span>Standard review time: within 24 hours</span>
+                  <span>Reviewed by the moderation team</span>
                 </div>
               </>
             )}
@@ -338,7 +342,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               </p>
               <p className="text-sm leading-relaxed font-sans">
                 Please do not share any confidential information through the
-                portal. Submitted posts are reviewed once every 24 hours.
+                portal. Submitted posts are reviewed by the moderation team.
               </p>
             </div>
           </div>
@@ -389,6 +393,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               Details
             </label>
             <textarea
+              aria-label="Details"
               rows={5}
               value={content}
               onChange={(e) => {
@@ -442,6 +447,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
               Target Group
             </label>
             <select
+              aria-label="Target group"
               value={selectedCohortId}
               onChange={(e) => setSelectedCohortId(e.target.value)}
               className="w-full px-4 py-2.5 text-base min-h-11 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 transition cursor-pointer"
@@ -509,6 +515,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           <div
             role="dialog"
             aria-modal="true"
+            ref={previewDialog}
             aria-label="Existing Answered Discussion"
             className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 text-slate-800 dark:text-slate-100"
           >

@@ -152,6 +152,7 @@ export function FeedFilters({
                     Community Group
                   </label>
                   <select
+                    aria-label="Community Group"
                     value={selectedGroupTab}
                     onChange={(e) => {
                       setSelectedGroupTab(e.target.value);

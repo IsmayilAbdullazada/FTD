@@ -4,11 +4,11 @@ import { Audience } from '@/types';
 const STYLES: Record<string, { label: string; cls: string }> = {
   FTD: {
     label: 'FTD',
-    cls: 'bg-ftd-50 text-ftd-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900/60',
+    cls: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-900/60',
   },
   AD: {
     label: 'AD',
-    cls: 'bg-ad-50 text-ad-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-900/60',
+    cls: 'bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-900/60',
   },
   GENERAL: {
     label: 'General',

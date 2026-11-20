@@ -49,9 +49,25 @@ app.set(
 );
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-    frameguard: false,
-    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+    frameguard:
+      env.NODE_ENV === 'production' ? { action: 'sameorigin' } : false,
+    contentSecurityPolicy:
+      env.NODE_ENV === 'production'
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: ["'self'", 'data:', 'blob:'],
+              fontSrc: ["'self'"],
+              connectSrc: ["'self'"],
+              frameSrc: ["'self'", 'blob:'],
+              objectSrc: ["'none'"],
+              frameAncestors: ["'self'"],
+            },
+          }
+        : false,
   }),
 );
 app.use(

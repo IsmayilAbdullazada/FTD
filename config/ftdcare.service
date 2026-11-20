@@ -1,0 +1,26 @@
+[Unit]
+Description=Hopkins Care Partner Connect API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ftdcare
+Group=ftdcare
+WorkingDirectory=/var/www/ftdcare/current/app
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --env-file=/var/www/ftdcare/config/ftdcare.env dist/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=35
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# Must match GUIDE_UPLOAD_DIRECTORY in the private production environment file.
+ReadWritePaths=/var/lib/ftdcare/guides
+
+[Install]
+WantedBy=multi-user.target

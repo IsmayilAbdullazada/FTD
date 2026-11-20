@@ -35,11 +35,13 @@ function isHttpsRequest(res: Response): boolean {
 
 function cookieOptions(res: Response, persistent: boolean) {
   const secure = isHttpsRequest(res);
+  // Embedded development previews run inside a cross-site HTTPS frame.
+  const embeddedPreview = env.NODE_ENV !== 'production' && secure;
   return {
     httpOnly: true,
     secure,
-    sameSite: (secure ? 'none' : 'strict') as 'none' | 'strict',
-    ...(secure ? { partitioned: true } : {}),
+    sameSite: (embeddedPreview ? 'none' : 'strict') as 'none' | 'strict',
+    ...(embeddedPreview ? { partitioned: true } : {}),
     path: '/',
     ...(persistent ? { maxAge: env.SESSION_COOKIE_MAX_AGE_MS } : {}),
   };

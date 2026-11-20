@@ -9,6 +9,8 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { ThemeProvider } from '@/app/providers/ThemeProvider';
 import { AuthScreens } from './AuthScreens';
 import { authApi } from '../api/authApi';
+import { reportError } from '@/shared/lib/logger';
+vi.mock('@/shared/lib/logger', () => ({ reportError: vi.fn() }));
 vi.mock('../api/authApi', () => ({
   authApi: {
     login: vi.fn(),
@@ -44,6 +46,7 @@ test('login submits entered credentials and reports a failure without leaving th
     ),
   );
   expect(await screen.findByText('Invalid credentials')).toBeTruthy();
+  expect(reportError).toHaveBeenCalledWith('Login error:', expect.any(Error));
 });
 test('recovery remains reachable after extracting authentication panels', async () => {
   render(<AuthScreens onLoginSuccess={vi.fn()} />);
@@ -135,6 +138,10 @@ test('an expired link displays the error and offers a new link', async () => {
       'Reset link is invalid or expired. Request a new link.',
     ),
   ).toBeTruthy();
+  expect(reportError).toHaveBeenCalledWith(
+    'Reset confirmation failed:',
+    expect.any(Error),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Request a new link' }));
   expect(screen.getByRole('button', { name: 'Send reset link' })).toBeTruthy();
 });

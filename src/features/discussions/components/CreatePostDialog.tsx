@@ -89,6 +89,7 @@ export function CreatePostDialog({
                   Title
                 </label>
                 <input
+                  aria-label="Title"
                   value={npTitle}
                   onChange={(e) => setNpTitle(e.target.value)}
                   className="w-full px-3 py-2.5 text-base sm:text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
@@ -101,6 +102,7 @@ export function CreatePostDialog({
                   Post
                 </label>
                 <textarea
+                  aria-label="Post"
                   rows={5}
                   value={npContent}
                   onChange={(e) => setNpContent(e.target.value)}
@@ -114,6 +116,7 @@ export function CreatePostDialog({
                   Region / group
                 </label>
                 <select
+                  aria-label="Region / group"
                   value={npGroupId}
                   onChange={(e) => setNpGroupId(e.target.value)}
                   className="w-full px-3 py-2.5 text-base sm:text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"

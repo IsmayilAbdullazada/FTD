@@ -94,6 +94,21 @@ export const authApi = {
     );
   },
 
+  changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return requestJson(
+      '/api/v1/auth/change-password',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      'Failed to change password.',
+    );
+  },
+
   getInvitation(token: string): Promise<InvitationResponse> {
     return requestJson(
       `/api/v1/auth/invitations/${encodeURIComponent(token)}`,

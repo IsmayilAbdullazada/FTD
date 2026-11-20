@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Shield,
   MessageSquare,
@@ -14,8 +14,11 @@ import {
   Plus,
   X,
   LogOut,
+  KeyRound,
 } from 'lucide-react';
 import { useTheme } from '@/app/providers/ThemeProvider';
+import { ChangePasswordModal } from '@/features/auth/components/ChangePasswordModal';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { CurrentUser, DirectMessage, PersonaOption } from '@/types';
 
 interface HeaderProps {
@@ -49,6 +52,20 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [showPersonaMenu, setShowPersonaMenu] = useState(false);
   const [showCallMenu, setShowCallMenu] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const callDialogRef = useDialogFocus(showCallMenu, () =>
+    setShowCallMenu(false),
+  );
+  useEffect(() => {
+    if (!showPersonaMenu) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowPersonaMenu(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showPersonaMenu]);
   const unreadCount = notifications.filter((n) => !n.read).length;
   const reviewAlertsCount = isClinician || isAdmin ? pendingTriageCount : 0;
   const totalNotificationBadge = unreadCount + reviewAlertsCount;
@@ -214,18 +231,22 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Bell className="w-5 h-5" />
               {totalNotificationBadge > 0 && (
-                <span className="absolute top-1 right-1 min-w-5 h-5 px-1.5 bg-[#002D72] dark:bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center tabular-nums ring-2 ring-white dark:ring-slate-900">
-                  {totalNotificationBadge}
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-[#002D72] dark:bg-blue-600 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center tabular-nums ring-2 ring-white dark:ring-slate-900">
+                  {totalNotificationBadge > 99 ? '99+' : totalNotificationBadge}
                 </span>
               )}
             </button>
 
-            {/* User Profile & Persona Switcher */}
+            {/* User Profile & Account Menu */}
             <div className="relative shrink-0">
               <button
+                type="button"
                 onClick={() => setShowPersonaMenu(!showPersonaMenu)}
+                aria-label="Account menu"
+                aria-expanded={showPersonaMenu}
+                aria-haspopup="menu"
                 className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700 shrink-0 cursor-pointer"
-                title="Switch persona or appearance"
+                title="Account and appearance"
               >
                 <div
                   className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0 shadow-2xs"
@@ -240,9 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm whitespace-nowrap truncate max-w-[120px]">
                     {isAdmin
                       ? 'CS Admin'
-                      : isClinician
-                        ? 'Dr. Seema'
-                        : `${currentUser.firstName} ${currentUser.lastName[0]}.`}
+                      : `${currentUser.firstName}${currentUser.lastName ? ` ${currentUser.lastName[0]}.` : ''}`}
                   </div>
                 </div>
 
@@ -258,16 +277,13 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => setShowPersonaMenu(false)}
                   />
 
-                  <div className="absolute right-0 mt-2 w-72 sm:w-76 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 z-50 text-xs animate-in fade-in zoom-in-95">
-                    {/* Current Active User */}
-                    <div className="px-3.5 py-2 border-b border-slate-100 dark:border-slate-800">
-                      <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                        Current Active User
-                      </div>
-                      <div className="font-semibold text-slate-900 dark:text-white text-sm mt-0.5 truncate">
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 text-sm animate-in fade-in zoom-in-95">
+                    {/* Signed-in User Summary */}
+                    <div className="px-4 py-3">
+                      <div className="font-semibold text-slate-900 dark:text-white text-base truncate">
                         {currentUser.firstName} {currentUser.lastName}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                         {isAdmin
                           ? 'System Administrator'
                           : isClinician
@@ -276,8 +292,8 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </div>
 
-                    {/* Direct Quick Link: My Posts */}
-                    <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
+                    {/* Account Actions: My Posts & Change Password */}
+                    <div className="p-1.5 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -288,27 +304,41 @@ export const Header: React.FC<HeaderProps> = ({
                             setActiveTab('feed');
                           }
                         }}
-                        className="w-full px-3 py-2 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
+                        className="w-full px-3 py-2.5 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
                       >
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
-                          <span className="font-semibold text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
+                          <span className="font-semibold text-sm">
                             My Posts
                           </span>
                         </div>
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-normal">
+                        <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">
                           Track your posts →
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPersonaMenu(false);
+                          setShowChangePasswordModal(true);
+                        }}
+                        className="w-full px-3 py-2.5 rounded-lg text-left transition flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      >
+                        <KeyRound className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                        <span className="font-semibold text-sm">
+                          Change Password
                         </span>
                       </button>
                     </div>
 
                     {/* Dedicated Appearance / Theme Switcher in the Dropdown */}
-                    <div className="px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                    <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 text-sm font-medium text-slate-700 dark:text-slate-300">
                         {theme === 'dark' ? (
-                          <Moon className="w-3.5 h-3.5 text-blue-400" />
+                          <Moon className="w-4 h-4 text-blue-400 shrink-0" />
                         ) : (
-                          <Sun className="w-3.5 h-3.5 text-amber-500" />
+                          <Sun className="w-4 h-4 text-amber-500 shrink-0" />
                         )}
                         <span>Appearance</span>
                       </div>
@@ -319,14 +349,14 @@ export const Header: React.FC<HeaderProps> = ({
                           onClick={() => {
                             if (theme !== 'light') toggleTheme();
                           }}
-                          className={`px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                             theme === 'light'
                               ? 'bg-white text-slate-900 shadow-2xs font-semibold'
                               : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                           }`}
                           title="Light Mode"
                         >
-                          <Sun className="w-3 h-3 text-amber-500" />
+                          <Sun className="w-3.5 h-3.5 text-amber-500" />
                           <span>Light</span>
                         </button>
                         <button
@@ -334,73 +364,78 @@ export const Header: React.FC<HeaderProps> = ({
                           onClick={() => {
                             if (theme !== 'dark') toggleTheme();
                           }}
-                          className={`px-2 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition cursor-pointer ${
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
                             theme === 'dark'
                               ? 'bg-slate-700 text-white shadow-2xs font-semibold'
                               : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                           }`}
                           title="Dark Mode"
                         >
-                          <Moon className="w-3 h-3 text-blue-400" />
+                          <Moon className="w-3.5 h-3.5 text-blue-400" />
                           <span>Dark</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* Switch Test Persona Section */}
-                    <div className="px-3.5 pt-2 pb-1 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                      Switch Test Persona:
-                    </div>
+                    {/* Switch Test Persona Section (only when multiple personas exist) */}
+                    {allPersonas.length > 1 && (
+                      <div className="border-t border-slate-100 dark:border-slate-800 py-1.5">
+                        <div className="px-4 pt-1 pb-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                          Switch Account
+                        </div>
 
-                    <div className="space-y-1 px-1.5 pb-1">
-                      {allPersonas.map((p) => {
-                        const isCurrent = p.id === currentUser.id;
-                        return (
-                          <button
-                            key={p.id}
-                            onClick={() => {
-                              onSwitchPersona(p.id);
-                              setShowPersonaMenu(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left rounded-lg transition flex items-center justify-between cursor-pointer ${
-                              isCurrent
-                                ? 'bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400 font-semibold'
-                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                            }`}
-                          >
-                            <div>
-                              <div className="text-xs sm:text-sm font-semibold">
-                                {p.name}
-                              </div>
-                              <div className="text-xs text-slate-400 dark:text-slate-500">
-                                {p.role === 'SYSTEM_ADMIN'
-                                  ? 'System Administrator'
-                                  : p.role === 'CLINICIAN_MODERATOR'
-                                    ? 'Clinician Moderator'
-                                    : `${p.handle} · ${p.condition ?? ''}`}
-                              </div>
-                            </div>
-                            {isCurrent && (
-                              <Check className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+                        <div className="space-y-0.5 px-1.5">
+                          {allPersonas.map((p) => {
+                            const isCurrent = p.id === currentUser.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  onSwitchPersona(p.id);
+                                  setShowPersonaMenu(false);
+                                }}
+                                className={`w-full px-3 py-2 text-left rounded-lg transition flex items-center justify-between cursor-pointer ${
+                                  isCurrent
+                                    ? 'bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-400 font-semibold'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                }`}
+                              >
+                                <div>
+                                  <div className="text-sm font-semibold">
+                                    {p.name}
+                                  </div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                                    {p.role === 'SYSTEM_ADMIN'
+                                      ? 'System Administrator'
+                                      : p.role === 'CLINICIAN_MODERATOR'
+                                        ? 'Clinician Moderator'
+                                        : `${p.handle} · ${p.condition ?? ''}`}
+                                  </div>
+                                </div>
+                                {isCurrent && (
+                                  <Check className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Sign Out / Lock Session Action */}
+                    {/* Sign Out Action */}
                     {onSignOut && (
-                      <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800 px-1.5">
+                      <div className="p-1.5 border-t border-slate-100 dark:border-slate-800">
                         <button
                           type="button"
                           onClick={() => {
                             setShowPersonaMenu(false);
                             onSignOut();
                           }}
-                          className="w-full px-3 py-2 text-left rounded-lg transition flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold cursor-pointer"
+                          className="w-full px-3 py-2.5 text-left rounded-lg transition flex items-center gap-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-sm font-semibold cursor-pointer"
                         >
-                          <LogOut className="w-3.5 h-3.5" />
-                          <span>Sign Out / Lock Session</span>
+                          <LogOut className="w-4 h-4 shrink-0" />
+                          <span>Sign Out</span>
                         </button>
                       </div>
                     )}
@@ -416,9 +451,12 @@ export const Header: React.FC<HeaderProps> = ({
       <nav className="xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.5)] safe-bottom transition-colors">
         <div className="max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto flex items-center justify-between h-16 px-1 sm:px-3 lg:px-6 relative">
           {/* Left Navigation Group (Discussions & Guides, plus Dashboard if Clinician) */}
-          <div className="flex-1 flex items-center justify-around min-w-0">
+          <div
+            className={`${isClinician || isAdmin ? 'flex-[3]' : 'flex-1'} flex items-center justify-around min-w-0`}
+          >
             {(isClinician || isAdmin) && (
               <button
+                type="button"
                 onClick={() => setActiveTab('moderation')}
                 className={`flex flex-col items-center justify-center py-1.5 transition relative cursor-pointer min-w-0 flex-1 min-h-12 ${
                   activeTab === 'moderation'
@@ -429,18 +467,19 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="relative">
                   <Shield className="w-5 h-5" />
                   {pendingTriageCount > 0 && (
-                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
-                      {pendingTriageCount}
+                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-amber-500 text-white text-[10px] leading-none font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 tabular-nums">
+                      {pendingTriageCount > 99 ? '99+' : pendingTriageCount}
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+                <span className="text-[11px] font-medium mt-0.5 whitespace-nowrap">
                   Dashboard
                 </span>
               </button>
             )}
 
             <button
+              type="button"
               onClick={() => setActiveTab('feed')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'feed'
@@ -449,12 +488,13 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <MessageSquare className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+              <span className="text-[11px] font-medium mt-0.5 whitespace-nowrap">
                 Discussions
               </span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('knowledge')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'knowledge'
@@ -463,32 +503,35 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <BookOpen className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+              <span className="text-[11px] font-medium mt-0.5 whitespace-nowrap">
                 Guides
               </span>
             </button>
           </div>
 
-          {/* Centered Raised '+' Action Button (Larger & Raised Outside Upper Bound of Tray) */}
-          <div className="shrink-0 px-2 sm:px-4 flex flex-col items-center justify-center relative">
+          {/* Centered Raised '+' Action Button */}
+          <div className="shrink-0 px-1.5 sm:px-3 flex flex-col items-center justify-center relative">
             <button
               type="button"
               onClick={() => setActiveTab('compose')}
               aria-label="New Post"
               title="Create New Post"
-              className={`-mt-7.5 w-15 h-15 rounded-full flex items-center justify-center text-white ring-4 ring-white dark:ring-slate-900 shadow-[0_10px_25px_rgba(0,45,114,0.35)] dark:shadow-[0_10px_25px_rgba(0,0,0,0.7)] active:scale-90 hover:scale-105 transition-all duration-200 cursor-pointer ${
+              className={`-mt-6 w-13 h-13 rounded-full flex items-center justify-center text-white ring-4 ring-white dark:ring-slate-900 shadow-[0_8px_20px_rgba(0,45,114,0.32)] dark:shadow-[0_8px_20px_rgba(0,0,0,0.65)] active:scale-90 hover:scale-105 transition-all duration-200 cursor-pointer ${
                 activeTab === 'compose'
-                  ? 'bg-blue-600 dark:bg-blue-500 ring-4 ring-blue-300 dark:ring-blue-600 shadow-[0_10px_25px_rgba(37,99,235,0.45)]'
+                  ? 'bg-blue-600 dark:bg-blue-500 ring-4 ring-blue-300 dark:ring-blue-600 shadow-[0_8px_20px_rgba(37,99,235,0.45)]'
                   : 'bg-[#002D72] hover:bg-[#001D4A] dark:bg-blue-600 dark:hover:bg-blue-500'
               }`}
             >
-              <Plus className="w-8 h-8 stroke-[2.75]" />
+              <Plus className="w-7 h-7 stroke-[2.75]" />
             </button>
           </div>
 
           {/* Right Navigation Group (Updates & Events) */}
-          <div className="flex-1 flex items-center justify-around min-w-0">
+          <div
+            className={`${isClinician || isAdmin ? 'flex-[2]' : 'flex-1'} flex items-center justify-around min-w-0`}
+          >
             <button
+              type="button"
               onClick={() => setActiveTab('updates')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'updates'
@@ -497,12 +540,13 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Stethoscope className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+              <span className="text-[11px] font-medium mt-0.5 whitespace-nowrap">
                 Updates
               </span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('calendar')}
               className={`flex flex-col items-center justify-center py-1.5 transition cursor-pointer min-w-0 flex-1 min-h-12 ${
                 activeTab === 'calendar'
@@ -511,7 +555,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <CalendarDays className="w-5 h-5" />
-              <span className="text-xs font-medium mt-0.5 truncate max-w-full px-0.5">
+              <span className="text-[11px] font-medium mt-0.5 whitespace-nowrap">
                 Events
               </span>
             </button>
@@ -530,28 +574,30 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {/* Compact Modal Container */}
           <div
-            className="relative w-full max-w-[360px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 z-10 animate-in zoom-in-95 duration-150 space-y-3"
+            ref={callDialogRef}
+            tabIndex={-1}
+            className="relative w-full max-w-[360px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 z-10 animate-in zoom-in-95 duration-150 space-y-3 outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-start justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="font-serif font-bold text-slate-900 dark:text-white text-base">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-serif font-bold text-slate-900 dark:text-white text-lg">
                     Direct Clinic Lines
                   </h3>
-                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-900/60">
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-xs font-semibold border border-emerald-200/60 dark:border-emerald-900/60">
                     Mon–Fri 8:30–5 ET
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   Johns Hopkins FTD &amp; Memory Care Center
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCallMenu(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />
@@ -559,26 +605,26 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Direct Line Cards */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {/* Option 2: Main Clinic Line */}
               <a
                 href="tel:4109555147"
-                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
+                className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-[#002D72] dark:hover:border-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition flex items-center justify-between group"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
-                    <Phone className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-[#002D72] dark:text-sky-400 flex items-center justify-center shrink-0">
+                    <Phone className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
                       Main Clinic Line (Option 2)
                     </div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition">
+                    <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#002D72] dark:group-hover:text-sky-400 transition">
                       (410) 955-5147
                     </div>
                   </div>
                 </div>
-                <span className="shrink-0 px-2.5 py-1 bg-[#002D72] hover:bg-blue-900 dark:bg-sky-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
+                <span className="shrink-0 px-3 py-1.5 bg-[#002D72] hover:bg-blue-900 dark:bg-sky-600 text-white text-sm font-semibold rounded-lg shadow-2xs">
                   Call
                 </span>
               </a>
@@ -586,30 +632,30 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Care Partner Support Line */}
               <a
                 href="tel:4105024163"
-                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
+                className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 hover:border-emerald-600 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition flex items-center justify-between group"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <Phone className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Phone className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
                       Care Partner Support Line
                     </div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">
+                    <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">
                       (410) 502-4163
                     </div>
                   </div>
                 </div>
-                <span className="shrink-0 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-2xs">
+                <span className="shrink-0 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 text-white text-sm font-semibold rounded-lg shadow-2xs">
                   Call
                 </span>
               </a>
             </div>
 
             {/* Emergency Info Notice */}
-            <div className="pt-1 text-[11px] text-rose-700 dark:text-rose-400 flex items-center justify-between leading-snug bg-rose-50/70 dark:bg-rose-950/30 p-2 rounded-xl border border-rose-100 dark:border-rose-900/50">
-              <span className="text-slate-600 dark:text-slate-300">
+            <div className="text-xs sm:text-sm text-rose-700 dark:text-rose-400 flex items-center justify-between leading-snug bg-rose-50/70 dark:bg-rose-950/30 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/50">
+              <span className="text-slate-700 dark:text-slate-300">
                 Facing medical emergency?
               </span>
               <a
@@ -622,6 +668,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       )}
+
+      {/* CHANGE PASSWORD MODAL: Rendered at root level outside <header> */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+      />
     </>
   );
 };

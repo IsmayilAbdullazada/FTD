@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
+import { ThemeProvider } from '@/app/providers/ThemeProvider';
 import { AuthScreens } from './AuthScreens';
 import { authApi } from '../api/authApi';
 vi.mock('../api/authApi', () => ({
@@ -20,6 +21,8 @@ vi.mock('../api/authApi', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  localStorage.removeItem('hpc_theme');
+  document.documentElement.classList.remove('dark');
   window.history.replaceState({}, '', '/');
 });
 test('login submits entered credentials and reports a failure without leaving the screen', async () => {
@@ -182,4 +185,40 @@ test('registration lets the server assign the stored short tag without a client-
   const payload = vi.mocked(authApi.registerWithInvite).mock.calls[0][0];
   expect(payload).not.toHaveProperty('anonymousHandle');
   expect(payload.token).toBe('fixture-invitation-token');
+});
+
+test('login screen provides an icon-only light/dark mode switch that updates the document theme', () => {
+  localStorage.setItem('hpc_theme', 'light');
+  render(
+    <ThemeProvider>
+      <AuthScreens onLoginSuccess={vi.fn()} />
+    </ThemeProvider>,
+  );
+
+  const toggleButton = screen.getByRole('button', {
+    name: 'Switch to dark mode',
+  });
+  expect(toggleButton.textContent?.trim()).toBe('');
+  expect(toggleButton.getAttribute('aria-pressed')).toBe('false');
+  expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+  fireEvent.click(toggleButton);
+
+  const lightButton = screen.getByRole('button', {
+    name: 'Switch to light mode',
+  });
+  expect(lightButton.textContent?.trim()).toBe('');
+  expect(lightButton.getAttribute('aria-pressed')).toBe('true');
+  expect(document.documentElement.classList.contains('dark')).toBe(true);
+  expect(localStorage.getItem('hpc_theme')).toBe('dark');
+});
+
+test('invite code input uses sans-serif font for its placeholder when empty', () => {
+  render(<AuthScreens initialMode="register" onLoginSuccess={vi.fn()} />);
+  const inviteInput = screen.getByPlaceholderText(
+    'Paste your invite code or link',
+  );
+  expect(inviteInput.className).toContain('font-sans');
+  expect(inviteInput.className).toContain('placeholder:font-sans');
+  expect(inviteInput.className).not.toContain('font-mono');
 });

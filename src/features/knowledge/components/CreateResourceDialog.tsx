@@ -1,5 +1,6 @@
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { Audience, ClinicalResource } from '@/types';
-import { X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 
 import type { useKnowledgeResources } from '../hooks/useKnowledgeResources';
 
@@ -24,6 +25,8 @@ type Props = Pick<
   | 'newAdditionalLinks'
   | 'setNewAdditionalLinks'
   | 'isSubmitting'
+  | 'formError'
+  | 'setFormError'
   | 'newPdfFile'
   | 'setNewPdfFile'
   | 'handleCreateGuide'
@@ -48,21 +51,34 @@ export function CreateResourceDialog({
   newAdditionalLinks,
   setNewAdditionalLinks,
   isSubmitting,
+  formError,
+  setFormError,
   newPdfFile,
   setNewPdfFile,
   handleCreateGuide,
 }: Props) {
+  const handleClose = () => {
+    if (isSubmitting) return;
+    setFormError(null);
+    setShowAddModal(false);
+  };
+  const dialogRef = useDialogFocus(showAddModal, handleClose);
+
   return (
     <>
-      {/* DR. SEEMA ADD SOURCE MODAL */}
       {showAddModal && (
         <div
-          onClick={() => setShowAddModal(false)}
+          onClick={handleClose}
           className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Care Source or Protocol"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors outline-none"
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <div>
@@ -75,8 +91,10 @@ export function CreateResourceDialog({
                 </p>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                type="button"
+                aria-label="Close dialog"
+                onClick={handleClose}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -86,6 +104,15 @@ export function CreateResourceDialog({
               onSubmit={handleCreateGuide}
               className="p-4 overflow-y-auto space-y-3.5 text-xs flex-1"
             >
+              {formError && (
+                <div
+                  role="alert"
+                  className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 flex items-start gap-2"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Title
@@ -180,7 +207,8 @@ export function CreateResourceDialog({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Which care partners will see this guide?
+                  Which care partners will see this guide?{' '}
+                  <span className="text-rose-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {(
@@ -204,6 +232,11 @@ export function CreateResourceDialog({
                     </button>
                   ))}
                 </div>
+                {!newAudience && (
+                  <p className="mt-1 text-slate-500 dark:text-slate-400">
+                    Select an audience to enable publishing.
+                  </p>
+                )}
               </div>
 
               <div>

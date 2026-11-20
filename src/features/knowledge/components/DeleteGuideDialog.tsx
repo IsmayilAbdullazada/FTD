@@ -16,7 +16,11 @@ export function DeleteGuideDialog({
   onGuideChange: setGuideToDelete,
   onConfirm: handleConfirmDeleteGuide,
 }: DeleteGuideDialogProps) {
-  const dialogRef = useDialogFocus(Boolean(guideToDelete));
+  const dialogRef = useDialogFocus(Boolean(guideToDelete), () => {
+    if (!isDeletingGuide) {
+      setGuideToDelete(null);
+    }
+  });
   return (
     <>
       {/* MODAL: DELETE GUIDE CONFIRMATION */}
@@ -43,8 +47,8 @@ export function DeleteGuideDialog({
                   Remove Guide?
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                  Are you sure you want to delete this document from Dr. Seema's
-                  Assistant knowledge base?
+                  Are you sure you want to delete this document from the Care
+                  Companion knowledge base?
                 </p>
               </div>
             </div>

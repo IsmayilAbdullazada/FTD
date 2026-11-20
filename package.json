@@ -3,24 +3,29 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "app"
+  ],
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "vite build && npm --prefix app run dev",
     "dev:frontend": "vite",
     "dev:backend": "npm --prefix app run dev",
     "backend:migrate": "npm --prefix app run migrate",
     "backend:seed": "npm --prefix app run seed",
     "backend:test": "npm --prefix app test",
-    "build": "vite build",
+    "build": "vite build && npm --prefix app run build",
     "preview": "vite preview",
     "start": "npm --prefix app start",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist app/dist",
     "test": "vitest run",
+    "lint": "eslint src app/src",
     "lint:eslint": "eslint src app/src",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.17",
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
@@ -44,8 +49,5 @@
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.0",
     "vitest": "^5.1.0"
-  },
-  "engines": {
-    "node": ">=24 <25"
   }
 }

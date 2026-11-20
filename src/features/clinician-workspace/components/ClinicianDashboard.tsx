@@ -30,6 +30,8 @@ interface ClinicianDashboardProps {
   currentUser: CurrentUser;
   cohorts: CommunityGroup[];
   initialQueue?: { items: import('@/types').QueueItem[]; totalPending: number };
+  activeTab?: ClinicianDashboardTab;
+  onTabChange?: (tab: ClinicianDashboardTab) => void;
   onQueueUpdated: () => void;
   onOpenInvite: () => void;
   onOpenAudit: () => void;
@@ -41,13 +43,21 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   currentUser,
   cohorts,
   initialQueue,
+  activeTab: controlledTab,
+  onTabChange,
   onQueueUpdated,
   onOpenInvite,
   onOpenAudit,
   onCohortCreated,
   onOpenDiscussion,
 }) => {
-  const [activeTab, setActiveTab] = useState<ClinicianDashboardTab>('queue');
+  const [internalTab, setInternalTab] =
+    useState<ClinicianDashboardTab>('queue');
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = (tab: ClinicianDashboardTab) => {
+    setInternalTab(tab);
+    onTabChange?.(tab);
+  };
   const [audienceFilter, setAudienceFilter] = useState<'all' | Condition>(
     'all',
   );
@@ -159,6 +169,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
   } = useMemberManagement({
     audienceFilter,
     setActionSuccessNotice,
+    onReassigned: onCohortCreated,
   });
 
   const {
@@ -286,7 +297,9 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         pendingCount={queuePage.total}
         discussionCount={discussionPage.total}
         activeGuideCount={
-          chatbotGuides.filter((guide) => guide.isActive).length
+          chatbotGuides.filter(
+            (guide) => guide.isActive && guide.status === 'APPROVED',
+          ).length
         }
         guideCount={chatbotGuides.length}
         cohortCount={cohorts.length}

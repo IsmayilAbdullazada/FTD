@@ -95,7 +95,9 @@ export function FeedFilters({
               type="button"
               onClick={() => setIsFilterMenuOpen((prev) => !prev)}
               className={`min-h-11 px-3.5 py-2.5 rounded-xl border text-sm font-semibold flex items-center gap-2 transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002D72] dark:focus-visible:ring-blue-500 ${
-                selectedGroupTab !== 'all' || selectedStatusFilter !== 'all'
+                selectedGroupTab !== 'all' ||
+                selectedStatusFilter !== 'all' ||
+                (isStaff && selectedCondition !== 'all')
                   ? 'bg-blue-50 dark:bg-blue-950/60 border-[#002D72] dark:border-blue-500 text-[#002D72] dark:text-blue-300'
                   : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750'
               }`}
@@ -104,10 +106,12 @@ export function FeedFilters({
               <SlidersHorizontal className="w-4 h-4 shrink-0" />
               <span>Filters</span>
               {(selectedGroupTab !== 'all' ||
-                selectedStatusFilter !== 'all') && (
+                selectedStatusFilter !== 'all' ||
+                (isStaff && selectedCondition !== 'all')) && (
                 <span className="w-5 h-5 rounded-full bg-[#002D72] dark:bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
                   {(selectedGroupTab !== 'all' ? 1 : 0) +
-                    (selectedStatusFilter !== 'all' ? 1 : 0)}
+                    (selectedStatusFilter !== 'all' ? 1 : 0) +
+                    (isStaff && selectedCondition !== 'all' ? 1 : 0)}
                 </span>
               )}
               <ChevronDown
@@ -124,12 +128,14 @@ export function FeedFilters({
                     <span>Filter Discussions</span>
                   </div>
                   {(selectedGroupTab !== 'all' ||
-                    selectedStatusFilter !== 'all') && (
+                    selectedStatusFilter !== 'all' ||
+                    (isStaff && selectedCondition !== 'all')) && (
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedGroupTab('all');
                         setSelectedStatusFilter('all');
+                        if (isStaff) setSelectedCondition('all');
                         setCurrentPage(1);
                       }}
                       className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
@@ -261,6 +267,7 @@ export function FeedFilters({
         {/* Active Filter Chips Bar */}
         {(selectedGroupTab !== 'all' ||
           selectedStatusFilter !== 'all' ||
+          (isStaff && selectedCondition !== 'all') ||
           searchQuery) && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400 mr-1">
@@ -338,6 +345,24 @@ export function FeedFilters({
               </span>
             )}
 
+            {/* Condition chip (Staff only) */}
+            {isStaff && selectedCondition !== 'all' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
+                <span>Condition: {selectedCondition}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCondition('all');
+                    setCurrentPage(1);
+                  }}
+                  className="p-1 hover:text-slate-900 dark:hover:text-white rounded-full cursor-pointer ml-0.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"
+                  aria-label="Remove condition filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            )}
+
             {/* Clear all button */}
             <button
               type="button"
@@ -345,6 +370,7 @@ export function FeedFilters({
                 setSearchQuery('');
                 setSelectedGroupTab('all');
                 setSelectedStatusFilter('all');
+                if (isStaff) setSelectedCondition('all');
                 setCurrentPage(1);
               }}
               className="text-sm text-[#002D72] dark:text-blue-400 hover:underline font-semibold ml-1 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#002D72]"

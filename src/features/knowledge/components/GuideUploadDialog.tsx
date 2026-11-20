@@ -86,7 +86,11 @@ export function GuideUploadDialog({
   onProcessFile: handleProcessFile,
   onSave: handleSaveGuide,
 }: GuideUploadDialogProps) {
-  const dialogRef = useDialogFocus(showUploadGuideModal);
+  const dialogRef = useDialogFocus(showUploadGuideModal, () => {
+    if (!isUploadingGuide && !isExtractingPdf) {
+      resetUploadModal();
+    }
+  });
   return (
     <>
       {/* MODAL: SIDE-BY-SIDE PDF PREVIEW & DRAFT-THEN-APPROVE REVIEW */}
@@ -135,6 +139,7 @@ export function GuideUploadDialog({
 
               <button
                 type="button"
+                aria-label="Close guide upload dialog"
                 onClick={resetUploadModal}
                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                 title="Close and discard"
@@ -240,6 +245,25 @@ export function GuideUploadDialog({
                         </iframe>
                       </object>
                     </div>
+                  ) : uploadPages.length > 0 ? (
+                    <div className="p-5 flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-400 shrink-0">
+                        <span>
+                          Text document loaded ({uploadPages[0]?.wordCount || 0}{' '}
+                          words)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-[#002D72] dark:text-sky-400 font-semibold hover:underline cursor-pointer"
+                        >
+                          Replace file
+                        </button>
+                      </div>
+                      <div className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-sans select-text">
+                        {uploadPages.map((p) => p.text).join('\n\n')}
+                      </div>
+                    </div>
                   ) : (
                     <div className="p-6 flex-1 flex flex-col items-center justify-center overflow-y-auto">
                       {/* Drag & Drop Area */}
@@ -260,14 +284,14 @@ export function GuideUploadDialog({
                         </div>
                         <div>
                           <p className="font-semibold text-slate-900 dark:text-white text-sm">
-                            Drop PDF guide here, or{' '}
+                            Drop PDF or text guide here, or{' '}
                             <span className="text-[#002D72] dark:text-sky-400 underline">
                               browse
                             </span>
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            Accepts institutional PDF guidelines, protocols, and
-                            manuals (.pdf)
+                            Accepts institutional guidelines, protocols, and
+                            manuals (.pdf, .txt, .md)
                           </p>
                         </div>
                       </div>
@@ -275,11 +299,8 @@ export function GuideUploadDialog({
                       {/* Quick library selection helper */}
                       <div className="w-full max-w-md mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
                         <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2.5 text-center">
-                          Or select an institutional guideline from{' '}
-                          <code className="font-mono text-blue-600 dark:text-blue-400">
-                            /resources/
-                          </code>
-                          :
+                          Or select an institutional guideline from the clinic
+                          library:
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
                           {INSTITUTIONAL_RESOURCE_FILES.map((resFile) => (

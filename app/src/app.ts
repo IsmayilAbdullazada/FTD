@@ -4,6 +4,7 @@ import { asyncHandler } from './lib/http.js';
 import { isStaffRole } from './lib/roles.js';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import helmet from 'helmet';
@@ -45,7 +46,13 @@ app.set(
   'trust proxy',
   env.TRUST_PROXY_HOPS === 0 ? false : env.TRUST_PROXY_HOPS,
 );
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    frameguard: false,
+    contentSecurityPolicy: false,
+  }),
+);
 app.use(
   cors({
     origin(origin, callback) {
@@ -126,4 +133,13 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api', (_req, res) =>
   res.status(404).json({ error: 'API endpoint not found' }),
 );
+
+const frontendDist = path.join(repositoryRoot, 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 app.use(errorHandler);

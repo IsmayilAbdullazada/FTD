@@ -225,6 +225,12 @@ export interface DirectMessage {
     | 'SECURITY';
   createdAt: string;
   read: boolean;
+  kind?: string;
+  context?: {
+    postId?: string;
+    commentId?: string;
+    guideId?: string;
+  };
 }
 
 export interface PrivateConversationMessage {

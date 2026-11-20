@@ -10,11 +10,13 @@ import type { Condition, GroupMember } from '@/types';
 interface UseMemberManagementOptions {
   audienceFilter: 'all' | Condition;
   setActionSuccessNotice: Dispatch<SetStateAction<string | null>>;
+  onReassigned?: () => void;
 }
 
 export const useMemberManagement = ({
   audienceFilter,
   setActionSuccessNotice,
+  onReassigned,
 }: UseMemberManagementOptions) => {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [selectedCohortFilter, setSelectedCohortFilter] = useState('all');
@@ -28,7 +30,9 @@ export const useMemberManagement = ({
   const loadMembers = async (groupId?: string) => {
     setLoadingMembers(true);
     try {
-      const response = await communityApi.getGroupMembers(groupId);
+      const normalizedGroupId =
+        groupId && groupId !== 'all' ? groupId : undefined;
+      const response = await communityApi.getGroupMembers(normalizedGroupId);
       const filtered =
         audienceFilter === 'all'
           ? response
@@ -36,6 +40,8 @@ export const useMemberManagement = ({
       setMembers(filtered);
     } catch (error) {
       reportError('Request failed', error);
+      setActionSuccessNotice('Failed to load members. Please try again.');
+      setTimeout(() => setActionSuccessNotice(null), 4000);
     } finally {
       setLoadingMembers(false);
     }
@@ -55,7 +61,8 @@ export const useMemberManagement = ({
       setTargetNewGroupId('');
       setActionSuccessNotice('Member moved to new group.');
       setTimeout(() => setActionSuccessNotice(null), 3000);
-      loadMembers(selectedCohortFilter);
+      await loadMembers();
+      onReassigned?.();
     } catch (error) {
       reportError('Request failed', error);
       setActionSuccessNotice(

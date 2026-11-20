@@ -1,5 +1,7 @@
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import {
+  AlertCircle,
   CheckCircle2,
   ExternalLink,
   FileText,
@@ -51,6 +53,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     setNewAdditionalLinks,
     isSubmitting,
     successToast,
+    toastTone,
+    formError,
+    setFormError,
     newPdfFile,
     setNewPdfFile,
     isClinician,
@@ -63,6 +68,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     onClearInitialResource,
     currentUser,
   });
+
+  const deleteDialogRef = useDialogFocus(
+    Boolean(isClinician && pendingDelete),
+    () => setPendingDelete(null),
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
@@ -101,8 +111,13 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
           >
             <div
+              ref={deleteDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Delete guide confirmation"
+              tabIndex={-1}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default outline-none"
             >
               <div className="space-y-1.5">
                 <h3 className="font-semibold text-slate-900 dark:text-white">
@@ -117,14 +132,14 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                 <button
                   type="button"
                   onClick={() => setPendingDelete(null)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition"
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteGuide(pendingDelete)}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition cursor-pointer"
                 >
                   Delete
                 </button>
@@ -135,9 +150,20 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       </div>
 
       {successToast && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in">
+        <div
+          role={toastTone === 'error' ? 'alert' : 'status'}
+          className={`border text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in ${
+            toastTone === 'error'
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200'
+          }`}
+        >
           <span>{successToast}</span>
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          {toastTone === 'error' ? (
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
         </div>
       )}
 
@@ -302,6 +328,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         newAdditionalLinks={newAdditionalLinks}
         setNewAdditionalLinks={setNewAdditionalLinks}
         isSubmitting={isSubmitting}
+        formError={formError}
+        setFormError={setFormError}
         newPdfFile={newPdfFile}
         setNewPdfFile={setNewPdfFile}
         handleCreateGuide={handleCreateGuide}

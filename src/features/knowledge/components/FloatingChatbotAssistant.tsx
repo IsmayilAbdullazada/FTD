@@ -26,6 +26,7 @@ interface FloatingChatbotAssistantProps {
   onClose: () => void;
   prefillRequest?: { query: string } | null;
   onCreateDiscussion: (draft: { title: string; content: string }) => void;
+  onOpenDiscussion?: (postId: string) => void;
 }
 
 interface ChatMessage {
@@ -150,6 +151,7 @@ export const FloatingChatbotAssistant: React.FC<
   onToggle,
   onClose,
   onCreateDiscussion,
+  onOpenDiscussion,
   prefillRequest,
 }) => {
   const [inputQuery, setInputQuery] = useState('');
@@ -628,6 +630,13 @@ export const FloatingChatbotAssistant: React.FC<
                           <a
                             key={discussion.id}
                             href={discussion.url}
+                            onClick={(event) => {
+                              if (onOpenDiscussion) {
+                                event.preventDefault();
+                                onClose();
+                                onOpenDiscussion(discussion.id);
+                              }
+                            }}
                             className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-[#002D72] dark:text-sky-400 hover:underline"
                           >
                             <MessageSquare className="w-4 h-4 shrink-0" />
@@ -648,13 +657,19 @@ export const FloatingChatbotAssistant: React.FC<
 
                     {msg.discussionDraft &&
                       (msg.citedResources?.length ||
-                        msg.matchedGuide ||
-                        !!msg.discussions?.length) && (
+                      msg.matchedGuide ||
+                      !!msg.discussions?.length ? (
                         <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                           Still haven't found what you need? Ask the community
                           by creating a discussion post.
                         </p>
-                      )}
+                      ) : !msg.text ? (
+                        <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                          I couldn't find a matching care guide or existing
+                          discussion for that topic yet. You can ask the
+                          community by creating a discussion post.
+                        </p>
+                      ) : null)}
 
                     {msg.discussionDraft && (
                       <a

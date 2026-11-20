@@ -23,7 +23,9 @@ export function ReassignMemberDialog({
   cohorts,
   onConfirm: handleConfirmReassign,
 }: ReassignMemberDialogProps) {
-  const dialogRef = useDialogFocus(Boolean(reassigningUser));
+  const dialogRef = useDialogFocus(Boolean(reassigningUser), () =>
+    setReassigningUser(null),
+  );
   return (
     <>
       {/* MODAL: REASSIGN MEMBER */}

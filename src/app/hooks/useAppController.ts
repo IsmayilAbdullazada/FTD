@@ -1,6 +1,7 @@
 import { useEffectEvent, useRef } from 'react';
 import { useEffect } from 'react';
 import { authApi } from '@/features/auth/api/authApi';
+import type { ClinicianDashboardTab } from '@/features/clinician-workspace/types';
 import { CurrentUser } from '@/types';
 import {
   DiscussionDraft,
@@ -24,6 +25,7 @@ export function useAppController() {
   const { currentUser, allPersonas } = data.values;
   const {
     setActiveTab,
+    setClinicianTab,
     setFeedNotice,
     setSessionNotice,
     setFeedResetKey,
@@ -231,10 +233,15 @@ export function useAppController() {
       },
       postSubmitted: () => {
         clearComposer();
+        const isStaffUser =
+          currentUser?.role === 'CLINICIAN_MODERATOR' ||
+          currentUser?.role === 'SYSTEM_ADMIN';
         setFeedNotice(
-          'Your post has been submitted and is currently under review.',
+          isStaffUser
+            ? 'Your discussion has been published to the community.'
+            : 'Your post has been submitted and is currently under review.',
         );
-        setFeedSection('my-posts');
+        setFeedSection(isStaffUser ? 'all' : 'my-posts');
         selectTab('feed');
         void data.actions.refreshQueueAndNotifications(currentUser);
       },
@@ -269,8 +276,18 @@ export function useAppController() {
       refreshNotifications: () => {
         if (currentUser) void data.actions.loadUserAndData(currentUser.id);
       },
-      navigateToConsole: () => setActiveTab('moderation'),
-      navigateToFeed: () => setActiveTab('feed'),
+      setClinicianTab,
+      navigateToConsole: (tab?: ClinicianDashboardTab) => {
+        if (tab) setClinicianTab(tab);
+        setTargetDiscussionId(null);
+        setActiveTab('moderation');
+        pushTabLocation('moderation');
+      },
+      navigateToFeed: () => {
+        setTargetDiscussionId(null);
+        setActiveTab('feed');
+        pushTabLocation('feed');
+      },
       sessionTimedOut: () =>
         signOut(
           'Your session timed out due to inactivity to protect patient and caregiver privacy. Please sign in again.',

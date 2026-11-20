@@ -193,7 +193,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
       )}
 
       {/* MY POSTS DEDICATED HEADER */}
-      {isCarePartner && viewSection === 'my-posts' && (
+      {viewSection === 'my-posts' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-2.5 animate-in fade-in">
           <div className="flex items-center justify-between">
             <button
@@ -205,7 +205,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
               <span>Back to Discussions</span>
             </button>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-900/60">
-              {myPosts.length} Total {myPosts.length === 1 ? 'Post' : 'Posts'}
+              {totalPosts} Total {totalPosts === 1 ? 'Post' : 'Posts'}
             </span>
           </div>
 
@@ -214,9 +214,9 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
               My Posts
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
-              View and track all your submitted posts, review real-time
-              moderation status, read private notes from the moderator, and edit
-              or cancel anytime.
+              {isCarePartner
+                ? 'View and track all your submitted posts, review real-time moderation status, read private notes from the moderator, and edit or cancel anytime.'
+                : 'View and manage the community discussions you have posted.'}
             </p>
           </div>
         </div>

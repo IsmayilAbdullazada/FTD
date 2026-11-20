@@ -1,6 +1,8 @@
 import { reportError } from '@/shared/lib/logger';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -75,10 +77,24 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
   const [form, setForm] = useState(emptyForm());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CalendarEvent | null>(
     null,
   );
+  const addDialogRef = useDialogFocus(Boolean(canEdit && showModal), () => {
+    if (!isSubmitting) setShowModal(false);
+  });
+  const deleteDialogRef = useDialogFocus(
+    Boolean(canEdit && pendingDelete),
+    () => setPendingDelete(null),
+  );
+
+  const showToast = (msg: string, tone: 'success' | 'error' = 'success') => {
+    setToastTone(tone);
+    setToast(msg);
+    setTimeout(() => setToast(null), tone === 'error' ? 4500 : 3500);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +104,11 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
         if (!cancelled) setEvents(data);
       } catch (err) {
         reportError('Failed to load calendar events:', err);
+        if (!cancelled)
+          showToast(
+            'Could not load calendar events. Please refresh the page.',
+            'error',
+          );
       }
     };
     loadEvents();
@@ -110,9 +131,15 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
 
   const cells = useMemo(() => {
     const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+    const daysInMonth = new Date(
+      viewDate.getFullYear(),
+      viewDate.getMonth() + 1,
+      0,
+    ).getDate();
+    const totalSlots = Math.ceil((first.getDay() + daysInMonth) / 7) * 7;
     const start = new Date(first);
     start.setDate(1 - first.getDay());
-    return Array.from({ length: 42 }, (_, i) => {
+    return Array.from({ length: totalSlots }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return d;
@@ -157,9 +184,15 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
         condition: form.condition,
       });
       setEvents((prev) => [...prev, created]);
+      const createdDate = new Date(created.startsAt);
+      if (!Number.isNaN(createdDate.getTime())) {
+        setViewDate(
+          new Date(createdDate.getFullYear(), createdDate.getMonth(), 1),
+        );
+        setSelectedKey(null);
+      }
       setShowModal(false);
-      setToast(`"${created.title}" added to the calendar.`);
-      setTimeout(() => setToast(null), 3500);
+      showToast(`"${created.title}" added to the calendar.`, 'success');
     } catch (err) {
       reportError('Failed to create calendar event:', err);
       setError(
@@ -173,11 +206,15 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
   };
 
   const handleDelete = async (ev: CalendarEvent) => {
-    await contentApi.deleteEvent(ev.id);
-    setEvents((prev) => prev.filter((x) => x.id !== ev.id));
-    setPendingDelete(null);
-    setToast(`"${ev.title}" removed from the calendar.`);
-    setTimeout(() => setToast(null), 3500);
+    try {
+      await contentApi.deleteEvent(ev.id);
+      setEvents((prev) => prev.filter((x) => x.id !== ev.id));
+      setPendingDelete(null);
+      showToast(`"${ev.title}" removed from the calendar.`, 'success');
+    } catch (err) {
+      reportError('Failed to delete calendar event:', err);
+      showToast('Could not remove event. Please try again.', 'error');
+    }
   };
 
   const inputCls =
@@ -193,8 +230,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
             Events Calendar
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-            Care partner conferences, support group conferences, and social
-            get-togethers.
+            Care partner conferences, support groups, and social get-togethers.
           </p>
         </div>
         {canEdit && (
@@ -209,9 +245,20 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
       </div>
 
       {toast && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in">
+        <div
+          role={toastTone === 'error' ? 'alert' : 'status'}
+          className={`border text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in ${
+            toastTone === 'error'
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200'
+          }`}
+        >
           <span>{toast}</span>
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          {toastTone === 'error' ? (
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
         </div>
       )}
 
@@ -430,8 +477,13 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={addDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Calendar Event"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default outline-none"
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
@@ -443,8 +495,10 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Close dialog"
                 onClick={() => setShowModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -457,7 +511,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
               {error && (
                 <div
                   role="alert"
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                  className="rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/50 px-3 py-2 text-sm text-rose-800 dark:text-rose-200"
                 >
                   {error}
                 </div>
@@ -583,8 +637,13 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
           className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={deleteDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete event confirmation"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default outline-none"
           >
             <div className="space-y-1.5">
               <h3 className="font-semibold text-slate-900 dark:text-white">
@@ -601,14 +660,16 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
             </div>
             <div className="flex items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setPendingDelete(null)}
-                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition"
+                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleDelete(pendingDelete)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition cursor-pointer"
               >
                 Delete
               </button>

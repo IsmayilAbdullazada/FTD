@@ -23,7 +23,7 @@ export const AudienceBadge: React.FC<{ condition?: Audience | string }> = ({
   const s = STYLES[condition] || STYLES.FTD;
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold ${s.cls}`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-semibold ${s.cls}`}
     >
       {s.label}
     </span>

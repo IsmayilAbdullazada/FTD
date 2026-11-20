@@ -1,4 +1,11 @@
-import { CheckCircle, MessageSquare, Plus, UserPlus, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle,
+  MessageSquare,
+  Plus,
+  UserPlus,
+  X,
+} from 'lucide-react';
 import type { Condition } from '@/types';
 
 interface DashboardHeaderProps {
@@ -67,20 +74,44 @@ export function DashboardHeader({
         </div>
       </div>
 
-      {actionSuccessNotice && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm px-3.5 py-2 sm:py-2.5 rounded-xl flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="font-medium">{actionSuccessNotice}</span>
-          </div>
-          <button
-            onClick={onDismissNotice}
-            className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      {actionSuccessNotice &&
+        (() => {
+          const isError =
+            /^(error|failed|could not|unable|please )/i.test(
+              actionSuccessNotice.trim(),
+            ) || /failed to|could not/i.test(actionSuccessNotice);
+          return (
+            <div
+              role={isError ? 'alert' : 'status'}
+              className={`border text-xs sm:text-sm px-3.5 py-2 sm:py-2.5 rounded-xl flex items-center justify-between gap-2 ${
+                isError
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {isError ? (
+                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                )}
+                <span className="font-medium">{actionSuccessNotice}</span>
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss notification"
+                onClick={onDismissNotice}
+                className={`cursor-pointer ${
+                  isError
+                    ? 'text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-200'
+                    : 'text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        })()}
 
       {/* Viewing Filter */}
       <div className="flex items-center gap-2 text-xs">

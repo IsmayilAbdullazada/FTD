@@ -28,13 +28,17 @@ router.get(
     SELECT p.id,'POST' type,p.id post_id,p.title,p.raw_content,p.sanitized_content,p.condition,p.is_urgent_clinical,p.phi_alerts,
       p.allow_unmoderated_replies,p.created_at,u.id user_id,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,
       u.condition user_condition,u.anonymous_handle,u.avatar_color,NULL::text post_content,NULL::text parent_comment_id,NULL::text parent_content,
-      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]') assigned_group_ids
+      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]') assigned_group_ids,
+      COALESCE((SELECT jsonb_agg(jsonb_build_object('id',n.id,'senderId',n.sender_id,'senderName',nu.first_name||' '||nu.last_name,
+        'senderRole',nu.role,'message',n.message,'createdAt',n.created_at) ORDER BY n.created_at)
+        FROM moderator_private_notes n JOIN users nu ON nu.id=n.sender_id WHERE n.post_id=p.id),'[]'::jsonb) private_notes
     FROM posts p JOIN users u ON u.id=p.author_id WHERE p.status='PENDING_MODERATION' AND ($3::text='all' OR p.condition IN ($3,'BOTH'))
     UNION ALL
     SELECT c.id,'COMMENT',c.post_id,p.title,c.raw_content,c.sanitized_content,p.condition,false,c.phi_alerts,p.allow_unmoderated_replies,
       c.created_at,u.id,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,u.condition,u.anonymous_handle,u.avatar_color,
       p.sanitized_content,c.parent_comment_id,parent.sanitized_content,
-      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]')
+      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]'),
+      '[]'::jsonb
     FROM comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=c.author_id LEFT JOIN comments parent ON parent.id=c.parent_comment_id
     WHERE c.status='PENDING_MODERATION' AND ($3::text='all' OR p.condition IN ($3,'BOTH'))`;
     const [result, countResult, groupRows] = await Promise.all([
@@ -83,6 +87,7 @@ router.get(
       isUrgentClinical: r.is_urgent_clinical,
       allowUnmoderatedReplies: r.allow_unmoderated_replies,
       phiAlerts: r.phi_alerts ?? [],
+      moderatorPrivateNotes: r.type === 'POST' ? (r.private_notes ?? []) : [],
       createdAt: r.created_at,
     }));
     const totalPending = countResult.rows[0].total as number;

@@ -195,10 +195,22 @@ router.put(
       })
       .parse(req.body);
     const r = await transaction(async (client) => {
+      const before = (
+        await client.query(
+          'SELECT status FROM chatbot_guides WHERE id=$1 FOR UPDATE',
+          [req.params.id],
+        )
+      ).rows[0];
+      if (!before) throw new HttpError(404, 'Guide not found');
+      const nextStatus = i.status ?? before.status;
       const updated = (
         await client.query(
           `UPDATE chatbot_guides SET title=COALESCE($1,title),condition=COALESCE($2,condition),topic_tag=COALESCE($3,topic_tag),publisher=COALESCE($4,publisher),publication_year=COALESCE($5,publication_year),
-      category=COALESCE($6,category),description=COALESCE($7,description),content=COALESCE($8,content),pages=COALESCE($9,pages),pdf_url=COALESCE($10,pdf_url),is_active=COALESCE($11,is_active),updated_at=NOW() WHERE id=$12 RETURNING *`,
+      category=COALESCE($6,category),description=COALESCE($7,description),content=COALESCE($8,content),pages=COALESCE($9,pages),pdf_url=COALESCE($10,pdf_url),is_active=COALESCE($11,is_active),
+      status=$12,
+      approved_at=CASE WHEN $12='APPROVED' AND status<>'APPROVED' THEN NOW() WHEN $12='DRAFT' THEN NULL ELSE approved_at END,
+      approved_by=CASE WHEN $12='APPROVED' AND status<>'APPROVED' THEN $13 WHEN $12='DRAFT' THEN NULL ELSE approved_by END,
+      updated_at=NOW() WHERE id=$14 RETURNING *`,
           [
             i.title ?? null,
             i.condition ?? null,
@@ -211,19 +223,30 @@ router.put(
             i.pages ? JSON.stringify(i.pages) : null,
             i.pdfUrl ?? null,
             i.isActive ?? null,
+            nextStatus,
+            req.user!.id,
             req.params.id,
           ],
         )
       ).rows[0];
       if (!updated) throw new HttpError(404, 'Guide not found');
       updated.total_chunks = await reindex(client, updated);
-      if (updated.status === 'DRAFT')
+      if (updated.status === 'APPROVED' && before.status !== 'APPROVED') {
+        await notify(client, {
+          kind: 'GUIDE_APPROVED',
+          recipients: [updated.uploaded_by],
+          actorId: req.user!.id,
+          eventKey: `guide-approved:${updated.id}:${updated.updated_at.toISOString()}`,
+          context: { guideId: updated.id },
+        });
+      } else if (updated.status === 'DRAFT') {
         await notifyStaff(client, {
           kind: 'GUIDE_REVIEW_REQUIRED',
           actorId: req.user!.id,
           eventKey: `guide-review:${updated.id}:${updated.updated_at.toISOString()}`,
           context: { guideId: updated.id },
         });
+      }
       return updated;
     });
     const user = await query(

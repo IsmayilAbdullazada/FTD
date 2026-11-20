@@ -16,7 +16,11 @@ export function CloseDiscussionDialog({
   onPostChange: setPostToClose,
   onConfirm: handleTogglePostClose,
 }: CloseDiscussionDialogProps) {
-  const dialogRef = useDialogFocus(Boolean(postToClose));
+  const dialogRef = useDialogFocus(Boolean(postToClose), () => {
+    if (!isTogglingClose) {
+      setPostToClose(null);
+    }
+  });
   return (
     <>
       {postToClose && (

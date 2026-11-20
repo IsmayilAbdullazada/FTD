@@ -88,6 +88,68 @@ router.post(
 );
 
 router.post(
+  '/change-password',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const input = z
+      .object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(8).max(128),
+      })
+      .parse(req.body);
+
+    const updatedUser = await transaction(async (client) => {
+      const result = await client.query(
+        `SELECT id,email,role,password_hash,session_version FROM users WHERE id=$1 AND is_active FOR UPDATE`,
+        [req.user!.id],
+      );
+      const user = result.rows[0];
+      if (!user) throw new HttpError(404, 'Account not found.');
+
+      const validCurrent = await bcrypt.compare(
+        input.currentPassword,
+        user.password_hash ?? dummyPasswordHash,
+      );
+      if (!validCurrent)
+        throw new HttpError(400, 'Current password is incorrect.');
+
+      const isSamePassword = await bcrypt.compare(
+        input.newPassword,
+        user.password_hash ?? dummyPasswordHash,
+      );
+      if (isSamePassword)
+        throw new HttpError(
+          400,
+          'New password must be different from your current password.',
+        );
+
+      const passwordHash = await bcrypt.hash(input.newPassword, 12);
+      const updated = await client.query(
+        `UPDATE users
+         SET password_hash=$1,session_version=session_version+1,updated_at=NOW()
+         WHERE id=$2
+         RETURNING id,email,role,session_version`,
+        [passwordHash, user.id],
+      );
+      await client.query(
+        'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id],
+      );
+      await notify(client, {
+        kind: 'PASSWORD_CHANGED',
+        recipients: [user.id],
+        eventKey: `password-changed:${user.id}:${updated.rows[0].session_version}`,
+      });
+      return updated.rows[0];
+    });
+
+    const token = tokenFor(updatedUser as Parameters<typeof tokenFor>[0]);
+    setSessionCookie(res, token, true);
+    res.json({ success: true, message: 'Password updated successfully.' });
+  }),
+);
+
+router.post(
   '/invitations',
   authenticateToken,
   requireStaff,

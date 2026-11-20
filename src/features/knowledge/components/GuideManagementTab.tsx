@@ -83,13 +83,13 @@ export function GuideManagementTab({
               <FileText className="w-5 h-5" />
             </div>
             <h2 className="font-serif text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-              Guides
+              Assistant Guides
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-            Upload institutional care protocols and guidelines (PDF). Dr.
-            Seema's Assistant uses these verified documents to formulate
-            grounded guidance for family care partners.
+            Upload institutional care protocols and guidelines (PDF or text).
+            Care Companion uses these verified documents to provide grounded
+            guidance for family care partners.
           </p>
         </div>
 
@@ -107,10 +107,10 @@ export function GuideManagementTab({
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-base">
               Uploaded Guides ({chatbotGuides.length})
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               {
                 chatbotGuides.filter(
                   (g) => g.isActive && (g.status === 'APPROVED' || !g.status),
@@ -124,11 +124,11 @@ export function GuideManagementTab({
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* Draft / Approved Filter Pills */}
-            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold">
               <button
                 type="button"
                 onClick={() => setGuideStatusFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                   guideStatusFilter === 'ALL'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -139,28 +139,28 @@ export function GuideManagementTab({
               <button
                 type="button"
                 onClick={() => setGuideStatusFilter('DRAFT')}
-                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   guideStatusFilter === 'DRAFT'
                     ? 'bg-amber-500 text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-amber-600'
                 }`}
               >
                 <span>Drafts</span>
-                <span className="text-[10px] px-1 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                <span className="text-xs px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
                   {chatbotGuides.filter((g) => g.status === 'DRAFT').length}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setGuideStatusFilter('APPROVED')}
-                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   guideStatusFilter === 'APPROVED'
                     ? 'bg-emerald-600 text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'
                 }`}
               >
                 <span>Approved</span>
-                <span className="text-[10px] px-1 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                <span className="text-xs px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
                   {
                     chatbotGuides.filter(
                       (g) => g.status === 'APPROVED' || !g.status,
@@ -171,20 +171,20 @@ export function GuideManagementTab({
             </div>
 
             <div className="relative flex-1 sm:w-56">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={guideSearchFilter}
                 onChange={(e) => setGuideSearchFilter(e.target.value)}
                 placeholder="Search guides..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
 
         {loadingGuides ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
+          <div className="py-16 text-center text-slate-400 text-sm">
             Loading guide documents...
           </div>
         ) : chatbotGuides.length === 0 ? (
@@ -192,13 +192,13 @@ export function GuideManagementTab({
             <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto text-slate-500">
               <UploadCloud className="w-6 h-6" />
             </div>
-            <h4 className="font-semibold text-slate-900 dark:text-white text-sm">
+            <h4 className="font-semibold text-slate-900 dark:text-white text-base">
               No Guides Uploaded Yet
             </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-              Upload verified PDF guidelines from public/resources. Use the
-              side-by-side preview to inspect the extraction and approve
-              documents for the knowledge assistant.
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+              Upload verified institutional PDF guidelines or select one from
+              the clinical library. Use the side-by-side preview to inspect the
+              extraction and approve documents for Care Companion.
             </p>
             <div className="pt-1">
               <button
@@ -207,7 +207,7 @@ export function GuideManagementTab({
                   resetUploadModal();
                   setShowUploadGuideModal(true);
                 }}
-                className="px-4 py-2 bg-[#002D72] text-white rounded-xl text-xs font-semibold hover:bg-blue-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs mx-auto"
+                className="px-4 py-2.5 bg-[#002D72] text-white rounded-xl text-sm font-semibold hover:bg-blue-900 transition flex items-center gap-1.5 cursor-pointer shadow-xs mx-auto"
               >
                 <UploadCloud className="w-4 h-4" />
                 <span>Upload Guide</span>
@@ -235,36 +235,42 @@ export function GuideManagementTab({
                     </div>
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">
+                        <h4 className="font-semibold text-slate-900 dark:text-white text-base truncate">
                           {guide.title}
                         </h4>
                         <AudienceBadge condition={guide.condition || 'FTD'} />
                         {isDraft && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60">
-                            <Clock className="w-2.5 h-2.5" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60">
+                            <Clock className="w-3 h-3" />
                             Draft (Pending Review)
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
+                      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2">
                         <span>{guide.fileName}</span>
                         {guide.pages && guide.pages.length > 0 ? (
-                          <span>
-                            · {guide.pages.length}{' '}
-                            {guide.pages.length === 1 ? 'page' : 'pages'} (
-                            {guide.totalChunks ||
-                              guide.pages.reduce(
-                                (a, b) => a + b.chunkCount,
-                                0,
-                              )}{' '}
-                            chunks)
-                          </span>
+                          (() => {
+                            const chunkCount =
+                              guide.totalChunks ||
+                              guide.pages.reduce((a, b) => a + b.chunkCount, 0);
+                            return (
+                              <span>
+                                · {guide.pages.length}{' '}
+                                {guide.pages.length === 1 ? 'page' : 'pages'} (
+                                {chunkCount}{' '}
+                                {chunkCount === 1 ? 'chunk' : 'chunks'})
+                              </span>
+                            );
+                          })()
                         ) : guide.totalChunks ? (
-                          <span>· {guide.totalChunks} chunks</span>
+                          <span>
+                            · {guide.totalChunks}{' '}
+                            {guide.totalChunks === 1 ? 'chunk' : 'chunks'}
+                          </span>
                         ) : null}
                         {guide.topicTag ? (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10.5px]">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs">
                             #{guide.topicTag}
                           </span>
                         ) : guide.category ? (
@@ -283,20 +289,20 @@ export function GuideManagementTab({
                         <button
                           type="button"
                           onClick={() => handleOpenReviewModal(guide)}
-                          className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-[#002D72] dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 border border-blue-200/70 dark:border-blue-800/60 transition cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-[#002D72] dark:text-blue-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 border border-blue-200/70 dark:border-blue-800/60 transition cursor-pointer"
                           title="Open side-by-side PDF preview and text reviewer"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-4 h-4" />
                           <span>Review Side-by-Side</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleQuickApprove(guide)}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                           title="Approve this draft immediately"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-4 h-4" />
                           <span>Approve</span>
                         </button>
                       </>
@@ -305,7 +311,7 @@ export function GuideManagementTab({
                         <button
                           type="button"
                           onClick={() => handleToggleGuide(guide)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition cursor-pointer ${
                             guide.isActive
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
@@ -332,10 +338,10 @@ export function GuideManagementTab({
                         <button
                           type="button"
                           onClick={() => handleOpenReviewModal(guide)}
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                          className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition cursor-pointer"
                           title="Review Side-by-Side & Edit"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-4 h-4" />
                           <span>Review</span>
                         </button>
                       </>
@@ -344,11 +350,11 @@ export function GuideManagementTab({
                     <button
                       type="button"
                       onClick={() => handleRequestDeleteGuide(guide)}
-                      className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                      className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
                       title="Delete Guide"
                       aria-label={`Delete ${guide.title}`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -363,17 +369,17 @@ export function GuideManagementTab({
       {/* Test Assistant Guidance */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-4">
         <div>
-          <h3 className="font-semibold text-slate-900 dark:text-white text-sm sm:text-base flex items-center gap-2">
+          <h3 className="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
             <Play className="w-4 h-4 text-[#002D72] dark:text-sky-400 fill-current" />
             <span>Test Assistant Guidance</span>
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Type any caregiver inquiry to test how Dr. Seema's Assistant uses
-            your uploaded guides to generate answers.
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Type any caregiver inquiry to test how Care Companion uses your
+            approved guides to generate grounded answers.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={testQuery}
@@ -382,17 +388,17 @@ export function GuideManagementTab({
               if (e.key === 'Enter') handleRunTestQuery();
             }}
             placeholder="e.g. Dad refuses to shower and becomes combative..."
-            className="flex-1 px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 min-w-0 px-3.5 py-2.5 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-850 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="button"
             onClick={() => handleRunTestQuery()}
             disabled={isTesting || !testQuery.trim()}
-            className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
           >
             {isTesting ? (
               <>
-                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 <span>Searching...</span>
               </>
             ) : (
@@ -406,7 +412,7 @@ export function GuideManagementTab({
 
         {/* Quick Test Prompt Suggestions */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Quick tests:
           </span>
           {[
@@ -420,7 +426,7 @@ export function GuideManagementTab({
               type="button"
               onClick={() => handleRunTestQuery(suggestion)}
               disabled={isTesting}
-              className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer disabled:opacity-50"
             >
               {suggestion}
             </button>
@@ -434,15 +440,15 @@ export function GuideManagementTab({
             {testResult.retrievedChunks &&
               testResult.retrievedChunks.length > 0 && (
                 <div className="space-y-2 pb-3 border-b border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                      <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                      <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>
                         Retrieved Chunks & Vector Cosine Similarity (
                         {testResult.retrievedChunks.length})
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                       Cutoff: ≥ 0.58
                     </span>
                   </div>
@@ -454,7 +460,7 @@ export function GuideManagementTab({
                       return (
                         <div
                           key={idx}
-                          className={`p-3 rounded-lg border text-xs transition-colors ${
+                          className={`p-3 rounded-lg border text-xs sm:text-sm transition-colors ${
                             isAboveCutoff
                               ? 'bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-900/60'
                               : 'bg-slate-100/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-75'
@@ -468,14 +474,14 @@ export function GuideManagementTab({
                               <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[260px] sm:max-w-md">
                                 {chunk.guideTitle}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                 Page {chunk.page}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[10.5px] font-mono font-semibold ${
+                                className={`px-2 py-0.5 rounded-full text-xs font-mono font-semibold ${
                                   isAboveCutoff
                                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                                     : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
@@ -487,16 +493,16 @@ export function GuideManagementTab({
                                 href={`/resources/${chunk.fileName}#page=${chunk.page}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                                className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:underline text-xs"
                                 title="View page in PDF"
                               >
                                 <span>PDF</span>
-                                <ExternalLink className="w-3 h-3" />
+                                <ExternalLink className="w-3.5 h-3.5" />
                               </a>
                             </div>
                           </div>
 
-                          <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-sans line-clamp-3 hover:line-clamp-none transition-all cursor-pointer text-[11px] bg-slate-50 dark:bg-slate-950/50 p-2 rounded border border-slate-100 dark:border-slate-800 font-mono">
+                          <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-sans line-clamp-3 hover:line-clamp-none transition-all cursor-pointer text-xs bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded border border-slate-100 dark:border-slate-800">
                             {chunk.content}
                           </p>
                         </div>
@@ -508,7 +514,7 @@ export function GuideManagementTab({
 
             {/* Grounded Guide Summary */}
             {testResult.matchedGuide && (
-              <div className="text-xs text-slate-700 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+              <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <div>
                   <span className="font-semibold text-slate-900 dark:text-white">
                     Top Grounded Guide:{' '}
@@ -532,12 +538,12 @@ export function GuideManagementTab({
                           href={c.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10.5px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40 hover:underline"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40 hover:underline"
                         >
                           <span>
                             [{i + 1}] Page {c.page || 1}
                           </span>
-                          <ExternalLink className="w-2.5 h-2.5" />
+                          <ExternalLink className="w-3 h-3" />
                         </a>
                       ))}
                     </div>
@@ -547,17 +553,17 @@ export function GuideManagementTab({
 
             {/* Assistant Output */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Assistant Response (Strictly Grounded):
                 </span>
                 {testResult.isMedicationRefusal && (
-                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
                     Medication Refusal Triggered
                   </span>
                 )}
               </div>
-              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed select-text font-sans">
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm sm:text-base text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed select-text font-sans">
                 {testResult.answer}
               </div>
             </div>

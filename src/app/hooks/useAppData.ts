@@ -1,4 +1,5 @@
 import { reportError } from '@/shared/lib/logger';
+import { ApiError } from '@/shared/api/httpClient';
 import { useState } from 'react';
 import { communityApi } from '@/features/community/api/communityApi';
 import { moderationApi } from '@/features/moderation/api/moderationApi';
@@ -43,7 +44,9 @@ export function useAppData() {
       setNotifications(notificationResult.messages || []);
       setCurrentUser(userResult.user);
     } catch (error) {
-      reportError('Failed to bootstrap app data:', error);
+      if (!(error instanceof ApiError && error.status === 401)) {
+        reportError('Failed to bootstrap app data:', error);
+      }
     }
   }
 

@@ -68,8 +68,9 @@ router.get(
   '/members',
   requireStaff,
   asyncHandler(async (req, res) => {
-    const groupId =
-      typeof req.query.groupId === 'string' ? req.query.groupId : undefined;
+    const rawGroupId =
+      typeof req.query.groupId === 'string' ? req.query.groupId.trim() : '';
+    const groupId = rawGroupId && rawGroupId !== 'all' ? rawGroupId : undefined;
     const result = await query(
       `SELECT u.*,cm.cohort_id primary_group_id,c.name primary_group_name,cm.status,cm.joined_at
      FROM users u JOIN cohort_members cm ON cm.user_id=u.id AND cm.is_primary JOIN cohorts c ON c.id=cm.cohort_id

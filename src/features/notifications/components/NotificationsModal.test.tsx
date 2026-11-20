@@ -198,7 +198,7 @@ test('rejecting from notifications requires a deliberate reason and confirmation
       onQueueUpdated={vi.fn()}
     />,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Reject', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: /^Reject$/ }));
   expect(moderationApi.performModerationAction).not.toHaveBeenCalled();
   fireEvent.change(screen.getByRole('combobox', { name: 'Reason' }), {
     target: { value: 'COMMERCIAL_SOLICITATION' },

@@ -23,10 +23,7 @@ export function CommunityGuidelinesModal({
       className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
       role="presentation"
     >
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0" onClick={onClose} />
 
       <section
         role="dialog"

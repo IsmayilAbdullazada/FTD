@@ -95,7 +95,7 @@ function AppContent() {
 
   async function handleLoginSuccess(user: CurrentUser) {
     setShowGuidelines(true);
-  
+
     try {
       await controllerLoginSuccess(user);
     } catch (error) {

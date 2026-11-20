@@ -8,13 +8,8 @@ interface FooterProps {
   isClinician?: boolean;
 }
 
-type PolicyKey = 
-  | 'privacy' 
-  | 'npp' 
-  | 'nondiscrimination' 
-  | 'rights' 
-  | 'guidelines' 
-  | null;
+type PolicyKey =
+  'privacy' | 'npp' | 'nondiscrimination' | 'rights' | 'guidelines' | null;
 
 interface PolicyContent {
   title: string;

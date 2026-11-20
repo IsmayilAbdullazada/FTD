@@ -36,13 +36,12 @@ export function GuidelinesReminder({
 
           <div className="min-w-0 flex-1">
             <h3 className="text-base font-semibold text-[#002D72] dark:text-blue-300">
-                Before you post
+              Before you post
             </h3>
 
             <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Please be respectful, stay on topic, and avoid sharing
-              personal information.{' '}
-
+              Please be respectful, stay on topic, and avoid sharing personal
+              information.{' '}
               <button
                 type="button"
                 onClick={() => setShowGuidelines(true)}
@@ -56,9 +55,7 @@ export function GuidelinesReminder({
       )}
 
       {showGuidelines && (
-        <CommunityGuidelinesModal
-          onClose={() => setShowGuidelines(false)}
-        />
+        <CommunityGuidelinesModal onClose={() => setShowGuidelines(false)} />
       )}
     </>
   );

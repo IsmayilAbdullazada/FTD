@@ -9,6 +9,7 @@ import {
   Lock,
   Mail,
 } from 'lucide-react';
+import { GuidelinesReminder } from '@/features/policies';
 
 export function LoginPanel() {
   const {
@@ -185,7 +186,7 @@ export function LoginPanel() {
           </form>
 
           {/* Invitation Acceptance Notice */}
-          <div className="pt-2 text-center">
+          <div className="pt-1 text-center">
             <button
               type="button"
               onClick={() => {
@@ -197,6 +198,9 @@ export function LoginPanel() {
               Have an invite link?{' '}
               <span className="font-bold underline">Join here</span>
             </button>
+            <div className="mt-2">
+              <GuidelinesReminder compact />
+            </div>
           </div>
         </div>
       )}

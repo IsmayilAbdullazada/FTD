@@ -1,5 +1,5 @@
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Footer } from '@/app/components/Footer';
 import { Header } from '@/app/components/Header';
 import { SessionTimeoutModal } from '@/app/components/SessionTimeoutModal';
@@ -7,6 +7,8 @@ import { InvitationModal } from '@/features/invitations';
 import { AuditLedgerModal } from '@/features/moderation';
 import { NotificationsModal } from '@/features/notifications';
 import { useAppController } from '@/app/hooks/useAppController';
+import { GuidelinesGate } from '@/features/policies';
+import type { CurrentUser } from '@/types';
 
 const ClinicianDashboard = lazy(() =>
   import('@/features/clinician-workspace').then((module) => ({
@@ -49,6 +51,7 @@ const CalendarPage = lazy(() =>
 
 function AppContent() {
   const { state, actions } = useAppController();
+  const [showGuidelines, setShowGuidelines] = useState(false);
   const {
     bootstrapError,
     currentUser,
@@ -77,7 +80,7 @@ function AppContent() {
     isAuthOpen,
   } = state;
   const {
-    loginSucceeded: handleLoginSuccess,
+    loginSucceeded: controllerLoginSuccess,
     signOut: handleSignOut,
     switchPersona: handleSwitchPersona,
     queueUpdated: handleQueueUpdated,
@@ -91,6 +94,18 @@ function AppContent() {
     () => ({ items: pendingQueue, totalPending: pendingTriageCount }),
     [pendingQueue, pendingTriageCount],
   );
+
+  async function handleLoginSuccess(user: CurrentUser) {
+    setShowGuidelines(true);
+
+    try {
+      await controllerLoginSuccess(user);
+    } catch (error) {
+      setShowGuidelines(false);
+      throw error;
+    }
+  }
+
   const staff =
     currentUser?.role === 'CLINICIAN_MODERATOR' ||
     currentUser?.role === 'SYSTEM_ADMIN';
@@ -125,6 +140,19 @@ function AppContent() {
           onCancel={currentUser ? actions.closeAuth : undefined}
         />
       </Suspense>
+    );
+  }
+
+  if (showGuidelines) {
+    return (
+      <GuidelinesGate
+        key={currentUser.id}
+        onContinue={() => setShowGuidelines(false)}
+        onSignOut={() => {
+          setShowGuidelines(false);
+          handleSignOut();
+        }}
+      />
     );
   }
 

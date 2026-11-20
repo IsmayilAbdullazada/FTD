@@ -5,6 +5,7 @@ import type { ClinicianDashboardTab } from '@/features/clinician-workspace/types
 import { CurrentUser } from '@/types';
 import {
   DiscussionDraft,
+  permittedTab,
   pushSignedOutLocation,
   pushTabLocation,
   readAppLocation,
@@ -55,7 +56,9 @@ export function useAppController() {
       'open'
     )
       setIsNotificationsOpen(true);
-    const { tab, postId, inviteToken, discussionDraft } = readAppLocation();
+    const { tab, postId, resourceId, inviteToken, discussionDraft } =
+      readAppLocation();
+    setInspectedResourceId(resourceId);
 
     if (inviteToken) {
       setAuthInviteToken(inviteToken);
@@ -67,6 +70,8 @@ export function useAppController() {
     } else if (tab === 'forgot-password' || tab === 'reset-password') {
       setAuthMode('forgot-password');
       setIsAuthOpen(true);
+    } else if (resourceId) {
+      setActiveTab('knowledge');
     } else if (postId) {
       setTargetDiscussionId(postId);
       setActiveTab('feed');
@@ -75,7 +80,7 @@ export function useAppController() {
         setComposerInitialTitle(discussionDraft.title || '');
         setComposerInitialContent(discussionDraft.content || '');
       }
-      setActiveTab(tab);
+      setActiveTab(permittedTab(tab, user.role));
     } else {
       setActiveTab(defaultTabFor(user));
     }
@@ -88,7 +93,11 @@ export function useAppController() {
     )
       setIsNotificationsOpen(true);
     const location = readAppLocation('feed');
-    const tab = location.tab || 'feed';
+    const tab = permittedTab(
+      location.tab || 'feed',
+      currentUser?.role || 'CARE_PARTNER',
+    );
+    setInspectedResourceId(location.resourceId);
     const { postId, inviteToken, discussionDraft } = location;
 
     if (inviteToken) {
@@ -152,7 +161,14 @@ export function useAppController() {
   }, []);
 
   async function loginSucceeded(user: CurrentUser): Promise<void> {
-    const nextTab = defaultTabFor(user);
+    const location = readAppLocation();
+    const nextTab = location.postId
+      ? 'feed'
+      : location.resourceId
+        ? 'knowledge'
+        : defaultTabFor(user);
+    setTargetDiscussionId(location.postId);
+    setInspectedResourceId(location.resourceId);
     replaceAuthenticatedLocation(nextTab);
     setSessionNotice(null);
     setAuthInviteToken(undefined);
@@ -179,9 +195,11 @@ export function useAppController() {
 
   function selectTab(tab: string): void {
     if (tab === 'feed') setFeedResetKey((previous) => previous + 1);
-    setActiveTab(tab);
+    const nextTab = permittedTab(tab, currentUser?.role || 'CARE_PARTNER');
+    setActiveTab(nextTab);
+    setInspectedResourceId(null);
     setTargetDiscussionId(null);
-    pushTabLocation(tab);
+    pushTabLocation(nextTab);
   }
 
   function openDiscussion(postId: string): void {
@@ -193,7 +211,7 @@ export function useAppController() {
   function openResource(resourceId: string): void {
     setInspectedResourceId(resourceId);
     setActiveTab('knowledge');
-    pushTabLocation('knowledge');
+    pushTabLocation('knowledge', null, undefined, resourceId);
   }
 
   function openMyPosts(): void {
@@ -214,6 +232,8 @@ export function useAppController() {
   return {
     state: { ...data.values, ...view.values },
     actions: {
+      retryBootstrap: () =>
+        data.actions.loadUserAndData(undefined, applyInitialLocation),
       loginSucceeded,
       signOut,
       switchPersona,
@@ -252,7 +272,10 @@ export function useAppController() {
       cohortCreated: () => data.actions.reloadCohorts(currentUser),
       createDiscussion,
       closeAuth: () => setIsAuthOpen(false),
-      openNotifications: () => setIsNotificationsOpen(true),
+      openNotifications: () => {
+        setIsNotificationsOpen(true);
+        void data.actions.refreshQueueAndNotifications(currentUser);
+      },
       closeNotifications: () => {
         setIsNotificationsOpen(false);
         const url = new URL(window.location.href);
@@ -270,7 +293,12 @@ export function useAppController() {
       closeAudit: () => setIsAuditOpen(false),
       openInvite: () => setIsInviteOpen(true),
       closeInvite: () => setIsInviteOpen(false),
-      clearInspectedResource: () => setInspectedResourceId(null),
+      clearInspectedResource: () => {
+        setInspectedResourceId(null);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('resource');
+        window.history.replaceState(window.history.state, '', url);
+      },
       toggleAssistant: () => setIsAssistantOpen((open) => !open),
       closeAssistant: () => setIsAssistantOpen(false),
       refreshNotifications: () => {

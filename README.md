@@ -38,7 +38,6 @@ cd FTD
 
 ```bash
 npm ci
-npm --prefix app ci
 cp config/ftdcare.env.example config/ftdcare.env
 ```
 
@@ -103,22 +102,23 @@ Feature code owns its domain behavior; `shared` contains infrastructure and comp
 
 Backend npm scripts load `config/ftdcare.env` when present. Backend tests load `config/ftdcare.test.env` instead. Existing process environment variables take precedence over file values. The root `.env` is not the backend configuration file. Start with the [backend environment template](config/ftdcare.env.example); [env.ts](app/src/config/env.ts) defines defaults and validation.
 
-| Variables                                      | Purpose / default                                                                                                                                  |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`                                   | Required signing secret, at least 32 characters; generate a unique random value per environment.                                                   |
-| `DB_HOST`, `DB_PORT`                           | PostgreSQL host and port; `127.0.0.1`, `5432`.                                                                                                     |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD`            | Database name, role, and password; production requires a password of at least 12 characters.                                                       |
-| `DB_SSL`, `DB_POOL_MAX`                        | Verified database TLS (`false` by default) and pool size (`20`).                                                                                   |
-| `NODE_ENV`, `PORT`                             | Runtime mode (`development`) and API port (`3000`). Set `NODE_ENV=production` for deployments.                                                     |
-| `APP_URL`                                      | Frontend URL used in emailed links; `http://localhost:5173`.                                                                                       |
-| `CORS_ORIGIN`                                  | Comma-separated allowed frontend origins; `http://localhost:5173`. Production origins and `APP_URL` must use HTTPS.                                |
-| `TRUST_PROXY_HOPS`                             | Trusted reverse-proxy hops; `1` for one nginx proxy, `0` for direct access. Match the actual network topology.                                     |
-| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`  | Token lifetime (`8h`) and persistent-cookie lifetime (`28800000`).                                                                                 |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`          | SMTP relay settings with no authentication; port `587` by default, implicit TLS on `465`, TLS required. The relay must permit your server to send. |
-| `GUIDE_UPLOAD_DIRECTORY`                       | Optional absolute persistent upload path; defaults to `public/uploads/guides`.                                                                     |
-| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET` | Development-only switches; default `false`, rejected in production.                                                                                |
-| `ENABLE_DEV_AUTH_PREVIEWS`                     | Redacted development email previews; default `false`, rejected in production. Does not expose reset credentials.                                   |
-| `ALLOW_PRODUCTION_SEED`                        | Explicit opt-in to run the seed script in production; default `false`.                                                                             |
+| Variables                                      | Purpose / default                                                                                                                                                 |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB_DRIVER`                                    | Defaults to `postgres`. `pglite` is explicit development-only storage; production rejects it. A PostgreSQL outage returns unhealthy and never switches databases. |
+| `JWT_SECRET`                                   | Required signing secret, at least 32 characters; generate a unique random value per environment.                                                                  |
+| `DB_HOST`, `DB_PORT`                           | PostgreSQL host and port; `127.0.0.1`, `5432`.                                                                                                                    |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`            | Database name, role, and password; production requires a password of at least 12 characters.                                                                      |
+| `DB_SSL`, `DB_POOL_MAX`                        | Verified database TLS (`false` by default) and pool size (`20`).                                                                                                  |
+| `NODE_ENV`, `PORT`                             | Runtime mode (`development`) and API port (`3000`). Set `NODE_ENV=production` for deployments.                                                                    |
+| `APP_URL`                                      | Frontend URL used in emailed links; `http://localhost:5173`.                                                                                                      |
+| `CORS_ORIGIN`                                  | Comma-separated allowed frontend origins; `http://localhost:5173`. Production origins and `APP_URL` must use HTTPS.                                               |
+| `TRUST_PROXY_HOPS`                             | Trusted reverse-proxy hops; `1` for one nginx proxy, `0` for direct access. Match the actual network topology.                                                    |
+| `JWT_EXPIRES_IN`, `SESSION_COOKIE_MAX_AGE_MS`  | Token lifetime (`8h`) and persistent-cookie lifetime (`28800000`).                                                                                                |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`          | SMTP relay settings with no authentication; port `587` by default, implicit TLS on `465`, TLS required. The relay must permit your server to send.                |
+| `GUIDE_UPLOAD_DIRECTORY`                       | Optional absolute persistent upload path; defaults to `public/uploads/guides`.                                                                                    |
+| `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET` | Development-only switches; default `false`, rejected in production.                                                                                               |
+| `ENABLE_DEV_AUTH_PREVIEWS`                     | Redacted development email previews; default `false`, rejected in production. Does not expose reset credentials.                                                  |
+| `ALLOW_PRODUCTION_SEED`                        | Explicit opt-in to run the seed script in production; default `false`.                                                                                            |
 
 `VITE_API_PROXY_TARGET` configures the Vite development proxy and defaults to `http://127.0.0.1:3000`. Set it in the frontend process environment when changing the API port. Frontend `VITE_*` configuration can be exposed to the browser; never put secrets in it. `GEMINI_API_KEY` is optional legacy configuration and does not enable model generation.
 
@@ -155,14 +155,14 @@ Migration `009_short_anonymous_handles` preserves existing valid three-digit tag
 | `npm run lint:eslint`                              | Check frontend and backend source, including React hook rules.                                                   |
 | `npm run format:check` / `npm run format`          | Check / apply Prettier formatting.                                                                               |
 | `npm test` / `npm run backend:test`                | Run frontend / backend tests.                                                                                    |
-| `npm run build`                                    | Build the production frontend into `dist/`.                                                                      |
+| `npm run build`                                    | Build the frontend into `dist/` and backend into `app/dist/`.                                                    |
 | `npm --prefix app run build`                       | Compile the backend and copy SQL migrations into `app/dist/`.                                                    |
 | `npm start`                                        | Start the compiled API; does not serve the frontend.                                                             |
 | `npm run preview`                                  | Preview the frontend build on port 4173; start the API separately and allow the preview origin in `CORS_ORIGIN`. |
 
 Vite preview inherits the configured API/upload proxies. When testing emailed links against preview, also point `APP_URL` at the preview origin.
 
-There are separate root and backend lockfiles. Use `npm ci` for reproducible installs and update the relevant lockfile when changing dependencies.
+The root package uses an npm workspace for `app`. Run `npm ci` at the repository root to install both packages reproducibly. The backend lockfile also supports deploying `app/` independently: run `npm ci --omit=dev --workspaces=false` inside the copied backend folder. When backend dependencies change, update both lockfiles and verify both installation modes.
 
 ## Testing and CI
 
@@ -174,7 +174,6 @@ npm run lint:eslint
 npm run format:check
 npm test
 npm run build
-npm --prefix app run build
 ```
 
 Backend tests mutate data and require a separate, migrated, seeded database. Create a test database, copy `config/ftdcare.env.example` to `config/ftdcare.test.env`, and set `NODE_ENV=test` and the test database credentials there. Use a different database from development and production. Leave `SMTP_HOST` unset or use an isolated test mail service; do not use the production relay for tests. Backend tests also require the OpenSSL CLI to generate temporary certificates for their local SMTP relay.
@@ -249,6 +248,8 @@ Uploaded PDFs must be served through `/uploads/guides/` on the authenticated API
 
 ## Production deployment
 
+See [release verification and SSH transfer](docs/release-readiness.md) for the audited fixes, repeatable checks, and deployment gates. Deploy one reviewed source revision, preserve environment files and persistent uploads, back up PostgreSQL, and apply only unapplied migrations.
+
 ### nginx and a supervised API process
 
 1. Provision PostgreSQL, an application service account, nginx, a domain, and a TLS certificate. Set production environment values, SMTP, and persistent upload storage. The commands below assume the checkout is at `/var/www/ftdcare/app`.
@@ -256,12 +257,10 @@ Uploaded PDFs must be served through `/uploads/guides/` on the authenticated API
 
    ```bash
    npm ci
-   npm --prefix app ci
    npm run build
-   npm --prefix app run build
    npm --prefix app run migrate:compiled
    sudo mkdir -p /var/www/ftdcare/html
-   sudo rsync -a --delete dist/ /var/www/ftdcare/html/
+   sudo rsync -a --chmod=D755,F644 --delete dist/ /var/www/ftdcare/html/
    ```
 
 3. Run `npm start` under a supervisor such as systemd, with the repository as its working directory, the application service account, and restart-on-failure enabled. Restrict access to secrets and expose API port 3000 through the proxy/firewall only.
@@ -276,14 +275,14 @@ Uploaded PDFs must be served through `/uploads/guides/` on the authenticated API
 
 Verify login, invitation registration, guide access, and email delivery over the deployed HTTPS origin before opening access to users. The API process also runs recovery, activity email delivery, and upload-cleanup jobs, so it must stay running for those jobs to execute.
 
-### Docker API image
+### Docker application image
 
 ```bash
 docker build -t ftdcare:local .
 docker run --rm --env-file /secure/ftdcare.env ftdcare:local node app/dist/db/migrate.js
 ```
 
-The image runs the API as the non-root `node` user and includes compiled migrations. It does not serve the frontend; build and deploy `dist/` to nginx separately using the steps above. Configure `DB_HOST` to a database address reachable from the container; `127.0.0.1` inside the container refers to that container.
+The image runs the API as the non-root `node` user and includes compiled migrations. It includes the compiled frontend, served by Express when nginx is not serving static files. With the recommended nginx deployment, deploy `dist/` to its document root as above. Configure `DB_HOST` to a database address reachable from the container; `127.0.0.1` inside the container refers to that container.
 
 Create a persistent host upload directory writable by the container user (UID 1000 in the supplied base image), then start the API:
 

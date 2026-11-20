@@ -219,8 +219,6 @@ export function FeedPostList({
                   return (
                     <article
                       key={post.id}
-                      tabIndex={0}
-                      role="button"
                       aria-label={`Open discussion: ${post.title}`}
                       onClick={() => handleOpenDiscussion(post)}
                       onKeyDown={(e) => {
@@ -319,7 +317,17 @@ export function FeedPostList({
 
                       {/* Title */}
                       <h2 className="font-serif text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100 leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 group-focus-visible:text-[#002D72] dark:group-focus-visible:text-blue-400 transition">
-                        {post.title}
+                        <button
+                          type="button"
+                          aria-label={`Open discussion: ${post.title}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleOpenDiscussion(post);
+                          }}
+                          className="text-left w-full rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        >
+                          {post.title}
+                        </button>
                       </h2>
 
                       {/* Body Content Snippet */}

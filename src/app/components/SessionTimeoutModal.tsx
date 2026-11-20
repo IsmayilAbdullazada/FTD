@@ -1,3 +1,4 @@
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, LogOut, CheckCircle2 } from 'lucide-react';
 
@@ -137,10 +138,12 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
     };
   }, [showWarning, onTimeout]);
 
+  const dialogRef = useDialogFocus(showWarning && isAuthenticated);
   if (!showWarning || !isAuthenticated) return null;
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="session-timeout-title"

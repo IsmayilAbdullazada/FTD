@@ -15,26 +15,13 @@ const repositoryRoot = path.resolve(
 const embeddedDataDir =
   process.env.PGLITE_DATA_DIR || path.join(repositoryRoot, '.pgdata');
 
-const hasDbConfig = Boolean(
-  env.DATABASE_URL || env.DB_PASSWORD || env.NODE_ENV === 'test',
-);
-
-let useEmbedded = !hasDbConfig;
+const useEmbedded = env.DB_DRIVER === 'pglite';
 let embeddedPromise: Promise<PGlite> | null = null;
 let embeddedLock: Promise<void> = Promise.resolve();
 
-function isConnectionError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  if (error instanceof AggregateError) return true;
-  const code = 'code' in error ? String(error.code) : '';
-  return ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'EAI_AGAIN'].includes(code);
-}
-
 function getEmbeddedDb(): Promise<PGlite> {
   if (!embeddedPromise) {
-    logger.info(
-      '[AI Studio] External PostgreSQL unreachable — using embedded PGlite database',
-    );
+    logger.info('Using explicitly configured development PGlite database');
     embeddedPromise = PGlite.create(embeddedDataDir, {
       extensions: { pgcrypto },
     });
@@ -91,7 +78,13 @@ async function acquireEmbeddedClient(): Promise<PoolClient> {
     releaseLock = resolve;
   });
   await previous;
-  const db = await getEmbeddedDb();
+  let db: PGlite;
+  try {
+    db = await getEmbeddedDb();
+  } catch (error) {
+    releaseLock();
+    throw error;
+  }
   let released = false;
   return {
     query: <T extends QueryResultRow = QueryResultRow>(
@@ -107,7 +100,7 @@ async function acquireEmbeddedClient(): Promise<PoolClient> {
   } as unknown as PoolClient;
 }
 
-const realPool = hasDbConfig
+const realPool = !useEmbedded
   ? new Pool(
       env.DATABASE_URL
         ? {
@@ -146,32 +139,11 @@ export const pool = {
         client.release();
       }
     }
-    try {
-      return await realPool.query<T>(text, values);
-    } catch (error) {
-      if (isConnectionError(error)) {
-        useEmbedded = true;
-        const client = await acquireEmbeddedClient();
-        try {
-          return await client.query<T>(text, values);
-        } finally {
-          client.release();
-        }
-      }
-      throw error;
-    }
+    return realPool.query<T>(text, values);
   },
   async connect(): Promise<PoolClient> {
     if (useEmbedded || !realPool) return acquireEmbeddedClient();
-    try {
-      return await realPool.connect();
-    } catch (error) {
-      if (isConnectionError(error)) {
-        useEmbedded = true;
-        return acquireEmbeddedClient();
-      }
-      throw error;
-    }
+    return realPool.connect();
   },
   async end(): Promise<void> {
     if (realPool) await realPool.end();

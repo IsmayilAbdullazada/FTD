@@ -32,7 +32,7 @@ const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
       },
       {
         title: 'Information Usage & Security Standards',
-        text: 'We do not sell, rent, or monetize caregiver data. All application transmissions are protected with TLS 1.3 encryption, and data stores comply with institutional security safeguards and role-based access controls.',
+        text: 'We do not sell, rent, or monetize caregiver data. Access to community information is restricted by account role. Please contact the care team with questions about how this service handles your information.',
       },
       {
         title: 'Inquiries & Contact',
@@ -41,12 +41,12 @@ const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
     ],
   },
   npp: {
-    title: 'Notice of Privacy Practices (HIPAA Compliance)',
-    badge: 'HIPAA & Health Privacy',
+    title: 'Health Information Privacy',
+    badge: 'Health Privacy',
     sections: [
       {
         title: 'Your Protected Health Information',
-        text: 'This notice describes how health information about you or your care recipient may be protected, used, and accessed under federal and state privacy statutes including the Health Insurance Portability and Accountability Act (HIPAA).',
+        text: 'For the official notice explaining how Johns Hopkins Medicine uses health information and the privacy rights available to you, contact the Johns Hopkins Medicine Privacy Office. The community information on this page is not a substitute for that notice.',
       },
       {
         title: 'Clinical Care & Educational Coordination',
@@ -170,6 +170,7 @@ export const Footer: React.FC<FooterProps> = () => {
       {selectedPolicyData && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+          ref={policyDialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="policy-modal-title"
@@ -180,7 +181,6 @@ export const Footer: React.FC<FooterProps> = () => {
           />
 
           <div
-            ref={policyDialogRef}
             tabIndex={-1}
             className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 flex flex-col max-h-[85vh] animate-in zoom-in-95 outline-none"
           >
@@ -191,7 +191,7 @@ export const Footer: React.FC<FooterProps> = () => {
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400 block">
                     {selectedPolicyData.badge}
                   </span>
                   <h3
@@ -214,7 +214,12 @@ export const Footer: React.FC<FooterProps> = () => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-5 overflow-y-auto space-y-4 text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Policy details"
+              className="p-5 overflow-y-auto space-y-4 text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed"
+            >
               {selectedPolicyData.sections.map((section, idx) => (
                 <div key={idx} className="space-y-1">
                   <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm sm:text-base">
@@ -233,7 +238,7 @@ export const Footer: React.FC<FooterProps> = () => {
               <span className="flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                 <span>
-                  Johns Hopkins Medicine · Official Compliance Statement
+                  Johns Hopkins Medicine · Privacy and support information
                 </span>
               </span>
               <button

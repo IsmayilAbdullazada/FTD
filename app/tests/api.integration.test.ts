@@ -450,6 +450,18 @@ test('frontend collection endpoints return their expected top-level shapes', asy
 });
 
 test('staff content, invitation, guide retrieval, and admin contracts use PostgreSQL', async () => {
+  const missingSource = await request(
+    '/api/v1/resources',
+    json(clinicianToken, {
+      title: 'No source resource',
+      summary: 'Should not be published.',
+      contentBody: 'A source URL or PDF is required.',
+      category: 'DAILY_CARE',
+      diseaseDomain: 'FTD',
+    }),
+  );
+  assert.equal(missingSource.status, 400);
+
   const unsafeResource = await request(
     '/api/v1/resources',
     json(clinicianToken, {
@@ -476,6 +488,7 @@ test('staff content, invitation, guide retrieval, and admin contracts use Postgr
     '/api/v1/resources',
     json(clinicianToken, {
       title: 'Integration resource',
+      externalUrl: 'https://example.org/care-guide',
       summary: 'Database-backed resource contract.',
       contentBody:
         'A unique integration phrase about structured evening routines.',

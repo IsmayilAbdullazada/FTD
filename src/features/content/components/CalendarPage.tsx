@@ -112,6 +112,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
       }
     };
     loadEvents();
+
     return () => {
       cancelled = true;
     };
@@ -120,7 +121,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
   const eventsByDay = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
     for (const e of events) {
-      const key = e.startsAt.slice(0, 10);
+      const key = toKey(new Date(e.startsAt));
       (map[key] ||= []).push(e);
     }
     Object.values(map).forEach((list) =>
@@ -148,7 +149,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
 
   const monthPrefix = `${viewDate.getFullYear()}-${pad(viewDate.getMonth() + 1)}`;
   const monthEvents = events
-    .filter((e) => e.startsAt.startsWith(monthPrefix))
+    .filter((e) => toKey(new Date(e.startsAt)).startsWith(monthPrefix))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const listEvents = selectedKey ? eventsByDay[selectedKey] || [] : monthEvents;
 
@@ -329,7 +330,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                       ? 'bg-[#002D72] dark:bg-blue-600 text-white'
                       : inMonth
                         ? 'text-slate-800 dark:text-slate-200'
-                        : 'text-slate-400 dark:text-slate-600'
+                        : 'text-slate-600 dark:text-slate-400'
                   }`}
                 >
                   {d.getDate()}
@@ -521,6 +522,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Event Title
                 </label>
                 <input
+                  aria-label="Event Title"
                   className={inputCls}
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -530,9 +532,11 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Event Date and Time
+                  Event Date and Time (
+                  {Intl.DateTimeFormat().resolvedOptions().timeZone})
                 </label>
                 <input
+                  aria-label="Event Date and Time ( )"
                   type="datetime-local"
                   className={inputCls}
                   value={form.startsAt}
@@ -549,6 +553,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Event Type
                 </label>
                 <select
+                  aria-label="Event Type"
                   className={inputCls}
                   value={form.type}
                   onChange={(e) =>
@@ -568,6 +573,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Location or Zoom Link
                 </label>
                 <input
+                  aria-label="Location or Zoom Link"
                   className={inputCls}
                   value={form.location}
                   onChange={(e) =>
@@ -581,6 +587,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Description (optional)
                 </label>
                 <textarea
+                  aria-label="Description (optional)"
                   rows={3}
                   className={inputCls}
                   value={form.description}
@@ -596,6 +603,7 @@ export const CalendarPage: React.FC<{ currentUser: CurrentUser }> = ({
                 </label>
 
                 <select
+                  aria-label="Who can see this event"
                   className={inputCls}
                   value={form.condition}
                   onChange={(e) =>

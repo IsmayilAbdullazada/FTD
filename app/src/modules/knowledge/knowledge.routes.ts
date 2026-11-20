@@ -91,7 +91,11 @@ router.post(
       req.user!.id,
       req.user!.role,
     );
-    const cited = chunks.rows.map((r) => ({
+    const cited = [
+      ...new Map(
+        chunks.rows.map((r) => [`${r.guide_id}:${r.page}`, r]),
+      ).values(),
+    ].map((r) => ({
       id: r.guide_id,
       title: r.title,
       fileName: r.file_name,

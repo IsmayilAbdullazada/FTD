@@ -282,6 +282,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 Edit Title
               </label>
               <input
+                aria-label="Edit Title"
                 type="text"
                 value={mainPostTitle}
                 onChange={(e) => setMainPostTitle(e.target.value)}
@@ -294,6 +295,7 @@ export const DiscussionDetail: React.FC<DiscussionDetailProps> = ({
                 Edit Details
               </label>
               <textarea
+                aria-label="Edit Details"
                 rows={4}
                 value={mainPostContent}
                 onChange={(e) => setMainPostContent(e.target.value)}

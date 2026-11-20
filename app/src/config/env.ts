@@ -8,7 +8,12 @@ const schema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.string().optional(),
+  DB_DRIVER: z.enum(['postgres', 'pglite']).default('postgres'),
+  DATABASE_URL: z
+    .string()
+    .url()
+    .regex(/^postgres(?:ql)?:\/\//)
+    .optional(),
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().positive().default(5432),
   DB_NAME: z.string().default('ftdcare_db'),
@@ -18,7 +23,7 @@ const schema = z.object({
   GUIDE_UPLOAD_DIRECTORY: z.string().optional(),
   DB_SSL: z.enum(['true', 'false']).default('false'),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
-  JWT_SECRET: z.string().min(32).default(devDefaultJwtSecret),
+  JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default('8h'),
   SESSION_COOKIE_MAX_AGE_MS: z.coerce
     .number()
@@ -49,6 +54,10 @@ if (!parsed.success) {
   throw new Error(`Invalid backend configuration: ${details}`);
 }
 if (parsed.data.NODE_ENV === 'production') {
+  if (parsed.data.DB_DRIVER !== 'postgres')
+    throw new Error(
+      'Production requires PostgreSQL; embedded databases are development-only',
+    );
   if (parsed.data.JWT_SECRET === devDefaultJwtSecret)
     throw new Error('JWT_SECRET must be explicitly configured in production');
   if (parsed.data.ENABLE_DEV_AUTH_PREVIEWS === 'true')
@@ -62,7 +71,7 @@ if (parsed.data.NODE_ENV === 'production') {
     throw new Error(
       'Development and database reset features cannot be enabled in production',
     );
-  if (parsed.data.DB_PASSWORD.length < 12)
+  if (!parsed.data.DATABASE_URL && parsed.data.DB_PASSWORD.length < 12)
     throw new Error(
       'DB_PASSWORD must contain at least 12 characters in production',
     );

@@ -45,6 +45,12 @@ router.post(
           .default([]),
         keyTakeaways: z.array(z.string()).default([]),
       })
+      .refine(
+        (value) => Boolean(value.externalUrl || value.fileAttachmentUrl),
+        {
+          message: 'Provide a webpage URL or an uploaded PDF.',
+        },
+      )
       .parse(req.body);
     const result = await query(
       `INSERT INTO resources(title,summary,content_body,category,disease_domain,external_url,file_attachment_url,additional_links,key_takeaways,created_by)

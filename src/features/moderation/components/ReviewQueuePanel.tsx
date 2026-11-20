@@ -107,7 +107,7 @@ export function ReviewQueuePanel({
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">
             No submissions waiting
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="text-sm text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
             There are no questions or replies awaiting review.
           </p>
         </div>
@@ -160,7 +160,7 @@ export function ReviewQueuePanel({
                       {item.rawContent}
                     </p>
 
-                    <div className="flex items-center justify-between gap-2 pt-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                    <div className="flex items-center justify-between gap-2 pt-1 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
                       <span className="flex items-center gap-1.5">
                         <span>{item.author.anonymousHandle}</span>
                         <AudienceBadge condition={item.condition} />
@@ -190,7 +190,7 @@ export function ReviewQueuePanel({
                 <div>
                   <div className="font-semibold text-slate-900 dark:text-white text-base">
                     {activeItem.author.realName}{' '}
-                    <span className="font-normal text-slate-500 dark:text-slate-400 text-sm">
+                    <span className="font-normal text-slate-600 dark:text-slate-300 text-sm">
                       (Shown as: {activeItem.author.anonymousHandle})
                     </span>
                   </div>
@@ -318,11 +318,12 @@ export function ReviewQueuePanel({
                       ? 'Public reply text'
                       : 'Public post text'}
                   </label>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-slate-600 dark:text-slate-300">
                     Community will see this text
                   </span>
                 </div>
                 <textarea
+                  aria-label="Public submission text"
                   rows={4}
                   value={sanitizedDraft}
                   onChange={(e) => setSanitizedDraft(e.target.value)}
@@ -338,6 +339,7 @@ export function ReviewQueuePanel({
                       Group
                     </label>
                     <select
+                      aria-label="Group"
                       value={selectedGroupIds[0] || cohorts[0]?.id}
                       onChange={(e) => setSelectedGroupIds([e.target.value])}
                       className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
@@ -398,6 +400,7 @@ export function ReviewQueuePanel({
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
                         <input
+                          aria-label="Allow everyone to reply without moderation"
                           type="checkbox"
                           checked={allowUnmoderatedReplies}
                           onChange={(e) =>
@@ -447,7 +450,7 @@ export function ReviewQueuePanel({
                                 : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-900/50'
                             }`}
                           >
-                            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
                               <span
                                 className={`font-semibold ${
                                   isFromModerator
@@ -485,7 +488,7 @@ export function ReviewQueuePanel({
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2.5 flex-wrap">
                 <button
                   onClick={handlePublish}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Check className="w-4 h-4" />
                   <span>Publish</span>

@@ -39,7 +39,6 @@ jobs:
       - run: npm --prefix app audit --audit-level=high
       - run: npm audit --audit-level=high
       - run: npm ci
-      - run: npm --prefix app ci
       - run: npm run typecheck
       - run: npm run lint:eslint
       - run: npm run format:check
@@ -49,5 +48,4 @@ jobs:
       - run: npm run backend:seed
       - run: npm run backend:test
       - run: npm run build
-      - run: npm --prefix app run build
       - run: docker build -t ftdcare:ci .

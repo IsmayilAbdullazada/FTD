@@ -266,6 +266,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                     Caregiver First Name
                   </label>
                   <input
+                    aria-label="Caregiver First Name"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -279,6 +280,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                     Caregiver Last Name
                   </label>
                   <input
+                    aria-label="Caregiver Last Name"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -295,6 +297,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                     Caregiver Email Address
                   </label>
                   <input
+                    aria-label="Caregiver Email Address"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -311,6 +314,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                     </span>
                   </label>
                   <input
+                    aria-label="Phone Number"
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -352,6 +356,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   Assigned Primary Regional Cohort
                 </label>
                 <select
+                  aria-label="Assigned Primary Regional Cohort"
                   value={primaryCohortSlug}
                   onChange={(e) => setPrimaryCohortSlug(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 text-base sm:text-sm cursor-pointer"

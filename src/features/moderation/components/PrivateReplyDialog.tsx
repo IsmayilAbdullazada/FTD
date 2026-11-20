@@ -150,6 +150,7 @@ export function PrivateReplyDialog({
                 <span className="text-rose-500">*</span>
               </label>
               <textarea
+                aria-label="Private Message to Care Partner"
                 rows={4}
                 value={privateReplyMessage}
                 onChange={(e) => setPrivateReplyMessage(e.target.value)}

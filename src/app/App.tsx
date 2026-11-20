@@ -50,6 +50,7 @@ const CalendarPage = lazy(() =>
 function AppContent() {
   const { state, actions } = useAppController();
   const {
+    bootstrapError,
     currentUser,
     allPersonas,
     cohorts,
@@ -90,6 +91,25 @@ function AppContent() {
     () => ({ items: pendingQueue, totalPending: pendingTriageCount }),
     [pendingQueue, pendingTriageCount],
   );
+  const staff =
+    currentUser?.role === 'CLINICIAN_MODERATOR' ||
+    currentUser?.role === 'SYSTEM_ADMIN';
+  const bootstrapAlert = bootstrapError && (
+    <div
+      role="alert"
+      className="mx-auto max-w-3xl m-4 p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+    >
+      <p>Some application data could not be loaded. {bootstrapError}</p>
+      <button
+        type="button"
+        className="mt-2 font-semibold underline"
+        onClick={() => void actions.retryBootstrap()}
+      >
+        Retry loading
+      </button>
+    </div>
+  );
+  if (bootstrapError && !currentUser) return <main>{bootstrapAlert}</main>;
   if (isAuthOpen || !currentUser) {
     return (
       <Suspense
@@ -124,6 +144,7 @@ function AppContent() {
         onOpenMyPosts={actions.openMyPosts}
       />
 
+      {bootstrapAlert}
       {/* Main Content Area */}
       <main className="flex-1 pb-10 md:pb-12 xl:pb-8">
         <Suspense
@@ -162,7 +183,7 @@ function AppContent() {
             />
           )}
 
-          {activeTab === 'moderation' && (
+          {activeTab === 'moderation' && staff && (
             <Suspense
               fallback={
                 <div className="max-w-6xl mx-auto px-4 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -198,7 +219,7 @@ function AppContent() {
             <CalendarPage currentUser={currentUser} />
           )}
 
-          {activeTab === 'audit' && (
+          {activeTab === 'audit' && staff && (
             <div className="max-w-2xl mx-auto px-4 py-6">
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 shadow-xs">
                 <h2 className="text-base font-semibold text-slate-900 dark:text-white">

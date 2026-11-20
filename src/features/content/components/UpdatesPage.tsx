@@ -236,7 +236,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
       {/* Search + filters */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3" />
+          <Search className="w-4 h-4 text-slate-600 dark:text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
             value={searchQuery}
@@ -286,7 +286,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
 
       {/* List */}
       {loading ? (
-        <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-sm">
+        <div className="py-20 text-center text-slate-600 dark:text-slate-400 text-sm">
           Loading updates...
         </div>
       ) : filtered.length === 0 ? (
@@ -294,7 +294,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
           <p className="font-semibold text-slate-700 dark:text-slate-200">
             No updates found.
           </p>
-          <p className="text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
+          <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm">
             Try different keywords or filters.
           </p>
         </div>
@@ -444,7 +444,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 ) : (
-                  <span className="text-slate-400 dark:text-slate-500">
+                  <span className="text-slate-600 dark:text-slate-400">
                     Johns Hopkins Medicine
                   </span>
                 )}
@@ -511,6 +511,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Title
                 </label>
                 <input
+                  aria-label="Title"
                   className={inputCls}
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -524,6 +525,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                     Category
                   </label>
                   <select
+                    aria-label="Category"
                     className={inputCls}
                     value={form.category}
                     onChange={(e) =>
@@ -545,6 +547,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                     Condition
                   </label>
                   <select
+                    aria-label="Condition"
                     className={inputCls}
                     value={form.condition}
                     onChange={(e) =>
@@ -567,6 +570,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                     Trial Status
                   </label>
                   <select
+                    aria-label="Trial Status"
                     className={inputCls}
                     value={form.trialStatus}
                     onChange={(e) =>
@@ -587,6 +591,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Short Summary
                 </label>
                 <textarea
+                  aria-label="Short Summary"
                   rows={2}
                   className={inputCls}
                   value={form.summary}
@@ -603,6 +608,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Full Details
                 </label>
                 <textarea
+                  aria-label="Full Details"
                   rows={6}
                   className={inputCls}
                   value={form.body}
@@ -617,6 +623,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                   Link (optional)
                 </label>
                 <input
+                  aria-label="Link (optional)"
                   type="url"
                   className={inputCls}
                   value={form.externalUrl}

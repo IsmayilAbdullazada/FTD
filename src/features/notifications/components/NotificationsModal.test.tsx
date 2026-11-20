@@ -180,3 +180,41 @@ test('notifications route to guides, specific discussions, and my posts based on
   fireEvent.keyDown(window, { key: 'Escape' });
   expect(onClose).toHaveBeenCalled();
 });
+
+test('rejecting from notifications requires a deliberate reason and confirmation', async () => {
+  vi.mocked(moderationApi.performModerationAction).mockResolvedValue({
+    status: 'ok',
+    newEntityStatus: 'REJECTED',
+    message: 'Rejected',
+  });
+  render(
+    <NotificationsModal
+      isOpen
+      onClose={vi.fn()}
+      currentUser={clinicianUser}
+      notifications={[]}
+      pendingQueue={[pendingReply]}
+      onRefreshNotifications={vi.fn()}
+      onQueueUpdated={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Reject', exact: true }));
+  expect(moderationApi.performModerationAction).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Reason' }), {
+    target: { value: 'COMMERCIAL_SOLICITATION' },
+  });
+  fireEvent.change(
+    screen.getByRole('textbox', { name: 'Note to Author (optional)' }),
+    { target: { value: 'Please remove the promotional link.' } },
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Reject Reply' }));
+  await waitFor(() =>
+    expect(moderationApi.performModerationAction).toHaveBeenCalledWith({
+      entityId: pendingReply.id,
+      entityType: 'COMMENT',
+      action: 'REJECT',
+      rejectionCode: 'COMMERCIAL_SOLICITATION',
+      rejectionMessage: 'Please remove the promotional link.',
+    }),
+  );
+});

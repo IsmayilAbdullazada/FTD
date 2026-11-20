@@ -72,6 +72,7 @@ export function CreateCohortDialog({
                   Group name
                 </label>
                 <input
+                  aria-label="Group name"
                   type="text"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
@@ -86,6 +87,7 @@ export function CreateCohortDialog({
                   Location or County
                 </label>
                 <input
+                  aria-label="Location or County"
                   type="text"
                   value={newGroupRegion}
                   onChange={(e) => setNewGroupRegion(e.target.value)}
@@ -100,6 +102,7 @@ export function CreateCohortDialog({
                   Description (optional)
                 </label>
                 <textarea
+                  aria-label="Description (optional)"
                   rows={2}
                   value={newGroupDescription}
                   onChange={(e) => setNewGroupDescription(e.target.value)}

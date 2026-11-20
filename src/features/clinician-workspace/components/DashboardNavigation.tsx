@@ -112,7 +112,7 @@ export function DashboardNavigation({
             <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
               {activeGuideCount}
             </span>
-            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 truncate">
+            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 truncate">
               active
             </span>
           </div>
@@ -186,7 +186,7 @@ export function DashboardNavigation({
           >
             <span>Pending Posts & Replies</span>
             {pendingCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-xs font-bold tabular-nums">
+              <span className="px-2 py-0.5 rounded-full bg-amber-700 text-white text-xs font-bold tabular-nums">
                 {pendingCount}
               </span>
             )}

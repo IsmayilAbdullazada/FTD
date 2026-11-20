@@ -13,6 +13,7 @@ import {
 } from '@/types';
 
 export function useAppData() {
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [allPersonas, setAllPersonas] = useState<PersonaOption[]>([]);
   const [cohorts, setCohorts] = useState<CommunityGroup[]>([]);
@@ -24,8 +25,10 @@ export function useAppData() {
     asUserId?: string,
     onUserLoaded?: (user: CurrentUser) => void,
   ): Promise<void> {
+    setBootstrapError(null);
     try {
       const userResult = await communityApi.getCurrentUser(asUserId);
+      setCurrentUser(userResult.user);
       setAllPersonas(userResult.allPersonas);
       onUserLoaded?.(userResult.user);
 
@@ -45,6 +48,11 @@ export function useAppData() {
       setCurrentUser(userResult.user);
     } catch (error) {
       if (!(error instanceof ApiError && error.status === 401)) {
+        setBootstrapError(
+          error instanceof Error
+            ? error.message
+            : 'Could not load application data. Please try again.',
+        );
         reportError('Failed to bootstrap app data:', error);
       }
     }
@@ -79,6 +87,7 @@ export function useAppData() {
 
   return {
     values: {
+      bootstrapError,
       currentUser,
       allPersonas,
       cohorts,

@@ -86,6 +86,7 @@ export function FeedPostDialogs({
                   Topic / Question Title
                 </label>
                 <input
+                  aria-label="Topic / Question Title"
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
@@ -99,6 +100,7 @@ export function FeedPostDialogs({
                   Details
                 </label>
                 <textarea
+                  aria-label="Details"
                   rows={4}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
@@ -112,6 +114,7 @@ export function FeedPostDialogs({
                   Target Group
                 </label>
                 <select
+                  aria-label="Target Group"
                   value={editCohortId}
                   onChange={(e) => setEditCohortId(e.target.value)}
                   className="w-full px-3.5 py-2.5 min-h-11 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500"

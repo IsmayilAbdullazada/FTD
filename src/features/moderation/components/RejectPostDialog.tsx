@@ -4,6 +4,8 @@ import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 
 interface RejectPostDialogProps {
   open: boolean;
+  submitting?: boolean;
+  error?: string | null;
   item: QueueItem | null;
   onOpenChange: Dispatch<SetStateAction<boolean>>;
   rejectionCode: RejectionReason;
@@ -14,6 +16,8 @@ interface RejectPostDialogProps {
 }
 
 export function RejectPostDialog({
+  error,
+  submitting = false,
   open: showRejectModal,
   item: activeItem,
   onOpenChange: setShowRejectModal,
@@ -23,15 +27,18 @@ export function RejectPostDialog({
   onRejectionTextChange: setCustomRejectionText,
   onConfirm: handleConfirmReject,
 }: RejectPostDialogProps) {
-  const dialogRef = useDialogFocus(showRejectModal && Boolean(activeItem), () =>
-    setShowRejectModal(false),
+  const dialogRef = useDialogFocus(
+    showRejectModal && Boolean(activeItem),
+    () => !submitting && setShowRejectModal(false),
   );
   return (
     <>
       {/* MODAL: REJECT POST */}
       {showRejectModal && activeItem && (
         <div
-          onClick={() => setShowRejectModal(false)}
+          onClick={() => {
+            if (!submitting) setShowRejectModal(false);
+          }}
           className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
@@ -52,18 +59,30 @@ export function RejectPostDialog({
               </p>
             </div>
 
+            {error && (
+              <p
+                role="alert"
+                className="text-sm text-red-700 dark:text-red-300"
+              >
+                {error}
+              </p>
+            )}
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Reason
                 </label>
                 <select
+                  aria-label="Reason"
                   value={rejectionCode}
                   onChange={(e) =>
                     setRejectionCode(e.target.value as RejectionReason)
                   }
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium cursor-pointer"
                 >
+                  <option value="OTHER">
+                    Other community guideline concern
+                  </option>
                   <option value="CLINICAL_MEDICATION_QUERY">
                     Prescription or Medication Question
                   </option>
@@ -87,6 +106,7 @@ export function RejectPostDialog({
                   Note to Author (optional)
                 </label>
                 <textarea
+                  aria-label="Note to Author (optional)"
                   rows={3}
                   value={customRejectionText}
                   onChange={(e) => setCustomRejectionText(e.target.value)}
@@ -99,13 +119,16 @@ export function RejectPostDialog({
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
-                onClick={() => setShowRejectModal(false)}
+                onClick={() => {
+                  if (!submitting) setShowRejectModal(false);
+                }}
                 className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={submitting}
                 onClick={handleConfirmReject}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
               >

@@ -1,0 +1,1395 @@
+{
+  "date": "2026-11-20",
+  "baseCommit": "7815e61",
+  "scope": "Isolated mock data, real Chromium desktop/mobile, PostgreSQL 16/18; production Docker behind local HTTPS nginx. No public deployment changes.",
+  "browser": {
+    "checks": 266,
+    "passed": 266,
+    "failed": 0,
+    "originalAuditChecks": 250,
+    "additionalChecks": 16,
+    "cases": [
+      {
+        "id": "D01",
+        "workflow": "Anonymous landing; login form; no false session-expired message",
+        "result": "PASS"
+      },
+      {
+        "id": "D02",
+        "workflow": "Wrong password stays on login and shows credential error",
+        "result": "PASS"
+      },
+      {
+        "id": "D03",
+        "workflow": "Unknown account handled as invalid credentials",
+        "result": "PASS"
+      },
+      {
+        "id": "D04",
+        "workflow": "Invitation link with invalid token shows useful rejection",
+        "result": "PASS"
+      },
+      {
+        "id": "D05",
+        "workflow": "Forgot-password form accepts unknown account without disclosing existence",
+        "result": "PASS"
+      },
+      {
+        "id": "D06",
+        "workflow": "Reset link with invalid token cannot change a password",
+        "result": "PASS"
+      },
+      {
+        "id": "D07",
+        "workflow": "Care-partner signs in and feed renders",
+        "result": "PASS"
+      },
+      {
+        "id": "D08",
+        "workflow": "Feed audience: AD regional topic is hidden from FTD care partner",
+        "result": "PASS"
+      },
+      {
+        "id": "D09",
+        "workflow": "Search matches and empty results recover after clearing",
+        "result": "PASS"
+      },
+      {
+        "id": "D10",
+        "workflow": "Feed filters open, group selection works, and filters can close",
+        "result": "PASS"
+      },
+      {
+        "id": "D100",
+        "workflow": "Unknown tab URL falls back to a useful screen",
+        "result": "PASS"
+      },
+      {
+        "id": "D101",
+        "workflow": "Opening notifications fetches notifications received while the app was already open",
+        "result": "PASS"
+      },
+      {
+        "id": "D102",
+        "workflow": "Moderator quick-approves post from notifications; author sees public post",
+        "result": "PASS"
+      },
+      {
+        "id": "D103",
+        "workflow": "Moderator quick-rejects post from notifications",
+        "result": "PASS"
+      },
+      {
+        "id": "D104",
+        "workflow": "Moderator quick-approves a reply from notifications",
+        "result": "PASS"
+      },
+      {
+        "id": "D105",
+        "workflow": "Moderator quick-rejects a reply from notifications",
+        "result": "PASS"
+      },
+      {
+        "id": "D106",
+        "workflow": "Open notification takes user directly to its associated discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "D107",
+        "workflow": "Composer suggests existing discussion \u2192 preview \u2192 resolved without duplicate post",
+        "result": "PASS"
+      },
+      {
+        "id": "D108",
+        "workflow": "Opening assistant from composer preserves the current draft",
+        "result": "PASS"
+      },
+      {
+        "id": "D109",
+        "workflow": "Expired invitation cannot register",
+        "result": "PASS"
+      },
+      {
+        "id": "D11",
+        "workflow": "Discussion opens from searched feed; back restores feed",
+        "result": "PASS"
+      },
+      {
+        "id": "D110",
+        "workflow": "Revoked invitation cannot register",
+        "result": "PASS"
+      },
+      {
+        "id": "D111",
+        "workflow": "Feed pagination next/previous, first-page boundary, and search across all pages",
+        "result": "PASS"
+      },
+      {
+        "id": "D112",
+        "workflow": "Staff discussion-list pagination",
+        "result": "PASS"
+      },
+      {
+        "id": "D113",
+        "workflow": "Groups pagination advances and returns to first page",
+        "result": "PASS"
+      },
+      {
+        "id": "D114",
+        "workflow": "Members pagination and search reset to first matching page",
+        "result": "PASS"
+      },
+      {
+        "id": "D115",
+        "workflow": "Guides pagination, search and reset",
+        "result": "PASS"
+      },
+      {
+        "id": "D116",
+        "workflow": "Moderation queue pagination, refresh, and first-page boundary",
+        "result": "PASS"
+      },
+      {
+        "id": "D117",
+        "workflow": "Real App render failure reaches error boundary; Reload page recovers",
+        "result": "PASS"
+      },
+      {
+        "id": "D118",
+        "workflow": "Invalid PDF produces a recoverable error and cannot be approved",
+        "result": "PASS"
+      },
+      {
+        "id": "D119",
+        "workflow": "Text guide import requires deliberate audience selection and can save a draft",
+        "result": "PASS"
+      },
+      {
+        "id": "D12",
+        "workflow": "Helpful vote toggles and persists through reload",
+        "result": "PASS"
+      },
+      {
+        "id": "D120",
+        "workflow": "Publish care resource with uploaded PDF; care partner can open its protected file",
+        "result": "PASS"
+      },
+      {
+        "id": "D121",
+        "workflow": "Empty login validation, show/hide password, and nonpersistent session cookie",
+        "result": "PASS"
+      },
+      {
+        "id": "D122",
+        "workflow": "Care partner can sign in with clinic patient ID",
+        "result": "PASS"
+      },
+      {
+        "id": "D123",
+        "workflow": "Remember me sets an expiring persistent cookie",
+        "result": "PASS"
+      },
+      {
+        "id": "D124",
+        "workflow": "Staff invites AD care partner; invitee pastes full URL manually and joins correct community",
+        "result": "PASS"
+      },
+      {
+        "id": "D125",
+        "workflow": "Care edits and withdraws pending question directly from its feed card",
+        "result": "PASS"
+      },
+      {
+        "id": "D126",
+        "workflow": "Discussion-management tab closes and reopens a searched discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "D127",
+        "workflow": "Clinical-trial update includes recruiting status and source URL",
+        "result": "PASS"
+      },
+      {
+        "id": "D128",
+        "workflow": "Calendar selection pre-fills the chosen event date; cancel leaves no record",
+        "result": "PASS"
+      },
+      {
+        "id": "D129",
+        "workflow": "Logged-out discussion email/deep link survives login and reload",
+        "result": "PASS"
+      },
+      {
+        "id": "D13",
+        "workflow": "Compose: empty submit disabled, cancellation works",
+        "result": "PASS"
+      },
+      {
+        "id": "D130",
+        "workflow": "Direct resource URL opens the requested guide inspector",
+        "result": "PASS"
+      },
+      {
+        "id": "D131",
+        "workflow": "Missing discussion link explains that the discussion is unavailable",
+        "result": "PASS"
+      },
+      {
+        "id": "D132",
+        "workflow": "Pasting only invitation token works and registers an AD care partner",
+        "result": "PASS"
+      },
+      {
+        "id": "D133",
+        "workflow": "Expired reset link rejects a password change",
+        "result": "PASS"
+      },
+      {
+        "id": "D134",
+        "workflow": "Sign out removes cookie and a second browser using the old session cannot access the app",
+        "result": "PASS"
+      },
+      {
+        "id": "D135",
+        "workflow": "Feed network error is explained and offers recovery instead of an empty-state message",
+        "result": "PASS"
+      },
+      {
+        "id": "D136",
+        "workflow": "Draft guide approved from review dialog actually becomes approved",
+        "result": "PASS"
+      },
+      {
+        "id": "D137",
+        "workflow": "Group card opens its members; clearing group filter shows all members",
+        "result": "PASS"
+      },
+      {
+        "id": "D138",
+        "workflow": "Discussion-management reply policy toggles and persists",
+        "result": "PASS"
+      },
+      {
+        "id": "D139",
+        "workflow": "Nested reply thread collapses and expands with correct accessibility state",
+        "result": "PASS"
+      },
+      {
+        "id": "D14",
+        "workflow": "Shared clinic contacts open with phone links",
+        "result": "PASS"
+      },
+      {
+        "id": "D140",
+        "workflow": "User-supplied HTML-like text is displayed as text and never executed",
+        "result": "PASS"
+      },
+      {
+        "id": "D141",
+        "workflow": "Invitation copy uses browser clipboard; mail-app link and send-another reset work",
+        "result": "PASS"
+      },
+      {
+        "id": "D142",
+        "workflow": "PDF reviewer inspects extracted page two, edits optional topic, and discards safely",
+        "result": "PASS"
+      },
+      {
+        "id": "D143",
+        "workflow": "After successful submission, Ask Another Question clears the previous draft",
+        "result": "PASS"
+      },
+      {
+        "id": "D144",
+        "workflow": "Session warning offers immediate Sign Out Now",
+        "result": "PASS"
+      },
+      {
+        "id": "D15",
+        "workflow": "Light/dark theme changes and persists after reload",
+        "result": "PASS"
+      },
+      {
+        "id": "D16",
+        "workflow": "Guides browse, text search, empty search and topic filtering",
+        "result": "PASS"
+      },
+      {
+        "id": "D17",
+        "workflow": "Guide opens with content and PDF link",
+        "result": "PASS"
+      },
+      {
+        "id": "D18",
+        "workflow": "Updates empty state and search/filter controls render",
+        "result": "PASS"
+      },
+      {
+        "id": "D19",
+        "workflow": "Calendar month navigation, today and date selection",
+        "result": "PASS"
+      },
+      {
+        "id": "D20",
+        "workflow": "Care role hides staff creation and management controls",
+        "result": "PASS"
+      },
+      {
+        "id": "D21",
+        "workflow": "Care Companion opens, disclaimer toggles, closes",
+        "result": "PASS"
+      },
+      {
+        "id": "D22",
+        "workflow": "Responsive shared pages have no document horizontal overflow",
+        "result": "PASS"
+      },
+      {
+        "id": "D30",
+        "workflow": "Staff sends invitation; success URL and delivered email are usable",
+        "result": "PASS"
+      },
+      {
+        "id": "D31",
+        "workflow": "New logged-out invitee registers, gets stored anonymous tag, remains signed in",
+        "result": "PASS"
+      },
+      {
+        "id": "D32",
+        "workflow": "Used invitation cannot register a second account",
+        "result": "PASS"
+      },
+      {
+        "id": "D33",
+        "workflow": "Recovery email \u2192 mismatched passwords validation \u2192 reset \u2192 new-password login",
+        "result": "PASS"
+      },
+      {
+        "id": "D34",
+        "workflow": "Consumed password-reset link is rejected",
+        "result": "PASS"
+      },
+      {
+        "id": "D35",
+        "workflow": "Care submits question and sees pending status in My Posts",
+        "result": "PASS"
+      },
+      {
+        "id": "D36",
+        "workflow": "Author edits pending question and saves changes",
+        "result": "PASS"
+      },
+      {
+        "id": "D37",
+        "workflow": "Moderator private guidance reaches author; author replies back while post remains pending",
+        "result": "PASS"
+      },
+      {
+        "id": "D38",
+        "workflow": "Moderator publishes question; author sees published discussion and email link",
+        "result": "PASS"
+      },
+      {
+        "id": "D39",
+        "workflow": "Care reply \u2192 moderation queue \u2192 publish \u2192 public discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "D40",
+        "workflow": "Moderator rejects a question with reason; rejection is persisted",
+        "result": "PASS"
+      },
+      {
+        "id": "D41",
+        "workflow": "Care cancels pending submission through confirmation dialog",
+        "result": "PASS"
+      },
+      {
+        "id": "D42",
+        "workflow": "Staff closes discussion; care cannot reply; staff reopens it",
+        "result": "PASS"
+      },
+      {
+        "id": "D43",
+        "workflow": "Staff creates immediately published discussion with explicit group/audience",
+        "result": "PASS"
+      },
+      {
+        "id": "D50",
+        "workflow": "Staff creates regional group and sees it in Groups",
+        "result": "PASS"
+      },
+      {
+        "id": "D51",
+        "workflow": "Member search \u2192 move regional group \u2192 confirm \u2192 move back",
+        "result": "PASS"
+      },
+      {
+        "id": "D52",
+        "workflow": "Staff opens audit ledger with moderation actions",
+        "result": "PASS"
+      },
+      {
+        "id": "D53",
+        "workflow": "Staff publishes update \u2192 care partner reads details and source link",
+        "result": "PASS"
+      },
+      {
+        "id": "D54",
+        "workflow": "Update deletion confirmation can cancel, then deletes successfully",
+        "result": "PASS"
+      },
+      {
+        "id": "D55",
+        "workflow": "Staff adds calendar event; care partner sees correct date and details",
+        "result": "PASS"
+      },
+      {
+        "id": "D56",
+        "workflow": "Calendar event deletion cancel and confirm",
+        "result": "PASS"
+      },
+      {
+        "id": "D57",
+        "workflow": "Staff publishes care guide; care partner reads its content",
+        "result": "PASS"
+      },
+      {
+        "id": "D58",
+        "workflow": "Staff deletes published care resource with confirmation",
+        "result": "PASS"
+      },
+      {
+        "id": "D59",
+        "workflow": "Staff uploads real PDF, reviews extracted pages, explicitly selects audience, saves draft",
+        "result": "PASS"
+      },
+      {
+        "id": "D60",
+        "workflow": "Approve draft PDF for assistant",
+        "result": "PASS"
+      },
+      {
+        "id": "D61",
+        "workflow": "Pause and reactivate approved guide",
+        "result": "PASS"
+      },
+      {
+        "id": "D62",
+        "workflow": "Staff runs guide retrieval test query",
+        "result": "PASS"
+      },
+      {
+        "id": "D63",
+        "workflow": "Staff deletes uploaded chatbot guide through confirmation",
+        "result": "PASS"
+      },
+      {
+        "id": "D70",
+        "workflow": "Footer: Privacy Policy opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "D71",
+        "workflow": "Footer: Notice of Privacy Practices opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "D72",
+        "workflow": "Footer: Non-Discrimination Policy opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "D73",
+        "workflow": "Footer: Patient Rights opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "D74",
+        "workflow": "Footer policy dialog closes on Escape and returns focus",
+        "result": "PASS"
+      },
+      {
+        "id": "D75",
+        "workflow": "Notification click marks read in database and persists after reload",
+        "result": "PASS"
+      },
+      {
+        "id": "D76",
+        "workflow": "Staff reply publishes immediately; care replies to that reply in correct thread",
+        "result": "PASS"
+      },
+      {
+        "id": "D77",
+        "workflow": "Care edits a pending nested reply",
+        "result": "PASS"
+      },
+      {
+        "id": "D78",
+        "workflow": "Care cancels a pending nested reply and it is deleted",
+        "result": "PASS"
+      },
+      {
+        "id": "D79",
+        "workflow": "Open reply policy publishes care reply immediately; staff removes inappropriate reply",
+        "result": "PASS"
+      },
+      {
+        "id": "D80",
+        "workflow": "Assistant question \u2192 honest no-match answer \u2192 create discussion with preserved draft",
+        "result": "PASS"
+      },
+      {
+        "id": "D81",
+        "workflow": "Assistant conversation can restart and close",
+        "result": "PASS"
+      },
+      {
+        "id": "D82",
+        "workflow": "Feed network failure preserves shell; reload recovers",
+        "result": "PASS"
+      },
+      {
+        "id": "D83",
+        "workflow": "Navigation responds to browser Back and Forward",
+        "result": "PASS"
+      },
+      {
+        "id": "D84",
+        "workflow": "Care partner cannot open staff dashboard via crafted tab URL",
+        "result": "PASS"
+      },
+      {
+        "id": "D85",
+        "workflow": "Profile menu opens; My Posts shows own submissions and status",
+        "result": "PASS"
+      },
+      {
+        "id": "D86",
+        "workflow": "Inactivity warning \u2192 stay signed in \u2192 later timeout returns to login",
+        "result": "PASS"
+      },
+      {
+        "id": "D90",
+        "workflow": "Upload/extract PDF, save inactive draft for lifecycle tests",
+        "result": "PASS"
+      },
+      {
+        "id": "D91",
+        "workflow": "Side-by-side review edits title without creating duplicate guide",
+        "result": "PASS"
+      },
+      {
+        "id": "D92",
+        "workflow": "Assistant returns approved PDF citations to matching care audience; AD user does not receive FTD PDF",
+        "result": "PASS"
+      },
+      {
+        "id": "D93",
+        "workflow": "Moving an approved guide back to draft removes it from assistant use",
+        "result": "PASS"
+      },
+      {
+        "id": "D94",
+        "workflow": "Delete lifecycle PDF guide after review",
+        "result": "PASS"
+      },
+      {
+        "id": "D95",
+        "workflow": "Moderator removes detected personal details, edits public text, changes audience/group and publishes",
+        "result": "PASS"
+      },
+      {
+        "id": "D96",
+        "workflow": "Private reply + publish is audited and private guidance stays hidden from other users",
+        "result": "PASS"
+      },
+      {
+        "id": "D97",
+        "workflow": "Moderator rejects a pending reply; another care partner cannot see it",
+        "result": "PASS"
+      },
+      {
+        "id": "D98",
+        "workflow": "Administrator can enter each staff workspace and sees expected management controls",
+        "result": "PASS"
+      },
+      {
+        "id": "D99",
+        "workflow": "AD care partner sees AD regional discussion; FTD-only regional content remains hidden",
+        "result": "PASS"
+      },
+      {
+        "id": "DBOOT",
+        "workflow": "Startup outage displays a retry state and preserves the valid session on recovery",
+        "result": "PASS"
+      },
+      {
+        "id": "DCHANGE",
+        "workflow": "New password-change screen: reject wrong password, change successfully, keep current session and revoke old sessions",
+        "result": "PASS"
+      },
+      {
+        "id": "DF13",
+        "workflow": "Modal contains keyboard focus instead of tabbing into the page behind it",
+        "result": "PASS"
+      },
+      {
+        "id": "DP-admin",
+        "workflow": "Production build: admin login and every permitted main screen",
+        "result": "PASS"
+      },
+      {
+        "id": "DP-care",
+        "workflow": "Production build: care login and every permitted main screen",
+        "result": "PASS"
+      },
+      {
+        "id": "DP-clinician",
+        "workflow": "Production build: clinician login and every permitted main screen",
+        "result": "PASS"
+      },
+      {
+        "id": "DTLS-LOGOUT",
+        "workflow": "HTTPS logout revokes a replayed production session cookie",
+        "result": "PASS"
+      },
+      {
+        "id": "DTLS-PUBLISH",
+        "workflow": "HTTPS production care submission \u2192 staff publication \u2192 author reads approved discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "DTLS-admin",
+        "workflow": "Docker production behind HTTPS nginx: admin login, secure cookies and permitted screens",
+        "result": "PASS"
+      },
+      {
+        "id": "DTLS-care",
+        "workflow": "Docker production behind HTTPS nginx: care login, secure cookies and permitted screens",
+        "result": "PASS"
+      },
+      {
+        "id": "DTLS-clinician",
+        "workflow": "Docker production behind HTTPS nginx: clinician login, secure cookies and permitted screens",
+        "result": "PASS"
+      },
+      {
+        "id": "M01",
+        "workflow": "Anonymous landing; login form; no false session-expired message",
+        "result": "PASS"
+      },
+      {
+        "id": "M02",
+        "workflow": "Wrong password stays on login and shows credential error",
+        "result": "PASS"
+      },
+      {
+        "id": "M03",
+        "workflow": "Unknown account handled as invalid credentials",
+        "result": "PASS"
+      },
+      {
+        "id": "M04",
+        "workflow": "Invitation link with invalid token shows useful rejection",
+        "result": "PASS"
+      },
+      {
+        "id": "M05",
+        "workflow": "Forgot-password form accepts unknown account without disclosing existence",
+        "result": "PASS"
+      },
+      {
+        "id": "M06",
+        "workflow": "Reset link with invalid token cannot change a password",
+        "result": "PASS"
+      },
+      {
+        "id": "M07",
+        "workflow": "Care-partner signs in and feed renders",
+        "result": "PASS"
+      },
+      {
+        "id": "M08",
+        "workflow": "Feed audience: AD regional topic is hidden from FTD care partner",
+        "result": "PASS"
+      },
+      {
+        "id": "M09",
+        "workflow": "Search matches and empty results recover after clearing",
+        "result": "PASS"
+      },
+      {
+        "id": "M10",
+        "workflow": "Feed filters open, group selection works, and filters can close",
+        "result": "PASS"
+      },
+      {
+        "id": "M100",
+        "workflow": "Unknown tab URL falls back to a useful screen",
+        "result": "PASS"
+      },
+      {
+        "id": "M101",
+        "workflow": "Opening notifications fetches notifications received while the app was already open",
+        "result": "PASS"
+      },
+      {
+        "id": "M102",
+        "workflow": "Moderator quick-approves post from notifications; author sees public post",
+        "result": "PASS"
+      },
+      {
+        "id": "M103",
+        "workflow": "Moderator quick-rejects post from notifications",
+        "result": "PASS"
+      },
+      {
+        "id": "M104",
+        "workflow": "Moderator quick-approves a reply from notifications",
+        "result": "PASS"
+      },
+      {
+        "id": "M105",
+        "workflow": "Moderator quick-rejects a reply from notifications",
+        "result": "PASS"
+      },
+      {
+        "id": "M106",
+        "workflow": "Open notification takes user directly to its associated discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "M107",
+        "workflow": "Composer suggests existing discussion \u2192 preview \u2192 resolved without duplicate post",
+        "result": "PASS"
+      },
+      {
+        "id": "M108",
+        "workflow": "Opening assistant from composer preserves the current draft",
+        "result": "PASS"
+      },
+      {
+        "id": "M109",
+        "workflow": "Expired invitation cannot register",
+        "result": "PASS"
+      },
+      {
+        "id": "M11",
+        "workflow": "Discussion opens from searched feed; back restores feed",
+        "result": "PASS"
+      },
+      {
+        "id": "M110",
+        "workflow": "Revoked invitation cannot register",
+        "result": "PASS"
+      },
+      {
+        "id": "M111",
+        "workflow": "Feed pagination next/previous, first-page boundary, and search across all pages",
+        "result": "PASS"
+      },
+      {
+        "id": "M112",
+        "workflow": "Staff discussion-list pagination",
+        "result": "PASS"
+      },
+      {
+        "id": "M113",
+        "workflow": "Groups pagination advances and returns to first page",
+        "result": "PASS"
+      },
+      {
+        "id": "M114",
+        "workflow": "Members pagination and search reset to first matching page",
+        "result": "PASS"
+      },
+      {
+        "id": "M115",
+        "workflow": "Guides pagination, search and reset",
+        "result": "PASS"
+      },
+      {
+        "id": "M116",
+        "workflow": "Moderation queue pagination, refresh, and first-page boundary",
+        "result": "PASS"
+      },
+      {
+        "id": "M117",
+        "workflow": "Real App render failure reaches error boundary; Reload page recovers",
+        "result": "PASS"
+      },
+      {
+        "id": "M118",
+        "workflow": "Invalid PDF produces a recoverable error and cannot be approved",
+        "result": "PASS"
+      },
+      {
+        "id": "M119",
+        "workflow": "Text guide import requires deliberate audience selection and can save a draft",
+        "result": "PASS"
+      },
+      {
+        "id": "M12",
+        "workflow": "Helpful vote toggles and persists through reload",
+        "result": "PASS"
+      },
+      {
+        "id": "M120",
+        "workflow": "Publish care resource with uploaded PDF; care partner can open its protected file",
+        "result": "PASS"
+      },
+      {
+        "id": "M121",
+        "workflow": "Empty login validation, show/hide password, and nonpersistent session cookie",
+        "result": "PASS"
+      },
+      {
+        "id": "M122",
+        "workflow": "Care partner can sign in with clinic patient ID",
+        "result": "PASS"
+      },
+      {
+        "id": "M123",
+        "workflow": "Remember me sets an expiring persistent cookie",
+        "result": "PASS"
+      },
+      {
+        "id": "M124",
+        "workflow": "Staff invites AD care partner; invitee pastes full URL manually and joins correct community",
+        "result": "PASS"
+      },
+      {
+        "id": "M125",
+        "workflow": "Care edits and withdraws pending question directly from its feed card",
+        "result": "PASS"
+      },
+      {
+        "id": "M126",
+        "workflow": "Discussion-management tab closes and reopens a searched discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "M127",
+        "workflow": "Clinical-trial update includes recruiting status and source URL",
+        "result": "PASS"
+      },
+      {
+        "id": "M128",
+        "workflow": "Calendar selection pre-fills the chosen event date; cancel leaves no record",
+        "result": "PASS"
+      },
+      {
+        "id": "M129",
+        "workflow": "Logged-out discussion email/deep link survives login and reload",
+        "result": "PASS"
+      },
+      {
+        "id": "M13",
+        "workflow": "Compose: empty submit disabled, cancellation works",
+        "result": "PASS"
+      },
+      {
+        "id": "M130",
+        "workflow": "Direct resource URL opens the requested guide inspector",
+        "result": "PASS"
+      },
+      {
+        "id": "M131",
+        "workflow": "Missing discussion link explains that the discussion is unavailable",
+        "result": "PASS"
+      },
+      {
+        "id": "M132",
+        "workflow": "Pasting only invitation token works and registers an AD care partner",
+        "result": "PASS"
+      },
+      {
+        "id": "M133",
+        "workflow": "Expired reset link rejects a password change",
+        "result": "PASS"
+      },
+      {
+        "id": "M134",
+        "workflow": "Sign out removes cookie and a second browser using the old session cannot access the app",
+        "result": "PASS"
+      },
+      {
+        "id": "M135",
+        "workflow": "Feed network error is explained and offers recovery instead of an empty-state message",
+        "result": "PASS"
+      },
+      {
+        "id": "M136",
+        "workflow": "Draft guide approved from review dialog actually becomes approved",
+        "result": "PASS"
+      },
+      {
+        "id": "M137",
+        "workflow": "Group card opens its members; clearing group filter shows all members",
+        "result": "PASS"
+      },
+      {
+        "id": "M138",
+        "workflow": "Discussion-management reply policy toggles and persists",
+        "result": "PASS"
+      },
+      {
+        "id": "M139",
+        "workflow": "Nested reply thread collapses and expands with correct accessibility state",
+        "result": "PASS"
+      },
+      {
+        "id": "M14",
+        "workflow": "Shared clinic contacts open with phone links",
+        "result": "PASS"
+      },
+      {
+        "id": "M140",
+        "workflow": "User-supplied HTML-like text is displayed as text and never executed",
+        "result": "PASS"
+      },
+      {
+        "id": "M141",
+        "workflow": "Invitation copy uses browser clipboard; mail-app link and send-another reset work",
+        "result": "PASS"
+      },
+      {
+        "id": "M142",
+        "workflow": "PDF reviewer inspects extracted page two, edits optional topic, and discards safely",
+        "result": "PASS"
+      },
+      {
+        "id": "M143",
+        "workflow": "After successful submission, Ask Another Question clears the previous draft",
+        "result": "PASS"
+      },
+      {
+        "id": "M144",
+        "workflow": "Session warning offers immediate Sign Out Now",
+        "result": "PASS"
+      },
+      {
+        "id": "M15",
+        "workflow": "Light/dark theme changes and persists after reload",
+        "result": "PASS"
+      },
+      {
+        "id": "M16",
+        "workflow": "Guides browse, text search, empty search and topic filtering",
+        "result": "PASS"
+      },
+      {
+        "id": "M17",
+        "workflow": "Guide opens with content and PDF link",
+        "result": "PASS"
+      },
+      {
+        "id": "M18",
+        "workflow": "Updates empty state and search/filter controls render",
+        "result": "PASS"
+      },
+      {
+        "id": "M19",
+        "workflow": "Calendar month navigation, today and date selection",
+        "result": "PASS"
+      },
+      {
+        "id": "M20",
+        "workflow": "Care role hides staff creation and management controls",
+        "result": "PASS"
+      },
+      {
+        "id": "M21",
+        "workflow": "Care Companion opens, disclaimer toggles, closes",
+        "result": "PASS"
+      },
+      {
+        "id": "M22",
+        "workflow": "Responsive shared pages have no document horizontal overflow",
+        "result": "PASS"
+      },
+      {
+        "id": "M30",
+        "workflow": "Staff sends invitation; success URL and delivered email are usable",
+        "result": "PASS"
+      },
+      {
+        "id": "M31",
+        "workflow": "New logged-out invitee registers, gets stored anonymous tag, remains signed in",
+        "result": "PASS"
+      },
+      {
+        "id": "M32",
+        "workflow": "Used invitation cannot register a second account",
+        "result": "PASS"
+      },
+      {
+        "id": "M33",
+        "workflow": "Recovery email \u2192 mismatched passwords validation \u2192 reset \u2192 new-password login",
+        "result": "PASS"
+      },
+      {
+        "id": "M34",
+        "workflow": "Reset link is single-use",
+        "result": "PASS"
+      },
+      {
+        "id": "M35",
+        "workflow": "Care submits question and sees pending status in My Posts",
+        "result": "PASS"
+      },
+      {
+        "id": "M36",
+        "workflow": "Author edits pending question and saves changes",
+        "result": "PASS"
+      },
+      {
+        "id": "M37",
+        "workflow": "Moderator private guidance reaches author; author replies back while post remains pending",
+        "result": "PASS"
+      },
+      {
+        "id": "M38",
+        "workflow": "Moderator publishes question; author sees published discussion and email link",
+        "result": "PASS"
+      },
+      {
+        "id": "M39",
+        "workflow": "Care reply \u2192 moderation queue \u2192 publish \u2192 public discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "M40",
+        "workflow": "Moderator rejects a question with reason; rejection is persisted",
+        "result": "PASS"
+      },
+      {
+        "id": "M41",
+        "workflow": "Care cancels pending submission through confirmation dialog",
+        "result": "PASS"
+      },
+      {
+        "id": "M42",
+        "workflow": "Staff closes discussion; care cannot reply; staff reopens it",
+        "result": "PASS"
+      },
+      {
+        "id": "M43",
+        "workflow": "Staff creates immediately published discussion with explicit group/audience",
+        "result": "PASS"
+      },
+      {
+        "id": "M50",
+        "workflow": "Staff creates regional group and sees it in Groups",
+        "result": "PASS"
+      },
+      {
+        "id": "M51",
+        "workflow": "Member search \u2192 move regional group \u2192 confirm \u2192 move back",
+        "result": "PASS"
+      },
+      {
+        "id": "M52",
+        "workflow": "Staff opens audit ledger with moderation actions",
+        "result": "PASS"
+      },
+      {
+        "id": "M53",
+        "workflow": "Staff publishes update \u2192 care partner reads details and source link",
+        "result": "PASS"
+      },
+      {
+        "id": "M54",
+        "workflow": "Update deletion confirmation can cancel, then deletes successfully",
+        "result": "PASS"
+      },
+      {
+        "id": "M55",
+        "workflow": "Staff adds calendar event; care partner sees correct date and details",
+        "result": "PASS"
+      },
+      {
+        "id": "M56",
+        "workflow": "Calendar event deletion cancel and confirm",
+        "result": "PASS"
+      },
+      {
+        "id": "M57",
+        "workflow": "Staff publishes care guide; care partner reads its content",
+        "result": "PASS"
+      },
+      {
+        "id": "M58",
+        "workflow": "Staff deletes published care resource with confirmation",
+        "result": "PASS"
+      },
+      {
+        "id": "M59",
+        "workflow": "Staff uploads real PDF, reviews extracted pages, explicitly selects audience, saves draft",
+        "result": "PASS"
+      },
+      {
+        "id": "M60",
+        "workflow": "Approve draft PDF for assistant",
+        "result": "PASS"
+      },
+      {
+        "id": "M61",
+        "workflow": "Pause and reactivate approved guide",
+        "result": "PASS"
+      },
+      {
+        "id": "M62",
+        "workflow": "Staff runs guide retrieval test query",
+        "result": "PASS"
+      },
+      {
+        "id": "M63",
+        "workflow": "Staff deletes uploaded chatbot guide through confirmation",
+        "result": "PASS"
+      },
+      {
+        "id": "M70",
+        "workflow": "Footer: Privacy Policy opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "M71",
+        "workflow": "Footer: Notice of Privacy Practices opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "M72",
+        "workflow": "Footer: Non-Discrimination Policy opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "M73",
+        "workflow": "Footer: Patient Rights opens and closes",
+        "result": "PASS"
+      },
+      {
+        "id": "M74",
+        "workflow": "Footer policy dialog closes on Escape and returns focus",
+        "result": "PASS"
+      },
+      {
+        "id": "M75",
+        "workflow": "Notification click marks read in database and persists after reload",
+        "result": "PASS"
+      },
+      {
+        "id": "M76",
+        "workflow": "Staff reply publishes immediately; care replies to that reply in correct thread",
+        "result": "PASS"
+      },
+      {
+        "id": "M77",
+        "workflow": "Care edits a pending nested reply",
+        "result": "PASS"
+      },
+      {
+        "id": "M78",
+        "workflow": "Care cancels pending reply",
+        "result": "PASS"
+      },
+      {
+        "id": "M79",
+        "workflow": "Open reply policy publishes care reply immediately; staff removes inappropriate reply",
+        "result": "PASS"
+      },
+      {
+        "id": "M80",
+        "workflow": "Assistant question \u2192 honest no-match answer \u2192 create discussion with preserved draft",
+        "result": "PASS"
+      },
+      {
+        "id": "M81",
+        "workflow": "Assistant conversation can restart and close",
+        "result": "PASS"
+      },
+      {
+        "id": "M82",
+        "workflow": "Feed network failure preserves shell; reload recovers",
+        "result": "PASS"
+      },
+      {
+        "id": "M83",
+        "workflow": "Navigation responds to browser Back and Forward",
+        "result": "PASS"
+      },
+      {
+        "id": "M84",
+        "workflow": "Care partner cannot open staff dashboard via crafted tab URL",
+        "result": "PASS"
+      },
+      {
+        "id": "M85",
+        "workflow": "Profile menu opens; My Posts shows own submissions and status",
+        "result": "PASS"
+      },
+      {
+        "id": "M86",
+        "workflow": "Inactivity warning \u2192 stay signed in \u2192 later timeout returns to login",
+        "result": "PASS"
+      },
+      {
+        "id": "M90",
+        "workflow": "Upload/extract PDF, save inactive draft for lifecycle tests",
+        "result": "PASS"
+      },
+      {
+        "id": "M91",
+        "workflow": "Side-by-side review edits title without creating duplicate guide",
+        "result": "PASS"
+      },
+      {
+        "id": "M92",
+        "workflow": "Assistant returns approved PDF citations to matching care audience; AD user does not receive FTD PDF",
+        "result": "PASS"
+      },
+      {
+        "id": "M93",
+        "workflow": "Moving an approved guide back to draft removes it from assistant use",
+        "result": "PASS"
+      },
+      {
+        "id": "M94",
+        "workflow": "Delete lifecycle PDF guide after review",
+        "result": "PASS"
+      },
+      {
+        "id": "M95",
+        "workflow": "Moderator removes detected personal details, edits public text, changes audience/group and publishes",
+        "result": "PASS"
+      },
+      {
+        "id": "M96",
+        "workflow": "Private reply + publish is audited and private guidance stays hidden from other users",
+        "result": "PASS"
+      },
+      {
+        "id": "M97",
+        "workflow": "Moderator rejects a pending reply; another care partner cannot see it",
+        "result": "PASS"
+      },
+      {
+        "id": "M98",
+        "workflow": "Administrator can enter each staff workspace and sees expected management controls",
+        "result": "PASS"
+      },
+      {
+        "id": "M99",
+        "workflow": "AD care partner sees AD regional discussion; FTD-only regional content remains hidden",
+        "result": "PASS"
+      },
+      {
+        "id": "MBOOT",
+        "workflow": "Startup outage displays a retry state and preserves the valid session on recovery",
+        "result": "PASS"
+      },
+      {
+        "id": "MCHANGE",
+        "workflow": "New password-change screen: reject wrong password, change successfully, keep current session and revoke old sessions",
+        "result": "PASS"
+      },
+      {
+        "id": "MF13",
+        "workflow": "Modal contains keyboard focus instead of tabbing into the page behind it",
+        "result": "PASS"
+      },
+      {
+        "id": "MP-admin",
+        "workflow": "Production build: admin login and every permitted main screen",
+        "result": "PASS"
+      },
+      {
+        "id": "MP-care",
+        "workflow": "Production build: care login and every permitted main screen",
+        "result": "PASS"
+      },
+      {
+        "id": "MP-clinician",
+        "workflow": "Production build: clinician login and every permitted main screen",
+        "result": "PASS"
+      },
+      {
+        "id": "MTLS-LOGOUT",
+        "workflow": "HTTPS logout revokes a replayed production session cookie",
+        "result": "PASS"
+      },
+      {
+        "id": "MTLS-PUBLISH",
+        "workflow": "HTTPS production care submission \u2192 staff publication \u2192 author reads approved discussion",
+        "result": "PASS"
+      },
+      {
+        "id": "MTLS-admin",
+        "workflow": "Docker production behind HTTPS nginx: admin login, secure cookies and permitted screens",
+        "result": "PASS"
+      },
+      {
+        "id": "MTLS-care",
+        "workflow": "Docker production behind HTTPS nginx: care login, secure cookies and permitted screens",
+        "result": "PASS"
+      },
+      {
+        "id": "MTLS-clinician",
+        "workflow": "Docker production behind HTTPS nginx: clinician login, secure cookies and permitted screens",
+        "result": "PASS"
+      }
+    ]
+  },
+  "accessibility": {
+    "accessibility-light": {
+      "scans": 36,
+      "violations": 0
+    },
+    "accessibility-dark": {
+      "scans": 36,
+      "violations": 0
+    },
+    "accessibility-dialogs-light": {
+      "scans": 20,
+      "violations": 0
+    },
+    "accessibility-dialogs-dark": {
+      "scans": 20,
+      "violations": 0
+    }
+  },
+  "responsive": {
+    "checks": 96,
+    "failures": 0
+  },
+  "modalKeyboard": {
+    "checks": 14,
+    "failures": 0
+  },
+  "automated": {
+    "frontendTests": 31,
+    "backendTests": 38,
+    "postgresVersions": [16, 18],
+    "build": "PASS",
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "format": "PASS",
+    "cleanWorkspaceInstall": "PASS",
+    "standaloneBackendInstallMigrateStartup": "PASS",
+    "dockerBuild": "PASS",
+    "httpsNginxHeaders": "PASS",
+    "postgresOutageFailsClosed": "PASS"
+  },
+  "dependencyAudit": {
+    "productionVulnerabilities": 0,
+    "highOrCriticalAllDependencies": 0,
+    "moderateDevelopmentAdvisories": 7
+  },
+  "limits": [
+    "Desktop/mobile Chromium emulation; no physical devices or Safari/iOS.",
+    "Local STARTTLS capture; no real inbox delivery/rendering.",
+    "No production load, clinical/legal approval, or public-origin configuration sign-off.",
+    "Final case results supersede test-selector/fixture/rate-window/restart interruptions; application rate limits were unchanged."
+  ]
+}

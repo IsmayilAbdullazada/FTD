@@ -61,6 +61,7 @@ export function ReassignMemberDialog({
                 Select Group
               </label>
               <select
+                aria-label="Select Group"
                 value={targetNewGroupId}
                 onChange={(e) => setTargetNewGroupId(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"

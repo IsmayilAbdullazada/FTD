@@ -2,7 +2,11 @@
 
 This change addresses the browser audit of `0a6aefb` and the follow-up review of `7815e61`. The [historical workflow inventory](qa/workflow-audit-baseline.md) records the original scope and failures. The final verification results in this directory supersede that baseline; passing local checks is not a claim that the public deployment has been updated.
 
-## Verification scope and evidence
+## Previous workflow verification (commit `8335b8d`)
+
+For the subsequent deployment-hardening changes and their current validation, see [deployment verification](qa/deployment-verification.md). The figures below describe the prior full workflow run.
+
+### Verification scope and evidence
 
 The recorded browser run covers all 250 original audit checks plus 16 additional checks: **266 checks passed** in desktop/mobile Chromium. It uses fabricated accounts and isolated databases, the real application, and a local STARTTLS mail catcher. This includes ten checks of the production Docker image behind HTTPS nginx: all three roles, secure cookie attributes, submission/publication, and logout with session-cookie replay rejection.
 
@@ -10,7 +14,7 @@ The recorded browser run covers all 250 original audit checks plus 16 additional
 - Clean workspace installation, clean standalone backend installation/startup/compiled migrations, full production build, typecheck, lint, formatting, and Docker build passed.
 - All **96 responsive layout checks** passed. The final main-screen accessibility run contains **72 light/dark scans with no detected violations**. All **40 open-dialog accessibility scans** passed with no detected violations, and all **14 dialog Escape checks** passed. Focus-containment and restoration are also covered by focused browser/unit checks.
 - The HTTPS nginx checker passed for HTML, a generated JavaScript asset, and API health. A separate failure probe verifies PostgreSQL outages return HTTP 503 without creating a replacement embedded database.
-- The dependency audit found no production vulnerabilities and no high/critical vulnerabilities in the full tree. Seven moderate advisories remain in development-only lint dependencies; this is a dated audit result, not a guarantee about future advisories.
+- The dependency audit found no production vulnerabilities and no high/critical vulnerabilities in the full tree. Seven moderate advisories existed in development-only lint dependencies at that commit; the follow-up dependency update resolves them (see current deployment verification). This is a dated audit result, not a guarantee about future advisories.
 
 See [the sanitized check manifest](qa/release-verification.json). Detailed scripts, logs and mock screenshots are retained in the task workspace under `/workspace/artifacts/ftd-release-verification/`. Tests that encountered stale selectors, duplicate mock fixtures, rate-limit windows or the workspace restart were corrected/rerun; the manifest records final verified results. High-volume automation used independent simulated client IPs for auth tests and restarted only the isolated test server between batches; application rate limits were not weakened.
 
@@ -66,6 +70,8 @@ On networks that intercept TLS, provide the organization's trusted CA bundle usi
 `DB_DRIVER` defaults to `postgres`. Development may explicitly choose `pglite` with a separate `PGLITE_DATA_DIR`; production refuses that driver. PostgreSQL connection failure must produce an unhealthy HTTP 503, never an apparently healthy replacement database.
 
 ## Local build transferred by SSH
+
+Follow [the detailed artifact/SSH deployment runbook](deployment.md) for the current packaging and preflight commands.
 
 Build and test one reviewed revision locally. Keep its commit ID with the release artifacts. Your existing layout is supported:
 

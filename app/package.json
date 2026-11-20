@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",
+    "build": "tsc && node scripts/copy-migrations.mjs",
     "dev": "node --env-file-if-exists=../config/ftdcare.env --import tsx src/server.ts",
     "start": "node --env-file-if-exists=../config/ftdcare.env dist/server.js",
     "migrate": "node --env-file-if-exists=../config/ftdcare.env --import tsx src/db/migrate.ts",
     "seed": "node --env-file-if-exists=../config/ftdcare.env --import tsx src/db/seed.ts",
     "test": "node --env-file-if-exists=../config/ftdcare.test.env --import tsx --test tests/*.test.ts",
     "migrate:compiled": "node --env-file-if-exists=../config/ftdcare.env dist/db/migrate.js",
-    "seed:compiled": "node --env-file-if-exists=../config/ftdcare.env dist/db/seed.js"
+    "seed:compiled": "node --env-file-if-exists=../config/ftdcare.env dist/db/seed.js",
+    "preflight:compiled": "node --env-file-if-exists=../config/ftdcare.env dist/preflight.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

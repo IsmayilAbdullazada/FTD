@@ -36,16 +36,18 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm --prefix app audit --audit-level=high
-      - run: npm audit --audit-level=high
+      - run: npm --prefix app audit --audit-level=moderate
+      - run: npm audit --audit-level=moderate
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint:eslint
       - run: npm run format:check
       - run: npm test
+      - run: npm run test:release
       - run: npm run backend:migrate
       - run: npm run backend:migrate
       - run: npm run backend:seed
       - run: npm run backend:test
       - run: npm run build
+      - run: node scripts/package-release.mjs /tmp/ftd-release.tgz
       - run: docker build -t ftdcare:ci .

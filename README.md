@@ -166,6 +166,8 @@ The root package uses an npm workspace for `app`. Run `npm ci` at the repository
 
 ## Testing and CI
 
+Run `npm run verify` for the complete local frontend/release-tooling gate, and run backend integration tests against an isolated migrated/seeded database. `npm run test:list` lists discovered frontend files; the current full suite contains 13 files and 31 tests. `npm run build` now typechecks before producing output. Authentication tests assert expected failures without printing simulated error logs. Build timing and funding messages are informational. See [current deployment verification](docs/qa/deployment-verification.md) for dependency, install-script and packaged-browser checks.
+
 These checks do not require PostgreSQL:
 
 ```bash
@@ -191,7 +193,7 @@ npm run backend:test
 
 Frontend tests use Vitest, Testing Library, and jsdom, including `<App/>` invitation and login regressions. Backend tests use Node's test runner and real PostgreSQL, covering authorization, sessions, moderation, messages, recovery, uploads, indexes, and legacy-password upgrades. A local SMTP relay test verifies actual STARTTLS delivery without authentication or sending messages outside the test process. Browser smoke checks and delivery through your deployed SMTP relay are separate from these automated suites.
 
-[GitHub Actions](.github/workflows/ci.yml) runs checks against PostgreSQL 16 and 18, applies migrations twice, seeds the test database, runs both test suites, builds both packages and the Docker image, and audits dependencies. CI has read-only repository permissions; high and critical audit findings fail the workflow.
+[GitHub Actions](.github/workflows/ci.yml) runs checks against PostgreSQL 16 and 18, applies migrations twice, seeds the test database, runs both test suites, builds both packages and the Docker image, and audits dependencies. CI has read-only repository permissions; moderate, high and critical audit findings fail the workflow.
 
 Run dependency checks locally with:
 
@@ -247,6 +249,8 @@ Guide metadata and PDF URLs live in PostgreSQL; uploaded PDF bytes live on disk.
 Uploaded PDFs must be served through `/uploads/guides/` on the authenticated API. Staff can access drafts; care partners can access active, approved guides for their condition and condition-appropriate resource attachments. Do not expose the upload directory through a public filesystem alias. At API startup and hourly, generated uploads older than 24 hours are removed if no guide or resource references them.
 
 ## Production deployment
+
+For locally built artifacts transferred over SSH, follow [the deployment runbook](docs/deployment.md). `npm run release:package -- /tmp/ftd-release.tgz` builds a complete versioned archive with checksums, excludes runtime uploads/secrets, and includes a systemd template. Run `npm run preflight:compiled` inside the deployed backend after migrations and before switching the release. The API refuses startup if migration versions/checksums do not match.
 
 See [release verification and SSH transfer](docs/release-readiness.md) for the audited fixes, repeatable checks, and deployment gates. Deploy one reviewed source revision, preserve environment files and persistent uploads, back up PostgreSQL, and apply only unapplied migrations.
 

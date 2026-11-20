@@ -98,3 +98,43 @@ test('a PostgreSQL outage returns unhealthy without switching databases', () => 
   assert.match(result.stdout, /"status":503/);
   assert.match(result.stdout, /"database":"disconnected"/);
 });
+
+for (const [name, overrides] of [
+  [
+    'placeholder signing secret',
+    { JWT_SECRET: 'replace-with-at-least-32-random-characters' },
+  ],
+  ['CORS origin with a path', { CORS_ORIGIN: 'https://example.test/path' }],
+  ['frontend origin absent from CORS', { CORS_ORIGIN: 'https://other.test' }],
+  ['application URL with a path', { APP_URL: 'https://example.test/register' }],
+] as const) {
+  test(`production rejects ${name}`, () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        '--input-type=module',
+        '-e',
+        `await import(${JSON.stringify(modulePath)})`,
+      ],
+      {
+        cwd: fileURLToPath(new URL('..', import.meta.url)),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          DB_PASSWORD: 'test-only-long-password',
+          JWT_SECRET: 'test-only-signing-key-with-32-characters',
+          APP_URL: 'https://example.test',
+          CORS_ORIGIN: 'https://example.test',
+          ENABLE_DEV_PERSONAS: 'false',
+          ENABLE_DATABASE_RESET: 'false',
+          ENABLE_DEV_AUTH_PREVIEWS: 'false',
+          ...overrides,
+        },
+      },
+    );
+    assert.notEqual(result.status, 0, result.stderr);
+  });
+}

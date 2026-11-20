@@ -24,4 +24,5 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/public ./public
 USER node
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD node --input-type=module -e "try { const r = await fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/v1/health', {signal: AbortSignal.timeout(4000)}); const b = await r.json(); process.exit(r.ok && b.status === 'ok' && b.database === 'connected' ? 0 : 1); } catch { process.exit(1); }"
 CMD ["node", "app/dist/server.js"]

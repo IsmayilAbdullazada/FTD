@@ -58,7 +58,10 @@ if (parsed.data.NODE_ENV === 'production') {
     throw new Error(
       'Production requires PostgreSQL; embedded databases are development-only',
     );
-  if (parsed.data.JWT_SECRET === devDefaultJwtSecret)
+  if (
+    parsed.data.JWT_SECRET === devDefaultJwtSecret ||
+    /^(replace-with|change[-_ ]?me)/i.test(parsed.data.JWT_SECRET)
+  )
     throw new Error('JWT_SECRET must be explicitly configured in production');
   if (parsed.data.ENABLE_DEV_AUTH_PREVIEWS === 'true')
     throw new Error(
@@ -83,7 +86,11 @@ if (parsed.data.NODE_ENV === 'production') {
   if (
     productionOrigins.some((value) => {
       try {
-        return new URL(value).protocol !== 'https:';
+        const origin = new URL(value);
+        return (
+          origin.protocol !== 'https:' ||
+          origin.origin !== value.replace(/\/$/, '')
+        );
       } catch {
         return true;
       }
@@ -92,7 +99,25 @@ if (parsed.data.NODE_ENV === 'production') {
     throw new Error(
       'Every production CORS_ORIGIN must be a valid HTTPS origin',
     );
-  if (new URL(parsed.data.APP_URL).protocol !== 'https:')
-    throw new Error('APP_URL must use HTTPS in production');
+  const appUrl = new URL(parsed.data.APP_URL);
+  if (
+    appUrl.protocol !== 'https:' ||
+    appUrl.pathname !== '/' ||
+    appUrl.search ||
+    appUrl.hash ||
+    appUrl.username ||
+    appUrl.password
+  )
+    throw new Error(
+      'APP_URL must be a root HTTPS URL without credentials, query or fragment in production',
+    );
+  if (
+    !productionOrigins
+      .map((origin) => origin.replace(/\/$/, ''))
+      .includes(appUrl.origin)
+  )
+    throw new Error(
+      'CORS_ORIGIN must include the APP_URL origin in production',
+    );
 }
 export const env = parsed.data;

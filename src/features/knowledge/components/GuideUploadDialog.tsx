@@ -217,34 +217,11 @@ export function GuideUploadDialog({
                     </div>
                   ) : uploadPdfPreviewUrl ? (
                     <div className="w-full h-full flex flex-col">
-                      <object
-                        aria-label={uploadFileName || 'PDF document preview'}
-                        data={uploadPdfPreviewUrl}
-                        type="application/pdf"
-                        className="w-full flex-1 min-h-0 bg-slate-100 dark:bg-slate-950"
-                      >
-                        <iframe
-                          src={uploadPdfPreviewUrl}
-                          title={uploadFileName || 'PDF Document Viewer'}
-                          className="w-full h-full border-0 bg-slate-100 dark:bg-slate-950"
-                        >
-                          <div className="p-8 text-center flex flex-col items-center justify-center h-full space-y-3">
-                            <FileText className="w-10 h-10 text-slate-400" />
-                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                              Preview not supported in this frame view
-                            </p>
-                            <a
-                              href={uploadPdfPreviewUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#002D72] text-white rounded-lg text-xs font-semibold hover:bg-blue-900 transition"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>Open PDF in New Tab</span>
-                            </a>
-                          </div>
-                        </iframe>
-                      </object>
+                      <iframe
+                        src={uploadPdfPreviewUrl}
+                        title={uploadFileName || 'PDF document preview'}
+                        className="w-full flex-1 min-h-0 border-0 bg-slate-100 dark:bg-slate-950"
+                      />
                     </div>
                   ) : uploadPages.length > 0 ? (
                     <div className="p-5 flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">

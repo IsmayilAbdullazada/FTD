@@ -30,15 +30,7 @@ export async function sendEmail(message: {
   let error: string | undefined;
   if (env.SMTP_HOST) {
     try {
-      const transport = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_PORT === 465,
-        requireTLS: true,
-        connectionTimeout: 5000,
-        greetingTimeout: 5000,
-        socketTimeout: 5000,
-      });
+      const transport = createEmailTransport();
       await transport.sendMail({ from: env.SMTP_FROM, ...message });
       emailSent = true;
       await query(
@@ -77,4 +69,16 @@ export async function readPreview(id: string, token: string) {
     [id, sha256(token)],
   );
   return result.rows[0];
+}
+
+export function createEmailTransport() {
+  return nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_PORT === 465,
+    requireTLS: true,
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 5000,
+  });
 }

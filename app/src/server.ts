@@ -1,3 +1,4 @@
+import { verifyDatabaseSchema } from './db/readiness.js';
 import { processNotificationEmails } from './services/notificationEmails.js';
 import { cleanupUploads } from './services/uploads.js';
 import { processRecoveryJob } from './services/recovery.js';
@@ -7,13 +8,22 @@ import { app } from './app.js';
 import { env } from './config/env.js';
 import { pool } from './config/db.js';
 
+// Fail startup before accepting traffic when this release cannot use the database.
+try {
+  await verifyDatabaseSchema();
+} catch (error) {
+  logger.error('Backend startup checks failed', error);
+  await pool.end();
+  process.exit(1);
+}
+
 const server = http.createServer(app);
 server.listen(env.PORT, '0.0.0.0', () =>
   logger.info(`[FTD backend] Listening on http://0.0.0.0:${env.PORT}`),
 );
 
 let recoveryJob: Promise<void> | null = null;
-let notificationJob: ReturnType<typeof processNotificationEmails> | null = null;
+let notificationJob: Promise<unknown> | null = null;
 const recoveryTimer = setInterval(() => {
   if (!recoveryJob)
     recoveryJob = processRecoveryJob()
@@ -25,9 +35,11 @@ const recoveryTimer = setInterval(() => {
 recoveryTimer.unref();
 const notificationTimer = setInterval(() => {
   if (!notificationJob)
-    notificationJob = processNotificationEmails().finally(() => {
-      notificationJob = null;
-    });
+    notificationJob = processNotificationEmails()
+      .catch((error) => logger.error('Notification worker failed', error))
+      .finally(() => {
+        notificationJob = null;
+      });
 }, 5000);
 notificationTimer.unref();
 const uploadCleanupTimer = setInterval(() => {
@@ -43,6 +55,7 @@ async function shutdown(signal: string) {
   clearInterval(notificationTimer);
   clearInterval(uploadCleanupTimer);
   logger.info(`[FTD backend] ${signal}; shutting down`);
+  server.closeIdleConnections();
   server.close(async () => {
     await Promise.allSettled([recoveryJob, notificationJob]);
     await pool.end();

@@ -366,7 +366,7 @@ export function useDiscussionDetail({
       const confirmationText =
         isClinician || isUnmoderated
           ? 'Your reply has been published.'
-          : 'Your reply was submitted successfully and sent to Dr. Seema for clinical safety review.';
+          : 'Your reply was submitted and sent to the clinical moderation team for safety review.';
 
       setReplySuccessMessage(confirmationText);
       setTimeout(() => setReplySuccessMessage(null), 6000);

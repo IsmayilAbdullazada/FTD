@@ -1,3 +1,5 @@
+import { composeEmail, escapeHtml } from '../../services/emailTemplates.js';
+import { notify } from '../../services/notifications.js';
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -20,14 +22,6 @@ const router = Router();
 router.use(authLimiter);
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
-const escapeHtml = (value: string) =>
-  value.replace(
-    /[&<>"']/g,
-    (char) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-        char
-      ]!,
-  );
 const tokenFor = (user: {
   id: string;
   email: string;
@@ -94,6 +88,68 @@ router.post(
 );
 
 router.post(
+  '/change-password',
+  authenticateToken,
+  asyncHandler(async (req, res) => {
+    const input = z
+      .object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(8).max(128),
+      })
+      .parse(req.body);
+
+    const updatedUser = await transaction(async (client) => {
+      const result = await client.query(
+        `SELECT id,email,role,password_hash,session_version FROM users WHERE id=$1 AND is_active FOR UPDATE`,
+        [req.user!.id],
+      );
+      const user = result.rows[0];
+      if (!user) throw new HttpError(404, 'Account not found.');
+
+      const validCurrent = await bcrypt.compare(
+        input.currentPassword,
+        user.password_hash ?? dummyPasswordHash,
+      );
+      if (!validCurrent)
+        throw new HttpError(400, 'Current password is incorrect.');
+
+      const isSamePassword = await bcrypt.compare(
+        input.newPassword,
+        user.password_hash ?? dummyPasswordHash,
+      );
+      if (isSamePassword)
+        throw new HttpError(
+          400,
+          'New password must be different from your current password.',
+        );
+
+      const passwordHash = await bcrypt.hash(input.newPassword, 12);
+      const updated = await client.query(
+        `UPDATE users
+         SET password_hash=$1,session_version=session_version+1,updated_at=NOW()
+         WHERE id=$2
+         RETURNING id,email,role,session_version`,
+        [passwordHash, user.id],
+      );
+      await client.query(
+        'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id],
+      );
+      await notify(client, {
+        kind: 'PASSWORD_CHANGED',
+        recipients: [user.id],
+        eventKey: `password-changed:${user.id}:${updated.rows[0].session_version}`,
+      });
+      return updated.rows[0];
+    });
+
+    const token = tokenFor(updatedUser as Parameters<typeof tokenFor>[0]);
+    setSessionCookie(res, token, true);
+    res.json({ success: true, message: 'Password updated successfully.' });
+  }),
+);
+
+router.post(
   '/invitations',
   authenticateToken,
   requireStaff,
@@ -131,9 +187,16 @@ router.post(
     const registrationUrl = `${env.APP_URL.replace(/\/$/, '')}/register?token=${encodeURIComponent(token)}`;
     const delivery = await sendEmail({
       to: input.email,
-      subject: 'Your Hopkins Care Partner Connect invitation',
-      text: `You have been invited to Hopkins Care Partner Connect. Register: ${registrationUrl}`,
-      html: `<p>You have been invited to Hopkins Care Partner Connect.</p><p><a href="${escapeHtml(registrationUrl)}">Create your account</a></p>`,
+      ...composeEmail({
+        subject: 'You are invited to Care Partner Connect',
+        greeting: input.firstName ? `Hello ${input.firstName},` : 'Hello,',
+        paragraphs: [
+          'You have been invited to join Hopkins Care Partner Connect, a private community for care partners supported by a clinical moderation team.',
+          'To get started, create your account using the link below. Your invitation is valid for three days.',
+          'If you were not expecting this invitation, you can safely ignore this email.',
+        ],
+        action: { label: 'Create your account', url: registrationUrl },
+      }),
     });
     res.status(201).json({
       invitationId: invitation.id,
@@ -185,7 +248,6 @@ router.post(
       .object({
         token: z.string().min(20),
         password: z.string().min(8).max(128),
-        anonymousHandle: z.string().trim().min(3).max(40),
         firstName: z.string().trim().optional(),
         lastName: z.string().trim().optional(),
         phoneNumber: z.string().trim().optional(),
@@ -208,7 +270,7 @@ router.post(
       const id = `user-care-${crypto.randomUUID()}`;
       const inserted = await client.query(
         `INSERT INTO users(id,email,password_hash,role,first_name,last_name,phone_number,clinic_patient_id,condition,anonymous_handle,avatar_color,badge_label)
-       VALUES($1,$2,$3,'CARE_PARTNER',$4,$5,$6,$7,$8,$9,'#1E40AF','Care Partner') RETURNING *`,
+       VALUES($1,$2,$3,'CARE_PARTNER',$4,$5,$6,$7,$8,public.allocate_anonymous_handle(),'#1E40AF','Care Partner') RETURNING *`,
         [
           id,
           invite.email,
@@ -218,7 +280,6 @@ router.post(
           input.phoneNumber || invite.phone_number,
           invite.clinic_patient_id,
           invite.condition,
-          input.anonymousHandle,
         ],
       );
       await client.query(
@@ -229,6 +290,17 @@ router.post(
         `UPDATE invitations SET status='ACCEPTED',accepted_at=NOW() WHERE id=$1`,
         [invite.id],
       );
+      await notify(client, {
+        kind: 'WELCOME',
+        recipients: [id],
+        eventKey: `welcome:${id}`,
+      });
+      await notify(client, {
+        kind: 'INVITATION_ACCEPTED',
+        recipients: [invite.issued_by],
+        actorId: id,
+        eventKey: `invitation-accepted:${invite.id}`,
+      });
       return inserted.rows[0];
     });
     const token = tokenFor(user as Parameters<typeof tokenFor>[0]);
@@ -260,30 +332,51 @@ router.post(
   asyncHandler(async (req, res) => {
     const input = z
       .object({
-        email: z.string().email(),
-        code: z.string().regex(/^\d{6}$/),
-        token: z.string().min(20),
+        token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
         newPassword: z.string().min(8).max(128),
       })
       .parse(req.body);
-    const reset = await query(
-      `SELECT pr.*,u.email FROM password_resets pr JOIN users u ON u.id=pr.user_id
-     WHERE pr.token_hash=$1 AND LOWER(u.email)=LOWER($2) AND pr.consumed_at IS NULL AND pr.expires_at>NOW()`,
-      [sha256(input.token), input.email],
-    );
-    const record = reset.rows[0];
-    if (!record || !(await bcrypt.compare(input.code, record.code_hash)))
-      throw new HttpError(400, 'Reset code is invalid or expired');
+    const passwordHash = await bcrypt.hash(input.newPassword, 12);
     await transaction(async (client) => {
+      // Lock the user before their resets, matching the recovery worker's order.
+      const users = await client.query(
+        `SELECT u.id FROM users u JOIN password_resets pr ON pr.user_id=u.id
+         WHERE pr.token_hash=$1 AND u.is_active AND pr.consumed_at IS NULL AND pr.expires_at>NOW()
+         FOR UPDATE OF u`,
+        [sha256(input.token)],
+      );
+      const user = users.rows[0];
+      if (!user)
+        throw new HttpError(
+          400,
+          'Reset link is invalid or expired. Request a new link.',
+        );
+      const consumed = await client.query(
+        `UPDATE password_resets SET consumed_at=clock_timestamp()
+         WHERE token_hash=$1 AND user_id=$2 AND consumed_at IS NULL AND expires_at>clock_timestamp()
+         RETURNING id`,
+        [sha256(input.token), user.id],
+      );
+      if (!consumed.rowCount)
+        throw new HttpError(
+          400,
+          'Reset link is invalid or expired. Request a new link.',
+        );
       await client.query(
         `UPDATE users SET password_hash=$1,session_version=session_version+1,updated_at=NOW() WHERE id=$2`,
-        [await bcrypt.hash(input.newPassword, 12), record.user_id],
+        [passwordHash, user.id],
       );
       await client.query(
-        `UPDATE password_resets SET consumed_at=NOW() WHERE id=$1`,
-        [record.id],
+        'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
+        [user.id],
       );
+      await notify(client, {
+        kind: 'PASSWORD_CHANGED',
+        recipients: [user.id],
+        eventKey: `password-changed:${consumed.rows[0].id}`,
+      });
     });
+    clearSessionCookie(res);
     res.json({ success: true, message: 'Password updated successfully.' });
   }),
 );

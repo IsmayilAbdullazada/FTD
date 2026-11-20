@@ -36,10 +36,10 @@ export function CohortsTab({
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
         <div>
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
             Community Groups
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Regional and clinic-wide support cohorts. Click any group card to
             view its enrolled members.
           </p>
@@ -47,19 +47,19 @@ export function CohortsTab({
 
         <button
           onClick={onCreateGroup}
-          className="px-3.5 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+          className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-lg text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer shrink-0"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4" />
           <span>New Group</span>
         </button>
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
+        <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400 px-1">
           <span className="font-semibold text-slate-700 dark:text-slate-300">
             All Groups ({cohorts.length})
           </span>
-          <span className="text-slate-400 dark:text-slate-500">
+          <span className="text-xs sm:text-sm text-slate-400 dark:text-slate-500">
             Click a card to filter members
           </span>
         </div>
@@ -88,31 +88,28 @@ export function CohortsTab({
                     <span className="font-serif font-semibold text-slate-900 dark:text-white text-base group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
                       {getProperGroupName(cohort)}
                     </span>
-                    <span className="shrink-0 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                    <span className="shrink-0 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-400">
                       {assignedCount}{' '}
                       {assignedCount === 1 ? 'member' : 'members'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="font-medium text-slate-700 dark:text-slate-300">
                       {getFullGroupName(cohort)}
                     </span>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed font-sans">
                     {cohort.description}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                  <span className="text-xs text-slate-400 dark:text-slate-500">
-                    Click to view members
-                  </span>
-                  <span className="font-semibold text-xs flex items-center gap-1">
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end text-sm text-slate-500 dark:text-slate-400 group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
+                  <span className="font-semibold flex items-center gap-1">
                     <span>View members</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
               </div>

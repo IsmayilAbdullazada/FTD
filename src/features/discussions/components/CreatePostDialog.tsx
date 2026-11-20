@@ -39,7 +39,11 @@ export function CreatePostDialog({
   cohorts,
   onSubmit: handleCreatePost,
 }: CreatePostDialogProps) {
-  const dialogRef = useDialogFocus(showNewPostModal);
+  const dialogRef = useDialogFocus(showNewPostModal, () => {
+    if (!isSubmittingPost) {
+      setShowNewPostModal(false);
+    }
+  });
   return (
     <>
       {/* MODAL new post details */}
@@ -59,10 +63,10 @@ export function CreatePostDialog({
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
+                <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                   New Post
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   Published immediately, no review needed.
                 </p>
               </div>
@@ -70,7 +74,7 @@ export function CreatePostDialog({
                 type="button"
                 aria-label="Close create post dialog"
                 onClick={() => setShowNewPostModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -78,41 +82,41 @@ export function CreatePostDialog({
 
             <form
               onSubmit={handleCreatePost}
-              className="p-4 space-y-3.5 text-xs"
+              className="p-4 sm:p-5 space-y-4 text-sm"
             >
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Title
                 </label>
                 <input
                   value={npTitle}
                   onChange={(e) => setNpTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  className="w-full px-3 py-2.5 text-base sm:text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Post
                 </label>
                 <textarea
                   rows={5}
                   value={npContent}
                   onChange={(e) => setNpContent(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  className="w-full px-3 py-2.5 text-base sm:text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Region / group
                 </label>
                 <select
                   value={npGroupId}
                   onChange={(e) => setNpGroupId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"
+                  className="w-full px-3 py-2.5 text-base sm:text-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"
                   required
                 >
                   <option value="" disabled>
@@ -127,7 +131,7 @@ export function CreatePostDialog({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Disease group
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -142,7 +146,7 @@ export function CreatePostDialog({
                       key={value}
                       type="button"
                       onClick={() => setNpAudience(value)}
-                      className={`px-2 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                      className={`px-2.5 py-2 rounded-lg text-xs sm:text-sm font-semibold border transition cursor-pointer ${
                         npAudience === value
                           ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
@@ -156,11 +160,11 @@ export function CreatePostDialog({
               {/* Community Guidelines reminder */}
               <GuidelinesReminder />
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowNewPostModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer"
+                  className="px-3.5 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -173,7 +177,7 @@ export function CreatePostDialog({
                     !npGroupId ||
                     !npAudience
                   }
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
+                  className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
                 >
                   {isSubmittingPost ? 'Publishing...' : 'Publish Post'}
                 </button>

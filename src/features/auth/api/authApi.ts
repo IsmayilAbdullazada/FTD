@@ -80,9 +80,7 @@ export const authApi = {
   },
 
   resetPassword(payload: {
-    email?: string;
-    code?: string;
-    token?: string;
+    token: string;
     newPassword: string;
   }): Promise<{ success: boolean; message: string }> {
     return requestJson(
@@ -93,6 +91,21 @@ export const authApi = {
         body: JSON.stringify(payload),
       },
       'Failed to update password.',
+    );
+  },
+
+  changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return requestJson(
+      '/api/v1/auth/change-password',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      'Failed to change password.',
     );
   },
 
@@ -107,7 +120,6 @@ export const authApi = {
   registerWithInvite(payload: {
     token: string;
     password?: string;
-    anonymousHandle?: string;
     firstName?: string;
     lastName?: string;
     phoneNumber?: string;

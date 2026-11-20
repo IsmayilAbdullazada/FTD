@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useAutoDismiss } from '@/app/hooks/useAutoDismiss';
+import type { ClinicianDashboardTab } from '@/features/clinician-workspace/types';
 
 export type AuthMode = 'login' | 'forgot-password' | 'register';
 export type FeedSection = 'all' | 'my-posts';
 
 export function useAppViewState() {
   const [activeTab, setActiveTab] = useState('feed');
+  const [clinicianTab, setClinicianTab] =
+    useState<ClinicianDashboardTab>('queue');
   const [feedNotice, setFeedNotice] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [feedResetKey, setFeedResetKey] = useState(0);
@@ -34,6 +37,7 @@ export function useAppViewState() {
   return {
     values: {
       activeTab,
+      clinicianTab,
       feedNotice,
       sessionNotice,
       feedResetKey,
@@ -53,6 +57,7 @@ export function useAppViewState() {
     },
     setters: {
       setActiveTab,
+      setClinicianTab,
       setFeedNotice,
       setSessionNotice,
       setFeedResetKey,

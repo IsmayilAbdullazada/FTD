@@ -210,11 +210,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({
 
           <div className="space-y-2">
             <h2 className="font-serif text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
-              Question Submitted for Review
+              {isStaff
+                ? 'Discussion Published'
+                : 'Question Submitted for Review'}
             </h2>
             <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base max-w-md mx-auto leading-relaxed font-sans">
-              Thank you, {currentUser.firstName}. Your question has been safely
-              received and is now in review.
+              {isStaff
+                ? `Thank you, ${currentUser.firstName}. Your discussion is now live for care partners.`
+                : `Thank you, ${currentUser.firstName}. Your question has been safely received and is now in review.`}
             </p>
           </div>
 
@@ -234,17 +237,21 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 {submittedPostData.cohortName}
               </span>
             </div>
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-emerald-800 dark:text-emerald-400 text-xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>
-                Personal details are verified and privacy protected before
-                publishing
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
-              <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
-              <span>Standard review time: within 24 hours</span>
-            </div>
+            {!isStaff && (
+              <>
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-emerald-800 dark:text-emerald-400 text-xs">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>
+                    Personal details are verified and privacy protected before
+                    publishing
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                  <span>Standard review time: within 24 hours</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -574,7 +581,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                             <span
                               className={`font-semibold ${isModerator ? 'text-[#002D72] dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}
                             >
-                              {reply.authorHandle} {isModerator && '⭐'}
+                              {reply.authorHandle}
                             </span>
                             {reply.authorBadge && (
                               <span className="text-xs text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-slate-900/70 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-medium">
@@ -600,7 +607,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({
                 className="w-full sm:w-auto min-h-11 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                <span>✓ This answers my question</span>
+                <span>This answers my question</span>
               </button>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button

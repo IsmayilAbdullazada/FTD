@@ -18,6 +18,8 @@ router.get(
       title: r.title,
       message: r.message,
       type: r.type,
+      kind: r.kind ?? undefined,
+      context: r.context ?? {},
       createdAt: r.created_at,
       read: Boolean(r.read_at),
     }));

@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
+const devDefaultJwtSecret =
+  'ftdcare-local-development-jwt-secret-change-me-in-production';
+
 const schema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
+  DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().positive().default(5432),
   DB_NAME: z.string().default('ftdcare_db'),
@@ -14,24 +18,24 @@ const schema = z.object({
   GUIDE_UPLOAD_DIRECTORY: z.string().optional(),
   DB_SSL: z.enum(['true', 'false']).default('false'),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
-  JWT_SECRET: z.string().min(32),
+  JWT_SECRET: z.string().min(32).default(devDefaultJwtSecret),
   JWT_EXPIRES_IN: z.string().default('8h'),
   SESSION_COOKIE_MAX_AGE_MS: z.coerce
     .number()
     .int()
     .positive()
     .default(8 * 60 * 60 * 1000),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:3000,http://localhost:5173'),
   ENABLE_DEV_PERSONAS: z.enum(['true', 'false']).default('false'),
   ENABLE_DATABASE_RESET: z.enum(['true', 'false']).default('false'),
   ALLOW_PRODUCTION_SEED: z.enum(['true', 'false']).default('false'),
   ENABLE_DEV_AUTH_PREVIEWS: z.enum(['true', 'false']).default('false'),
   GEMINI_API_KEY: z.string().optional(),
-  APP_URL: z.string().url().default('http://localhost:5173'),
+  APP_URL: z.string().url().default('http://localhost:3000'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
   SMTP_FROM: z
     .string()
     .default('Hopkins Care Partner Connect <no-reply@localhost>'),
@@ -45,6 +49,8 @@ if (!parsed.success) {
   throw new Error(`Invalid backend configuration: ${details}`);
 }
 if (parsed.data.NODE_ENV === 'production') {
+  if (parsed.data.JWT_SECRET === devDefaultJwtSecret)
+    throw new Error('JWT_SECRET must be explicitly configured in production');
   if (parsed.data.ENABLE_DEV_AUTH_PREVIEWS === 'true')
     throw new Error(
       'Development auth previews cannot be enabled in production',

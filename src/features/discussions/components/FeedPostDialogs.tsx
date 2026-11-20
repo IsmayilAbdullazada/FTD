@@ -1,3 +1,4 @@
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { Trash2, X } from 'lucide-react';
 
 import type {
@@ -41,23 +42,37 @@ export function FeedPostDialogs({
   handleConfirmWithdraw,
   cohorts,
 }: Props) {
+  const editDialogRef = useDialogFocus(Boolean(editingPost), () => {
+    if (!isSavingEdit) setEditingPost(null);
+  });
+  const withdrawDialogRef = useDialogFocus(Boolean(confirmDeletePost), () => {
+    if (!isDeletingPost) setConfirmDeletePost(null);
+  });
+
   return (
     <>
       {/* MODAL: EDIT PENDING QUESTION (With backdrop click to exit) */}
       {editingPost && (
         <div
-          onClick={() => setEditingPost(null)}
+          onClick={() => !isSavingEdit && setEditingPost(null)}
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={editDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit Question"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100 outline-none"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <h3 className="font-serif font-semibold text-lg text-slate-900 dark:text-white">
                 Edit Question
               </h3>
               <button
+                type="button"
+                aria-label="Close dialog"
                 onClick={() => setEditingPost(null)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
@@ -139,8 +154,13 @@ export function FeedPostDialogs({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={withdrawDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Withdraw Question Confirmation"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100 outline-none"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">

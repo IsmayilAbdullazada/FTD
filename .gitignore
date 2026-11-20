@@ -1,30 +1,50 @@
 # Environment files containing real secrets (NEVER COMMIT)
+.env
+.env.*
 *.env
 *.env.*
 config/*.env
+!.env.example
 !config/ftdcare.env.example
-public/uploads/guides/
 
-# Dependencies
+# Local database & user uploads
+.pgdata/
+public/uploads/
+
+# Dependencies & non-npm lockfiles (project uses npm ci)
 node_modules/
 app/node_modules/
+bun.lock
 bun.lockb
 
-# Build outputs (Render will build these itself)
+# Build outputs, caches & test coverage
 dist/
 app/dist/
 build/
 html/
+coverage/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# AI Studio workspace artifacts & pasted chat uploads
+.aistudio/
+public/assets/aistudio/
 
 # Logs and debug files
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 *.log
 
-# OS metadata
+# OS & editor metadata
 .DS_Store
 Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.sw?
 
 # Local migration experiments
 app/src/db/migrations/*_probe_*.sql

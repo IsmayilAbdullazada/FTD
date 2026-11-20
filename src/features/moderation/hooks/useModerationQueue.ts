@@ -110,7 +110,7 @@ export function useModerationQueue({
   };
 
   const requestVersion = useRef(0);
-  const loadQueue = async () => {
+  const loadQueue = async (preferredItemId?: string) => {
     const version = ++requestVersion.current;
     setLoadingQueue(true);
     try {
@@ -124,8 +124,14 @@ export function useModerationQueue({
       const filteredItems = queueResponse.items;
       setQueueItems(filteredItems);
       setTotal(queueResponse.totalPending);
-      setSelectedIndex(0);
-      if (filteredItems.length > 0) initItemState(filteredItems[0]);
+      const nextIndex = preferredItemId
+        ? Math.max(
+            0,
+            filteredItems.findIndex((item) => item.id === preferredItemId),
+          )
+        : 0;
+      setSelectedIndex(nextIndex);
+      if (filteredItems.length > 0) initItemState(filteredItems[nextIndex]);
       else if (page > 1) setPage(page - 1);
     } catch (error) {
       reportError('Request failed', error);
@@ -146,20 +152,29 @@ export function useModerationQueue({
         entityId: activeItem.id,
         entityType: activeItem.type,
         action: 'APPROVE',
-        assignedGroupIds: selectedGroupIds,
-        condition: approveAudience,
+        ...(activeItem.type === 'POST'
+          ? {
+              assignedGroupIds: selectedGroupIds,
+              condition: approveAudience,
+              allowUnmoderatedReplies,
+            }
+          : {}),
         sanitizedContent: sanitizedDraft,
-        allowUnmoderatedReplies,
         moderatorNotes,
       });
-      setActionSuccessNotice(response.message || 'Post published.');
+      setActionSuccessNotice(
+        response.message ||
+          (activeItem.type === 'COMMENT'
+            ? 'Reply published.'
+            : 'Post published.'),
+      );
       setTimeout(() => setActionSuccessNotice(null), 3500);
       onQueueUpdated();
       await loadQueue();
       await onPublishedPostsChanged();
     } catch (error) {
       reportError('Failed to publish:', error);
-      setActionSuccessNotice('Error publishing post. Please try again.');
+      setActionSuccessNotice('Error publishing submission. Please try again.');
       setTimeout(() => setActionSuccessNotice(null), 4000);
     }
   };
@@ -228,7 +243,9 @@ export function useModerationQueue({
         ),
       );
       onQueueUpdated();
-      await loadQueue();
+      await loadQueue(
+        privateReplyAction === 'KEEP_PENDING' ? activeItem.id : undefined,
+      );
       if (privateReplyAction === 'PUBLISH') await onPublishedPostsChanged();
     } catch (error) {
       reportError('Failed to send private reply:', error);

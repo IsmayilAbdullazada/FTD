@@ -53,7 +53,7 @@ test('uploaded PDFs require login and approval for the reader condition', async 
       [staffId, 'CLINICIAN_MODERATOR'],
     ])
       await pool.query(
-        "INSERT INTO users(id,email,password_hash,role,first_name,last_name,condition,anonymous_handle,badge_label) VALUES($1,$1||'@example.test','disabled',$2,'Fixture','Reader','FTD',$1,'Fixture')",
+        "INSERT INTO users(id,email,password_hash,role,first_name,last_name,condition,badge_label) VALUES($1,$1||'@example.test','disabled',$2,'Fixture','Reader','FTD','Fixture')",
         [userId, role],
       );
     const care = await headers(careId);

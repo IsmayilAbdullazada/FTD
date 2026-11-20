@@ -1,3 +1,4 @@
+import { notify } from '../../services/notifications.js';
 import type { MessageRow } from '../../db/rows.js';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -111,10 +112,12 @@ router.post(
         `INSERT INTO private_messages(conversation_id,sender_id,recipient_id,content) VALUES($1,$2,$3,$4) RETURNING *`,
         [`chat-${caregiverId}`, req.user!.id, recipientId, input.content],
       );
-      await client.query(
-        "INSERT INTO notifications(recipient_user_id,title,message,type) VALUES($1,'New private message','You have a new private message.','DIRECT_CHAT')",
-        [recipientId],
-      );
+      await notify(client, {
+        kind: 'PRIVATE_MESSAGE',
+        recipients: [recipientId],
+        actorId: req.user!.id,
+        eventKey: `private-message:${inserted.rows[0].id}`,
+      });
       return inserted.rows[0];
     });
     const names = await query(

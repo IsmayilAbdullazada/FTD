@@ -18,6 +18,8 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
 }) => {
   const [showWarning, setShowWarning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(warningSeconds);
+  const showWarningRef = useRef(false);
+  showWarningRef.current = showWarning;
 
   const lastActivityRef = useRef<number>(Date.now());
   const timerCheckIntervalRef = useRef<ReturnType<
@@ -61,7 +63,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       // Throttle event handling to at most once every 2 seconds
       if (now - lastEventTime > 2000) {
         lastEventTime = now;
-        if (!showWarning) {
+        if (!showWarningRef.current) {
           lastActivityRef.current = now;
         }
       }
@@ -72,7 +74,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       window.addEventListener(ev, handleUserInteraction, { passive: true }),
     );
 
-    // Check inactivity periodically (every 5 seconds)
+    // Check inactivity periodically (every 3 seconds)
     timerCheckIntervalRef.current = setInterval(() => {
       const inactiveMs = Date.now() - lastActivityRef.current;
       const warningThresholdMs = timeoutMs - warningSeconds * 1000;
@@ -83,7 +85,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
           clearInterval(timerCheckIntervalRef.current);
         setShowWarning(false);
         onTimeout();
-      } else if (inactiveMs >= warningThresholdMs && !showWarning) {
+      } else if (inactiveMs >= warningThresholdMs && !showWarningRef.current) {
         // Trigger countdown warning
         const secondsLeft = Math.max(
           1,
@@ -98,14 +100,12 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       events.forEach((ev) =>
         window.removeEventListener(ev, handleUserInteraction),
       );
-      if (timerCheckIntervalRef.current)
-        if (timerCheckIntervalRef.current !== null)
-          clearInterval(timerCheckIntervalRef.current);
-      if (warningCountdownIntervalRef.current)
-        if (warningCountdownIntervalRef.current !== null)
-          clearInterval(warningCountdownIntervalRef.current);
+      if (timerCheckIntervalRef.current !== null)
+        clearInterval(timerCheckIntervalRef.current);
+      if (warningCountdownIntervalRef.current !== null)
+        clearInterval(warningCountdownIntervalRef.current);
     };
-  }, [isAuthenticated, timeoutMs, warningSeconds, onTimeout, showWarning]);
+  }, [isAuthenticated, timeoutMs, warningSeconds, onTimeout]);
 
   // Handle countdown interval when warning modal is open
   useEffect(() => {
@@ -149,7 +149,7 @@ export const SessionTimeoutModal: React.FC<SessionTimeoutModalProps> = ({
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-6 text-center space-y-4 animate-in zoom-in-95">
         {/* Animated Warning Icon */}
         <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
-          <Clock className="w-6 h-6 animate-pulse" />
+          <Clock className="w-6 h-6" />
         </div>
 
         <div>

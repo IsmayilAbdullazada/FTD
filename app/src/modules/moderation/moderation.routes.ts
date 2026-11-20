@@ -1,3 +1,8 @@
+import {
+  notify,
+  notifyPublishedPost,
+  notifyReplyPublished,
+} from '../../services/notifications.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { query, transaction } from '../../config/db.js';
@@ -23,13 +28,17 @@ router.get(
     SELECT p.id,'POST' type,p.id post_id,p.title,p.raw_content,p.sanitized_content,p.condition,p.is_urgent_clinical,p.phi_alerts,
       p.allow_unmoderated_replies,p.created_at,u.id user_id,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,
       u.condition user_condition,u.anonymous_handle,u.avatar_color,NULL::text post_content,NULL::text parent_comment_id,NULL::text parent_content,
-      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]') assigned_group_ids
+      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]') assigned_group_ids,
+      COALESCE((SELECT jsonb_agg(jsonb_build_object('id',n.id,'senderId',n.sender_id,'senderName',nu.first_name||' '||nu.last_name,
+        'senderRole',nu.role,'message',n.message,'createdAt',n.created_at) ORDER BY n.created_at)
+        FROM moderator_private_notes n JOIN users nu ON nu.id=n.sender_id WHERE n.post_id=p.id),'[]'::jsonb) private_notes
     FROM posts p JOIN users u ON u.id=p.author_id WHERE p.status='PENDING_MODERATION' AND ($3::text='all' OR p.condition IN ($3,'BOTH'))
     UNION ALL
     SELECT c.id,'COMMENT',c.post_id,p.title,c.raw_content,c.sanitized_content,p.condition,false,c.phi_alerts,p.allow_unmoderated_replies,
       c.created_at,u.id,u.first_name,u.last_name,u.email,u.phone_number,u.clinic_patient_id,u.condition,u.anonymous_handle,u.avatar_color,
       p.sanitized_content,c.parent_comment_id,parent.sanitized_content,
-      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]')
+      COALESCE((SELECT jsonb_agg(pg.cohort_id) FROM post_groups pg WHERE pg.post_id=p.id),'[]'),
+      '[]'::jsonb
     FROM comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=c.author_id LEFT JOIN comments parent ON parent.id=c.parent_comment_id
     WHERE c.status='PENDING_MODERATION' AND ($3::text='all' OR p.condition IN ($3,'BOTH'))`;
     const [result, countResult, groupRows] = await Promise.all([
@@ -78,6 +87,7 @@ router.get(
       isUrgentClinical: r.is_urgent_clinical,
       allowUnmoderatedReplies: r.allow_unmoderated_replies,
       phiAlerts: r.phi_alerts ?? [],
+      moderatorPrivateNotes: r.type === 'POST' ? (r.private_notes ?? []) : [],
       createdAt: r.created_at,
     }));
     const totalPending = countResult.rows[0].total as number;
@@ -124,7 +134,7 @@ router.post(
     const result = await transaction(async (client) => {
       const table = input.entityType === 'POST' ? 'posts' : 'comments';
       const current = await client.query(
-        `SELECT * FROM ${table} WHERE id=$1 FOR UPDATE`,
+        `SELECT *,updated_at::text notification_revision FROM ${table} WHERE id=$1 FOR UPDATE`,
         [input.entityId],
       );
       const entity = current.rows[0];
@@ -176,21 +186,33 @@ router.post(
             postId,
           ]);
       }
-      const authorId = entity.author_id;
-      await client.query(
-        `INSERT INTO notifications(recipient_user_id,title,message,type) VALUES($1,$2,$3,$4)`,
-        [
-          authorId,
-          `${input.entityType === 'POST' ? 'Discussion' : 'Reply'} ${nextStatus.toLowerCase().replace('clinical_redirect', 'redirected')}`,
-          input.rejectionMessage ||
-            `Your ${input.entityType.toLowerCase()} was ${nextStatus.toLowerCase().replace('clinical_redirect', 'redirected')} by the clinical moderation team.`,
-          input.action === 'APPROVE'
-            ? 'APPROVAL'
-            : input.action === 'REJECT'
-              ? 'REJECTION'
-              : 'CLINICAL_ESCALATION',
-        ],
-      );
+      if (input.entityType === 'POST' && input.action === 'APPROVE')
+        await notifyPublishedPost(client, postId, req.user!.id);
+      else {
+        const kind =
+          input.entityType === 'POST'
+            ? input.action === 'REJECT'
+              ? 'POST_NOT_PUBLISHED'
+              : 'POST_CLINICAL_FOLLOWUP'
+            : input.action === 'APPROVE'
+              ? 'REPLY_APPROVED'
+              : 'REPLY_NOT_PUBLISHED';
+        await notify(client, {
+          kind,
+          recipients: [entity.author_id],
+          actorId: req.user!.id,
+          eventKey: `moderated:${input.entityType}:${input.entityId}:${entity.notification_revision}`,
+          context: {
+            postId,
+            ...(input.entityType === 'COMMENT'
+              ? { commentId: input.entityId }
+              : {}),
+          },
+          message: input.rejectionMessage,
+        });
+        if (input.entityType === 'COMMENT' && input.action === 'APPROVE')
+          await notifyReplyPublished(client, input.entityId, req.user!.id);
+      }
       await client.query(
         `INSERT INTO moderation_audit(moderator_id,entity_type,entity_id,action_taken,reason,notes)
       VALUES($1,$2,$3,$4,$5,$6)`,
@@ -216,8 +238,8 @@ router.post(
         input.action === 'APPROVE'
           ? `${input.entityType === 'POST' ? 'Post' : 'Reply'} approved and published.`
           : input.action === 'REJECT'
-            ? `${input.entityType === 'POST' ? 'Post' : 'Reply'} rejected and feedback sent.`
-            : 'Discussion diverted to the clinical support workflow.',
+            ? `${input.entityType === 'POST' ? 'Discussion' : 'Reply'} not published. Feedback is available to the author.`
+            : 'Discussion referred for clinical follow-up.',
     });
   }),
 );

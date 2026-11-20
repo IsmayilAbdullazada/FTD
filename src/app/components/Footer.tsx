@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, X, FileText, CheckCircle2 } from 'lucide-react';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 
 interface FooterProps {
   onNavigateTab?: (tab: string) => void;
@@ -126,6 +127,9 @@ export const Footer: React.FC<FooterProps> = () => {
   const [activePolicy, setActivePolicy] = useState<PolicyKey>(null);
 
   const selectedPolicyData = activePolicy ? POLICY_DETAILS[activePolicy] : null;
+  const policyDialogRef = useDialogFocus(Boolean(selectedPolicyData), () =>
+    setActivePolicy(null),
+  );
 
   return (
     <>
@@ -199,7 +203,11 @@ export const Footer: React.FC<FooterProps> = () => {
             onClick={() => setActivePolicy(null)}
           />
 
-          <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 flex flex-col max-h-[85vh] animate-in zoom-in-95">
+          <div
+            ref={policyDialogRef}
+            tabIndex={-1}
+            className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 flex flex-col max-h-[85vh] animate-in zoom-in-95 outline-none"
+          >
             {/* Modal Header */}
             <div className="px-5 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -207,12 +215,12 @@ export const Footer: React.FC<FooterProps> = () => {
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
                     {selectedPolicyData.badge}
                   </span>
                   <h3
                     id="policy-modal-title"
-                    className="text-sm font-semibold text-slate-900 dark:text-white"
+                    className="text-base font-semibold text-slate-900 dark:text-white"
                   >
                     {selectedPolicyData.title}
                   </h3>
@@ -230,14 +238,14 @@ export const Footer: React.FC<FooterProps> = () => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+            <div className="p-5 overflow-y-auto space-y-4 text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
               {selectedPolicyData.sections.map((section, idx) => (
                 <div key={idx} className="space-y-1">
-                  <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                  <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm sm:text-base">
+                    <CheckCircle2 className="w-4 h-4 text-sky-500 shrink-0" />
                     <span>{section.title}</span>
                   </h4>
-                  <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm pl-5">
+                  <p className="text-slate-600 dark:text-slate-300 text-sm pl-5.5">
                     {section.text}
                   </p>
                 </div>
@@ -245,9 +253,9 @@ export const Footer: React.FC<FooterProps> = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+            <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400 shrink-0">
               <span className="flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                 <span>
                   Johns Hopkins Medicine · Official Compliance Statement
                 </span>
@@ -255,7 +263,7 @@ export const Footer: React.FC<FooterProps> = () => {
               <button
                 type="button"
                 onClick={() => setActivePolicy(null)}
-                className="px-3 py-1 rounded-md bg-[#002D72] hover:bg-[#001D4A] dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-[#002D72] hover:bg-[#001D4A] dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-medium transition cursor-pointer shrink-0"
               >
                 Close
               </button>

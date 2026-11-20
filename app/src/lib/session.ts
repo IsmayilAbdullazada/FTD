@@ -3,11 +3,43 @@ import { env } from '../config/env.js';
 
 export const SESSION_COOKIE_NAME = 'jh_session';
 
-function cookieOptions(persistent: boolean) {
+function isHttpsRequest(res: Response): boolean {
+  if (env.NODE_ENV === 'production') return true;
+  const req = res.req;
+  if (!req) return env.APP_URL.startsWith('https://');
+  if (req.secure) return true;
+  const forwardedProto = req
+    .header('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim()
+    .toLowerCase();
+  if (forwardedProto === 'https') return true;
+  const origin = req.header('origin') ?? '';
+  if (origin.startsWith('https://')) return true;
+  const referer = req.header('referer') ?? '';
+  if (referer.startsWith('https://')) return true;
+  const host = (req.header('x-forwarded-host') ?? req.header('host') ?? '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  if (
+    env.APP_URL.startsWith('https://') &&
+    host &&
+    !host.startsWith('localhost') &&
+    !host.startsWith('127.0.0.1')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function cookieOptions(res: Response, persistent: boolean) {
+  const secure = isHttpsRequest(res);
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
+    secure,
+    sameSite: (secure ? 'none' : 'strict') as 'none' | 'strict',
+    ...(secure ? { partitioned: true } : {}),
     path: '/',
     ...(persistent ? { maxAge: env.SESSION_COOKIE_MAX_AGE_MS } : {}),
   };
@@ -18,11 +50,11 @@ export function setSessionCookie(
   token: string,
   persistent: boolean,
 ): void {
-  res.cookie(SESSION_COOKIE_NAME, token, cookieOptions(persistent));
+  res.cookie(SESSION_COOKIE_NAME, token, cookieOptions(res, persistent));
 }
 
 export function clearSessionCookie(res: Response): void {
-  res.clearCookie(SESSION_COOKIE_NAME, cookieOptions(false));
+  res.clearCookie(SESSION_COOKIE_NAME, cookieOptions(res, false));
 }
 
 export function sessionCookie(req: Request): string | undefined {

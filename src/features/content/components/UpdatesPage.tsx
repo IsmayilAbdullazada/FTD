@@ -1,6 +1,8 @@
 import { reportError } from '@/shared/lib/logger';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import React, { useState, useEffect } from 'react';
 import {
+  AlertCircle,
   Search,
   Plus,
   X,
@@ -79,6 +81,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
   const [form, setForm] = useState({
     title: '',
     summary: '',
@@ -89,11 +92,45 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
     externalUrl: '',
   });
 
+  const detailDialogRef = useDialogFocus(
+    Boolean(active && !pendingDelete),
+    () => setActive(null),
+  );
+  const addDialogRef = useDialogFocus(Boolean(canEdit && showAddModal), () => {
+    if (!isSubmitting) setShowAddModal(false);
+  });
+  const deleteDialogRef = useDialogFocus(
+    Boolean(canEdit && pendingDelete),
+    () => setPendingDelete(null),
+  );
+
+  const showToast = (msg: string, tone: 'success' | 'error' = 'success') => {
+    setToastTone(tone);
+    setToast(msg);
+    setTimeout(() => setToast(null), tone === 'error' ? 4500 : 3500);
+  };
+
   useEffect(() => {
+    let cancelled = false;
     contentApi
       .getUpdates()
-      .then(setUpdates)
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setUpdates(data);
+      })
+      .catch((err) => {
+        reportError('Failed to load updates:', err);
+        if (!cancelled)
+          showToast(
+            'Could not load updates. Please refresh the page.',
+            'error',
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser.id]);
 
   const filtered = updates.filter((u) => {
@@ -110,11 +147,6 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
       u.condition === 'BOTH';
     return matchesSearch && matchesCategory && matchesCondition;
   });
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,21 +166,26 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
       setUpdates((prev) => [created, ...prev]);
       setShowAddModal(false);
       setForm({ ...form, title: '', summary: '', body: '', externalUrl: '' });
-      showToast(`Update "${created.title}" published.`);
+      showToast(`Update "${created.title}" published.`, 'success');
     } catch (err) {
       reportError('Request failed', err);
-      showToast('Could not publish update. Please try again.');
+      showToast('Could not publish update. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (u: ClinicUpdate) => {
-    await contentApi.deleteUpdate(u.id);
-    setUpdates((prev) => prev.filter((x) => x.id !== u.id));
-    setActive(null);
-    setPendingDelete(null);
-    showToast(`Update "${u.title}" deleted.`);
+    try {
+      await contentApi.deleteUpdate(u.id);
+      setUpdates((prev) => prev.filter((x) => x.id !== u.id));
+      setActive(null);
+      setPendingDelete(null);
+      showToast(`Update "${u.title}" deleted.`, 'success');
+    } catch (err) {
+      reportError('Failed to delete update:', err);
+      showToast('Could not delete update. Please try again.', 'error');
+    }
   };
 
   const inputCls =
@@ -179,9 +216,20 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
       </div>
 
       {toast && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in">
+        <div
+          role={toastTone === 'error' ? 'alert' : 'status'}
+          className={`border text-sm px-4 py-2.5 rounded-xl flex items-center justify-between animate-in fade-in ${
+            toastTone === 'error'
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-200'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200'
+          }`}
+        >
           <span>{toast}</span>
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          {toastTone === 'error' ? (
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
         </div>
       )}
 
@@ -197,7 +245,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
             className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-2xs"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label
             htmlFor="update-category"
             className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium"
@@ -210,7 +258,7 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
             onChange={(e) =>
               setCategoryFilter(e.target.value as 'ALL' | UpdateCategory)
             }
-            className="px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial min-w-0 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 shadow-2xs cursor-pointer"
           >
             <option value="ALL">All Updates</option>
             {Object.entries(CATEGORY_META).map(([key, m]) => (
@@ -221,11 +269,12 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
           </select>
           {canEdit && (
             <select
+              aria-label="Filter updates by condition"
               value={conditionFilter}
               onChange={(e) =>
                 setConditionFilter(e.target.value as 'ALL' | 'FTD' | 'AD')
               }
-              className="px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 shadow-2xs cursor-pointer"
+              className="flex-1 sm:flex-initial min-w-0 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 shadow-2xs cursor-pointer"
             >
               <option value="ALL">All Conditions</option>
               <option value="FTD">FTD</option>
@@ -336,8 +385,13 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={detailDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={active.title}
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default outline-none"
           >
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4">
               <div className="space-y-1.5">
@@ -356,8 +410,10 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Close update details"
                 onClick={() => setActive(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -419,8 +475,13 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={addDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Research or Medical Update"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default outline-none"
           >
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>
@@ -432,8 +493,10 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
                 </p>
               </div>
               <button
+                type="button"
+                aria-label="Close dialog"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -590,8 +653,13 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
           className="fixed inset-0 bg-slate-900/60 dark:bg-black/70 backdrop-blur-2xs z-[60] flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={deleteDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete update confirmation"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 cursor-default outline-none"
           >
             <div className="space-y-1.5">
               <h3 className="font-semibold text-slate-900 dark:text-white">
@@ -604,14 +672,16 @@ export const UpdatesPage: React.FC<{ currentUser: CurrentUser }> = ({
             </div>
             <div className="flex items-center justify-end gap-2">
               <button
+                type="button"
                 onClick={() => setPendingDelete(null)}
-                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition"
+                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => handleDelete(pendingDelete)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white rounded-lg text-sm font-semibold transition cursor-pointer"
               >
                 Delete
               </button>

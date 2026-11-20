@@ -1,4 +1,5 @@
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { CheckCircle2, ExternalLink, FileText, X } from 'lucide-react';
 
 import type {
@@ -18,20 +19,28 @@ export function ResourceInspectorDialogs({
   categories,
   onClearInitialResource,
 }: Props) {
+  const handleClose = () => {
+    setActiveResource(null);
+    if (onClearInitialResource) onClearInitialResource();
+  };
+  const dialogRef = useDialogFocus(Boolean(activeResource), handleClose);
+
   return (
     <>
       {/* ACTIVE RESOURCE MODAL */}
       {activeResource && (
         <div
-          onClick={() => {
-            setActiveResource(null);
-            if (onClearInitialResource) onClearInitialResource();
-          }}
+          onClick={handleClose}
           className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={activeResource.title}
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors outline-none"
           >
             {/* Header */}
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-white dark:bg-slate-900">
@@ -48,10 +57,9 @@ export function ResourceInspectorDialogs({
                 </h2>
               </div>
               <button
-                onClick={() => {
-                  setActiveResource(null);
-                  if (onClearInitialResource) onClearInitialResource();
-                }}
+                type="button"
+                aria-label="Close resource"
+                onClick={handleClose}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />

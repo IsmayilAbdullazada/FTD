@@ -1,3 +1,4 @@
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { Lock, Trash2 } from 'lucide-react';
 
 import type { useDiscussionDetail } from '../hooks/useDiscussionDetail';
@@ -36,20 +37,35 @@ export function DiscussionActionDialogs({
   handleConfirmModeratorRemoveReply,
   handleToggleCloseDiscussion,
 }: Props) {
+  const closeDialogRef = useDialogFocus(showConfirmCloseModal, () => {
+    if (!isTogglingClose) setShowConfirmCloseModal(false);
+  });
+  const withdrawDialogRef = useDialogFocus(showWithdrawPostModal, () => {
+    if (!isWithdrawingPost) setShowWithdrawPostModal(false);
+  });
+  const deleteCommentDialogRef = useDialogFocus(
+    Boolean(commentToDelete),
+    () => {
+      if (deletingCommentId === null) setCommentToDelete(null);
+    },
+  );
+
   return (
     <>
       {/* MODAL: CONFIRM CLOSE DISCUSSION (Moderator) */}
       {showConfirmCloseModal && (
         <div
-          onClick={() => setShowConfirmCloseModal(false)}
+          onClick={() => !isTogglingClose && setShowConfirmCloseModal(false)}
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={closeDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Close Discussion Confirmation"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100 outline-none"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
@@ -108,11 +124,13 @@ export function DiscussionActionDialogs({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={withdrawDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Withdraw Question Confirmation"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100 outline-none"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
@@ -165,11 +183,13 @@ export function DiscussionActionDialogs({
           className="fixed inset-0 bg-slate-900/50 dark:bg-black/70 backdrop-blur-2xs z-50 flex items-center justify-center p-4 cursor-pointer"
         >
           <div
+            ref={deleteCommentDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Remove Inappropriate Reply Confirmation"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-5 sm:p-6 space-y-4 animate-in fade-in zoom-in-95 cursor-default text-slate-800 dark:text-slate-100 outline-none"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">

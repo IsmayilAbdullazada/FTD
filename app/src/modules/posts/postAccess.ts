@@ -1,7 +1,7 @@
 import { query } from '../../config/db.js';
 import { isStaffRole } from '../../lib/roles.js';
-// Callers supply fixed SQL parameter references, never request data.
-export function postAudience(viewer: `$${number}`): string {
+// Callers supply fixed SQL references, never request data.
+export function postAudience(viewer: `$${number}` | 'u.id'): string {
   return `p.condition IN (COALESCE((SELECT condition FROM users WHERE id=${viewer}),'FTD'),'BOTH')
  AND EXISTS(SELECT 1 FROM post_groups pg WHERE pg.post_id=p.id AND
  (pg.cohort_id='group-general' OR EXISTS(SELECT 1 FROM cohort_members cm WHERE cm.cohort_id=pg.cohort_id AND cm.user_id=${viewer})))`;

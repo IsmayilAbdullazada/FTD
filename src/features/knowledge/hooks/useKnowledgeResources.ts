@@ -1,5 +1,6 @@
 import { useEffectEvent } from 'react';
 import { contentApi } from '@/features/content/api/contentApi';
+import { guideApi } from '@/features/knowledge/api/guideApi';
 import { reportError } from '@/shared/lib/logger';
 import { Audience, ClinicalResource, CurrentUser } from '@/types';
 import React, { useEffect, useState } from 'react';
@@ -8,6 +9,24 @@ export interface KnowledgeBaseExplorerProps {
   initialResourceId?: string | null;
   onClearInitialResource?: () => void;
   currentUser?: CurrentUser;
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const base64 = result.includes(',') ? result.split(',')[1] : result;
+      if (!base64) {
+        reject(new Error('Could not read the selected PDF file.'));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = () =>
+      reject(new Error('Could not read the selected PDF file.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function useKnowledgeResources({
@@ -39,6 +58,8 @@ export function useKnowledgeResources({
   const [newAdditionalLinks, setNewAdditionalLinks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<'success' | 'error'>('success');
+  const [formError, setFormError] = useState<string | null>(null);
   const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
 
   const isClinician =
@@ -55,6 +76,8 @@ export function useKnowledgeResources({
       }
     } catch (err) {
       reportError('Failed to load resources:', err);
+      setToastTone('error');
+      setSuccessToast('Could not load care guides. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -96,28 +119,43 @@ export function useKnowledgeResources({
 
   const handleCreateGuide = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setFormError(null);
 
-    if (
-      !newTitle.trim() ||
-      !newSummary.trim() ||
-      !newContentBody.trim() ||
-      !newAudience ||
-      isSubmitting
-    )
-      return;
-
-    if (!newExternalUrl.trim() && !newPdfFile) {
-      setSuccessToast('Please provide an external URL or a PDF resource.');
+    if (!newTitle.trim() || !newSummary.trim() || !newContentBody.trim()) {
+      setFormError('Please fill in the title, summary, and protocol content.');
       return;
     }
 
     if (!newAudience) {
-      setSuccessToast('Please select FTD, Alzheimer’s, or Both.');
+      setFormError('Please select FTD, Alzheimer’s, or Both.');
+      return;
+    }
+
+    if (!newExternalUrl.trim() && !newPdfFile) {
+      setFormError('Please provide an external URL or upload a PDF resource.');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      let fileAttachmentUrl: string | undefined;
+      if (newPdfFile) {
+        if (!newPdfFile.name.toLowerCase().endsWith('.pdf')) {
+          setFormError('Only PDF files (.pdf) can be attached.');
+          return;
+        }
+        const fileBase64 = await readFileAsBase64(newPdfFile);
+        const extracted = await guideApi.extractPdfText({
+          fileName: newPdfFile.name,
+          fileBase64,
+        });
+        if (!extracted.pdfUrl) {
+          throw new Error('The uploaded PDF could not be stored.');
+        }
+        fileAttachmentUrl = extracted.pdfUrl;
+      }
+
       const takeawaysList = newKeyTakeaways
         .split('\n')
         .map((t) => t.trim())
@@ -144,6 +182,7 @@ export function useKnowledgeResources({
             ? takeawaysList
             : [newSummary.trim() || newTitle.trim()],
         externalUrl: newExternalUrl.trim() || undefined,
+        fileAttachmentUrl,
         additionalLinks,
         diseaseDomain: newAudience,
       });
@@ -155,15 +194,20 @@ export function useKnowledgeResources({
       setNewContentBody('');
       setNewKeyTakeaways('');
       setNewExternalUrl('');
-      setSuccessToast(`Guide "${created.title}" successfully published.`);
+      setNewAdditionalLinks('');
+      setNewPdfFile(null);
       setNewAudience('');
+      setFormError(null);
+      setToastTone('success');
+      setSuccessToast(`Guide "${created.title}" successfully published.`);
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
       reportError('Failed to create guide:', err);
-      setSuccessToast(
-        'Could not save guide. Please verify all fields and try again.',
+      setFormError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not save guide. Please verify all fields and try again.',
       );
-      setTimeout(() => setSuccessToast(null), 4000);
     } finally {
       setIsSubmitting(false);
     }
@@ -175,10 +219,12 @@ export function useKnowledgeResources({
       setResources((prev) => prev.filter((r) => r.id !== resource.id));
       setActiveResource((prev) => (prev?.id === resource.id ? null : prev));
       setPendingDelete(null);
+      setToastTone('success');
       setSuccessToast(`Guide "${resource.title}" deleted.`);
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err) {
       reportError('Failed to delete guide:', err);
+      setToastTone('error');
       setSuccessToast('Could not delete guide. Please try again.');
       setTimeout(() => setSuccessToast(null), 4000);
     }
@@ -219,6 +265,9 @@ export function useKnowledgeResources({
     setIsSubmitting,
     successToast,
     setSuccessToast,
+    toastTone,
+    formError,
+    setFormError,
     newPdfFile,
     setNewPdfFile,
     isClinician,

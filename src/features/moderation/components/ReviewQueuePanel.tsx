@@ -78,7 +78,7 @@ export function ReviewQueuePanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-200">
           Submissions to review ({queueItems.length})
         </h2>
         <button
@@ -87,7 +87,7 @@ export function ReviewQueuePanel({
           title="Refresh queue"
           disabled={loadingQueue}
           onClick={onRefresh}
-          className="min-h-11 min-w-11 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[#002D72] dark:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-h-11 min-w-11 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[#002D72] dark:text-sky-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
         >
           <RefreshCw
             aria-hidden="true"
@@ -96,7 +96,7 @@ export function ReviewQueuePanel({
         </button>
       </div>
       {loadingQueue ? (
-        <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-xs">
+        <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-sm">
           Loading submissions...
         </div>
       ) : queueItems.length === 0 ? (
@@ -104,10 +104,10 @@ export function ReviewQueuePanel({
           <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-950/50 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
             <Check className="w-5 h-5" />
           </div>
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
             No submissions waiting
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             There are no questions or replies awaiting review.
           </p>
         </div>
@@ -115,7 +115,7 @@ export function ReviewQueuePanel({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column: Post list */}
           <div className="lg:col-span-4 space-y-2">
-            <div className="space-y-2 p-1">
+            <div className="space-y-2.5 p-1">
               {queuePage.items.map((item, pageIndex) => {
                 const idx = pageIndex;
                 const isSelected = idx === selectedIndex;
@@ -123,20 +123,29 @@ export function ReviewQueuePanel({
                 return (
                   <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
                     onClick={() => handleSelectItem(idx)}
-                    className={`p-3.5 rounded-xl border text-xs cursor-pointer transition space-y-1.5 ${
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleSelectItem(idx);
+                      }
+                    }}
+                    className={`p-3.5 rounded-xl border text-sm cursor-pointer transition space-y-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                       isSelected
                         ? 'bg-blue-50/70 dark:bg-blue-950/40 border-[#002D72] dark:border-blue-500 ring-1 ring-[#002D72] dark:ring-blue-500'
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {item.author.realName}
                       </span>
                     </div>
 
-                    <span className="inline-flex rounded px-2 py-0.5 text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <span className="inline-flex rounded-md px-2 py-0.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                       {item.type === 'POST'
                         ? 'Question'
                         : item.parentCommentId
@@ -147,17 +156,17 @@ export function ReviewQueuePanel({
                       {item.title}
                     </div>
 
-                    <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px] leading-relaxed">
+                    <p className="text-slate-600 dark:text-slate-400 line-clamp-2 text-xs sm:text-sm leading-relaxed">
                       {item.rawContent}
                     </p>
 
-                    <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 dark:text-slate-500">
+                    <div className="flex items-center justify-between gap-2 pt-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
                       <span className="flex items-center gap-1.5">
                         <span>{item.author.anonymousHandle}</span>
                         <AudienceBadge condition={item.condition} />
                       </span>
                       {hasPhi && (
-                        <span className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 font-medium px-1.5 py-0.5 rounded text-[10px]">
+                        <span className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 font-medium px-2 py-0.5 rounded text-xs">
                           Personal info found
                         </span>
                       )}
@@ -177,15 +186,15 @@ export function ReviewQueuePanel({
           {activeItem && (
             <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 space-y-5 transition-colors">
               {/* Author Banner */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-750 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-750 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-sm">
                 <div>
-                  <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                  <div className="font-semibold text-slate-900 dark:text-white text-base">
                     {activeItem.author.realName}{' '}
-                    <span className="font-normal text-slate-500 dark:text-slate-400 text-xs">
+                    <span className="font-normal text-slate-500 dark:text-slate-400 text-sm">
                       (Shown as: {activeItem.author.anonymousHandle})
                     </span>
                   </div>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 flex items-center gap-2">
+                  <div className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span>
                       Phone:{' '}
                       {activeItem.author.phone ? (
@@ -212,8 +221,8 @@ export function ReviewQueuePanel({
                   </div>
                 </div>
                 {activeItem.suggestedCohort && (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                     <span className="font-medium text-slate-700 dark:text-slate-200">
                       {getFullGroupName(activeItem.suggestedCohort)}
                     </span>
@@ -222,7 +231,7 @@ export function ReviewQueuePanel({
               </div>
 
               {activeItem.type === 'COMMENT' && (
-                <div className="space-y-2 p-3.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900 text-sm">
+                <div className="space-y-2 p-4 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-900 text-sm">
                   <p className="font-semibold text-[#002D72] dark:text-sky-400">
                     {activeItem.parentCommentId
                       ? 'Review nested reply'
@@ -230,7 +239,7 @@ export function ReviewQueuePanel({
                   </p>
                   <a
                     href={`/?tab=feed&post=${encodeURIComponent(activeItem.postId || '')}`}
-                    className="font-semibold hover:underline"
+                    className="font-semibold text-base hover:underline inline-block"
                   >
                     {activeItem.title}
                   </a>
@@ -256,26 +265,26 @@ export function ReviewQueuePanel({
               )}
               {/* Original Question */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                   {activeItem.type === 'COMMENT'
                     ? 'Submitted reply'
                     : 'Original post'}
                 </label>
-                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5 text-xs">
-                  <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-750 space-y-1.5 text-sm">
+                  <div className="font-semibold text-slate-900 dark:text-white text-base">
                     {activeItem.title}
                   </div>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-sans whitespace-pre-line">
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-sans whitespace-pre-line text-sm sm:text-base">
                     {activeItem.rawContent}
                   </p>
                 </div>
 
                 {/* Personal info alert */}
                 {activeItem.phiAlerts && activeItem.phiAlerts.length > 0 && (
-                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                         <span>
                           Personal details detected (
                           {activeItem.phiAlerts.length})
@@ -283,13 +292,13 @@ export function ReviewQueuePanel({
                       </span>
                       <button
                         onClick={handleCleanPersonalInfo}
-                        className="text-xs text-[#002D72] dark:text-blue-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-sm text-[#002D72] dark:text-blue-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                       >
-                        <Sparkles className="w-3 h-3" />
+                        <Sparkles className="w-3.5 h-3.5" />
                         <span>Remove personal info</span>
                       </button>
                     </div>
-                    <ul className="text-[11px] text-amber-800 dark:text-amber-300 space-y-1">
+                    <ul className="text-xs sm:text-sm text-amber-800 dark:text-amber-300 space-y-1">
                       {activeItem.phiAlerts.map((alertItem, i) => (
                         <li key={i}>
                           • Found "{alertItem.text}" ({alertItem.type}) —{' '}
@@ -303,13 +312,13 @@ export function ReviewQueuePanel({
 
               {/* Public Text to Publish */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-sm">
                   <label className="font-semibold text-slate-700 dark:text-slate-300">
                     {activeItem.type === 'COMMENT'
                       ? 'Public reply text'
                       : 'Public post text'}
                   </label>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Community will see this text
                   </span>
                 </div>
@@ -317,7 +326,7 @@ export function ReviewQueuePanel({
                   rows={4}
                   value={sanitizedDraft}
                   onChange={(e) => setSanitizedDraft(e.target.value)}
-                  className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 leading-relaxed"
+                  className="w-full p-3.5 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 leading-relaxed"
                 />
               </div>
 
@@ -325,13 +334,13 @@ export function ReviewQueuePanel({
                 <>
                   {/* Group */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       Group
                     </label>
                     <select
                       value={selectedGroupIds[0] || cohorts[0]?.id}
                       onChange={(e) => setSelectedGroupIds([e.target.value])}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
                     >
                       {cohorts.map((cohort) => (
                         <option
@@ -347,7 +356,7 @@ export function ReviewQueuePanel({
 
                   {/* Approve-As Selector */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       Who can see this post
                     </label>
                     <div className="grid grid-cols-3 gap-2">
@@ -362,7 +371,7 @@ export function ReviewQueuePanel({
                           key={value}
                           type="button"
                           onClick={() => setApproveAudience(value)}
-                          className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                          className={`px-3 py-2.5 rounded-lg text-sm font-semibold border transition cursor-pointer ${
                             approveAudience === value
                               ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
                               : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
@@ -373,7 +382,7 @@ export function ReviewQueuePanel({
                       ))}
                     </div>
                     {approveAudience !== (activeItem.condition ?? 'FTD') && (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                      <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300">
                         Changed from the author's group (
                         {activeItem.condition ?? 'FTD'}).
                       </p>
@@ -381,10 +390,10 @@ export function ReviewQueuePanel({
                   </div>
 
                   {/* Reply Moderation Policy Toggle */}
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-750">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 pr-2">
-                        <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-750">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2 pr-2">
+                        <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                         <span>Allow everyone to reply without moderation</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -406,8 +415,8 @@ export function ReviewQueuePanel({
               {/* Existing Private Notes History */}
               {activeItem.moderatorPrivateNotes &&
                 activeItem.moderatorPrivateNotes.length > 0 && (
-                  <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold text-[#002D72] dark:text-sky-300">
+                  <div className="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-2.5">
+                    <div className="flex items-center justify-between text-sm font-semibold text-[#002D72] dark:text-sky-300 flex-wrap gap-2">
                       <span className="flex items-center gap-1.5">
                         <ShieldCheck className="w-4 h-4 text-emerald-500" />
                         <span>
@@ -415,11 +424,11 @@ export function ReviewQueuePanel({
                           {activeItem.moderatorPrivateNotes.length})
                         </span>
                       </span>
-                      <span className="text-[10px] text-slate-500 font-normal">
+                      <span className="text-xs text-slate-500 font-normal">
                         Private to author only
                       </span>
                     </div>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {activeItem.moderatorPrivateNotes.map((note) => {
                         const isFromModerator =
                           note.senderRole === 'CLINICIAN_MODERATOR' ||
@@ -432,13 +441,13 @@ export function ReviewQueuePanel({
                         return (
                           <div
                             key={note.id}
-                            className={`p-2.5 rounded-lg border text-xs space-y-1 ${
+                            className={`p-3 rounded-lg border text-sm space-y-1 ${
                               isFromModerator
                                 ? 'bg-blue-50/90 dark:bg-blue-950/50 border-blue-200 dark:border-blue-900/60'
                                 : 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/70 dark:border-amber-900/50'
                             }`}
                           >
-                            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                               <span
                                 className={`font-semibold ${
                                   isFromModerator
@@ -473,10 +482,10 @@ export function ReviewQueuePanel({
                 )}
 
               {/* Buttons */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap">
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2.5 flex-wrap">
                 <button
                   onClick={handlePublish}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Check className="w-4 h-4" />
                   <span>Publish</span>
@@ -486,7 +495,7 @@ export function ReviewQueuePanel({
                   <button
                     type="button"
                     onClick={onOpenPrivateReply}
-                    className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                    className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50 text-[#002D72] dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                   >
                     <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
                     <span>Reply Privately</span>
@@ -495,7 +504,7 @@ export function ReviewQueuePanel({
 
                 <button
                   onClick={onOpenReject}
-                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                   <span>Reject</span>

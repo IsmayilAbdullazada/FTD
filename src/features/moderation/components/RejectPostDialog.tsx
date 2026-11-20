@@ -23,7 +23,9 @@ export function RejectPostDialog({
   onRejectionTextChange: setCustomRejectionText,
   onConfirm: handleConfirmReject,
 }: RejectPostDialogProps) {
-  const dialogRef = useDialogFocus(showRejectModal && Boolean(activeItem));
+  const dialogRef = useDialogFocus(showRejectModal && Boolean(activeItem), () =>
+    setShowRejectModal(false),
+  );
   return (
     <>
       {/* MODAL: REJECT POST */}

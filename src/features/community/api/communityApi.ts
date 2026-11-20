@@ -37,8 +37,9 @@ export const communityApi = {
 
   // Group Members Management for Moderator
   getGroupMembers: async (groupId?: string): Promise<GroupMember[]> => {
+    const normalized = groupId && groupId !== 'all' ? groupId : undefined;
     return safeFetchJson(
-      `/api/v1/cohorts/members${groupId ? `?groupId=${groupId}` : ''}`,
+      `/api/v1/cohorts/members${normalized ? `?groupId=${encodeURIComponent(normalized)}` : ''}`,
       undefined,
     );
   },

@@ -1,3 +1,4 @@
+import { notifyPublishedPost } from '../../services/notifications.js';
 import type { PoolClient } from 'pg';
 import { HttpError } from '../../lib/http.js';
 export async function publishPendingPost(
@@ -21,5 +22,6 @@ export async function publishPendingPost(
     "UPDATE posts SET status='APPROVED',moderated_by=$1,moderated_at=NOW(),updated_at=NOW() WHERE id=$2 RETURNING status",
     [moderatorId, postId],
   );
+  await notifyPublishedPost(client, postId, moderatorId);
   return updated.rows[0].status as string;
 }

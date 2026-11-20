@@ -27,7 +27,11 @@ export function CreateCohortDialog({
   submitting: isSubmittingGroup,
   onSubmit: handleCreateGroup,
 }: CreateCohortDialogProps) {
-  const dialogRef = useDialogFocus(showCreateGroupModal);
+  const dialogRef = useDialogFocus(showCreateGroupModal, () => {
+    if (!isSubmittingGroup) {
+      setShowCreateGroupModal(false);
+    }
+  });
   return (
     <>
       {/* MODAL: CREATE GROUP */}

@@ -29,7 +29,9 @@ export function GuideInspectorDialog({
   onToggleGuide: handleToggleGuide,
   onRequestDelete: handleRequestDeleteGuide,
 }: GuideInspectorDialogProps) {
-  const dialogRef = useDialogFocus(Boolean(inspectGuideModal));
+  const dialogRef = useDialogFocus(Boolean(inspectGuideModal), () =>
+    setInspectGuideModal(null),
+  );
   return (
     <>
       {/* MODAL: INSPECT / VIEW GUIDE FILE */}
@@ -84,6 +86,7 @@ export function GuideInspectorDialog({
 
               <button
                 type="button"
+                aria-label="Close guide inspector"
                 onClick={() => setInspectGuideModal(null)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
@@ -112,7 +115,7 @@ export function GuideInspectorDialog({
                 <span>•</span>
                 <span>
                   Uploaded by{' '}
-                  {inspectGuideModal.uploadedByName || 'Dr. Seema Gulyani'}
+                  {inspectGuideModal.uploadedByName || 'Clinical Moderator'}
                 </span>
                 <span>•</span>
                 <span>
@@ -207,8 +210,8 @@ export function GuideInspectorDialog({
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 {inspectGuideModal.isActive
-                  ? "✓ Dr. Seema's Assistant is currently using this document for caregiver queries"
-                  : '⚠ This document is paused and not currently used by the chatbot'}
+                  ? 'Care Companion is currently using this document for caregiver queries'
+                  : 'This document is paused and not currently used by Care Companion'}
               </span>
               <button
                 type="button"

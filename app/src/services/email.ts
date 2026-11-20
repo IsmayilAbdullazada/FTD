@@ -11,6 +11,7 @@ export async function sendEmail(message: {
   subject: string;
   text: string;
   html: string;
+  messageId?: string;
 }) {
   const previewToken = crypto.randomBytes(24).toString('base64url');
   const inserted = await query(
@@ -27,14 +28,13 @@ export async function sendEmail(message: {
   const id = inserted.rows[0].id;
   let emailSent = false;
   let error: string | undefined;
-  if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
+  if (env.SMTP_HOST) {
     try {
       const transport = nodemailer.createTransport({
         host: env.SMTP_HOST,
         port: env.SMTP_PORT,
         secure: env.SMTP_PORT === 465,
         requireTLS: true,
-        auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
         connectionTimeout: 5000,
         greetingTimeout: 5000,
         socketTimeout: 5000,
@@ -53,6 +53,13 @@ export async function sendEmail(message: {
         [id, error],
       );
     }
+  }
+  if (!env.SMTP_HOST) {
+    error = 'SMTP_HOST is not configured';
+    await query(
+      "UPDATE email_outbox SET delivery_status='FAILED',delivery_error=$2 WHERE id=$1",
+      [id, error],
+    );
   }
   return {
     emailSent,

@@ -30,6 +30,11 @@ export function PrivateReplyDialog({
 }: PrivateReplyDialogProps) {
   const dialogRef = useDialogFocus(
     showPrivateReplyModal && Boolean(activeItem),
+    () => {
+      if (!isSendingPrivateReply) {
+        setShowPrivateReplyModal(false);
+      }
+    },
   );
   return (
     <>
@@ -56,10 +61,10 @@ export function PrivateReplyDialog({
                   <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white">
+                  <h3 className="font-semibold text-base text-slate-900 dark:text-white">
                     Reply Privately to Author
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                     To {activeItem.author.realName} (
                     {activeItem.author.anonymousHandle})
                   </p>
@@ -70,18 +75,18 @@ export function PrivateReplyDialog({
                 aria-label="Close private reply dialog"
                 onClick={() => setShowPrivateReplyModal(false)}
                 disabled={isSendingPrivateReply}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/50 rounded-xl text-xs text-blue-900 dark:text-blue-200 space-y-1">
+            <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/50 rounded-xl text-sm text-blue-900 dark:text-blue-200 space-y-1">
               <div className="font-semibold flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Confidential Clinical Communication</span>
               </div>
-              <p className="text-[11.5px] leading-relaxed text-blue-800 dark:text-blue-300">
+              <p className="text-xs sm:text-sm leading-relaxed text-blue-800 dark:text-blue-300">
                 This message is delivered directly to the author's post card in
                 their feed with an unmistakable private badge. Only the author
                 and clinical moderators can view this conversation.
@@ -89,49 +94,49 @@ export function PrivateReplyDialog({
             </div>
 
             {/* Post Snippet */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-750 text-xs space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-750 text-sm space-y-1">
+              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
                 Regarding Post
               </span>
               <div className="font-semibold text-slate-900 dark:text-white line-clamp-1">
                 {activeItem.title}
               </div>
-              <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
+              <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-xs sm:text-sm">
                 {activeItem.rawContent}
               </p>
             </div>
 
             {/* Action selector */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Queue Status After Sending
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setPrivateReplyAction('KEEP_PENDING')}
-                  className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer ${
+                  className={`p-3 rounded-xl border text-left text-sm transition cursor-pointer ${
                     privateReplyAction === 'KEEP_PENDING'
                       ? 'border-[#002D72] dark:border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-[#002D72] dark:text-blue-300 font-semibold ring-1 ring-[#002D72] dark:ring-blue-500'
                       : 'border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
                   }`}
                 >
                   <div className="font-semibold">Keep in Review</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                     Hold pending while awaiting clarification
                   </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPrivateReplyAction('PUBLISH')}
-                  className={`p-2.5 rounded-xl border text-left text-xs transition cursor-pointer ${
+                  className={`p-3 rounded-xl border text-left text-sm transition cursor-pointer ${
                     privateReplyAction === 'PUBLISH'
                       ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-semibold ring-1 ring-emerald-600 dark:ring-emerald-500'
                       : 'border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
                   }`}
                 >
                   <div className="font-semibold">Publish Post Now</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                     Approve for community & send private guidance
                   </div>
                 </button>
@@ -140,7 +145,7 @@ export function PrivateReplyDialog({
 
             {/* Note input */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Private Message to Care Partner{' '}
                 <span className="text-rose-500">*</span>
               </label>
@@ -149,7 +154,7 @@ export function PrivateReplyDialog({
                 value={privateReplyMessage}
                 onChange={(e) => setPrivateReplyMessage(e.target.value)}
                 placeholder="Write your private message or clinical guidance here. The care partner will be able to read this on their post and reply back directly..."
-                className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 leading-relaxed"
+                className="w-full p-3 text-base sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 leading-relaxed"
               />
             </div>
 
@@ -159,7 +164,7 @@ export function PrivateReplyDialog({
                 type="button"
                 onClick={() => setShowPrivateReplyModal(false)}
                 disabled={isSendingPrivateReply}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -167,7 +172,7 @@ export function PrivateReplyDialog({
                 type="button"
                 onClick={handleSendPrivateReply}
                 disabled={!privateReplyMessage.trim() || isSendingPrivateReply}
-                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSendingPrivateReply ? (
                   <>

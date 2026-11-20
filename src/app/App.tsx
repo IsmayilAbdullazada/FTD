@@ -57,6 +57,7 @@ function AppContent() {
     allPersonas,
     cohorts,
     activeTab,
+    clinicianTab,
     pendingTriageCount,
     pendingQueue,
     notifications,
@@ -201,6 +202,8 @@ function AppContent() {
                 initialQueue={initialQueue}
                 currentUser={currentUser}
                 cohorts={cohorts}
+                activeTab={clinicianTab}
+                onTabChange={actions.setClinicianTab}
                 onQueueUpdated={handleQueueUpdated}
                 onOpenAudit={actions.openAudit}
                 onOpenInvite={actions.openInvite}
@@ -256,6 +259,7 @@ function AppContent() {
           onToggle={actions.toggleAssistant}
           onClose={actions.closeAssistant}
           onCreateDiscussion={actions.createDiscussion}
+          onOpenDiscussion={handleOpenDiscussion}
         />
       </Suspense>
 
@@ -277,6 +281,8 @@ function AppContent() {
         onQueueUpdated={handleQueueUpdated}
         onNavigateToConsole={actions.navigateToConsole}
         onNavigateToFeed={actions.navigateToFeed}
+        onOpenDiscussion={handleOpenDiscussion}
+        onOpenMyPosts={actions.openMyPosts}
       />
 
       {/* Inactivity detection & Session Timeout with 60s countdown warning */}

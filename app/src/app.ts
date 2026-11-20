@@ -29,6 +29,7 @@ import { authenticateToken, requireStaff } from './middleware/auth.js';
 import { HttpError } from './lib/http.js';
 import { isAllowedOrigin } from './config/origins.js';
 import { protectCookieSession } from './middleware/csrf.js';
+import policyRoutes from './modules/policies/policies.routes.js';
 
 export const app = express();
 const repositoryRoot = path.resolve(
@@ -111,6 +112,7 @@ const health = async (_req: express.Request, res: express.Response) => {
 };
 app.get('/api/v1/health', health);
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/policies', policyRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/posts', postRoutes);
 app.use('/api/v1/chat/private', messageRoutes);

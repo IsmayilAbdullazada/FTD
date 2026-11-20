@@ -27,6 +27,7 @@ import {
   type DiscussionSearchItem,
 } from '../lib/discussionSearch';
 import { SimilarDiscussionsBox } from './SimilarDiscussionsBox';
+import { GuidelinesReminder } from '@/features/policies';
 
 interface PostComposerProps {
   currentUser: CurrentUser;
@@ -477,6 +478,9 @@ export const PostComposer: React.FC<PostComposerProps> = ({
           ) : (
             <></>
           )}
+
+          {/* Community Guidelines reminder */}
+          <GuidelinesReminder />
 
           {/* Clear, well-placed action button */}
           <div className="pt-1">

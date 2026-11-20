@@ -100,7 +100,7 @@ before(async () => {
           ? 'SYSTEM_ADMIN'
           : 'CARE_PARTNER';
     await pool.query(
-      `INSERT INTO users(id,email,password_hash,role,first_name,last_name,anonymous_handle,badge_label,condition,is_active) VALUES($1,$1||'@example.test','disabled',$2,'Sensitive Name','Fixture',$1,'Fixture',$3,$4)`,
+      `INSERT INTO users(id,email,password_hash,role,first_name,last_name,badge_label,condition,is_active) VALUES($1,$1||'@example.test','disabled',$2,'Sensitive Name','Fixture','Fixture',$3,$4)`,
       [
         id,
         role,

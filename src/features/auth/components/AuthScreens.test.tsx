@@ -9,7 +9,13 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { AuthScreens } from './AuthScreens';
 import { authApi } from '../api/authApi';
 vi.mock('../api/authApi', () => ({
-  authApi: { login: vi.fn(), forgotPassword: vi.fn(), resetPassword: vi.fn() },
+  authApi: {
+    login: vi.fn(),
+    forgotPassword: vi.fn(),
+    resetPassword: vi.fn(),
+    getInvitation: vi.fn(),
+    registerWithInvite: vi.fn(),
+  },
 }));
 afterEach(() => {
   cleanup();
@@ -128,4 +134,52 @@ test('an expired link displays the error and offers a new link', async () => {
   ).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Request a new link' }));
   expect(screen.getByRole('button', { name: 'Send reset link' })).toBeTruthy();
+});
+
+test('registration lets the server assign the stored short tag without a client-generated handle', async () => {
+  vi.mocked(authApi.getInvitation).mockResolvedValue({
+    valid: true,
+    invitation: {
+      email: 'care@example.test',
+      firstName: 'Care',
+      lastName: 'Partner',
+      condition: 'FTD',
+      primaryCohortSlug: 'general-community',
+    },
+  });
+  const user = {
+    id: 'user-care-internal-uuid',
+    email: 'care@example.test',
+    role: 'CARE_PARTNER' as const,
+    firstName: 'Care',
+    lastName: 'Partner',
+    anonymousHandle: 'User-123',
+    badgeLabel: 'Care Partner',
+    avatarColor: '#002D72',
+    condition: 'FTD' as const,
+  };
+  vi.mocked(authApi.registerWithInvite).mockResolvedValue({
+    success: true,
+    user,
+  });
+  const onLoginSuccess = vi.fn();
+  render(
+    <AuthScreens
+      initialMode="register"
+      initialToken="fixture-invitation-token"
+      onLoginSuccess={onLoginSuccess}
+    />,
+  );
+  expect(
+    await screen.findByText('You will receive a tag such as User-123'),
+  ).toBeTruthy();
+  expect(screen.queryByLabelText('Community handle')).toBeNull();
+  fireEvent.change(screen.getByPlaceholderText('At least 8 characters'), {
+    target: { value: 'Registration-fixture-password!' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Join Community' }));
+  await waitFor(() => expect(onLoginSuccess).toHaveBeenCalledWith(user));
+  const payload = vi.mocked(authApi.registerWithInvite).mock.calls[0][0];
+  expect(payload).not.toHaveProperty('anonymousHandle');
+  expect(payload.token).toBe('fixture-invitation-token');
 });

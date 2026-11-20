@@ -37,7 +37,7 @@ test('SMTP delivers invitations and recovery with only HOST, PORT and FROM over 
     }
     const userId = email.split('@')[0];
     await pool.query(
-      "INSERT INTO users(id,email,password_hash,role,first_name,last_name,anonymous_handle,badge_label) VALUES($1,$2,'disabled','CARE_PARTNER','Fixture','Reader',$1,'Fixture')",
+      "INSERT INTO users(id,email,password_hash,role,first_name,last_name,badge_label) VALUES($1,$2,'disabled','CARE_PARTNER','Fixture','Reader','Fixture')",
       [userId, email],
     );
     await transaction((client) =>

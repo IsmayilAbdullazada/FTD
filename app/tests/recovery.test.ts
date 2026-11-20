@@ -84,7 +84,7 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
   }
   try {
     await pool.query(
-      "INSERT INTO users(id,email,password_hash,role,first_name,last_name,anonymous_handle,badge_label) VALUES($1,$2,$3,'CARE_PARTNER','Recovery','Fixture',$1,'Care Partner')",
+      "INSERT INTO users(id,email,password_hash,role,first_name,last_name,badge_label) VALUES($1,$2,$3,'CARE_PARTNER','Recovery','Fixture','Care Partner')",
       [id, email, await bcrypt.hash('Initial-fixture-password!', 12)],
     );
     const login = await request('login', {

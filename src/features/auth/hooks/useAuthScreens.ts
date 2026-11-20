@@ -54,9 +54,6 @@ export function useAuthScreens({
   } | null>(null);
   const [loadingInvite, setLoadingInvite] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
-  const [registerHandle, setRegisterHandle] = useState(
-    () => `User-${crypto.randomUUID().replaceAll('-', '')}`,
-  );
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -95,10 +92,6 @@ export function useAuthScreens({
     try {
       const res = await authApi.getInvitation(token);
       setInviteData(res.invitation);
-      // Auto-assign random anonymous handle
-      setRegisterHandle(
-        (prev) => prev || `User-${crypto.randomUUID().replaceAll('-', '')}`,
-      );
     } catch (err: unknown) {
       reportError('Failed to load invitation:', err);
       setRegisterError(
@@ -236,7 +229,6 @@ export function useAuthScreens({
       const res = await authApi.registerWithInvite({
         token: inviteToken.trim(),
         password: registerPassword,
-        anonymousHandle: registerHandle.trim() || undefined,
         firstName: inviteData?.firstName,
         lastName: inviteData?.lastName,
       });
@@ -247,8 +239,6 @@ export function useAuthScreens({
       onLoginSuccess(res.user);
     } catch (err: unknown) {
       reportError('Registration failed:', err);
-      if (err instanceof Error && 'status' in err && err.status === 409)
-        setRegisterHandle(`User-${crypto.randomUUID().replaceAll('-', '')}`);
       setRegisterError(
         (err instanceof Error ? err.message : undefined) ||
           'Could not complete registration. Token may be invalid.',
@@ -298,8 +288,6 @@ export function useAuthScreens({
     setLoadingInvite,
     registerPassword,
     setRegisterPassword,
-    registerHandle,
-    setRegisterHandle,
     registerError,
     setRegisterError,
     isRegistering,

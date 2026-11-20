@@ -11,8 +11,6 @@ export function RegistrationPanel() {
     loadingInvite,
     registerPassword,
     setRegisterPassword,
-    registerHandle,
-    setRegisterHandle,
     registerError,
     setRegisterError,
     isRegistering,
@@ -80,22 +78,15 @@ export function RegistrationPanel() {
 
           {inviteData && (
             <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
-              {/* Automatically assigned random anonymous handle */}
+              {/* The database assigns a unique, neutral public tag during registration */}
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    Anonymous username
+                    Your anonymous user tag
                   </div>
                   <div className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                    <input
-                      aria-label="Community handle"
-                      value={registerHandle}
-                      onChange={(event) =>
-                        setRegisterHandle(event.target.value)
-                      }
-                      maxLength={40}
-                    />
+                    <span>You will receive a tag such as User-123</span>
                   </div>
                 </div>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">

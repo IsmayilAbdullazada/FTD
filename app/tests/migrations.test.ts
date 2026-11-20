@@ -24,8 +24,8 @@ test('corrective upgrade revokes legacy bcryptjs credentials and sessions withou
     ];
     for (const [id, hash] of rows) {
       await client.query(
-        `INSERT INTO users(id,email,password_hash,role,first_name,last_name,anonymous_handle,badge_label,session_version)
-        VALUES($1,$1||'@example.test',$2,'CARE_PARTNER','Upgrade','Fixture',$1,'Care Partner',7)`,
+        `INSERT INTO users(id,email,password_hash,role,first_name,last_name,badge_label,session_version)
+        VALUES($1,$1||'@example.test',$2,'CARE_PARTNER','Upgrade','Fixture','Care Partner',7)`,
         [id, hash],
       );
     }

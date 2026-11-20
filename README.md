@@ -140,6 +140,10 @@ Replace the example email before running this statement. Configure SMTP, then us
 
 New care partners register through a staff-issued invitation. Password recovery sends one single-use link that expires after 20 minutes. Only a SHA-256 hash of its 32-byte random token is stored. New email links carry the token in a URL fragment so it is not sent to web-server access logs; the frontend removes it from the address bar after reading it. A successful reset revokes existing sessions and returns the user to sign-in; it does not sign them in automatically. Email-based recovery does not protect against mailbox compromise. Standalone private chat and database-admin endpoints are API-only; per-post private dialogue has a frontend interface.
 
+Care partners receive a public tag in the `User-123` format when their account is created. The tag is stored in `users.anonymous_handle`, with a database uniqueness constraint and database-side allocation; the browser does not choose it. Internal account IDs continue to identify sessions, permissions, posts, and messages. Public tags never encode a diagnosis. Staff can retain their name-based moderator handles.
+
+Migration `009_short_anonymous_handles` preserves existing valid three-digit tags and assigns new neutral tags to long or disease-coded handles. Existing posts and account relationships keep their internal IDs. The initial range is `User-100` through `User-999` (900 unique tags); inactive accounts retain their tags. Registration reports a clear temporary-unavailability response if the range is full, so expand the namespace with a future migration before that limit is reached.
+
 ## Development commands
 
 | Command                                            | Action                                                                                                           |
@@ -211,7 +215,7 @@ Posts, moderation queues, and private messages accept `page` and `pageSize`. Def
 
 ## Email notifications
 
-Primary account and community actions create in-app notifications and durable email jobs in the same database transaction. Activity emails use a shared, readable HTML and plain-text template, with a clear subject and a link back to the application. Discussion titles, post/reply text, private messages, moderation feedback, names, and condition labels are excluded from activity emails; those details stay behind sign-in.
+Primary account and community actions create in-app notifications and durable email jobs in the same database transaction. Activity emails use a shared, readable HTML and plain-text template, with a clear subject and a link back to the application. HTML messages use transparent page/text backgrounds and light/dark color rules to blend into mail clients without a fixed white card. Discussion titles, post/reply text, private messages, moderation feedback, names, and condition labels are excluded from activity emails; those details stay behind sign-in.
 
 | Event                                                                                        | Who is notified                                                                                                                                                                                                                             |
 | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -231,7 +235,7 @@ The API checks the activity queue every five seconds, claiming up to 20 jobs and
 
 Configure `SMTP_HOST`, `SMTP_PORT`, and `SMTP_FROM` and keep the API process running. Queue status is stored in `notification_email_jobs`; `attempts`, `completed_at`, `skipped_at`, and the sanitized `last_error` distinguish delivery outcomes. Check jobs with five attempts and no completion when monitoring mail failures. `email_outbox` records delivery status and recipient metadata without retaining message bodies.
 
-Apply migration `008_activity_email_notifications` before starting the updated API, and deploy the matching frontend so email links can open the notification inbox. Review the [activity definitions](app/src/services/activityDefinitions.ts) when changing notification wording or adding an event.
+Apply pending migrations before starting the updated API, including `008_activity_email_notifications` for the delivery queue and `009_short_anonymous_handles` for public tags. Deploy the matching frontend so email links open the notification inbox and registration uses server-assigned tags. Review the [activity definitions](app/src/services/activityDefinitions.ts) when changing notification wording or adding an event.
 
 ## Database and file storage
 

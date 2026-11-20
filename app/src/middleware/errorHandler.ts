@@ -48,9 +48,11 @@ export const errorHandler: ErrorRequestHandler = (
       ? 400
       : error instanceof HttpError
         ? error.status
-        : e?.code === '23505'
-          ? 409
-          : (parserStatus ?? 500);
+        : e?.code === 'P1001'
+          ? 503
+          : e?.code === '23505'
+            ? 409
+            : (parserStatus ?? 500);
   logger.error('HTTP request failed', error, {
     requestId: res.locals.requestId,
     method: req.method,
@@ -61,12 +63,14 @@ export const errorHandler: ErrorRequestHandler = (
       ? error.issues[0]?.message
       : error instanceof HttpError
         ? error.message
-        : status === 409
-          ? 'A record with that identifier already exists'
-          : status === 413
-            ? 'Request body is too large'
-            : status === 400
-              ? 'Malformed request body'
-              : 'Internal Server Error';
+        : e?.code === 'P1001'
+          ? 'Registration is temporarily unavailable. Please contact your care team.'
+          : status === 409
+            ? 'A record with that identifier already exists'
+            : status === 413
+              ? 'Request body is too large'
+              : status === 400
+                ? 'Malformed request body'
+                : 'Internal Server Error';
   res.status(status).json({ error: message, requestId: res.locals.requestId });
 };

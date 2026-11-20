@@ -105,7 +105,6 @@ export const authApi = {
   registerWithInvite(payload: {
     token: string;
     password?: string;
-    anonymousHandle?: string;
     firstName?: string;
     lastName?: string;
     phoneNumber?: string;

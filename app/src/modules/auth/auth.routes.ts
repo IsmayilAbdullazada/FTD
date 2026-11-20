@@ -186,7 +186,6 @@ router.post(
       .object({
         token: z.string().min(20),
         password: z.string().min(8).max(128),
-        anonymousHandle: z.string().trim().min(3).max(40),
         firstName: z.string().trim().optional(),
         lastName: z.string().trim().optional(),
         phoneNumber: z.string().trim().optional(),
@@ -209,7 +208,7 @@ router.post(
       const id = `user-care-${crypto.randomUUID()}`;
       const inserted = await client.query(
         `INSERT INTO users(id,email,password_hash,role,first_name,last_name,phone_number,clinic_patient_id,condition,anonymous_handle,avatar_color,badge_label)
-       VALUES($1,$2,$3,'CARE_PARTNER',$4,$5,$6,$7,$8,$9,'#1E40AF','Care Partner') RETURNING *`,
+       VALUES($1,$2,$3,'CARE_PARTNER',$4,$5,$6,$7,$8,public.allocate_anonymous_handle(),'#1E40AF','Care Partner') RETURNING *`,
         [
           id,
           invite.email,
@@ -219,7 +218,6 @@ router.post(
           input.phoneNumber || invite.phone_number,
           invite.clinic_patient_id,
           invite.condition,
-          input.anonymousHandle,
         ],
       );
       await client.query(

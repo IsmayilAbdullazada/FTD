@@ -27,3 +27,22 @@ test('email templates provide readable text, escaped HTML, a clear action and no
     }),
   );
 });
+
+test('emails blend into the client background and include dark-mode fallbacks', () => {
+  const email = composeEmail({
+    subject: 'Theme fixture',
+    paragraphs: ['Readable body text.'],
+    action: { label: 'Open', url: 'https://example.test/' },
+  });
+  assert.match(email.html, /<meta name="color-scheme" content="light dark">/);
+  assert.ok(email.html.includes('@media (prefers-color-scheme: dark)'));
+  assert.ok(email.html.includes('[data-ogsc]'));
+  assert.match(email.html, /<body[^>]+background-color:transparent/);
+  assert.match(email.html, /<main[^>]+background-color:transparent/);
+  assert.doesNotMatch(
+    email.html,
+    /<(?:body|main)[^>]+background(?:-color)?:#(?:fff|f8fafc)/i,
+  );
+  assert.doesNotMatch(email.html, /<p[^>]+background/i);
+  assert.match(email.html, /background-color:#002d72;color:#ffffff/);
+});

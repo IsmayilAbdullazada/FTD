@@ -11,24 +11,6 @@ export interface KnowledgeBaseExplorerProps {
   currentUser?: CurrentUser;
 }
 
-function readFileAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      if (!base64) {
-        reject(new Error('Could not read the selected PDF file.'));
-        return;
-      }
-      resolve(base64);
-    };
-    reader.onerror = () =>
-      reject(new Error('Could not read the selected PDF file.'));
-    reader.readAsDataURL(file);
-  });
-}
-
 export function useKnowledgeResources({
   initialResourceId,
   currentUser,
@@ -145,11 +127,7 @@ export function useKnowledgeResources({
           setFormError('Only PDF files (.pdf) can be attached.');
           return;
         }
-        const fileBase64 = await readFileAsBase64(newPdfFile);
-        const extracted = await guideApi.extractPdfText({
-          fileName: newPdfFile.name,
-          fileBase64,
-        });
+        const extracted = await guideApi.extractPdfText(newPdfFile);
         if (!extracted.pdfUrl) {
           throw new Error('The uploaded PDF could not be stored.');
         }

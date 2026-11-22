@@ -22,7 +22,8 @@ import resourceRoutes from './modules/resources/resources.routes.js';
 import moderationRoutes from './modules/moderation/moderation.routes.js';
 import contentRoutes from './modules/content/content.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
-import guideRoutes, { extractPdf } from './modules/guides/guides.routes.js';
+import guideRoutes from './modules/guides/guides.routes.js';
+import { parsePdfUpload, extractPdf } from './modules/guides/pdfUpload.js';
 import knowledgeRoutes from './modules/knowledge/knowledge.routes.js';
 import deflectionRoutes from './modules/knowledge/deflection.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
@@ -87,7 +88,7 @@ app.post(
   '/api/v1/chatbot/extract-pdf',
   authenticateToken,
   requireStaff,
-  express.json({ limit: '18mb' }),
+  parsePdfUpload,
   extractPdf,
 );
 app.use(express.json({ limit: '1mb' }));

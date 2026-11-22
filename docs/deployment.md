@@ -64,3 +64,50 @@ From the source checkout, run `node scripts/check-deployment.mjs https://your-do
 Test deployed login/logout, invitation → enrollment, recovery → login, submission → private conversation → moderation → approved reply, resource/PDF access, audience isolation, and notifications using test-only accounts on desktop and mobile. Send an authorized test email and verify real delivery. Confirm operational policy/support/retention expectations with the service owner before opening enrollment.
 
 For rollback, preserve the failed release and logs, assess schema compatibility, then select the previous compatible release and restart. A release whose migrations do not match the database will deliberately refuse startup. Do not restore an old database casually: it would discard newer user data. Keep versioned artifacts and tested database/upload backups as separate recovery mechanisms.
+
+## Apache with ModSecurity
+
+If Apache fronts this application, proxy both `/api/` and `/uploads/guides/` to
+the backend and keep uploaded files outside public static aliases. Allow a total
+request body of at least 13,107,200 bytes (12.5 MiB) on the PDF upload route; the
+backend enforces the smaller 12 MiB file limit. Check the effective Apache
+`LimitRequestBody`, `SecRequestBodyLimit`, and any upstream proxy limits. Retain
+ModSecurity's normal non-file body limit and request inspection rules. Configure
+the API method policy to permit `GET HEAD POST OPTIONS PUT PATCH DELETE`; the
+stock CRS policy blocks `PUT`/`PATCH`/`DELETE` with rule 911100. Scope this policy
+to the application API where your server supports per-location settings, and
+keep unrelated hosts and locations under their existing policies.
+
+Deploy the frontend and backend from this same release and install backend
+production dependencies with `npm ci --omit=dev --workspaces=false`. PDF extraction
+now requires multipart instead of base64 JSON, so already-open older browser
+tabs must refresh. No database migration is added for this transport change.
+Restart the backend and follow the [Apache PDF verification steps](qa/multipart-uploads.md)
+with a staff test account. Do not raise global WAF limits or disable ModSecurity
+just to accommodate PDF data encoded as JSON.
+
+### When Apache and nginx are both in the request path
+
+Keep your existing proxy order. For a chain such as browser → Apache → nginx →
+Node, both proxies must forward `/api/` and `/uploads/guides/` correctly, and both
+must permit the upload request size. The nginx template's `client_max_body_size
+18m` already exceeds the 12 MiB file limit; Apache's effective total-body limits
+must also allow multipart overhead. Keep the upload directory private.
+
+Set `TRUST_PROXY_HOPS` to the verified number of trusted proxies between the
+client and Node (`2` for the exact two-proxy chain above, `1` if only one actually
+proxies API traffic). Do not infer this value just from installed services. Block
+direct access to Node and inner proxy listeners so clients cannot bypass that
+chain or supply trusted forwarding headers themselves.
+
+The TLS-terminating proxy must set the original HTTPS scheme and client address;
+the inner proxy must preserve those trusted values. If Apache terminates HTTPS
+and forwards to nginx over HTTP, blindly using nginx's `$scheme` as
+`X-Forwarded-Proto` changes it to `http`. Adapt the template for that topology
+using only headers from the trusted outer proxy. Keep `APP_URL` and `CORS_ORIGIN`
+set to the public HTTPS origin. Verify secure login cookies and PDF requests
+through the public origin, rather than testing only the inner proxy.
+
+Validate each changed configuration (`nginx -t` and `apachectl configtest`, or
+your distribution's equivalent) before reloading that service. Inspect both
+proxies' logs when an upload fails: an upstream rejection may never reach Node.

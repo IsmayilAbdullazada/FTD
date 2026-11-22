@@ -287,28 +287,10 @@ export function useGuideManagement({
       setUploadPdfPreviewUrl(null);
       setIsExtractingPdf(true);
       setExtractedPdfStats(null);
-      const reader = new FileReader();
-      reader.onload = async (e) => {
+      setUploadContent('');
+      void (async () => {
         try {
-          const arrayBuffer = e.target?.result as ArrayBuffer;
-          const bytes = new Uint8Array(arrayBuffer);
-          let binary = '';
-          const len = bytes.byteLength;
-          const chunkSize = 8192;
-          for (let i = 0; i < len; i += chunkSize) {
-            const sub = bytes.subarray(i, Math.min(i + chunkSize, len));
-            binary += String.fromCharCode.apply(
-              null,
-              sub as unknown as number[],
-            );
-          }
-          const base64 = btoa(binary);
-
-          const result = await guideApi.extractPdfText({
-            fileName: file.name,
-            fileBase64: base64,
-          });
-
+          const result = await guideApi.extractPdfText(file);
           // Text and pages returned cleanly from server
           setUploadContent(result.text);
           setUploadPages(result.pages || []);
@@ -334,19 +316,15 @@ export function useGuideManagement({
         } catch (err) {
           reportError('PDF extraction failed:', err);
           setActionSuccessNotice(
-            'Failed to extract PDF text. Please check the file.',
+            err instanceof Error
+              ? err.message
+              : 'Could not upload the PDF. Please try again.',
           );
           setTimeout(() => setActionSuccessNotice(null), 3500);
         } finally {
           setIsExtractingPdf(false);
         }
-      };
-      reader.onerror = () => {
-        setIsExtractingPdf(false);
-        setActionSuccessNotice('Could not read PDF file.');
-        setTimeout(() => setActionSuccessNotice(null), 3500);
-      };
-      reader.readAsArrayBuffer(file);
+      })();
     } else {
       setIsExtractingPdf(false);
       setExtractedPdfStats(null);
@@ -389,6 +367,8 @@ export function useGuideManagement({
     setIsUploadingGuide(true);
     try {
       const isApproved = statusToSet === 'APPROVED';
+      // PDF text is read-only here; save its protected server reference instead.
+      const useStoredPdf = uploadPdfPreviewUrl?.startsWith('/uploads/guides/');
       const totalChunksCalc = uploadPages.reduce(
         (acc, p) => acc + p.chunkCount,
         0,
@@ -399,8 +379,8 @@ export function useGuideManagement({
           title: uploadTitle.trim(),
           condition: uploadCondition,
           topicTag: uploadTopicTag.trim() || undefined,
-          content: finalContent,
-          pages: uploadPages,
+          content: useStoredPdf ? undefined : finalContent,
+          pages: useStoredPdf ? undefined : uploadPages,
           totalChunks: totalChunksCalc,
           status: statusToSet,
           pdfUrl: uploadPdfPreviewUrl || undefined,
@@ -418,8 +398,8 @@ export function useGuideManagement({
           fileName:
             uploadFileName.trim() ||
             `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
-          content: finalContent,
-          pages: uploadPages,
+          content: useStoredPdf ? undefined : finalContent,
+          pages: useStoredPdf ? undefined : uploadPages,
           totalChunks: totalChunksCalc,
           status: statusToSet,
           pdfUrl: uploadPdfPreviewUrl || undefined,

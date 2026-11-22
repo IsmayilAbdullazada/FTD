@@ -50,6 +50,7 @@ test('release package includes complete runtime, checksums and revision; exclude
       'config/ftdcare.env.example': 'example',
       'config/ftdcare.service': 'service',
       'docs/deployment.md': 'docs',
+      'docs/qa/multipart-uploads.md': 'PDF proxy verification',
       'config/production.env': 'SECRET',
       'app/node_modules/private': 'dependency',
       'public/uploads/guides/private.pdf': 'private',
@@ -75,6 +76,7 @@ test('release package includes complete runtime, checksums and revision; exclude
     assert.equal(result.dirty, false);
     const entries = execFileSync('tar', ['-tzf', output], { encoding: 'utf8' });
     assert.match(entries, /app\/dist\/preflight.js/);
+    assert.match(entries, /qa\/multipart-uploads.md/);
     assert.match(entries, /SHA256SUMS/);
     assert.match(entries, /release.json/);
     assert.doesNotMatch(entries, /production.env|node_modules|private.pdf/);

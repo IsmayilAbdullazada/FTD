@@ -1,6 +1,7 @@
 import { logger } from '../lib/logger.js';
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
+import { MulterError } from 'multer';
 import { HttpError } from '../lib/http.js';
 
 // Parser errors occur before Express selects a route. Keep known route names,
@@ -43,6 +44,12 @@ export const errorHandler: ErrorRequestHandler = (
           ].includes(e?.type ?? '')
         ? (e.status ?? 400)
         : undefined;
+  const uploadStatus =
+    error instanceof MulterError
+      ? error.code === 'LIMIT_FILE_SIZE'
+        ? 413
+        : 400
+      : undefined;
   const status =
     error instanceof ZodError
       ? 400
@@ -52,25 +59,29 @@ export const errorHandler: ErrorRequestHandler = (
           ? 503
           : e?.code === '23505'
             ? 409
-            : (parserStatus ?? 500);
+            : (uploadStatus ?? parserStatus ?? 500);
   logger.error('HTTP request failed', error, {
     requestId: res.locals.requestId,
     method: req.method,
     route: req.route ? req.baseUrl + req.route.path : parserRoute(req.path),
   });
   const message =
-    error instanceof ZodError
-      ? error.issues[0]?.message
-      : error instanceof HttpError
-        ? error.message
-        : e?.code === 'P1001'
-          ? 'Registration is temporarily unavailable. Please contact your care team.'
-          : status === 409
-            ? 'A record with that identifier already exists'
-            : status === 413
-              ? 'Request body is too large'
-              : status === 400
-                ? 'Malformed request body'
-                : 'Internal Server Error';
+    error instanceof MulterError
+      ? error.code === 'LIMIT_FILE_SIZE'
+        ? 'PDF exceeds 12 MB limit'
+        : 'Upload exactly one PDF in the file field, without additional fields'
+      : error instanceof ZodError
+        ? error.issues[0]?.message
+        : error instanceof HttpError
+          ? error.message
+          : e?.code === 'P1001'
+            ? 'Registration is temporarily unavailable. Please contact your care team.'
+            : status === 409
+              ? 'A record with that identifier already exists'
+              : status === 413
+                ? 'Request body is too large'
+                : status === 400
+                  ? 'Malformed request body'
+                  : 'Internal Server Error';
   res.status(status).json({ error: message, requestId: res.locals.requestId });
 };

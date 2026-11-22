@@ -43,6 +43,7 @@ export async function packageRelease(
       ['config/ftdcare.env.example', 'config/ftdcare.env.example'],
       ['config/ftdcare.service', 'config/ftdcare.service.example'],
       ['docs/deployment.md', 'DEPLOYMENT.md'],
+      ['docs/qa/multipart-uploads.md', 'qa/multipart-uploads.md'],
     ]) {
       await fs.mkdir(path.dirname(path.join(stage, target)), {
         recursive: true,

@@ -1,16 +1,15 @@
 import { notify, notifyStaff } from '../../services/notifications.js';
-import { uploadsDirectory } from '../../services/uploads.js';
 import type { PoolClient } from 'pg';
 import type { GuideRow } from '../../db/rows.js';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Router } from 'express';
-import { PDFParse } from 'pdf-parse';
 import { z } from 'zod';
 import { query, transaction } from '../../config/db.js';
 import { asyncHandler, HttpError } from '../../lib/http.js';
 import { authenticateToken, requireStaff } from '../../middleware/auth.js';
 import { publicAssetUrl } from '../../lib/urlValidation.js';
+
+import { readUploadedPdf } from './pdfUpload.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -35,7 +34,7 @@ const guideInput = z.object({
   mimeType: z.string().optional(),
   category: z.string().optional(),
   description: z.string().optional(),
-  content: z.string(),
+  content: z.string().optional(),
   pages: pagesSchema.optional(),
   status: z.enum(['DRAFT', 'APPROVED']).default('DRAFT'),
   pdfUrl: publicAssetUrl.optional(),
@@ -138,6 +137,14 @@ router.post(
   requireStaff,
   asyncHandler(async (req, res) => {
     const i = guideInput.parse(req.body);
+    if (i.content === undefined) {
+      if (!i.pdfUrl)
+        throw new HttpError(
+          400,
+          'Guide content or an uploaded PDF is required',
+        );
+      Object.assign(i, await readUploadedPdf(i.pdfUrl, req.user!.id));
+    }
     const r = await transaction(async (client) => {
       const inserted = (
         await client.query(
@@ -197,11 +204,13 @@ router.put(
     const r = await transaction(async (client) => {
       const before = (
         await client.query(
-          'SELECT status FROM chatbot_guides WHERE id=$1 FOR UPDATE',
+          'SELECT status,pdf_url FROM chatbot_guides WHERE id=$1 FOR UPDATE',
           [req.params.id],
         )
       ).rows[0];
       if (!before) throw new HttpError(404, 'Guide not found');
+      if (i.content === undefined && i.pdfUrl && i.pdfUrl !== before.pdf_url)
+        Object.assign(i, await readUploadedPdf(i.pdfUrl, req.user!.id));
       const nextStatus = i.status ?? before.status;
       const updated = (
         await client.query(
@@ -266,7 +275,7 @@ router.patch(
     const r = await transaction(async (client) => {
       const before = (
         await client.query(
-          'SELECT status FROM chatbot_guides WHERE id=$1 FOR UPDATE',
+          'SELECT status,pdf_url FROM chatbot_guides WHERE id=$1 FOR UPDATE',
           [req.params.id],
         )
       ).rows[0];
@@ -337,59 +346,4 @@ router.delete(
   }),
 );
 
-export const extractPdf = asyncHandler(async (req, res) => {
-  const { fileName, fileBase64 } = z
-    .object({
-      fileName: z
-        .string()
-        .min(1)
-        .refine(
-          (value) => path.extname(value).toLowerCase() === '.pdf',
-          'Only PDF files are accepted',
-        ),
-      fileBase64: z.string().min(16).max(20_000_000),
-    })
-    .parse(req.body);
-  const safe = path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
-  const buffer = Buffer.from(
-    fileBase64.replace(/^data:[^;]+;base64,/, ''),
-    'base64',
-  );
-  if (buffer.length > 12 * 1024 * 1024)
-    throw new HttpError(413, 'PDF exceeds 12 MB limit');
-  if (buffer.subarray(0, 5).toString('ascii') !== '%PDF-')
-    throw new HttpError(400, 'Uploaded file is not a valid PDF');
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
-  const parsed = await parser.getText();
-  await parser.destroy();
-  const pages = (parsed.pages ?? []).map((p, index: number) => {
-    const text = (p.text ?? '').replace(/\s+/g, ' ').trim();
-    const words = text ? text.split(/\s+/).length : 0;
-    return {
-      pageNumber: index + 1,
-      text,
-      wordCount: words,
-      chunkCount: words ? Math.ceil(words / 340) : 0,
-    };
-  });
-  const dir = uploadsDirectory;
-  await fs.mkdir(dir, { recursive: true });
-  const stored = `guide_${Date.now()}_${safe}`;
-  await fs.writeFile(path.join(dir, stored), buffer);
-  await query(
-    'INSERT INTO guide_uploads(storage_name,uploaded_by) VALUES($1,$2)',
-    [stored, req.user!.id],
-  );
-  const text = pages.map((p) => p.text).join('\n\n');
-  res.json({
-    text,
-    pages,
-    totalChunks: pages.reduce((n, p) => n + p.chunkCount, 0),
-    wordCount: pages.reduce((n, p) => n + p.wordCount, 0),
-    pageCount: pages.length,
-    fileName: safe,
-    pdfUrl: `/uploads/guides/${stored}`,
-    title: '',
-  });
-});
 export default router;

@@ -166,7 +166,7 @@ The root package uses an npm workspace for `app`. Run `npm ci` at the repository
 
 ## Testing and CI
 
-Run `npm run verify` for the complete local frontend/release-tooling gate, and run backend integration tests against an isolated migrated/seeded database. `npm run test:list` lists discovered frontend files; the current full suite contains 13 files and 31 tests. `npm run build` now typechecks before producing output. Authentication tests assert expected failures without printing simulated error logs. Build timing and funding messages are informational. See [current deployment verification](docs/qa/deployment-verification.md) for dependency, install-script and packaged-browser checks.
+Run `npm run verify` for the complete local frontend/release-tooling gate, and run backend integration tests against an isolated migrated/seeded database. `npm run test:list` lists discovered frontend files; the current full suite contains 14 files and 33 tests. `npm run build` now typechecks before producing output. Authentication tests assert expected failures without printing simulated error logs. Build timing and funding messages are informational. See [current deployment verification](docs/qa/deployment-verification.md) for dependency, install-script and packaged-browser checks.
 
 These checks do not require PostgreSQL:
 
@@ -300,6 +300,8 @@ docker run -d --name ftdcare-api --restart unless-stopped \
 ```
 
 Use the same database/network settings for migration and API containers. Runtime maintenance commands use compiled JavaScript, since development dependencies are removed: `node app/dist/db/migrate.js` and, only when intentionally loading seed data, `node app/dist/db/seed.js`. Production seeding remains disabled by default.
+
+For Apache/ModSecurity deployments, see the [multipart PDF upload checks](docs/qa/multipart-uploads.md) and the [deployment runbook](docs/deployment.md#apache-with-modsecurity).
 
 ## Operations and troubleshooting
 

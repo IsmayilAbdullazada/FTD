@@ -18,7 +18,7 @@ interface UploadGuidePayload {
   mimeType?: string;
   category?: string;
   description?: string;
-  content: string;
+  content?: string;
   pages?: GuidePageData[];
   totalChunks?: number;
   status?: 'DRAFT' | 'APPROVED';
@@ -94,19 +94,17 @@ export const guideApi = {
     );
   },
 
-  extractPdfText(payload: {
-    fileName: string;
-    fileBase64: string;
-  }): Promise<ExtractedPdf> {
+  extractPdfText(file: File): Promise<ExtractedPdf> {
+    if (file.size > 12 * 1024 * 1024)
+      return Promise.reject(new Error('PDF exceeds 12 MB limit'));
+    const body = new FormData();
+    body.append('file', file, file.name);
+    // The browser supplies Content-Type including the multipart boundary.
     return guideRequest(
       '/api/v1/chatbot/extract-pdf',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
+      { method: 'POST', body },
       (response) =>
-        `Failed to extract PDF: ${response.statusText || response.status}`,
+        `Failed to upload PDF (${response.status}). Please try again.`,
     );
   },
 

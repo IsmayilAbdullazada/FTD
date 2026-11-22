@@ -475,13 +475,17 @@ test('staff content, invitation, guide retrieval, and admin contracts use Postgr
   );
   assert.equal(unsafeResource.status, 400);
 
-  const invalidPdf = await request(
-    '/api/v1/chatbot/extract-pdf',
-    json(clinicianToken, {
-      fileName: 'invalid.pdf',
-      fileBase64: Buffer.from('This is not a PDF document.').toString('base64'),
-    }),
+  const invalidPdfForm = new FormData();
+  invalidPdfForm.append(
+    'file',
+    new Blob(['This is not a PDF document.'], { type: 'application/pdf' }),
+    'invalid.pdf',
   );
+  const invalidPdf = await request('/api/v1/chatbot/extract-pdf', {
+    method: 'POST',
+    headers: { cookie: clinicianToken, origin: 'http://localhost:5173' },
+    body: invalidPdfForm,
+  });
   assert.equal(invalidPdf.status, 400);
 
   const resource = await request(

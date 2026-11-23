@@ -378,7 +378,7 @@ export function GuideManagementTab({
             <span>Test Assistant Guidance</span>
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Type any caregiver inquiry to test how Care Companion uses your
+            Type any care partner inquiry to test how Care Companion uses your
             approved guides to generate grounded answers.
           </p>
         </div>

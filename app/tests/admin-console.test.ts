@@ -396,7 +396,7 @@ test('sensitive row reveals are audited and preview cannot mutate, mark messages
     /Hidden clinician message/,
   );
   const privateRead = await request(
-    '/chat/private?caregiverId=' + ids.care,
+    '/chat/private?carePartnerId=' + ids.care,
     undefined,
     ids.admin,
     'GET',
@@ -549,7 +549,7 @@ test('domain actions preserve invariants and create masked audit records', async
     action: 'KEEP_PENDING',
   });
   await action('private-message', {
-    caregiverId: ids.care,
+    carePartnerId: ids.care,
     content: 'A private console fixture message.',
   });
   await action('create-guide', {

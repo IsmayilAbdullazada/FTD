@@ -184,7 +184,7 @@ export interface ClinicalResource {
     | 'SAFETY_WANDERING'
     | 'COMMUNICATION_PPA'
     | 'NUTRITION_DIET'
-    | 'CAREGIVER_SUPPORT'
+    | 'CARE_PARTNER_SUPPORT'
     | 'DAILY_CARE'
     | 'GENERAL_EDUCATION'
     | 'GUIDE'

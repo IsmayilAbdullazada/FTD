@@ -178,8 +178,8 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
           className="flex-1 text-left text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs sm:text-base bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 transition border border-slate-200/60 dark:border-slate-700 font-sans truncate cursor-pointer"
         >
           <span>
-            Ask a question or share practical care advice with other
-            caregivers...
+            Ask a question or share practical care advice with other care
+            partners...
           </span>
         </button>
         <button
@@ -191,7 +191,7 @@ export const CarePartnerFeed: React.FC<CarePartnerFeedProps> = ({
         </button>
       </div>
 
-      {/* REASSURING BANNER: For caregivers with posts under review */}
+      {/* REASSURING BANNER: For care partners with posts under review */}
       {isCarePartner && myPendingCount > 0 && viewSection === 'all' && (
         <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
           <div className="flex items-start sm:items-center gap-2.5 min-w-0">

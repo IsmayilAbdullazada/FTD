@@ -167,7 +167,7 @@ export function DashboardNavigation({
               {memberCount}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              caregivers
+              care partners
             </span>
           </div>
         </div>

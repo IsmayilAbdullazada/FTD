@@ -323,7 +323,7 @@ export function useAppController() {
       },
       sessionTimedOut: () =>
         signOut(
-          'Your session timed out due to inactivity to protect patient and caregiver privacy. Please sign in again.',
+          'Your session timed out due to inactivity to protect patient and care partner privacy. Please sign in again.',
         ),
     },
   };

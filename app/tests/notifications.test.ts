@@ -465,7 +465,7 @@ test('cohort reassignment, guide review and approval, and private messages notif
   );
   assert.equal(approved.rowCount, 1);
   const message = await request(ids.owner, '/chat/private', {
-    caregiverId: ids.owner,
+    carePartnerId: ids.owner,
     recipientId: ids.staff,
     content: 'Sensitive direct message',
   });

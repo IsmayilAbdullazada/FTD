@@ -31,10 +31,20 @@ const map = (
 router.get(
   '/',
   asyncHandler(async (req, res) => {
+    const preferred = req.query.carePartnerId;
+    const legacy = req.query.caregiverId; // Deprecated alias; remove after one release.
+    if (
+      typeof preferred === 'string' &&
+      typeof legacy === 'string' &&
+      preferred !== legacy
+    )
+      throw new HttpError(400, 'Conflicting conversation identifiers');
     const requested =
-      typeof req.query.caregiverId === 'string'
-        ? req.query.caregiverId
-        : req.user!.id;
+      typeof preferred === 'string'
+        ? preferred
+        : typeof legacy === 'string'
+          ? legacy
+          : req.user!.id;
     if (!isStaffRole(req.user!.role) && requested !== req.user!.id)
       throw new HttpError(403, 'Conversation access denied');
     const { page, pageSize, limit, offset } = parsePagination(req.query, 50);
@@ -84,12 +94,27 @@ router.post(
   asyncHandler(async (req, res) => {
     const input = z
       .object({
-        caregiverId: z.string().min(1),
+        carePartnerId: z.string().min(1).optional(),
+        caregiverId: z.string().min(1).optional(), // Deprecated alias; remove after one release.
         recipientId: z.string().optional(),
         content: z.string().trim().min(1).max(10000),
       })
+      .refine((value) => Boolean(value.carePartnerId || value.caregiverId), {
+        message: 'A care partner account is required',
+      })
+      .refine(
+        (value) =>
+          !value.carePartnerId ||
+          !value.caregiverId ||
+          value.carePartnerId === value.caregiverId,
+        { message: 'Conflicting conversation identifiers' },
+      )
+      .transform(({ caregiverId, ...value }) => ({
+        ...value,
+        carePartnerId: value.carePartnerId ?? caregiverId!,
+      }))
       .parse(req.body);
-    if (!isStaffRole(req.user!.role) && input.caregiverId !== req.user!.id)
+    if (!isStaffRole(req.user!.role) && input.carePartnerId !== req.user!.id)
       throw new HttpError(403, 'Conversation access denied');
     const previous = await query(
       `SELECT u.id FROM private_messages m JOIN users u ON u.id=CASE WHEN m.sender_id=$1 THEN m.recipient_id ELSE m.sender_id END WHERE (m.sender_id=$1 OR m.recipient_id=$1) AND u.is_active AND u.role='CLINICIAN_MODERATOR' ORDER BY m.created_at DESC LIMIT 1`,
@@ -97,7 +122,7 @@ router.post(
     );
     const recipientId = !isStaffRole(req.user!.role)
       ? (input.recipientId ?? previous.rows[0]?.id)
-      : input.caregiverId;
+      : input.carePartnerId;
     if (!isStaffRole(req.user!.role) && recipientId) {
       const recipient = await query(
         "SELECT 1 FROM users WHERE id=$1 AND is_active AND role='CLINICIAN_MODERATOR'",
@@ -107,13 +132,13 @@ router.post(
         throw new HttpError(400, 'Choose an active clinician');
     }
     if (!recipientId) throw new HttpError(404, 'Message recipient not found');
-    const caregiverId = !isStaffRole(req.user!.role)
+    const carePartnerId = !isStaffRole(req.user!.role)
       ? req.user!.id
-      : input.caregiverId;
+      : input.carePartnerId;
     const r = await transaction(async (client) => {
       const inserted = await client.query(
         `INSERT INTO private_messages(conversation_id,sender_id,recipient_id,content) VALUES($1,$2,$3,$4) RETURNING *`,
-        [`chat-${caregiverId}`, req.user!.id, recipientId, input.content],
+        [`chat-${carePartnerId}`, req.user!.id, recipientId, input.content],
       );
       await notify(client, {
         kind: 'PRIVATE_MESSAGE',

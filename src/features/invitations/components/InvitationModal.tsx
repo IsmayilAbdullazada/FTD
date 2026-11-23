@@ -119,7 +119,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 Invite Care Partner
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-sans truncate">
-                Verified caregiver access invitation
+                Verified care partner access invitation
               </p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           >
             <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 text-sm overscroll-contain flex-1">
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
-                Only vetted family members and verified caregivers can access
+                Only vetted family members and verified care partners can access
                 this closed community.
               </p>
 
@@ -263,10 +263,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-                    Caregiver First Name
+                    Care partner first name
                   </label>
                   <input
-                    aria-label="Caregiver First Name"
+                    aria-label="Care partner first name"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -277,10 +277,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-                    Caregiver Last Name
+                    Care partner last name
                   </label>
                   <input
-                    aria-label="Caregiver Last Name"
+                    aria-label="Care partner last name"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -294,10 +294,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-                    Caregiver Email Address
+                    Care partner email address
                   </label>
                   <input
-                    aria-label="Caregiver Email Address"
+                    aria-label="Care partner email address"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

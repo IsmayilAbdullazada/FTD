@@ -243,7 +243,7 @@ export function GuideInspectorDialog({
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 {inspectGuideModal.isActive
-                  ? 'Care Companion is currently using this document for caregiver queries'
+                  ? 'Care Companion is currently using this document for care partner queries'
                   : 'This document is paused and not currently used by Care Companion'}
               </span>
               <button

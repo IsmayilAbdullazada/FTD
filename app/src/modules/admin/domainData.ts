@@ -309,7 +309,7 @@ export async function writeDomainRow(
     case 'private_messages':
       if (mode === 'create')
         return run(req, 'private-message', {
-          caregiverId: v.recipient_id,
+          carePartnerId: v.recipient_id,
           content: v.content,
         });
       return plainWrite(table, mode, key, values);

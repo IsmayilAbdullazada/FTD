@@ -78,8 +78,9 @@ export function DeleteGuideDialog({
 
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
               Once removed, the assistant will immediately stop indexing this
-              document or referencing its protocols when responding to caregiver
-              queries. This deletion will be recorded in the audit trail.
+              document or referencing its protocols when responding to care
+              partner queries. This deletion will be recorded in the audit
+              trail.
             </div>
 
             {/* Action Buttons */}

@@ -249,7 +249,7 @@ export const domainActions: DomainAction[] = [
     messages,
     'POST',
     () => '/',
-    [field('caregiverId'), field('content', 'longtext')],
+    [field('carePartnerId'), field('content', 'longtext')],
   ),
   action(
     'create-cohort',

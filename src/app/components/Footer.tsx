@@ -29,11 +29,11 @@ const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
       },
       {
         title: 'Anonymous Handles & Protected Communications',
-        text: 'To ensure a safe and candid peer environment, all caregivers participate using pseudonym handles. Direct personal identifying information is segregated from peer discussion channels and visible only to credentialed Johns Hopkins clinical moderators.',
+        text: 'To ensure a safe and candid peer environment, all care partners participate using pseudonym handles. Direct personal identifying information is segregated from peer discussion channels and visible only to credentialed Johns Hopkins clinical moderators.',
       },
       {
         title: 'Information Usage & Security Standards',
-        text: 'We do not sell, rent, or monetize caregiver data. Access to community information is restricted by account role. Please contact the care team with questions about how this service handles your information.',
+        text: 'We do not sell, rent, or monetize care partner data. Access to community information is restricted by account role. Please contact the care team with questions about how this service handles your information.',
       },
       {
         title: 'Inquiries & Contact',

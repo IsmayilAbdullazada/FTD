@@ -47,7 +47,7 @@ export function MembersTab({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Caregiver Members ({filteredMembers.length})
+                Care Partner Members ({filteredMembers.length})
               </h2>
               {selectedCohortFilter !== 'all' && (
                 <span className="px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-[#002D72] dark:text-blue-300 border border-blue-100 dark:border-blue-900/60 text-xs font-medium flex items-center gap-1">
@@ -133,7 +133,7 @@ export function MembersTab({
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-xs sm:text-sm whitespace-nowrap">
-                  <th className="py-3 px-3">Caregiver</th>
+                  <th className="py-3 px-3">Care partner</th>
                   <th className="py-3 px-3">Contact</th>
                   <th className="py-3 px-3">Assigned Group</th>
                   <th className="py-3 px-3">Status</th>

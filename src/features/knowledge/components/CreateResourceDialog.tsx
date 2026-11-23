@@ -86,8 +86,8 @@ export function CreateResourceDialog({
                   Add Care Source / Protocol
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Publish verified guidance to the caregiver knowledge base and
-                  assistant.
+                  Publish verified guidance to the care partner knowledge base
+                  and assistant.
                 </p>
               </div>
               <button
@@ -156,8 +156,8 @@ export function CreateResourceDialog({
                     Speech & Communication (PPA)
                   </option>
                   <option value="NUTRITION_DIET">Nutrition & Swallowing</option>
-                  <option value="CAREGIVER_SUPPORT">
-                    Caregiver Support & Wellbeing
+                  <option value="CARE_PARTNER_SUPPORT">
+                    Care partner Support & Wellbeing
                   </option>
                   <option value="DAILY_CARE">Daily Care & Routines</option>
                   <option value="GENERAL_EDUCATION">

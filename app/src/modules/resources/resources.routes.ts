@@ -12,7 +12,13 @@ const resourceInput = z
     title: z.string().trim().min(3),
     summary: z.string().trim().min(3),
     contentBody: z.string().trim().min(3),
-    category: z.string().trim().min(2),
+    category: z
+      .string()
+      .trim()
+      .min(2)
+      .transform((value) =>
+        value === 'CAREGIVER_SUPPORT' ? 'CARE_PARTNER_SUPPORT' : value,
+      ),
     diseaseDomain: z.enum(['FTD', 'AD', 'BOTH']).default('FTD'),
     externalUrl: httpUrl.or(z.literal('')).optional(),
     fileAttachmentUrl: publicAssetUrl.optional(),

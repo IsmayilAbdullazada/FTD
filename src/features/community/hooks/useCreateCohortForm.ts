@@ -40,7 +40,7 @@ export function useCreateCohortForm({
         slug,
         description:
           newGroupDescription.trim() ||
-          `Local group for ${newGroupRegion.trim() || newGroupName.trim()} caregivers.`,
+          `Local group for ${newGroupRegion.trim() || newGroupName.trim()} care partners.`,
         geographicRegion: newGroupRegion.trim() || 'Local Area',
         radiusMiles: 35,
         tag: 'GEO_CUSTOM',

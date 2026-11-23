@@ -6,6 +6,7 @@ import {
 } from '@/types';
 import { X } from 'lucide-react';
 import type { Dispatch, FormEventHandler, SetStateAction } from 'react';
+import { GuidelinesReminder } from '@/features/policies';
 
 interface CreatePostDialogProps {
   open: boolean;
@@ -159,6 +160,8 @@ export function CreatePostDialog({
                   ))}
                 </div>
               </div>
+              {/* Community Guidelines reminder */}
+              <GuidelinesReminder />
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button

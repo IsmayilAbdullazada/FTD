@@ -121,6 +121,10 @@ before(async () => {
       sent.push(message);
     },
   }));
+  await pool.query(
+    "INSERT INTO policy_acknowledgments(user_id,policy_type,policy_version) SELECT id,'community_guidelines','1.0' FROM users WHERE id=ANY($1::text[]) ON CONFLICT DO NOTHING",
+    [Object.values(ids)],
+  );
   server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

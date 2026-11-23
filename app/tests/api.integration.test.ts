@@ -34,6 +34,9 @@ const json = (
 });
 
 before(async () => {
+  await pool.query(
+    "INSERT INTO policy_acknowledgments(user_id,policy_type,policy_version) VALUES('user-care-1','community_guidelines','1.0') ON CONFLICT DO NOTHING",
+  );
   originalPasswords = (
     await pool.query(
       'SELECT id,password_hash FROM users WHERE id=ANY($1::text[])',

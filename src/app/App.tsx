@@ -1,5 +1,5 @@
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState, useEffect } from 'react';
 import { Footer } from '@/app/components/Footer';
 import { Header } from '@/app/components/Header';
 import { SessionTimeoutModal } from '@/app/components/SessionTimeoutModal';
@@ -7,6 +7,8 @@ import { InvitationModal } from '@/features/invitations';
 import { AuditLedgerModal } from '@/features/moderation';
 import { NotificationsModal } from '@/features/notifications';
 import { useAppController } from '@/app/hooks/useAppController';
+import { GuidelinesGate } from '@/features/policies';
+import { policiesApi } from '@/features/policies/api/policiesApi';
 
 const ClinicianDashboard = lazy(() =>
   import('@/features/clinician-workspace').then((module) => ({
@@ -49,6 +51,7 @@ const CalendarPage = lazy(() =>
 
 function AppContent() {
   const { state, actions } = useAppController();
+  const [showGuidelines, setShowGuidelines] = useState(false);
   const {
     bootstrapError,
     currentUser,
@@ -77,7 +80,7 @@ function AppContent() {
     isAuthOpen,
   } = state;
   const {
-    loginSucceeded: handleLoginSuccess,
+    loginSucceeded: controllerLoginSuccess,
     signOut: handleSignOut,
     switchPersona: handleSwitchPersona,
     queueUpdated: handleQueueUpdated,
@@ -91,6 +94,33 @@ function AppContent() {
     () => ({ items: pendingQueue, totalPending: pendingTriageCount }),
     [pendingQueue, pendingTriageCount],
   );
+
+  const handleLoginSuccess = controllerLoginSuccess;
+  useEffect(() => {
+    let cancelled = false;
+    const carePartner = currentUser?.role === 'CARE_PARTNER';
+    const requireAcknowledgment = () => {
+      if (carePartner) setShowGuidelines(true);
+    };
+    window.addEventListener('jh:guidelines-required', requireAcknowledgment);
+    if (carePartner)
+      void policiesApi
+        .getStatus()
+        .then((status) => {
+          if (!cancelled) setShowGuidelines(!status.acknowledged);
+        })
+        .catch(() => {
+          if (!cancelled) setShowGuidelines(true);
+        });
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        'jh:guidelines-required',
+        requireAcknowledgment,
+      );
+    };
+  }, [currentUser?.id, currentUser?.role]);
+
   const staff =
     currentUser?.role === 'CLINICIAN_MODERATOR' ||
     currentUser?.role === 'SYSTEM_ADMIN';
@@ -125,6 +155,19 @@ function AppContent() {
           onCancel={currentUser ? actions.closeAuth : undefined}
         />
       </Suspense>
+    );
+  }
+
+  if (showGuidelines && currentUser.role === 'CARE_PARTNER') {
+    return (
+      <GuidelinesGate
+        key={currentUser.id}
+        onContinue={() => setShowGuidelines(false)}
+        onSignOut={() => {
+          setShowGuidelines(false);
+          handleSignOut();
+        }}
+      />
     );
   }
 

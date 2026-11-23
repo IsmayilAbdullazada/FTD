@@ -3,6 +3,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -54,7 +55,13 @@ async function responseError(
     );
   }
   const body = await response.json().catch(() => ({}));
-  return new ApiError(body?.error || fallbackMessage, response.status);
+  if (body?.code === 'GUIDELINES_ACK_REQUIRED')
+    window.dispatchEvent(new Event('jh:guidelines-required'));
+  return new ApiError(
+    body?.error || fallbackMessage,
+    response.status,
+    body?.code,
+  );
 }
 
 export async function requestJson<T>(

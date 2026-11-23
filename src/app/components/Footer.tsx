@@ -9,7 +9,8 @@ interface FooterProps {
   isClinician?: boolean;
 }
 
-type PolicyKey = 'privacy' | 'npp' | 'nondiscrimination' | 'rights' | null;
+type PolicyKey =
+  'privacy' | 'npp' | 'nondiscrimination' | 'rights' | 'guidelines' | null;
 
 interface PolicyContent {
   title: string;
@@ -98,6 +99,28 @@ const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
       },
     ],
   },
+  guidelines: {
+    title: 'Community Guidelines',
+    badge: 'Community Safety & Guidelines',
+    sections: [
+      {
+        title: 'Community Expectations',
+        text: 'Keep posts focused on FTD and young-onset dementias. Stay on topic so the conversation stays helpful and easy to follow. Be kind, respectful, and supportive to others.',
+      },
+      {
+        title: 'What Not to Post',
+        text: 'Personal details such as names, phone numbers, addresses, or email addresses. Hateful, threatening, violent, or offensive words. Political opinions, campaign messages, and endorsements out of the community. Advertisements or sales messages. Any messages regarding donations or fundraising support.',
+      },
+      {
+        title: 'Privacy',
+        text: 'Please be thoughtful about the personal information you share. Anything you post may be visible to others and could be used in ways you may not expect.',
+      },
+      {
+        title: 'Moderation',
+        text: 'The moderator may remove posts or limit access if someone does not follow the guidelines. The moderator does not provide clinical guidance through this portal. For questions requiring clinic support, message the moderator through EPIC.',
+      },
+    ],
+  },
 };
 
 export const Footer: React.FC<FooterProps> = () => {
@@ -144,6 +167,7 @@ export const Footer: React.FC<FooterProps> = () => {
                   ['npp', 'Notice of Privacy Practices'],
                   ['nondiscrimination', 'Non-Discrimination Policy'],
                   ['rights', 'Patient Rights'],
+                  ['guidelines', 'Community Guidelines'],
                 ] as [Exclude<PolicyKey, null>, string][]
               ).map(([key, label]) => (
                 <button

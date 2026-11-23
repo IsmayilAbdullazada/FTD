@@ -33,6 +33,7 @@ interface PaginationModel<T> {
 type GuideStatusFilter = 'ALL' | 'DRAFT' | 'APPROVED';
 
 interface GuideManagementTabProps {
+  isAdmin?: boolean;
   guides: ChatbotGuideFile[];
   loading: boolean;
   searchFilter: string;
@@ -54,6 +55,7 @@ interface GuideManagementTabProps {
 }
 
 export function GuideManagementTab({
+  isAdmin = false,
   guides: chatbotGuides,
   loading: loadingGuides,
   searchFilter: guideSearchFilter,
@@ -73,6 +75,8 @@ export function GuideManagementTab({
   onRequestDelete: handleRequestDeleteGuide,
   onRunTestQuery: handleRunTestQuery,
 }: GuideManagementTabProps) {
+  if (!isAdmin)
+    return <p>Guide diagnostics are available in the CS Admin console.</p>;
   return (
     <div className="space-y-6">
       {/* Top Banner */}

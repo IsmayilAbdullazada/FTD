@@ -25,7 +25,7 @@ export const knowledgeApi = {
       snippet: string;
       authorHandle: string;
       replyCount: number;
-      matchScore: number;
+      matchScore?: number;
     }[];
   }> => {
     return safeFetchJson('/api/v1/deflection/discussions', {

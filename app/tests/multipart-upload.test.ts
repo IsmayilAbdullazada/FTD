@@ -27,7 +27,7 @@ before(async () => {
   const { env } = await import('../src/config/env.js');
   const { app } = await import('../src/app.js');
   for (const [id, role] of [
-    [staffId, 'CLINICIAN_MODERATOR'],
+    [staffId, 'SYSTEM_ADMIN'],
     [careId, 'CARE_PARTNER'],
   ]) {
     await pool.query(
@@ -201,6 +201,67 @@ test('guide saves reuse owned PDF text and metadata updates preserve its pages',
   assert.equal(expiredSave.status, 400);
   assert.match((await expiredSave.json()).error, /expired/);
   await pool.query('DELETE FROM chatbot_guides WHERE id=$1', [guide.id]);
+});
+test('moderator API responses omit extraction diagnostics while admins retain them', async () => {
+  const version = (
+    await pool.query('SELECT session_version FROM users WHERE id=$1', [
+      'user-clinician-1',
+    ])
+  ).rows[0].session_version;
+  const token = jwt.sign(
+    {
+      id: 'user-clinician-1',
+      email: 'staff@example.test',
+      sessionVersion: version,
+    },
+    (await import('../src/config/env.js')).env.JWT_SECRET,
+    {
+      algorithm: 'HS256',
+      issuer: 'ftdcare-api',
+      audience: 'ftdcare-web',
+      expiresIn: '5m',
+    },
+  );
+  const headers = {
+    authorization: 'Bearer ' + token,
+    origin: 'http://localhost:5173',
+  };
+  const result = await upload(form(), headers);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.hasReadableText, true);
+  for (const field of [
+    'pages',
+    'wordCount',
+    'pageCount',
+    'totalChunks',
+    'text',
+  ])
+    assert.equal(field in result.body, false, field);
+  const list = await fetch(base + '/api/v1/chatbot/guides', { headers });
+  const guides = await list.json();
+  for (const guide of guides.guides)
+    for (const field of ['pages', 'totalChunks', 'wordCount'])
+      assert.equal(field in guide, false, field);
+  for (const auth of [headers, careHeaders]) {
+    const response = await fetch(base + '/api/v1/knowledge/chat', {
+      method: 'POST',
+      headers: { ...auth, 'content-type': 'application/json' },
+      body: JSON.stringify({ query: 'behavior' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal('retrievedChunks' in body, false);
+    assert.ok(Array.isArray(body.citedResources));
+  }
+  const admin = await fetch(base + '/api/v1/knowledge/chat', {
+    method: 'POST',
+    headers: { ...staffHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'behavior' }),
+  });
+  assert.ok('retrievedChunks' in (await admin.json()));
+  await pool.query('DELETE FROM guide_uploads WHERE storage_name=$1', [
+    path.basename(result.body.pdfUrl),
+  ]);
 });
 test('multipart validation rejects missing/wrong/additional file parts, text fields, fake PDFs and malformed boundaries', async () => {
   const count = (await fs.readdir(directory)).length;

@@ -201,7 +201,7 @@ export interface DeflectionMatch {
   snippet: string;
   url?: string;
   postId?: string;
-  confidenceScore: number;
+  confidenceScore?: number;
 }
 
 export interface ModerationAuditEvent {

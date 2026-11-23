@@ -26,11 +26,12 @@ interface UploadGuidePayload {
 }
 
 interface ExtractedPdf {
-  text: string;
-  pages: GuidePageData[];
-  totalChunks: number;
-  wordCount: number;
-  pageCount: number;
+  hasReadableText?: boolean;
+  text?: string;
+  pages?: GuidePageData[];
+  totalChunks?: number;
+  wordCount?: number;
+  pageCount?: number;
   fileName: string;
   pdfUrl?: string;
   title: string;

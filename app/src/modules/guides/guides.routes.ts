@@ -50,7 +50,7 @@ function chunk(text: string, max = 400, overlap = 60) {
   }
   return out;
 }
-function map(r: GuideRow & { uploaded_by_name?: string }) {
+function map(r: GuideRow & { uploaded_by_name?: string }, technical = false) {
   return {
     id: r.id,
     title: r.title,
@@ -63,9 +63,14 @@ function map(r: GuideRow & { uploaded_by_name?: string }) {
     mimeType: r.mime_type,
     category: r.category ?? undefined,
     description: r.description ?? undefined,
-    content: r.content,
-    pages: r.pages ?? [],
-    totalChunks: r.total_chunks,
+    content: !technical && r.pdf_url ? '' : r.content,
+    ...(technical
+      ? {
+          pages: r.pages ?? [],
+          totalChunks: r.total_chunks,
+          wordCount: r.content.trim().split(/\s+/).filter(Boolean).length,
+        }
+      : {}),
     status: r.status,
     approvedAt: r.approved_at ?? undefined,
     approvedBy: r.approved_by ?? undefined,
@@ -75,7 +80,6 @@ function map(r: GuideRow & { uploaded_by_name?: string }) {
     uploadedByName: r.uploaded_by_name,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-    wordCount: r.content.trim().split(/\s+/).filter(Boolean).length,
   };
 }
 async function reindex(client: PoolClient, guide: GuideRow) {
@@ -114,12 +118,12 @@ async function reindex(client: PoolClient, guide: GuideRow) {
 router.get(
   '/',
   requireStaff,
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
     const rows = await query(
       `SELECT g.*,u.first_name||' '||u.last_name uploaded_by_name FROM chatbot_guides g JOIN users u ON u.id=g.uploaded_by ORDER BY g.created_at DESC`,
     );
     const guides = rows.rows.map((row) =>
-      map(row as Parameters<typeof map>[0]),
+      map(row as Parameters<typeof map>[0], req.user!.role === 'SYSTEM_ADMIN'),
     );
     res.json({
       guides,
@@ -127,7 +131,15 @@ router.get(
         totalActiveGuides: guides.filter(
           (g) => g.isActive && g.status === 'APPROVED',
         ).length,
-        totalWords: guides.reduce((n, g) => n + g.wordCount, 0),
+        ...(req.user!.role === 'SYSTEM_ADMIN'
+          ? {
+              totalWords: rows.rows.reduce(
+                (n, r) =>
+                  n + String(r.content).split(/\s+/).filter(Boolean).length,
+                0,
+              ),
+            }
+          : {}),
       },
     });
   }),
@@ -186,7 +198,12 @@ router.post(
     );
     res
       .status(201)
-      .json(map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]));
+      .json(
+        map(
+          { ...r, ...user.rows[0] } as Parameters<typeof map>[0],
+          req.user!.role === 'SYSTEM_ADMIN',
+        ),
+      );
   }),
 );
 router.put(
@@ -264,7 +281,10 @@ router.put(
     );
     res.json({
       success: true,
-      guide: map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]),
+      guide: map(
+        { ...r, ...user.rows[0] } as Parameters<typeof map>[0],
+        req.user!.role === 'SYSTEM_ADMIN',
+      ),
     });
   }),
 );
@@ -303,7 +323,10 @@ router.patch(
     );
     res.json({
       success: true,
-      guide: map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]),
+      guide: map(
+        { ...r, ...user.rows[0] } as Parameters<typeof map>[0],
+        req.user!.role === 'SYSTEM_ADMIN',
+      ),
     });
   }),
 );
@@ -328,7 +351,10 @@ router.patch(
     );
     res.json({
       success: true,
-      guide: map({ ...r, ...user.rows[0] } as Parameters<typeof map>[0]),
+      guide: map(
+        { ...r, ...user.rows[0] } as Parameters<typeof map>[0],
+        req.user!.role === 'SYSTEM_ADMIN',
+      ),
     });
   }),
 );

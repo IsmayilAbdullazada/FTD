@@ -38,6 +38,9 @@ export function GuideEditor({
         </p>
       )}
       <GuideUploadDialog
+        isAdmin={currentUser.role === 'SYSTEM_ADMIN'}
+        metadata={g.uploadMetadata}
+        onMetadataChange={g.setUploadMetadata}
         open={g.showUploadGuideModal}
         onClose={onClose}
         title={g.uploadTitle}

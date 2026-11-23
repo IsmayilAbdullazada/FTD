@@ -33,7 +33,9 @@ router.post(
         snippet: x.sanitized_content.slice(0, 180),
         authorHandle: x.anonymous_handle,
         replyCount: x.reply_count,
-        matchScore: Number(x.match_score),
+        ...(req.user!.role === 'SYSTEM_ADMIN'
+          ? { matchScore: Number(x.match_score) }
+          : {}),
       })),
     });
   }),

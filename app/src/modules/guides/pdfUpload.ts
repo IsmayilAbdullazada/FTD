@@ -59,6 +59,11 @@ export const extractPdf = asyncHandler(async (req, res) => {
   if (buffer.subarray(0, 5).toString('ascii') !== '%PDF-')
     throw new HttpError(400, 'Uploaded file is not a valid PDF');
   const pages = await extractPdfPages(buffer);
+  if (!pages.some((page) => page.text.trim()))
+    throw new HttpError(
+      400,
+      'We couldn’t find readable text in this PDF. Try a text-based PDF.',
+    );
   await fs.mkdir(uploadsDirectory, { recursive: true });
   const stored = `guide_${randomUUID()}.pdf`;
   const destination = path.join(uploadsDirectory, stored);
@@ -77,11 +82,19 @@ export const extractPdf = asyncHandler(async (req, res) => {
     throw error;
   }
   res.json({
-    text: pages.map((page) => page.text).join('\n\n'),
-    pages,
-    totalChunks: pages.reduce((total, page) => total + page.chunkCount, 0),
-    wordCount: pages.reduce((total, page) => total + page.wordCount, 0),
-    pageCount: pages.length,
+    hasReadableText: true,
+    ...(req.user!.role === 'SYSTEM_ADMIN'
+      ? {
+          text: pages.map((page) => page.text).join('\n\n'),
+          pages,
+          totalChunks: pages.reduce(
+            (total, page) => total + page.chunkCount,
+            0,
+          ),
+          wordCount: pages.reduce((total, page) => total + page.wordCount, 0),
+          pageCount: pages.length,
+        }
+      : {}),
     fileName: safe,
     pdfUrl: `/uploads/guides/${stored}`,
     title: '',

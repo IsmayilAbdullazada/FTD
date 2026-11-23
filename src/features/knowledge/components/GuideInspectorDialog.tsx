@@ -13,6 +13,7 @@ import {
 import type { Dispatch, SetStateAction } from 'react';
 
 interface GuideInspectorDialogProps {
+  isAdmin?: boolean;
   guide: ChatbotGuideFile | null;
   onGuideChange: Dispatch<SetStateAction<ChatbotGuideFile | null>>;
   copied: boolean;
@@ -22,6 +23,7 @@ interface GuideInspectorDialogProps {
 }
 
 export function GuideInspectorDialog({
+  isAdmin = false,
   guide: inspectGuideModal,
   onGuideChange: setInspectGuideModal,
   copied: copiedInspect,
@@ -32,6 +34,37 @@ export function GuideInspectorDialog({
   const dialogRef = useDialogFocus(Boolean(inspectGuideModal), () =>
     setInspectGuideModal(null),
   );
+  if (!isAdmin && inspectGuideModal)
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={inspectGuideModal.title}
+          className="w-full max-w-xl rounded-xl bg-white p-5 text-slate-900 dark:bg-slate-900 dark:text-white"
+        >
+          <h2>{inspectGuideModal.title}</h2>
+          <p>{inspectGuideModal.description}</p>
+          {inspectGuideModal.pdfUrl && (
+            <a
+              className="inline-flex min-h-11 items-center underline"
+              href={inspectGuideModal.pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open PDF guide
+            </a>
+          )}
+          <button
+            className="min-h-11 px-4"
+            onClick={() => setInspectGuideModal(null)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
   return (
     <>
       {/* MODAL: INSPECT / VIEW GUIDE FILE */}

@@ -97,7 +97,7 @@ router.post(
       : input.caregiverId;
     if (!isStaffRole(req.user!.role) && recipientId) {
       const recipient = await query(
-        "SELECT 1 FROM users WHERE id=$1 AND is_active AND role IN ('CLINICIAN_MODERATOR','SYSTEM_ADMIN')",
+        "SELECT 1 FROM users WHERE id=$1 AND is_active AND role='CLINICIAN_MODERATOR'",
         [recipientId],
       );
       if (!recipient.rowCount)

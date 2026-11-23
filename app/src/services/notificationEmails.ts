@@ -9,12 +9,14 @@ import {
 } from './activityDefinitions.js';
 import { composeEmail } from './emailTemplates.js';
 import { sendEmail } from './email.js';
+import { notifyAdmins } from './notifications.js';
 
 export function activityPath(
   kind: ActivityKind,
   context: ActivityContext,
 ): string {
   const params = new URLSearchParams();
+  if (kind.startsWith('ADMIN_')) return '/?tab=feed&notifications=open';
   if (kind === 'PASSWORD_CHANGED') params.set('tab', 'forgot-password');
   else if (
     kind.endsWith('REVIEW_REQUIRED') ||
@@ -57,9 +59,21 @@ interface Delivery {
 
 async function isDeliverable(job: Delivery): Promise<boolean> {
   if (!job.is_active || !Object.hasOwn(activities, job.kind)) return false;
+  if (job.kind.startsWith('ADMIN_')) return job.role === 'SYSTEM_ADMIN';
+  if (
+    (job.kind.endsWith('REVIEW_REQUIRED') ||
+      job.kind === 'CLINICAL_FOLLOWUP_REQUIRED') &&
+    job.role !== 'CLINICIAN_MODERATOR'
+  )
+    return false;
+  if (
+    ['PRIVATE_REPLY', 'PRIVATE_MESSAGE'].includes(job.kind) &&
+    job.role === 'SYSTEM_ADMIN'
+  )
+    return false;
   if (
     ['GUIDE_APPROVED', 'INVITATION_ACCEPTED'].includes(job.kind) &&
-    !['CLINICIAN_MODERATOR', 'SYSTEM_ADMIN'].includes(job.role)
+    job.role !== 'CLINICIAN_MODERATOR'
   )
     return false;
   if (job.kind === 'PRIVATE_REPLY') {
@@ -77,8 +91,7 @@ async function isDeliverable(job: Delivery): Promise<boolean> {
     );
   }
   if (job.kind.endsWith('REVIEW_REQUIRED')) {
-    if (!['CLINICIAN_MODERATOR', 'SYSTEM_ADMIN'].includes(job.role))
-      return false;
+    if (job.role !== 'CLINICIAN_MODERATOR') return false;
     const { postId, commentId, guideId } = job.context;
     const pending = guideId
       ? await query(
@@ -188,6 +201,7 @@ export async function processNotificationEmails(
         });
         const result = await sendEmail({
           to: job.email,
+          retryManaged: true,
           ...email,
           messageId: `<activity-${notificationId}@${new URL(env.APP_URL).hostname}>`,
         });
@@ -203,6 +217,20 @@ export async function processNotificationEmails(
           `UPDATE notification_email_jobs SET locked_until=NULL,next_attempt_at=NOW()+INTERVAL '1 minute'*POWER(2,LEAST(attempts-1,3)),last_error='Email delivery failed' WHERE notification_id=$1`,
           [notificationId],
         );
+        const permanent = await query(
+          'SELECT n.kind FROM notification_email_jobs j JOIN notifications n ON n.id=j.notification_id WHERE j.notification_id=$1 AND j.attempts>=5',
+          [notificationId],
+        );
+        if (
+          permanent.rowCount &&
+          permanent.rows[0].kind !== 'ADMIN_EMAIL_DELIVERY_FAILED'
+        )
+          await transaction((client) =>
+            notifyAdmins(client, {
+              kind: 'ADMIN_EMAIL_DELIVERY_FAILED',
+              eventKey: `email-job-failed:${notificationId}`,
+            }),
+          );
         logger.error('Activity email delivery failed', error);
       }
     };

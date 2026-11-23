@@ -228,7 +228,8 @@ export interface DirectMessage {
     | 'DIRECT_CHAT'
     | 'MODERATION'
     | 'ACTIVITY'
-    | 'SECURITY';
+    | 'SECURITY'
+    | 'SYSTEM';
   createdAt: string;
   read: boolean;
   kind?: string;

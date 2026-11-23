@@ -1,6 +1,6 @@
 import {
   notify,
-  notifyStaff,
+  notifyModerators,
   notifySubmission,
   notifyReplyPublished,
 } from '../../services/notifications.js';
@@ -517,12 +517,12 @@ export const sendPrivateReply = async (req: Request, res: Response) => {
       ? [post.rows[0].author_id]
       : (
           await client.query(
-            "SELECT DISTINCT n.sender_id FROM moderator_private_notes n JOIN users u ON u.id=n.sender_id WHERE n.post_id=$1 AND u.role IN ('CLINICIAN_MODERATOR','SYSTEM_ADMIN')",
+            "SELECT DISTINCT n.sender_id FROM moderator_private_notes n JOIN users u ON u.id=n.sender_id WHERE n.post_id=$1 AND u.role='CLINICIAN_MODERATOR'",
             [req.params.id],
           )
         ).rows.map((row) => row.sender_id);
     if (!isStaffRole(req.user!.role) && recipients.length === 0)
-      await notifyStaff(client, {
+      await notifyModerators(client, {
         kind: 'PRIVATE_REPLY',
         actorId: req.user!.id,
         eventKey: `private-reply:${inserted.rows[0].id}`,

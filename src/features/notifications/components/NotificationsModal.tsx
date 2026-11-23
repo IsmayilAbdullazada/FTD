@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ArrowRight,
   Bell,
+  Shield,
   Check,
   CheckCircle,
   Clock,
@@ -57,9 +58,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isClinician =
-    currentUser.role === 'CLINICIAN_MODERATOR' ||
-    currentUser.role === 'SYSTEM_ADMIN';
+  const isClinician = currentUser.role === 'CLINICIAN_MODERATOR';
+  const isAdmin = currentUser.role === 'SYSTEM_ADMIN';
 
   const showFeedback = (message: string, tone: 'success' | 'error') => {
     setFeedbackTone(tone);
@@ -369,6 +369,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               </div>
             )}
 
+            {isAdmin && <h3 className="font-semibold">System notifications</h3>}
             {/* SECTION 2: DIRECT NOTIFICATIONS & UPDATES */}
             <div className="space-y-3">
               {notifications.length === 0
@@ -391,6 +392,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 font-medium">
+                            {msg.type === 'SYSTEM' && (
+                              <>
+                                <Shield
+                                  className="h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                                <span className="text-xs">System</span>
+                              </>
+                            )}
                             {msg.type === 'APPROVAL' && (
                               <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             )}

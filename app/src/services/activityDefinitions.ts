@@ -5,6 +5,42 @@ const activity = (
   action = 'View discussion',
 ) => ({ type, title, message, action });
 export const activities = {
+  ADMIN_EMAIL_DELIVERY_FAILED: activity(
+    'SYSTEM',
+    'Email delivery needs attention',
+    'An email could not be delivered after its available attempts. Review delivery details in the CS Admin console.',
+    'Open system notifications',
+  ),
+  ADMIN_ACCOUNT_SECURITY: activity(
+    'SYSTEM',
+    'Staff account security update',
+    'A staff account had a security event. Review the account activity in the CS Admin console.',
+    'Review account activity',
+  ),
+  ADMIN_CONSOLE_ACTION: activity(
+    'SYSTEM',
+    'An administrator changed application data',
+    'Another administrator completed a destructive console action. Review its audit entry.',
+    'Review audit log',
+  ),
+  ADMIN_GUIDE_PUBLISHED: activity(
+    'SYSTEM',
+    'Guide publication changed',
+    'A guide was approved or unpublished. Review its current publication status.',
+    'Open Guides',
+  ),
+  ADMIN_USER_ACTIVITY: activity(
+    'SYSTEM',
+    'A care partner joined the community',
+    'A new care partner completed registration. Review account activity in the CS Admin console.',
+    'Review account activity',
+  ),
+  CLINICAL_FOLLOWUP_REQUIRED: activity(
+    'MODERATION',
+    'Clinical follow-up requested',
+    'A discussion needs follow-up from the moderation team. Please sign in to review it.',
+    'Open moderation dashboard',
+  ),
   POST_SUBMITTED: activity(
     'ACTIVITY',
     'We received your discussion',
@@ -154,6 +190,10 @@ export const activities = {
 } as const;
 export type ActivityKind = keyof typeof activities;
 export interface ActivityContext {
+  userId?: string;
+  action?: string;
+  emailId?: string;
+  auditId?: string;
   postId?: string;
   commentId?: string;
   guideId?: string;

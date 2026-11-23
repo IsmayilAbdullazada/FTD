@@ -1,5 +1,9 @@
+import {
+  notifyStaffSecurity,
+  recordFailedSignIn,
+} from '../../services/accountSecurity.js';
 import { composeEmail, escapeHtml } from '../../services/emailTemplates.js';
-import { notify } from '../../services/notifications.js';
+import { notify, notifyAdmins } from '../../services/notifications.js';
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
@@ -63,8 +67,13 @@ router.post(
       password,
       user?.password_hash ?? dummyPasswordHash,
     );
-    if (!user || !validPassword)
+    if (!user || !validPassword) {
+      await recordFailedSignIn(
+        identifier,
+        user ? { id: String(user.id), role: String(user.role) } : undefined,
+      );
       throw new HttpError(401, 'Invalid email, Clinic Patient ID, or password');
+    }
     const token = tokenFor(user as Parameters<typeof tokenFor>[0]);
     setSessionCookie(res, token, rememberMe);
     res.json({
@@ -134,6 +143,12 @@ router.post(
       await client.query(
         'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
         [user.id],
+      );
+      await notifyStaffSecurity(
+        client,
+        user.id,
+        'PASSWORD_CHANGED',
+        `staff-password-changed:${user.id}:${crypto.randomUUID()}`,
       );
       await notify(client, {
         kind: 'PASSWORD_CHANGED',
@@ -301,6 +316,11 @@ router.post(
         actorId: id,
         eventKey: `invitation-accepted:${invite.id}`,
       });
+      await notifyAdmins(client, {
+        kind: 'ADMIN_USER_ACTIVITY',
+        eventKey: `new-member:${id}`,
+        context: { userId: id },
+      });
       return inserted.rows[0];
     });
     const token = tokenFor(user as Parameters<typeof tokenFor>[0]);
@@ -369,6 +389,12 @@ router.post(
       await client.query(
         'UPDATE password_resets SET consumed_at=NOW() WHERE user_id=$1 AND consumed_at IS NULL',
         [user.id],
+      );
+      await notifyStaffSecurity(
+        client,
+        user.id,
+        'PASSWORD_CHANGED',
+        `staff-password-changed:${user.id}:${crypto.randomUUID()}`,
       );
       await notify(client, {
         kind: 'PASSWORD_CHANGED',

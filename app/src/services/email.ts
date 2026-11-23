@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
-import { query } from '../config/db.js';
+import { query, transaction } from '../config/db.js';
+import { notifyAdmins } from './notifications.js';
 
 const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value).digest('hex');
@@ -12,6 +13,7 @@ export async function sendEmail(message: {
   text: string;
   html: string;
   messageId?: string;
+  retryManaged?: boolean;
 }) {
   const previewToken = crypto.randomBytes(24).toString('base64url');
   const inserted = await query(
@@ -31,7 +33,8 @@ export async function sendEmail(message: {
   if (env.SMTP_HOST) {
     try {
       const transport = createEmailTransport();
-      await transport.sendMail({ from: env.SMTP_FROM, ...message });
+      const { retryManaged: _retryManaged, ...mail } = message;
+      await transport.sendMail({ from: env.SMTP_FROM, ...mail });
       emailSent = true;
       await query(
         `UPDATE email_outbox SET delivery_status='SENT' WHERE id=$1`,
@@ -53,6 +56,14 @@ export async function sendEmail(message: {
       [id, error],
     );
   }
+  if (!emailSent && !message.retryManaged)
+    await transaction((client) =>
+      notifyAdmins(client, {
+        kind: 'ADMIN_EMAIL_DELIVERY_FAILED',
+        eventKey: `email-outbox-failed:${id}`,
+        context: { emailId: id },
+      }),
+    );
   return {
     emailSent,
     emailError: error,

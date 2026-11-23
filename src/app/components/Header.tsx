@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showPersonaMenu]);
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const reviewAlertsCount = isClinician || isAdmin ? pendingTriageCount : 0;
+  const reviewAlertsCount = isClinician ? pendingTriageCount : 0;
   const totalNotificationBadge = unreadCount + reviewAlertsCount;
 
   return (

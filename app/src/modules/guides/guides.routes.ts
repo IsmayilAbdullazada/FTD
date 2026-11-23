@@ -1,4 +1,8 @@
-import { notify, notifyStaff } from '../../services/notifications.js';
+import {
+  notify,
+  notifyModerators,
+  notifyAdmins,
+} from '../../services/notifications.js';
 import type { PoolClient } from 'pg';
 import type { GuideRow } from '../../db/rows.js';
 import path from 'node:path';
@@ -183,8 +187,14 @@ router.post(
         )
       ).rows[0];
       inserted.total_chunks = await reindex(client, inserted);
+      if (inserted.status === 'APPROVED')
+        await notifyAdmins(client, {
+          kind: 'ADMIN_GUIDE_PUBLISHED',
+          eventKey: `guide-published:${inserted.id}`,
+          context: { guideId: inserted.id, action: 'APPROVED' },
+        });
       if (inserted.status === 'DRAFT')
-        await notifyStaff(client, {
+        await notifyModerators(client, {
           kind: 'GUIDE_REVIEW_REQUIRED',
           actorId: req.user!.id,
           eventKey: `guide-review:${inserted.id}`,
@@ -257,6 +267,12 @@ router.put(
       ).rows[0];
       if (!updated) throw new HttpError(404, 'Guide not found');
       updated.total_chunks = await reindex(client, updated);
+      if (updated.status !== before.status)
+        await notifyAdmins(client, {
+          kind: 'ADMIN_GUIDE_PUBLISHED',
+          eventKey: `guide-publication:${updated.id}:${updated.updated_at.toISOString()}`,
+          context: { guideId: updated.id, action: updated.status },
+        });
       if (updated.status === 'APPROVED' && before.status !== 'APPROVED') {
         await notify(client, {
           kind: 'GUIDE_APPROVED',
@@ -266,7 +282,7 @@ router.put(
           context: { guideId: updated.id },
         });
       } else if (updated.status === 'DRAFT') {
-        await notifyStaff(client, {
+        await notifyModerators(client, {
           kind: 'GUIDE_REVIEW_REQUIRED',
           actorId: req.user!.id,
           eventKey: `guide-review:${updated.id}:${updated.updated_at.toISOString()}`,
@@ -307,6 +323,15 @@ router.patch(
       ).rows[0];
       if (!g) throw new HttpError(404, 'Guide not found');
       g.total_chunks = await reindex(client, g);
+      await notifyAdmins(client, {
+        kind: 'ADMIN_GUIDE_PUBLISHED',
+        eventKey: `guide-publication:${g.id}:${g.updated_at.toISOString()}`,
+        context: {
+          guideId: g.id,
+          action:
+            g.is_active && g.status === 'APPROVED' ? 'APPROVED' : 'UNPUBLISHED',
+        },
+      });
       if (before?.status !== 'APPROVED')
         await notify(client, {
           kind: 'GUIDE_APPROVED',
@@ -343,6 +368,15 @@ router.patch(
       ).rows[0];
       if (!g) throw new HttpError(404, 'Guide not found');
       g.total_chunks = await reindex(client, g);
+      await notifyAdmins(client, {
+        kind: 'ADMIN_GUIDE_PUBLISHED',
+        eventKey: `guide-publication:${g.id}:${g.updated_at.toISOString()}`,
+        context: {
+          guideId: g.id,
+          action:
+            g.is_active && g.status === 'APPROVED' ? 'APPROVED' : 'UNPUBLISHED',
+        },
+      });
       return g;
     });
     const user = await query(

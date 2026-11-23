@@ -160,7 +160,7 @@ after(async () => {
   await pool.end();
 });
 
-test('pending submissions notify their author and active staff without publishing replies to other care partners', async () => {
+test('pending submissions notify their author and active moderators without publishing replies to other care partners', async () => {
   postId = await createPost();
   const receipt = await notifications(postId, 'POST_SUBMITTED');
   assert.deepEqual(
@@ -169,7 +169,7 @@ test('pending submissions notify their author and active staff without publishin
   );
   const reviewers = await notifications(postId, 'POST_REVIEW_REQUIRED');
   assert.ok(reviewers.some((n) => n.recipient_user_id === ids.staff));
-  assert.ok(reviewers.some((n) => n.recipient_user_id === ids.admin));
+  assert.ok(!reviewers.some((n) => n.recipient_user_id === ids.admin));
   assert.ok(
     !reviewers.some(
       (n) =>
@@ -439,7 +439,14 @@ test('cohort reassignment, guide review and approval, and private messages notif
     "SELECT recipient_user_id FROM notifications WHERE kind='GUIDE_REVIEW_REQUIRED' AND context->>'guideId'=$1",
     [guide.body.id],
   );
-  assert.ok(review.rows.some((n) => n.recipient_user_id === ids.admin));
+  assert.ok(!review.rows.some((n) => n.recipient_user_id === ids.admin));
+  const reviewRoles = await pool.query(
+    "SELECT DISTINCT u.role FROM notifications n JOIN users u ON u.id=n.recipient_user_id WHERE n.kind='GUIDE_REVIEW_REQUIRED' AND n.context->>'guideId'=$1",
+    [guide.body.id],
+  );
+  assert.ok(
+    reviewRoles.rows.every((row) => row.role === 'CLINICIAN_MODERATOR'),
+  );
   assert.ok(!review.rows.some((n) => n.recipient_user_id === ids.staff));
   assert.equal(
     (
@@ -716,7 +723,7 @@ test('approved nested responses wait for their parent and private publication se
     ),
   );
   assert.ok(
-    (await notifications(pending, 'PRIVATE_REPLY')).some(
+    !(await notifications(pending, 'PRIVATE_REPLY')).some(
       (n) => n.recipient_user_id === ids.admin,
     ),
   );

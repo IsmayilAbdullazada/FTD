@@ -164,21 +164,18 @@ function AppContent() {
     );
   }
 
-  if (showGuidelines && currentUser.role === 'CARE_PARTNER') {
-    return (
-      <GuidelinesGate
-        key={currentUser.id}
-        onContinue={() => setShowGuidelines(false)}
-        onSignOut={() => {
-          setShowGuidelines(false);
-          handleSignOut();
-        }}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19] flex flex-col text-slate-800 dark:text-slate-100 font-sans selection:bg-[#002D72]/15 selection:text-[#002D72] dark:selection:bg-blue-600/30 dark:selection:text-blue-200 transition-colors">
+      {showGuidelines && currentUser.role === 'CARE_PARTNER' && (
+        <GuidelinesGate
+          key={currentUser.id}
+          onContinue={() => setShowGuidelines(false)}
+          onSignOut={() => {
+            setShowGuidelines(false);
+            handleSignOut();
+          }}
+        />
+      )}
       {/* Universal Top Header with Emergency Banner & Persona Switcher */}
       <Header
         currentUser={currentUser}

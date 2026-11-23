@@ -80,7 +80,7 @@ export function useKnowledgeResources({
     { key: 'LEGAL_MEDICAID', label: 'Legal and Financial' },
     { key: 'COMMUNICATION_PPA', label: 'Speech and Communication' },
     { key: 'NUTRITION_DIET', label: 'Eating and Nutrition' },
-    { key: 'CARE_PARTNER_SUPPORT', label: 'Care partner Support & Wellbeing' },
+    { key: 'CARE_PARTNER_SUPPORT', label: 'Care Partner Support & Wellbeing' },
     { key: 'DAILY_CARE', label: 'Daily Care & Routines' },
     { key: 'GENERAL_EDUCATION', label: 'General Dementia Education' },
   ];

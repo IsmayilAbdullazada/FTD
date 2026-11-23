@@ -1,7 +1,6 @@
 # PDF uploads through Apache and ModSecurity
 
-PDFs use `multipart/form-data` with exactly one `file` part. Both staff upload
-screens use this transport: Assistant Guides and the care resource library.
+PDFs use `multipart/form-data` with exactly one `file` part. The staff Guides upload form and legacy resource PDF attachments use this transport.
 The browser sets the multipart boundary; do not set `Content-Type` manually.
 
 The API requires an authenticated staff account and a valid request origin before
@@ -11,7 +10,7 @@ upload directory. Malformed uploads return 400, oversized files return 413 and
 old JSON clients return 415 with an instruction to refresh. PDF access remains
 authenticated; unreferenced uploads retain the existing cleanup policy.
 
-For Assistant Guides, the save request sends the protected PDF reference and
+For uploaded guides, the save request sends the protected PDF reference and
 metadata. The server reads the registered upload belonging to that staff member
 to populate text and pages. Subsequent metadata changes preserve the stored
 text. This avoids sending extracted document prose back through JSON request
@@ -65,7 +64,7 @@ for repeatable checks; this verification used
 
 Verify in a real browser at desktop and mobile viewport sizes:
 
-1. Sign in as test staff. In Assistant Guides, select Upload Guide and upload
+1. Sign in as test staff. In Guides, select Add guide → Upload PDF or text and upload
    `public/resources/Managing-Aggressive-Behavior.pdf` (574,559 bytes).
 2. Check Network: extraction returns 200, uses multipart with a boundary, and
    returns two pages and 943 words. Select the condition, save as draft, and
@@ -104,3 +103,9 @@ production builds. Both dependency audits reported zero known vulnerabilities.
 The backend suite used two concurrent test files to fit the isolated test host;
 a first unrestricted run hit a database connection timeout during parallel
 registration while other build/browser checks were running.
+
+## Platform-update follow-up
+
+The current release has one Guides page, a plain moderator form and CS Admin diagnostics. Extraction statistics in the historical reproduction above describe the admin response; moderators receive plain upload readiness and no pages/word/chunk details. See [platform verification](platform-update.md) for current desktop/mobile evidence.
+
+The follow-up stock-proxy test found a separate **200004 unmatched-boundary false positive** for July-2012.pdf, while the larger Managing-Aggressive-Behavior.pdf passed. A reviewed POST/exact-route exception for only that rule allowed both files and retained other validation/access limits in local tests. The [deployment runbook](../deployment.md#confirmed-local-multipart-false-positive-rule-200004) documents the evidence, narrow example and remaining proxy malformed-body error mapping. Confirm the live audit rule before applying any exception.

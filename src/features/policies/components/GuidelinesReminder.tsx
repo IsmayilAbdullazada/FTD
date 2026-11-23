@@ -24,7 +24,7 @@ export function GuidelinesReminder({
           <button
             type="button"
             onClick={() => setShowGuidelines(true)}
-            className="inline-flex items-center gap-0.5 font-semibold text-[#002D72] hover:underline dark:text-blue-300"
+            className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-[#002D72] hover:underline dark:text-blue-300"
           >
             Community Guidelines
             <ArrowUpRight className="h-3 w-3" />
@@ -45,7 +45,7 @@ export function GuidelinesReminder({
               <button
                 type="button"
                 onClick={() => setShowGuidelines(true)}
-                className="font-semibold text-[#002D72] underline hover:text-blue-700 dark:text-blue-300"
+                className="inline-flex min-h-11 items-center font-semibold text-[#002D72] underline hover:text-blue-700 dark:text-blue-300"
               >
                 Read Community Guidelines
               </button>

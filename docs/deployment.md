@@ -1,6 +1,6 @@
 # Deploy a reviewed release by SSH
 
-Use Node 24, PostgreSQL 16/18, nginx with a valid TLS certificate, an application service account, and a trusted SMTP relay. This procedure transfers locally built artifacts; the server does not need the frontend source or TypeScript tools.
+Use Node 24, PostgreSQL 16/18, Apache/nginx with a valid TLS certificate, an application service account, and a trusted SMTP relay. This procedure transfers locally built artifacts; the server does not need the frontend source or TypeScript tools.
 
 ## Build locally
 
@@ -16,7 +16,41 @@ The archive contains `html/`, `app/dist/`, standalone backend package manifests,
 
 The frontend build explicitly copies only fonts, bundled resources and the website logo. Locally uploaded PDFs are excluded, even when they exist under `public/uploads`.
 
+## Existing rootless installation
+
+The deployed Hopkins installation uses API port **3003**, PostgreSQL in rootless Podman and the user-level **`ftdcare-api.service`**. Keep that layout and the existing proxy order. You do not need sudo to install application artifacts or manage your own service. Apache/nginx policy, ownership outside your account and SELinux changes require the server administrator.
+
+Keep `PORT=3003` in the private production environment file. Leave `ENABLE_DATABASE_RESET`, `ENABLE_DEV_PERSONAS`, `ENABLE_DEV_AUTH_PREVIEWS` and `ALLOW_PRODUCTION_SEED` false. **`ENABLE_ADMIN_CONSOLE=false` is the default**; set it true only when the optional console is intended to be available to CS Admins. Back up PostgreSQL and the persistent PDF directory before upgrading.
+
+For a flat installation, unpack the verified archive to a staging directory, run `sha256sum --check SHA256SUMS`, then copy its `app/package.json`, `app/package-lock.json` and `app/dist/` into the deployed backend. Preserve `config/ftdcare.env` and all uploads. Install backend dependencies on the server; never transfer local `node_modules`. From the actual deployed `app/`:
+
+```bash
+npm ci --omit=dev --workspaces=false
+npm run migrate:compiled
+npm run preflight:compiled
+```
+
+These compiled commands need no `tsx`. If production is at migration 007, the runner applies **008–013**, including 010 guidelines, 011 system notifications, 012 append-only admin audit and 013 exact system-category terminology. Already-applied migration checksums must remain unchanged. Run migrations before starting the new API; deploy frontend and backend from the same reviewed commit. The API refuses a mismatched schema. The current migration runner does not support serving an old binary against a newer schema, so arrange a brief maintenance window for the upgrade.
+
+Activate the matching frontend (`html/`) using an atomic release switch where possible. If the existing flat layout must be synchronized, retain old hashed assets while replacing the entry HTML and new assets; do not delete files still needed by open browser tabs. Avoid a parent-level `rsync --delete` that could erase configuration or uploads. Never synchronize the local upload directory to production.
+
+```bash
+systemctl --user restart ftdcare-api.service
+systemctl --user status ftdcare-api.service --no-pager -l
+curl --fail http://127.0.0.1:3003/api/v1/health
+curl --fail https://hopkinscarepartners.eng.jhu.edu/api/v1/health
+tail -n 100 ~/logs/api.log
+```
+
+A restart briefly interrupts API requests; nginx/Apache can continue serving static pages. An empty log after a successful request is normal: the API logs lifecycle events and failures, not every request. Correlate failures with `requestId`; an Apache HTML error without an application log may have been rejected before Node.
+
+If your existing unit already works, preserve it. The optional `config/ftdcare-api.user.service.example` in the release is a user-service template: adapt the absolute Node path, working directory and environment path before placing it at `~/.config/systemd/user/ftdcare-api.service`. Create `~/logs` first, then `systemctl --user daemon-reload` and restart the service. It writes stdout/stderr to `~/logs/api.log`, avoiding journal-access requirements. Persistent user-service startup after logout/reboot depends on the host's linger policy; ask the administrator to confirm it.
+
+After activation, follow the [platform-update QA script](qa/platform-update.md) with authorized test accounts. Refresh older open browser tabs, verify mail delivery and use the public hostname for cookies, PDF access and role-preview checks. No production data should be seeded for testing.
+
 ## Prepare the server once
+
+The following alternative is for an administrator provisioning a new system-level service. Existing rootless deployments should use the section above.
 
 The examples use `/var/www/ftdcare`; replace that path, the domain, deployment account and service account consistently. Existing flat `html/`, `app/`, `config/` installations can keep their layout, but versioned directories make artifact rollback safer.
 
@@ -78,6 +112,8 @@ stock CRS policy blocks `PUT`/`PATCH`/`DELETE` with rule 911100. Scope this poli
 to the application API where your server supports per-location settings, and
 keep unrelated hosts and locations under their existing policies.
 
+Pass the custom **`X-Preview-Token`** request header unchanged through every proxy to Node; do not log its value. Same-origin preview uses the normal HttpOnly admin cookie plus this in-memory signed header. If the header is stripped, the frontend fails closed on the target-account check. Verify a read-only iframe loads the selected account, all preview writes return `403 PREVIEW_READ_ONLY`, and CS Admin data is not rendered in a target pane. The console sends typed fields, never arbitrary SQL. Ordinary prose can still trigger WAF rules: inspect the specific audit event and apply narrowly reviewed exclusions if needed, rather than disabling inspection.
+
 Deploy the frontend and backend from this same release and install backend
 production dependencies with `npm ci --omit=dev --workspaces=false`. PDF extraction
 now requires multipart instead of base64 JSON, so already-open older browser
@@ -111,3 +147,18 @@ through the public origin, rather than testing only the inner proxy.
 Validate each changed configuration (`nginx -t` and `apachectl configtest`, or
 your distribution's equivalent) before reloading that service. Inspect both
 proxies' logs when an upload fails: an upstream rejection may never reach Node.
+
+### Confirmed local multipart false positive (rule 200004)
+
+The 2026-11-23 local test reproduced a content-dependent rejection: a real Chromium multipart upload of `July-2012.pdf` (414,263 PDF bytes) was blocked with `Multipart parser detected a possible unmatched boundary` (**200004**), while `Managing-Aggressive-Behavior.pdf` (574,559 bytes) passed. Size alone did not explain the failure. This is local evidence; confirm the actual production audit line before changing its WAF policy.
+
+If the administrator confirms this exact false positive, the following example removes only rule 200004 for POSTs to the PDF endpoint. Install it through the host's reviewed ModSecurity configuration, choose an unused rule ID and validate/reload Apache. Keep ModSecurity, CRS, body limits, strict multipart validation, authentication and the backend PDF parser enabled. Do not remove rule 200004 globally or disable request-body inspection.
+
+```apache
+SecRule REQUEST_URI "@streq /api/v1/chatbot/extract-pdf" "id:1001001,phase:1,pass,nolog,chain"
+    SecRule REQUEST_METHOD "@streq POST" "ctl:ruleRemoveById=200004"
+```
+
+With that exact local scope, both PDFs passed desktop/mobile browser upload checks; rule 200004 still rejected the same payload on another path. Anonymous upload returned 401, invalid PDF content returned 400 and an oversized PDF returned 413. A deliberately missing multipart boundary was rejected by the stock proxy with HTML 500 before Node; backend-direct malformed uploads return JSON 400. That separate proxy error mapping was not changed in the application.
+
+Preserve backend JSON error responses where possible (`ProxyErrorOverride Off` for the application proxy). Never include cookies, preview tokens, request bodies or uploaded clinical documents when sharing WAF logs; share the timestamp, request ID, route, rule ID and sanitized message instead.

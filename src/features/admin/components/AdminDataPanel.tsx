@@ -250,7 +250,12 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           </button>
         </div>
       )}
-      <div className="max-w-full overflow-x-auto rounded border dark:border-slate-700">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Database rows"
+        className="max-w-full overflow-x-auto rounded border dark:border-slate-700"
+      >
         <table className="w-full text-left text-xs">
           <thead>
             <tr>
@@ -272,6 +277,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
                 {!table.readOnly && (
                   <td className="p-3">
                     <input
+                      className="h-11 w-11 accent-blue-900"
                       type="checkbox"
                       aria-label={`Select row ${index + 1}`}
                       checked={selected.some(
@@ -446,12 +452,31 @@ function RowEditor({
             {error}
           </p>
         )}
+        {!table.readOnly && editor.mode === 'update' && (
+          <dl className="mb-4 grid gap-3 sm:grid-cols-2">
+            {table.columns
+              .filter((column) => !fields.includes(column))
+              .map((column) => (
+                <div key={column.name} className="min-w-0">
+                  <dt className="text-sm font-semibold">
+                    {column.name} (read-only)
+                  </dt>
+                  <dd className="break-words text-sm">
+                    {String(row[column.name] ?? '')}
+                  </dd>
+                </div>
+              ))}
+          </dl>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           {table.readOnly
             ? table.columns.map((c) => (
                 <div key={c.name} className="min-w-0">
                   <strong className="text-sm">{c.name}</strong>
-                  <pre className="overflow-auto whitespace-pre-wrap break-words text-xs">
+                  <pre
+                    tabIndex={0}
+                    className="overflow-auto whitespace-pre-wrap break-words text-xs"
+                  >
                     {typeof row[c.name] === 'object'
                       ? JSON.stringify(row[c.name], null, 2)
                       : String(row[c.name] ?? '')}

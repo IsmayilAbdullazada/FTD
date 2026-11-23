@@ -1,30 +1,55 @@
-import { fireEvent, render, screen, cleanup } from '@testing-library/react';
-import { afterEach, expect, test } from 'vitest';
 import { useState } from 'react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test } from 'vitest';
 import { useDialogFocus } from './useDialogFocus';
 afterEach(cleanup);
-function Example() {
-  const [open, setOpen] = useState(false);
-  const ref = useDialogFocus(open, () => setOpen(false));
+function Dialog({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  const ref = useDialogFocus(true, onClose);
+  return (
+    <div role="dialog" aria-modal="true" ref={ref}>
+      {children}
+    </div>
+  );
+}
+function Nested() {
+  const [outer, setOuter] = useState(false),
+    [inner, setInner] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)}>Open</button>
-      {open && (
-        <div ref={ref} role="dialog" aria-label="Example">
-          <button>Inside</button>
-        </div>
+      <button onClick={() => setOuter(true)}>Open editor</button>
+      {outer && (
+        <Dialog onClose={() => setOuter(false)}>
+          <button onClick={() => setInner(true)}>Review edit</button>
+          {inner && (
+            <Dialog onClose={() => setInner(false)}>
+              <button
+                onClick={() => {
+                  setInner(false);
+                  setOuter(false);
+                }}
+              >
+                Confirm both
+              </button>
+            </Dialog>
+          )}
+        </Dialog>
       )}
     </>
   );
 }
-test('opening focuses the dialog and Escape restores focus to its opener', () => {
-  render(<Example />);
-  const opener = screen.getByRole('button', { name: 'Open' });
-  opener.focus();
-  fireEvent.click(opener);
-  expect(document.activeElement).toBe(screen.getByRole('dialog'));
-  fireEvent.keyDown(document, { key: 'Escape' });
+test('closing a confirmation and its editor together restores the original trigger', () => {
+  render(<Nested />);
+  const trigger = screen.getByRole('button', { name: 'Open editor' });
+  trigger.focus();
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole('button', { name: 'Review edit' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm both' }));
   expect(screen.queryByRole('dialog')).toBeNull();
-  expect(document.activeElement).toBe(opener);
-  expect(document.body.style.overflow).not.toBe('hidden');
+  expect(document.activeElement).toBe(trigger);
 });

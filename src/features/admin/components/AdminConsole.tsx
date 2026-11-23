@@ -86,7 +86,10 @@ function Overview() {
     <section>
       <h2 className="text-lg font-semibold">Overview</h2>
       {error && <p role="alert">{error}</p>}
-      <pre className="my-4 max-h-[65dvh] overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-4 text-sm dark:bg-slate-800">
+      <pre
+        tabIndex={0}
+        className="my-4 max-h-[65dvh] overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-4 text-sm dark:bg-slate-800"
+      >
         {JSON.stringify(data, null, 2)}
       </pre>
     </section>
@@ -123,7 +126,10 @@ function AuditLog() {
             {String(row.created_at)} · actor {String(row.actor_id)}
           </p>
           <p>{String(row.reason)}</p>
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
+          <pre
+            tabIndex={0}
+            className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs"
+          >
             {JSON.stringify(
               {
                 before: row.before,

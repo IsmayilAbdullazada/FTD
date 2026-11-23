@@ -89,13 +89,19 @@ export function MutationDialog({
             <div className="my-4 grid gap-3 md:grid-cols-2">
               <section>
                 <h3 className="font-semibold">Before</h3>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-3 text-xs dark:bg-slate-800">
+                <pre
+                  tabIndex={0}
+                  className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-3 text-xs dark:bg-slate-800"
+                >
                   {JSON.stringify(preview.before, null, 2)}
                 </pre>
               </section>
               <section>
                 <h3 className="font-semibold">After / requested action</h3>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-3 text-xs dark:bg-slate-800">
+                <pre
+                  tabIndex={0}
+                  className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-slate-100 p-3 text-xs dark:bg-slate-800"
+                >
                   {JSON.stringify(preview.after, null, 2)}
                 </pre>
               </section>

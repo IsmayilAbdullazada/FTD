@@ -27,7 +27,7 @@ and is never offered by this console.
 Every console mutation requires a preview, a written reason of at least ten
 characters and a typed table-name confirmation. Signed previews expire after ten
 minutes and bind the exact proposal and selected-record snapshots; changed rows
-require a new preview. Bulk changes are limited to 200 selected rows. Relationship
+require a new preview. A confirmation is single-operation and idempotent: retrying a successfully committed confirmation returns its existing audit ID rather than repeating the change. Session identity is rechecked after acquiring the mutation lock. Bulk changes are limited to 200 selected rows. Relationship
 previews show direct foreign-key counts and delete actions; dependent tables can
 have further cascades. Updates/deletes and privileged account actions require a
 password check no more than ten minutes old. Proof is server-side and tied to the
@@ -59,7 +59,7 @@ state; a reload requires the parent to supply its still-valid token again.
 
 SMTP acceptance and filesystem deletion cannot be rolled back with PostgreSQL.
 Recovery is queued; existing invitation delivery retains its domain behavior.
-Upload cleanup is performed after the administrative audit transaction commits.
+Upload cleanup records an intent audit before touching files, then removes only the approved aged file names and writes a completion/result audit with the registry change. A retry is limited to that original approved set; it cannot expand to newer files. Filesystem effects remain a separate, explicitly recorded phase.
 Retain institutional database/upload backups and verify operational SMTP delivery.
 
 ## Endpoint coverage matrix
@@ -147,3 +147,13 @@ must be reviewed and mapped rather than receiving a default raw-request action.
 | `PUT /api/v1/resources/:id`                        | Data / Actions → resources; existing shared Guides page                                 |
 
 Protected file access: `GET /uploads/guides/:file` uses the effective account permissions; files are never served from a public upload alias.
+
+## Operator checklist
+
+Use **Data** for bounded, masked inspection. Choose **Reveal** only for an approved investigation and include its reason. Use **Actions** for domain operations instead of changing security/derived tables. Review the impact preview and the target table before confirming; keep audit retention and uploaded-file backups under the institution's policy.
+
+The registry exposes all application tables. `moderation_audit`, `admin_audit_log` and `guide_uploads` are additionally read-only in the generic editor: domain moderation, append-only audit and approved cleanup actions preserve their provenance. Internal security/confirmation records in `app_settings` are excluded. CSV exports contain the current filtered page, not the entire database.
+
+Diagnostics reports the actual PostgreSQL full-text ranking score. It does not label that score as cosine similarity or a calibrated match percentage. Retrieval operates over approved, active guides. The moderator and care-partner APIs omit extracted pages, chunk counts and retrieval scores while retaining source/page citations where needed.
+
+If a session changes, reauthenticate and generate a new preview. Do not keep preview tokens, passwords or clinical reveals in tickets, logs or screenshots. Closing the preview discards its token; header forwarding through both Apache and nginx must be verified after proxy changes.

@@ -14,6 +14,8 @@ The frontend uses React 19, TypeScript, Vite, and Tailwind CSS. The backend uses
 - [Testing and CI](#testing-and-ci)
 - [API conventions](#api-conventions)
 - [Email notifications](#email-notifications)
+- [Guides and community guidelines](#guides-and-community-guidelines)
+- [CS Admin console](#cs-admin-console)
 - [Database and file storage](#database-and-file-storage)
 - [Production deployment](#production-deployment)
 - [Operations and troubleshooting](#operations-and-troubleshooting)
@@ -118,6 +120,7 @@ Backend npm scripts load `config/ftdcare.env` when present. Backend tests load `
 | `GUIDE_UPLOAD_DIRECTORY`                       | Optional absolute persistent upload path; defaults to `public/uploads/guides`.                                                                                    |
 | `ENABLE_DEV_PERSONAS`, `ENABLE_DATABASE_RESET` | Development-only switches; default `false`, rejected in production.                                                                                               |
 | `ENABLE_DEV_AUTH_PREVIEWS`                     | Redacted development email previews; default `false`, rejected in production. Does not expose reset credentials.                                                  |
+| `ENABLE_ADMIN_CONSOLE`                         | CS Admin console and its API; default `false`. Explicit opt-in in every environment, including production.                                                        |
 | `ALLOW_PRODUCTION_SEED`                        | Explicit opt-in to run the seed script in production; default `false`.                                                                                            |
 
 `VITE_API_PROXY_TARGET` configures the Vite development proxy and defaults to `http://127.0.0.1:3000`. Set it in the frontend process environment when changing the API port. Frontend `VITE_*` configuration can be exposed to the browser; never put secrets in it. `GEMINI_API_KEY` is optional legacy configuration and does not enable model generation.
@@ -128,7 +131,7 @@ Backend npm scripts load `config/ftdcare.env` when present. Backend tests load `
 | --------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | `CARE_PARTNER`        | Approved discussions in their condition/cohorts, own pending questions, resources, per-post private dialogue. | `sarah.smith@example.com`, `marcus.vance@example.com` |
 | `CLINICIAN_MODERATOR` | Moderation, discussion policies, guides, cohorts, membership, invitations.                                    | `sgulyan1@jhmi.edu`                                   |
-| `SYSTEM_ADMIN`        | Staff capabilities and API-only database administration.                                                      | `cs-admin@cs.jhu.edu`                                 |
+| `SYSTEM_ADMIN`        | Staff capabilities plus the guarded CS Admin console when explicitly enabled.                                 | `cs-admin@cs.jhu.edu`                                 |
 
 Seeding creates sample accounts and content for development. It does not provide usable initial passwords or access to the listed inboxes. For local testing, assign an inbox you control to the seeded clinician using a PostgreSQL administrator connection to your development database:
 
@@ -138,7 +141,7 @@ UPDATE users SET email = 'you@your-domain.example' WHERE id = 'user-clinician-1'
 
 Replace the example email before running this statement. Configure SMTP, then use **Forgot password** for that address. Open the single-use emailed reset link, choose a new password, and then sign in. No verification code is required. Rerunning the seed script restores seeded email addresses, so repeat this local override after reseeding. This is a development setup step; production account provisioning should use your approved administration process. Do not seed demonstration content into a real care community as an account-provisioning shortcut.
 
-New care partners register through a staff-issued invitation. Password recovery sends one single-use link that expires after 20 minutes. Only a SHA-256 hash of its 32-byte random token is stored. New email links carry the token in a URL fragment so it is not sent to web-server access logs; the frontend removes it from the address bar after reading it. A successful reset revokes existing sessions and returns the user to sign-in; it does not sign them in automatically. Email-based recovery does not protect against mailbox compromise. Standalone private chat and database-admin endpoints are API-only; per-post private dialogue has a frontend interface.
+New care partners register through a staff-issued invitation. Password recovery sends one single-use link that expires after 20 minutes. Only a SHA-256 hash of its 32-byte random token is stored. New email links carry the token in a URL fragment so it is not sent to web-server access logs; the frontend removes it from the address bar after reading it. A successful reset revokes existing sessions and returns the user to sign-in; it does not sign them in automatically. Email-based recovery does not protect against mailbox compromise. Standalone private chat remains API-only for care partners; per-post private dialogue has a frontend interface. Administrative operations are available in the optional CS Admin console.
 
 Care partners receive a public tag in the `User-123` format when their account is created. The tag is stored in `users.anonymous_handle`, with a database uniqueness constraint and database-side allocation; the browser does not choose it. Internal account IDs continue to identify sessions, permissions, posts, and messages. Public tags never encode a diagnosis. Staff can retain their name-based moderator handles.
 
@@ -166,7 +169,7 @@ The root package uses an npm workspace for `app`. Run `npm ci` at the repository
 
 ## Testing and CI
 
-Run `npm run verify` for the complete local frontend/release-tooling gate, and run backend integration tests against an isolated migrated/seeded database. `npm run test:list` lists discovered frontend files; the current full suite contains 14 files and 33 tests. `npm run build` now typechecks before producing output. Authentication tests assert expected failures without printing simulated error logs. Build timing and funding messages are informational. See [current deployment verification](docs/qa/deployment-verification.md) for dependency, install-script and packaged-browser checks.
+Run `npm run verify` for the complete local frontend/release-tooling gate, and run backend integration tests against an isolated migrated/seeded database. `npm run test:list` lists discovered frontend files; the platform update adds policy, guide visibility, notification-role, console and draft-preservation regressions. See [platform update verification](docs/qa/platform-update.md) for the recorded counts and browser evidence. `npm run build` now typechecks before producing output. Authentication tests assert expected failures without printing simulated error logs. Build timing and funding messages are informational. See [current deployment verification](docs/qa/deployment-verification.md) for dependency, install-script and packaged-browser checks.
 
 These checks do not require PostgreSQL:
 
@@ -202,7 +205,7 @@ npm audit --audit-level=high
 npm --prefix app audit --audit-level=high
 ```
 
-The last recorded audit on 2026-11-15 reported a moderate `minimatch` advisory through development-only `typescript-eslint` dependencies, with no fix reported, and no production dependency advisories. Run the commands above for current results.
+Dependency findings change over time. Run the commands above for current results; the dated platform verification records the checks for this release.
 
 ## API conventions
 
@@ -218,17 +221,19 @@ Posts, moderation queues, and private messages accept `page` and `pageSize`. Def
 
 Primary account and community actions create in-app notifications and durable email jobs in the same database transaction. Activity emails use a shared, readable HTML and plain-text template, with a clear subject and a link back to the application. HTML messages use transparent page/text backgrounds and light/dark color rules to blend into mail clients without a fixed white card. Discussion titles, post/reply text, private messages, moderation feedback, names, and condition labels are excluded from activity emails; those details stay behind sign-in.
 
-| Event                                                                                        | Who is notified                                                                                                                                                                                                                             |
-| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| New or edited discussion/reply awaiting moderation                                           | The submitting care partner receives a receipt; active clinicians and administrators receive a review alert.                                                                                                                                |
-| Approval, decline, or clinical redirection                                                   | The author receives the outcome. Detailed moderation feedback remains in their signed-in notification inbox.                                                                                                                                |
-| Published reply or nested response                                                           | The discussion owner and parent-reply author, once the discussion and ancestor replies are approved and accessible. The same person receives one reply alert if they own both.                                                              |
-| Moderator edits or removes content, closes/reopens a discussion, or changes reply moderation | The affected content owner. Bulk-approved replies also produce approval and reply alerts.                                                                                                                                                   |
-| Private discussion replies and direct messages                                               | The recipient or existing care-team participants; a first private follow-up alerts active staff if no clinician has joined the thread yet. Private message text stays inside the application. Standalone direct messaging remains API-only. |
-| Primary community group reassignment                                                         | The affected member, when the group actually changes.                                                                                                                                                                                       |
-| New draft guide / guide approval                                                             | Other active staff reviewers / the uploader when another staff member approves it.                                                                                                                                                          |
-| Completed invitation registration                                                            | The new member receives a welcome message and the inviter receives an acceptance update.                                                                                                                                                    |
-| Password reset completed                                                                     | The account owner receives a password-change security alert after existing sessions are revoked.                                                                                                                                            |
+| Event                                                                                        | Who is notified                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| New or edited discussion/reply awaiting moderation                                           | The submitting care partner receives a receipt; active moderators receive a review alert. CS Admins do not.                                                                                                                                      |
+| Approval, decline, or clinical redirection                                                   | The author receives the outcome. Detailed moderation feedback remains in their signed-in notification inbox.                                                                                                                                     |
+| Published reply or nested response                                                           | The discussion owner and parent-reply author, once the discussion and ancestor replies are approved and accessible. The same person receives one reply alert if they own both.                                                                   |
+| Moderator edits or removes content, closes/reopens a discussion, or changes reply moderation | The affected content owner. Bulk-approved replies also produce approval and reply alerts.                                                                                                                                                        |
+| Private discussion replies and direct messages                                               | The recipient or existing care-team participants; a first private follow-up alerts active moderators if no moderator has joined the thread yet. Private message text stays inside the application. Standalone direct messaging remains API-only. |
+| Primary community group reassignment                                                         | The affected member, when the group actually changes.                                                                                                                                                                                            |
+| New draft guide / guide approval                                                             | Active moderators review drafts; the uploader receives an approval update. CS Admins receive a system publication alert when a guide is approved or unpublished.                                                                                 |
+| Completed invitation registration                                                            | The new member receives a welcome message, the inviter receives an acceptance update, and CS Admins receive a system account-activity alert.                                                                                                     |
+| Password reset completed                                                                     | The account owner receives a password-change security alert after existing sessions are revoked.                                                                                                                                                 |
+
+CS Admin system alerts cover permanent email failures, staff account security events, destructive actions by another admin, guide publication changes and new care partner registration. Moderation alerts and their email jobs are addressed only to moderators; the admin notification inbox has a separate system section. Migration `011` marks historical unread admin moderation alerts as read without deleting them.
 
 Alerts go to the people involved, rather than every account. Self-alerts and duplicate reply recipients are suppressed; submission receipts and password-change alerts intentionally go to the account owner. Routine browsing and upvotes do not generate emails. Existing historical notifications are not bulk-emailed when the feature is enabled.
 
@@ -237,6 +242,18 @@ The API checks the activity queue every five seconds, claiming up to 20 jobs and
 Configure `SMTP_HOST`, `SMTP_PORT`, and `SMTP_FROM` and keep the API process running. Queue status is stored in `notification_email_jobs`; `attempts`, `completed_at`, `skipped_at`, and the sanitized `last_error` distinguish delivery outcomes. Check jobs with five attempts and no completion when monitoring mail failures. `email_outbox` records delivery status and recipient metadata without retaining message bodies.
 
 Apply pending migrations before starting the updated API, including `008_activity_email_notifications` for the delivery queue and `009_short_anonymous_handles` for public tags. Deploy the matching frontend so email links open the notification inbox and registration uses server-assigned tags. Review the [activity definitions](app/src/services/activityDefinitions.ts) when changing notification wording or adding an event.
+
+## Guides and community guidelines
+
+The **Guides** page combines linked resources and uploaded guides at read time; records are not copied between tables. Staff use **Add guide** to upload PDF/text or link to a webpage. Approved, active guides appear to care partners with the matching condition across all community groups; **All care partners (FTD and AD)** covers both conditions. Drafts and unpublished guides are visible only to staff. Unpublishing also removes a guide from Care Companion retrieval. Moderator upload forms use plain language; extracted text, chunks and retrieval scores are restricted to CS Admin tools.
+
+Care partners acknowledge the current Community Guidelines once per version before posting or replying. Staff are exempt. The backend responds with `428` and `GUIDELINES_ACK_REQUIRED` if acknowledgment is missing; the frontend opens the gate while preserving a discussion draft. Raising the policy version requires a new acknowledgment. Policy records are read-only in the console. The current policy wording mentions FTD and young-onset dementias; it still needs the policy owner's review for the app's AD audience.
+
+## CS Admin console
+
+Set `ENABLE_ADMIN_CONSOLE=true` deliberately to enable **Account menu → CS Admin console** (`?tab=admin`) for active `SYSTEM_ADMIN` accounts. Leave it off when administrative browser access is not needed. The backend enforces the same role and feature flag.
+
+The console includes Overview, generated Data forms, typed Actions, read-only role Preview, Care Companion Diagnostics and an append-only Audit log. Sensitive text is masked by default and reveals require an audited reason. Changes require a preview, written reason and table-name confirmation; destructive changes also require a recent password check. There is no SQL console or password editor, and database reset remains blocked in production. See the [admin runbook and endpoint matrix](docs/admin-console.md) and [desktop/mobile QA script](docs/qa/platform-update.md).
 
 ## Database and file storage
 
@@ -256,28 +273,11 @@ See [release verification and SSH transfer](docs/release-readiness.md) for the a
 
 ### nginx and a supervised API process
 
-1. Provision PostgreSQL, an application service account, nginx, a domain, and a TLS certificate. Set production environment values, SMTP, and persistent upload storage. The commands below assume the checkout is at `/var/www/ftdcare/app`.
-2. Install and build with development dependencies available at build time:
+For the existing rootless deployment behind Apache and nginx, follow the [user-service deployment steps](docs/deployment.md#existing-rootless-installation). The API uses `PORT=3003` there; local development and the generic nginx template default to 3000. Preserve the production override and actual proxy topology.
 
-   ```bash
-   npm ci
-   npm run build
-   npm --prefix app run migrate:compiled
-   sudo mkdir -p /var/www/ftdcare/html
-   sudo rsync -a --chmod=D755,F644 --delete dist/ /var/www/ftdcare/html/
-   ```
+The deployment runbook covers complete artifact packaging, backend-only production dependency installation, migrations and preflight, a user-level `ftdcare-api.service`, readable file logs, backup/rollback and public-origin checks. Infrastructure changes to Apache/nginx remain the server administrator's responsibility. Both proxies must permit `PUT`, `PATCH`, `DELETE` and pass `X-Preview-Token` for read-only role preview; keep ModSecurity enabled.
 
-3. Run `npm start` under a supervisor such as systemd, with the repository as its working directory, the application service account, and restart-on-failure enabled. Restrict access to secrets and expose API port 3000 through the proxy/firewall only.
-4. Install [config/nginx.conf](config/nginx.conf) in nginx's site configuration. Replace the example domain and enable the certificate paths. The template serves `/var/www/ftdcare/html`, proxies API and uploaded PDF requests to `127.0.0.1:3000`, and sets security headers and the PDF request-size limit.
-5. Validate the configuration and deployment:
-
-   ```bash
-   sudo nginx -t
-   sudo systemctl reload nginx
-   curl --fail https://your-domain.com/api/v1/health
-   ```
-
-Verify login, invitation registration, guide access, and email delivery over the deployed HTTPS origin before opening access to users. The API process also runs recovery, activity email delivery, and upload-cleanup jobs, so it must stay running for those jobs to execute.
+The API process also runs recovery, activity email delivery and upload-cleanup jobs, so it must remain supervised for those jobs to execute.
 
 ### Docker application image
 

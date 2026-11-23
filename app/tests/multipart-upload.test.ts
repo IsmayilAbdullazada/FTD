@@ -361,3 +361,29 @@ test('concurrent uploads with identical filenames get different protected URLs',
   assert.equal(second.status, 200);
   assert.notEqual(first.body.pdfUrl, second.body.pdfUrl);
 });
+
+test('a valid PDF with no readable text is rejected before it is stored', async () => {
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> >>',
+  ];
+  let data = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(data));
+    data += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const start = Buffer.byteLength(data);
+  data += `xref\n0 4\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((offset) => String(offset).padStart(10, '0') + ' 00000 n ')
+    .join(
+      '\n',
+    )}\ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
+  const count = (await fs.readdir(directory)).length;
+  const response = await upload(form(Buffer.from(data), 'blank.pdf'));
+  assert.equal(response.status, 400);
+  assert.match(response.body.error, /couldn’t find readable text/);
+  assert.equal((await fs.readdir(directory)).length, count);
+});

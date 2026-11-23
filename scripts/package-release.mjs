@@ -42,7 +42,14 @@ export async function packageRelease(
       ['config/nginx.conf', 'config/nginx.conf.example'],
       ['config/ftdcare.env.example', 'config/ftdcare.env.example'],
       ['config/ftdcare.service', 'config/ftdcare.service.example'],
-      ['docs/deployment.md', 'DEPLOYMENT.md'],
+      [
+        'config/ftdcare-api.user.service',
+        'config/ftdcare-api.user.service.example',
+      ],
+      ['docs/deployment.md', 'deployment.md'],
+      ['docs/admin-console.md', 'admin-console.md'],
+      ['docs/qa/platform-update.md', 'qa/platform-update.md'],
+      ['docs/qa/evidence/platform-update', 'qa/evidence/platform-update'],
       ['docs/qa/multipart-uploads.md', 'qa/multipart-uploads.md'],
     ]) {
       await fs.mkdir(path.dirname(path.join(stage, target)), {

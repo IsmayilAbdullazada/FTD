@@ -34,6 +34,17 @@ export function AdminField({
       active = false;
     };
   }, [table, foreign, field.name, text]);
+  const inputValue =
+    field.type === 'date' && value
+      ? (() => {
+          const date = new Date(String(value));
+          return Number.isNaN(date.getTime())
+            ? ''
+            : new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+        })()
+      : String(value ?? '');
   const common =
     'mt-1 min-h-11 w-full rounded border border-slate-400 bg-transparent p-2 text-sm disabled:opacity-50';
   return (
@@ -46,7 +57,11 @@ export function AdminField({
           className={common}
           disabled={disabled}
           value={value === undefined ? '' : String(value)}
-          onChange={(e) => onChange(e.target.value === 'true')}
+          onChange={(e) =>
+            onChange(
+              e.target.value === '' ? undefined : e.target.value === 'true',
+            )
+          }
         >
           <option value="">Choose…</option>
           <option value="true">True</option>
@@ -94,7 +109,7 @@ export function AdminField({
                 ? 'datetime-local'
                 : 'text'
           }
-          value={String(value ?? '')}
+          value={inputValue}
           onChange={(e) => {
             setText(e.target.value);
             onChange(

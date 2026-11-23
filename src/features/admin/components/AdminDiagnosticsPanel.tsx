@@ -135,7 +135,10 @@ export function AdminDiagnosticsPanel() {
       </section>
       <section>
         <h3 className="font-semibold">Unreferenced uploads (up to 200)</h3>
-        <pre className="my-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
+        <pre
+          tabIndex={0}
+          className="my-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs"
+        >
           {JSON.stringify(data?.orphanUploads || [], null, 2)}
         </pre>
         <button

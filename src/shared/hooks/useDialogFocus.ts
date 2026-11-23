@@ -3,6 +3,7 @@ import { useEffect, useEffectEvent, useRef } from 'react';
 const dialogs: HTMLElement[] = [];
 const originalInert = new Map<HTMLElement, boolean>();
 let originalOverflow = '';
+let originalFocus: HTMLElement | null = null;
 function syncBackground() {
   for (const [node, inert] of originalInert) node.inert = inert;
   originalInert.clear();
@@ -33,6 +34,7 @@ export function useDialogFocus(active: boolean, onClose?: () => void) {
     const previous = document.activeElement;
     if (!dialogs.length) {
       originalOverflow = document.body.style.overflow;
+      originalFocus = previous instanceof HTMLElement ? previous : null;
       document.body.style.overflow = 'hidden';
     }
     dialogs.push(node);
@@ -95,6 +97,12 @@ export function useDialogFocus(active: boolean, onClose?: () => void) {
         !previous.closest('[inert]')
       )
         previous.focus();
+      else if (
+        !dialogs.length &&
+        originalFocus?.isConnected &&
+        !originalFocus.closest('[inert]')
+      )
+        originalFocus.focus();
     };
   }, [active]);
   return dialogRef;

@@ -70,7 +70,9 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
                 {p.extractingPdf
                   ? 'Reading your PDF…'
                   : ready
-                    ? 'PDF ready'
+                    ? p.fileName.toLowerCase().endsWith('.pdf')
+                      ? 'PDF ready'
+                      : 'Document ready'
                     : 'Choose a PDF or text document.'}
               </p>
               {p.pdfPreviewUrl && (

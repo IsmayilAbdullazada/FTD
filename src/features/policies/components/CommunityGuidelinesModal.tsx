@@ -48,7 +48,7 @@ export function CommunityGuidelinesModal({
             type="button"
             onClick={onClose}
             aria-label="Close Community Guidelines"
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+            className="min-h-11 min-w-11 rounded-lg p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
           >
             <X className="h-5 w-5" />
           </button>

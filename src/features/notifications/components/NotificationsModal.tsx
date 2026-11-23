@@ -240,7 +240,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="min-h-11 min-w-11 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -281,7 +281,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                         onClose();
                         onNavigateToConsole('queue');
                       }}
-                      className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      className="min-h-11 min-w-11 text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       <span>Open Review Queue</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -339,7 +339,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                             type="button"
                             disabled={processingId !== null}
                             onClick={() => handleQuickApprove(item)}
-                            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer"
+                            className="min-h-11 min-w-11 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer"
                             title="Quick Approve & Publish"
                           >
                             <Check className="w-4 h-4" />
@@ -355,7 +355,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                               setRejectionText('');
                               setRejectionError(null);
                             }}
-                            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer"
+                            className="min-h-11 min-w-11 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 rounded-lg font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer"
                             title="Quick Reject"
                           >
                             <X className="w-4 h-4" />
@@ -408,7 +408,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                               <X className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
                             )}
                             {msg.type !== 'APPROVAL' &&
-                              msg.type !== 'REJECTION' && (
+                              msg.type !== 'REJECTION' &&
+                              msg.type !== 'SYSTEM' && (
                                 <Bell className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
                               )}
                             <span className="text-slate-900 dark:text-white text-sm font-semibold">
@@ -424,7 +425,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           {msg.message}
                         </p>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-3 h-3 text-slate-400 dark:text-slate-500" />
                             <span>
@@ -440,7 +441,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                               onClose();
                               destination.navigate();
                             }}
-                            className="text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                            className="min-h-11 min-w-11 text-xs font-semibold text-[#002D72] dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
                           >
                             <span>{destination.label}</span>
                             <ArrowRight className="w-3 h-3" />
@@ -461,7 +462,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white rounded-lg font-medium text-xs sm:text-sm transition cursor-pointer"
+              className="min-h-11 min-w-11 px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white rounded-lg font-medium text-xs sm:text-sm transition cursor-pointer"
             >
               Close
             </button>

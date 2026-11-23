@@ -1,3 +1,4 @@
+import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { useEffect, useState, useEffectEvent } from 'react';
 import { ShieldCheck } from 'lucide-react';
 
@@ -12,6 +13,7 @@ interface GuidelinesGateProps {
 }
 
 export function GuidelinesGate({ onContinue, onSignOut }: GuidelinesGateProps) {
+  const dialogRef = useDialogFocus(true, onSignOut);
   const continueAfterCheck = useEffectEvent(onContinue);
   const [status, setStatus] = useState<GuidelinesStatus | null>(null);
   const [checked, setChecked] = useState(false);
@@ -78,7 +80,13 @@ export function GuidelinesGate({ onContinue, onSignOut }: GuidelinesGateProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10 dark:bg-slate-950 sm:py-16">
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Community Guidelines acknowledgment"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-slate-50 px-4 py-10 dark:bg-slate-950 sm:py-16"
+    >
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="space-y-3 text-center">
           <img
@@ -107,7 +115,7 @@ export function GuidelinesGate({ onContinue, onSignOut }: GuidelinesGateProps) {
               <ShieldCheck className="h-6 w-6 text-[#002D72] dark:text-blue-300" />
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
                   A Safe and Supportive Community
                 </p>
                 <h2 className="font-serif text-xl font-bold text-slate-900 dark:text-white">
@@ -117,7 +125,12 @@ export function GuidelinesGate({ onContinue, onSignOut }: GuidelinesGateProps) {
             </div>
           </div>
 
-          <div className="max-h-[45vh] overflow-y-auto px-6 py-5">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Community Guidelines text"
+            className="max-h-[45vh] overflow-y-auto px-6 py-5"
+          >
             <CommunityGuidelines variant="embedded" />
           </div>
 
@@ -176,7 +189,7 @@ export function GuidelinesGate({ onContinue, onSignOut }: GuidelinesGateProps) {
             <button
               type="button"
               onClick={onSignOut}
-              className="w-full text-center text-sm font-medium text-slate-500 hover:underline dark:text-slate-400"
+              className="min-h-11 w-full text-center text-sm font-medium text-slate-500 hover:underline dark:text-slate-400"
             >
               Sign out
             </button>

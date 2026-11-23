@@ -16,25 +16,28 @@ export function GuidelinesAcknowledgment({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 accent-[#002D72]"
+        className="mt-3.5 h-4 w-4 shrink-0 accent-[#002D72]"
       />
 
       <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-        <label htmlFor="guidelines-agreement">
+        <label
+          htmlFor="guidelines-agreement"
+          className="inline-flex min-h-11 items-center"
+        >
           I have read and agree to follow the{' '}
         </label>
         {onViewGuidelines ? (
           <button
             type="button"
             onClick={onViewGuidelines}
-            className="font-semibold text-[#002D72] underline dark:text-blue-300"
+            className="inline-flex min-h-11 items-center font-semibold text-[#002D72] underline dark:text-blue-300"
           >
             Community Guidelines
           </button>
         ) : (
           <a
             href="/community-guidelines"
-            className="font-semibold text-[#002D72] underline dark:text-blue-300"
+            className="inline-flex min-h-11 items-center font-semibold text-[#002D72] underline dark:text-blue-300"
           >
             Community Guidelines
           </a>

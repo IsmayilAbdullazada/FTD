@@ -304,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
                             setActiveTab('feed');
                           }
                         }}
-                        className="w-full px-3 py-2.5 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
+                        className="min-h-11 w-full px-3 py-2.5 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
                       >
                         <div className="flex items-center gap-2.5">
                           <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />

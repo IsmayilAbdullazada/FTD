@@ -227,3 +227,93 @@ test('a bootstrap service failure shows retry feedback instead of a misleading s
     expect(fetchMock.mock.calls.length).toBeGreaterThan(requestsBeforeRetry),
   );
 });
+
+test('a required guidelines acknowledgment preserves an in-progress discussion draft', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  window.history.replaceState({}, '', '/?tab=compose');
+  let acknowledged = true;
+  const user = {
+    id: 'draft-care',
+    email: 'draft@example.test',
+    role: 'CARE_PARTNER',
+    firstName: 'Draft',
+    lastName: 'Partner',
+    anonymousHandle: 'User-123',
+    badgeLabel: 'Care Partner',
+    avatarColor: '#002D72',
+    condition: 'FTD',
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/users/me'))
+        return Response.json({ user, allPersonas: [] });
+      if (url.includes('/policies/acknowledge')) {
+        acknowledged = true;
+        return Response.json({ acknowledged: true, currentVersion: '1.0' });
+      }
+      if (url.includes('/policies/status'))
+        return Response.json({ acknowledged, currentVersion: '1.0' });
+      if (url.includes('/cohorts'))
+        return Response.json([
+          {
+            id: 'group-general',
+            name: 'General',
+            slug: 'general',
+            description: 'General community',
+            isGeneralBoard: true,
+            geographicRegion: 'All',
+            tag: 'general',
+            isActive: true,
+            memberCount: 1,
+          },
+        ]);
+      if (url.includes('/posts'))
+        return Response.json({
+          posts: [],
+          pagination: { page: 1, pageSize: 25, total: 0, totalPages: 1 },
+        });
+      if (url.includes('/discussions-pool')) return Response.json({ pool: [] });
+      return Response.json([]);
+    }),
+  );
+  render(<App />);
+  const title = await screen.findByPlaceholderText(
+    'e.g. Managing resistance when bathing',
+  );
+  fireEvent.change(title, {
+    target: { value: 'Keep this unfinished question' },
+  });
+  fireEvent.change(screen.getByLabelText('Details'), {
+    target: { value: 'Keep these details while I review the guidelines.' },
+  });
+  acknowledged = false;
+  fireEvent(window, new Event('jh:guidelines-required'));
+  fireEvent.click(await screen.findByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Agree and Continue' }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Community Guidelines acknowledgment',
+      }),
+    ).toBeNull(),
+  );
+  expect(
+    (
+      screen.getByPlaceholderText(
+        'e.g. Managing resistance when bathing',
+      ) as HTMLInputElement
+    ).value,
+  ).toBe('Keep this unfinished question');
+  expect((screen.getByLabelText('Details') as HTMLTextAreaElement).value).toBe(
+    'Keep these details while I review the guidelines.',
+  );
+});

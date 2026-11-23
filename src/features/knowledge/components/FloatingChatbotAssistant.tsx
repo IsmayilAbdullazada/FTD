@@ -381,7 +381,7 @@ export const FloatingChatbotAssistant: React.FC<
               <X className="w-4 h-4" aria-hidden="true" />
             </button>
             <p className="pr-8 text-base font-semibold text-[#002D72] dark:text-sky-300">
-              Have a caregiving question?
+              Have a question about caring for your loved one?
             </p>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               Ask Care Companion first. Find helpful guide pages and community
@@ -728,7 +728,7 @@ export const FloatingChatbotAssistant: React.FC<
                 type="text"
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
-                placeholder="Ask caregiving question..."
+                placeholder="Ask a care partner question…"
                 className="flex-1 h-12 px-3.5 sm:px-4 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-500 font-sans"
               />
               <button

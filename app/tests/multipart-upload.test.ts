@@ -27,7 +27,7 @@ before(async () => {
   const { env } = await import('../src/config/env.js');
   const { app } = await import('../src/app.js');
   for (const [id, role] of [
-    [staffId, 'CLINICIAN_MODERATOR'],
+    [staffId, 'SYSTEM_ADMIN'],
     [careId, 'CARE_PARTNER'],
   ]) {
     await pool.query(
@@ -202,6 +202,67 @@ test('guide saves reuse owned PDF text and metadata updates preserve its pages',
   assert.match((await expiredSave.json()).error, /expired/);
   await pool.query('DELETE FROM chatbot_guides WHERE id=$1', [guide.id]);
 });
+test('moderator API responses omit extraction diagnostics while admins retain them', async () => {
+  const version = (
+    await pool.query('SELECT session_version FROM users WHERE id=$1', [
+      'user-clinician-1',
+    ])
+  ).rows[0].session_version;
+  const token = jwt.sign(
+    {
+      id: 'user-clinician-1',
+      email: 'staff@example.test',
+      sessionVersion: version,
+    },
+    (await import('../src/config/env.js')).env.JWT_SECRET,
+    {
+      algorithm: 'HS256',
+      issuer: 'ftdcare-api',
+      audience: 'ftdcare-web',
+      expiresIn: '5m',
+    },
+  );
+  const headers = {
+    authorization: 'Bearer ' + token,
+    origin: 'http://localhost:5173',
+  };
+  const result = await upload(form(), headers);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.hasReadableText, true);
+  for (const field of [
+    'pages',
+    'wordCount',
+    'pageCount',
+    'totalChunks',
+    'text',
+  ])
+    assert.equal(field in result.body, false, field);
+  const list = await fetch(base + '/api/v1/chatbot/guides', { headers });
+  const guides = await list.json();
+  for (const guide of guides.guides)
+    for (const field of ['pages', 'totalChunks', 'wordCount'])
+      assert.equal(field in guide, false, field);
+  for (const auth of [headers, careHeaders]) {
+    const response = await fetch(base + '/api/v1/knowledge/chat', {
+      method: 'POST',
+      headers: { ...auth, 'content-type': 'application/json' },
+      body: JSON.stringify({ query: 'behavior' }),
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal('retrievedChunks' in body, false);
+    assert.ok(Array.isArray(body.citedResources));
+  }
+  const admin = await fetch(base + '/api/v1/knowledge/chat', {
+    method: 'POST',
+    headers: { ...staffHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify({ query: 'behavior' }),
+  });
+  assert.ok('retrievedChunks' in (await admin.json()));
+  await pool.query('DELETE FROM guide_uploads WHERE storage_name=$1', [
+    path.basename(result.body.pdfUrl),
+  ]);
+});
 test('multipart validation rejects missing/wrong/additional file parts, text fields, fake PDFs and malformed boundaries', async () => {
   const count = (await fs.readdir(directory)).length;
   const empty = new FormData();
@@ -299,4 +360,30 @@ test('concurrent uploads with identical filenames get different protected URLs',
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
   assert.notEqual(first.body.pdfUrl, second.body.pdfUrl);
+});
+
+test('a valid PDF with no readable text is rejected before it is stored', async () => {
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> >>',
+  ];
+  let data = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(data));
+    data += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const start = Buffer.byteLength(data);
+  data += `xref\n0 4\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((offset) => String(offset).padStart(10, '0') + ' 00000 n ')
+    .join(
+      '\n',
+    )}\ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
+  const count = (await fs.readdir(directory)).length;
+  const response = await upload(form(Buffer.from(data), 'blank.pdf'));
+  assert.equal(response.status, 400);
+  assert.match(response.body.error, /couldn’t find readable text/);
+  assert.equal((await fs.readdir(directory)).length, count);
 });

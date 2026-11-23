@@ -49,7 +49,11 @@ test('release package includes complete runtime, checksums and revision; exclude
       'config/nginx.conf': 'nginx',
       'config/ftdcare.env.example': 'example',
       'config/ftdcare.service': 'service',
+      'config/ftdcare-api.user.service': 'user service',
       'docs/deployment.md': 'docs',
+      'docs/admin-console.md': 'console runbook',
+      'docs/qa/platform-update.md': 'platform QA',
+      'docs/qa/evidence/platform-update/mobile-admin.png': 'screenshot',
       'docs/qa/multipart-uploads.md': 'PDF proxy verification',
       'config/production.env': 'SECRET',
       'app/node_modules/private': 'dependency',
@@ -77,6 +81,11 @@ test('release package includes complete runtime, checksums and revision; exclude
     const entries = execFileSync('tar', ['-tzf', output], { encoding: 'utf8' });
     assert.match(entries, /app\/dist\/preflight.js/);
     assert.match(entries, /qa\/multipart-uploads.md/);
+    assert.match(entries, /admin-console.md/);
+    assert.match(entries, /deployment.md/);
+    assert.match(entries, /qa\/platform-update.md/);
+    assert.match(entries, /qa\/evidence\/platform-update\/mobile-admin.png/);
+    assert.match(entries, /ftdcare-api.user.service.example/);
     assert.match(entries, /SHA256SUMS/);
     assert.match(entries, /release.json/);
     assert.doesNotMatch(entries, /production.env|node_modules|private.pdf/);

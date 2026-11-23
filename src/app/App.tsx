@@ -1,5 +1,6 @@
+import { PreviewBootstrap } from './components/PreviewBootstrap';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState, useEffect } from 'react';
 import { Footer } from '@/app/components/Footer';
 import { Header } from '@/app/components/Header';
 import { SessionTimeoutModal } from '@/app/components/SessionTimeoutModal';
@@ -7,7 +8,14 @@ import { InvitationModal } from '@/features/invitations';
 import { AuditLedgerModal } from '@/features/moderation';
 import { NotificationsModal } from '@/features/notifications';
 import { useAppController } from '@/app/hooks/useAppController';
+import { GuidelinesGate } from '@/features/policies';
+import { policiesApi } from '@/features/policies/api/policiesApi';
 
+const AdminConsole = lazy(() =>
+  import('@/features/admin/components/AdminConsole').then((module) => ({
+    default: module.AdminConsole,
+  })),
+);
 const ClinicianDashboard = lazy(() =>
   import('@/features/clinician-workspace').then((module) => ({
     default: module.ClinicianDashboard,
@@ -49,6 +57,7 @@ const CalendarPage = lazy(() =>
 
 function AppContent() {
   const { state, actions } = useAppController();
+  const [showGuidelines, setShowGuidelines] = useState(false);
   const {
     bootstrapError,
     currentUser,
@@ -77,7 +86,7 @@ function AppContent() {
     isAuthOpen,
   } = state;
   const {
-    loginSucceeded: handleLoginSuccess,
+    loginSucceeded: controllerLoginSuccess,
     signOut: handleSignOut,
     switchPersona: handleSwitchPersona,
     queueUpdated: handleQueueUpdated,
@@ -91,6 +100,33 @@ function AppContent() {
     () => ({ items: pendingQueue, totalPending: pendingTriageCount }),
     [pendingQueue, pendingTriageCount],
   );
+
+  const handleLoginSuccess = controllerLoginSuccess;
+  useEffect(() => {
+    let cancelled = false;
+    const carePartner = currentUser?.role === 'CARE_PARTNER';
+    const requireAcknowledgment = () => {
+      if (carePartner) setShowGuidelines(true);
+    };
+    window.addEventListener('jh:guidelines-required', requireAcknowledgment);
+    if (carePartner)
+      void policiesApi
+        .getStatus()
+        .then((status) => {
+          if (!cancelled) setShowGuidelines(!status.acknowledged);
+        })
+        .catch(() => {
+          if (!cancelled) setShowGuidelines(true);
+        });
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        'jh:guidelines-required',
+        requireAcknowledgment,
+      );
+    };
+  }, [currentUser?.id, currentUser?.role]);
+
   const staff =
     currentUser?.role === 'CLINICIAN_MODERATOR' ||
     currentUser?.role === 'SYSTEM_ADMIN';
@@ -130,6 +166,16 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0B0F19] flex flex-col text-slate-800 dark:text-slate-100 font-sans selection:bg-[#002D72]/15 selection:text-[#002D72] dark:selection:bg-blue-600/30 dark:selection:text-blue-200 transition-colors">
+      {showGuidelines && currentUser.role === 'CARE_PARTNER' && (
+        <GuidelinesGate
+          key={currentUser.id}
+          onContinue={() => setShowGuidelines(false)}
+          onSignOut={() => {
+            setShowGuidelines(false);
+            handleSignOut();
+          }}
+        />
+      )}
       {/* Universal Top Header with Emergency Banner & Persona Switcher */}
       <Header
         currentUser={currentUser}
@@ -196,7 +242,10 @@ function AppContent() {
                 currentUser={currentUser}
                 cohorts={cohorts}
                 activeTab={clinicianTab}
-                onTabChange={actions.setClinicianTab}
+                onTabChange={(tab) => {
+                  if (tab === 'chatbot-knowledge') handleSelectTab('knowledge');
+                  else actions.setClinicianTab(tab);
+                }}
                 onQueueUpdated={handleQueueUpdated}
                 onOpenAudit={actions.openAudit}
                 onOpenInvite={actions.openInvite}
@@ -214,6 +263,9 @@ function AppContent() {
             />
           )}
 
+          {activeTab === 'admin' &&
+            currentUser.role === 'SYSTEM_ADMIN' &&
+            currentUser.adminConsoleEnabled && <AdminConsole />}
           {activeTab === 'updates' && <UpdatesPage currentUser={currentUser} />}
           {activeTab === 'calendar' && (
             <CalendarPage currentUser={currentUser} />
@@ -290,7 +342,9 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <PreviewBootstrap>
+        <AppContent />
+      </PreviewBootstrap>
     </ErrorBoundary>
   );
 }

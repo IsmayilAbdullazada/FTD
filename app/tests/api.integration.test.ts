@@ -34,6 +34,9 @@ const json = (
 });
 
 before(async () => {
+  await pool.query(
+    "INSERT INTO policy_acknowledgments(user_id,policy_type,policy_version) VALUES('user-care-1','community_guidelines','1.0') ON CONFLICT DO NOTHING",
+  );
   originalPasswords = (
     await pool.query(
       'SELECT id,password_hash FROM users WHERE id=ANY($1::text[])',
@@ -338,16 +341,24 @@ test('JWT identity overrides forged user IDs through posting, moderation, and me
   const message = await request(
     '/api/v1/chat/private',
     json(careToken, {
-      caregiverId: 'user-care-1',
+      carePartnerId: 'user-care-1',
       senderId: 'user-clinician-1',
       content: 'Secure sender identity check.',
       recipientId: 'user-clinician-1',
     }),
   );
   assert.equal(message.body.senderId, 'user-care-1');
-  const inbox = await request('/api/v1/chat/private?caregiverId=user-care-1', {
-    headers: { cookie: clinicianToken },
-  });
+  const legacyInbox = await request(
+    '/api/v1/chat/private?caregiverId=user-care-1',
+    { headers: { cookie: careToken } },
+  );
+  assert.equal(legacyInbox.status, 200);
+  const inbox = await request(
+    '/api/v1/chat/private?carePartnerId=user-care-1',
+    {
+      headers: { cookie: clinicianToken },
+    },
+  );
   assert.equal(
     inbox.body.messages.find(
       (entry: { id: string }) => entry.id === message.body.id,

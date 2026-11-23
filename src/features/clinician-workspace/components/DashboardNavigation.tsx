@@ -104,7 +104,7 @@ export function DashboardNavigation({
         >
           <div className="flex items-center justify-between text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Assistant Guides
+              Guides
             </span>
             <FileText className="w-4 h-4 text-[#002D72] dark:text-blue-400" />
           </div>
@@ -167,7 +167,7 @@ export function DashboardNavigation({
               {memberCount}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              caregivers
+              care partners
             </span>
           </div>
         </div>
@@ -214,7 +214,7 @@ export function DashboardNavigation({
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <span>Assistant Guides</span>
+            <span>Guides</span>
             <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold tabular-nums">
               {guideCount}
             </span>

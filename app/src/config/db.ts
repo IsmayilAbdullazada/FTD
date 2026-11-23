@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
@@ -7,6 +8,7 @@ import pg, { type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { env } from './env.js';
 
 const { Pool } = pg;
+const activeTransaction = new AsyncLocalStorage<PoolClient>();
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -159,16 +161,19 @@ export function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   values: unknown[] = [],
 ) {
-  return pool.query<T>(text, values);
+  const client = activeTransaction.getStore();
+  return client ? client.query<T>(text, values) : pool.query<T>(text, values);
 }
 
 export async function transaction<T>(
   work: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
+  const existing = activeTransaction.getStore();
+  if (existing) return work(existing);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await work(client);
+    const result = await activeTransaction.run(client, () => work(client));
     await client.query('COMMIT');
     return result;
   } catch (error) {
@@ -177,4 +182,30 @@ export async function transaction<T>(
   } finally {
     client.release();
   }
+}
+
+/** Keep preview reads in a database-enforced read-only transaction until the response ends. */
+export async function readOnlyRequestScope(
+  run: () => void,
+  onClose: (cleanup: () => void) => void,
+) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN READ ONLY');
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+  let done = false;
+  onClose(() => {
+    if (done) return;
+    done = true;
+    void client
+      .query('ROLLBACK')
+      .catch((error) =>
+        logger.error('Preview transaction cleanup failed', error),
+      )
+      .finally(() => client.release());
+  });
+  activeTransaction.run(client, run);
 }

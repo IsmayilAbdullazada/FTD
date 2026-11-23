@@ -51,15 +51,21 @@ export const errorHandler: ErrorRequestHandler = (
         : 400
       : undefined;
   const status =
-    error instanceof ZodError
-      ? 400
-      : error instanceof HttpError
-        ? error.status
-        : e?.code === 'P1001'
-          ? 503
-          : e?.code === '23505'
-            ? 409
-            : (uploadStatus ?? parserStatus ?? 500);
+    e?.code === '25006'
+      ? 403
+      : error instanceof ZodError
+        ? 400
+        : error instanceof HttpError
+          ? error.status
+          : e?.code === 'P1001'
+            ? 503
+            : ['23505', '23503'].includes(e?.code || '')
+              ? 409
+              : ['23514', '23502', '22P02', '22007', '22008'].includes(
+                    e?.code || '',
+                  )
+                ? 400
+                : (uploadStatus ?? parserStatus ?? 500);
   logger.error('HTTP request failed', error, {
     requestId: res.locals.requestId,
     method: req.method,
@@ -83,5 +89,13 @@ export const errorHandler: ErrorRequestHandler = (
                 : status === 400
                   ? 'Malformed request body'
                   : 'Internal Server Error';
-  res.status(status).json({ error: message, requestId: res.locals.requestId });
+  res.status(status).json({
+    error: e?.code === '25006' ? 'Preview is read-only' : message,
+    ...(e?.code === '25006'
+      ? { code: 'PREVIEW_READ_ONLY' }
+      : error instanceof HttpError && error.code
+        ? { code: error.code }
+        : {}),
+    requestId: res.locals.requestId,
+  });
 };

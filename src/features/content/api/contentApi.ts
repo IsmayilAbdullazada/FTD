@@ -32,6 +32,17 @@ export const contentApi = {
     });
   },
 
+  updateResource(
+    id: string,
+    payload: CreateResourcePayload,
+  ): Promise<ClinicalResource> {
+    return safeFetchJson(`/api/v1/resources/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
+
   async deleteResource(id: string): Promise<void> {
     await safeFetchJson(`/api/v1/resources/${encodeURIComponent(id)}`, {
       method: 'DELETE',

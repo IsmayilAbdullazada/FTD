@@ -4,6 +4,7 @@ import { pool } from '../config/db.js';
 import { env } from '../config/env.js';
 import { sendEmail } from './email.js';
 import { logger } from '../lib/logger.js';
+import { notifyAdmins } from './notifications.js';
 const hash = (text: string) =>
   crypto.createHash('sha256').update(text).digest('hex');
 export async function processRecoveryJob(jobId?: string): Promise<void> {
@@ -22,11 +23,17 @@ export async function processRecoveryJob(jobId?: string): Promise<void> {
     }
     const user = (
       await client.query(
-        'SELECT id FROM users WHERE LOWER(email)=LOWER($1) AND is_active FOR UPDATE',
+        'SELECT id,role FROM users WHERE LOWER(email)=LOWER($1) AND is_active FOR UPDATE',
         [job.email],
       )
     ).rows[0];
     if (user) {
+      if (user.role !== 'CARE_PARTNER')
+        await notifyAdmins(client, {
+          kind: 'ADMIN_ACCOUNT_SECURITY',
+          eventKey: `staff-recovery-request:${job.id}`,
+          context: { userId: user.id, action: 'PASSWORD_RESET_REQUESTED' },
+        });
       const token = crypto.randomBytes(32).toString('base64url');
       await client.query(
         'DELETE FROM password_resets WHERE user_id=$1 AND consumed_at IS NULL',
@@ -50,6 +57,7 @@ export async function processRecoveryJob(jobId?: string): Promise<void> {
       released = true;
       const link = await sendEmail({
         to: job.email,
+        retryManaged: true,
         ...composeEmail({
           subject: 'Reset your Care Partner Connect password',
           paragraphs: [
@@ -60,6 +68,22 @@ export async function processRecoveryJob(jobId?: string): Promise<void> {
           action: { label: 'Reset password', url: url.href },
         }),
       });
+      if (!link.emailSent && job.attempts >= 4) {
+        const alertClient = await pool.connect();
+        try {
+          await alertClient.query('BEGIN');
+          await notifyAdmins(alertClient, {
+            kind: 'ADMIN_EMAIL_DELIVERY_FAILED',
+            eventKey: `recovery-delivery-failed:${job.id}`,
+          });
+          await alertClient.query('COMMIT');
+        } catch (error) {
+          await alertClient.query('ROLLBACK');
+          throw error;
+        } finally {
+          alertClient.release();
+        }
+      }
       if (link.emailSent)
         await pool.query(
           'UPDATE password_recovery_jobs SET completed_at=NOW() WHERE id=$1',

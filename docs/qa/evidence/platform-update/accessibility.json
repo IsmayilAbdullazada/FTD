@@ -1,0 +1,267 @@
+{
+  "checks": [
+    {
+      "screen": "desktop-care-light-guides",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-light-composer",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-light-guidelines",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-light-notifications",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-dark-guides",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-dark-composer",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-dark-guidelines",
+      "violations": []
+    },
+    {
+      "screen": "desktop-care-dark-notifications",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-light-guides",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-light-upload",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-light-linked-resource",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-light-notifications",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-dark-guides",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-dark-upload",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-dark-linked-resource",
+      "violations": []
+    },
+    {
+      "screen": "desktop-moderator-dark-notifications",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-overview",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-data",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-actions",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-preview",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-diagnostics",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-audit-log",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-row-editor",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-light-notifications",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-overview",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-data",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-actions",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-preview",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-diagnostics",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-audit-log",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-row-editor",
+      "violations": []
+    },
+    {
+      "screen": "desktop-admin-dark-notifications",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-light-guides",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-light-composer",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-light-guidelines",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-light-notifications",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-dark-guides",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-dark-composer",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-dark-guidelines",
+      "violations": []
+    },
+    {
+      "screen": "mobile-care-dark-notifications",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-light-guides",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-light-upload",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-light-linked-resource",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-light-notifications",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-dark-guides",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-dark-upload",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-dark-linked-resource",
+      "violations": []
+    },
+    {
+      "screen": "mobile-moderator-dark-notifications",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-overview",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-data",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-actions",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-preview",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-diagnostics",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-audit-log",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-row-editor",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-light-notifications",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-overview",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-data",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-actions",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-preview",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-diagnostics",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-audit-log",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-row-editor",
+      "violations": []
+    },
+    {
+      "screen": "mobile-admin-dark-notifications",
+      "violations": []
+    }
+  ],
+  "pageErrors": [],
+  "recheckedAfterFix": [
+    "desktop-admin-light-diagnostics",
+    "desktop-admin-dark-diagnostics",
+    "mobile-admin-light-diagnostics",
+    "mobile-admin-dark-diagnostics"
+  ]
+}

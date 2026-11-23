@@ -22,6 +22,8 @@ export async function notify(
     `INSERT INTO notifications(recipient_user_id,title,message,type,event_key,kind,context)
      SELECT id,$3,$4,$5,$6,$7,$8 FROM users
      WHERE id=ANY($1::text[]) AND is_active AND ($2::text IS NULL OR id<>$2)
+     AND ($9::boolean = false OR role='SYSTEM_ADMIN')
+     AND ($10::boolean = false OR role='CLINICIAN_MODERATOR' OR role='CARE_PARTNER')
      ON CONFLICT(event_key,recipient_user_id) WHERE event_key IS NOT NULL DO NOTHING RETURNING id`,
     [
       input.recipients,
@@ -32,6 +34,14 @@ export async function notify(
       input.eventKey,
       input.kind,
       JSON.stringify(input.context ?? {}),
+      definition.type === 'SYSTEM',
+      definition.type === 'MODERATION' ||
+        [
+          'PRIVATE_REPLY',
+          'PRIVATE_MESSAGE',
+          'GUIDE_APPROVED',
+          'INVITATION_ACCEPTED',
+        ].includes(input.kind),
     ],
   );
   if (inserted.rowCount)
@@ -41,8 +51,9 @@ export async function notify(
     );
 }
 
-export async function notifyStaff(
+async function notifyRole(
   client: PoolClient,
+  role: 'CLINICIAN_MODERATOR' | 'SYSTEM_ADMIN',
   input: {
     kind: ActivityKind;
     eventKey: string;
@@ -51,13 +62,20 @@ export async function notifyStaff(
   },
 ) {
   const staff = await client.query(
-    "SELECT id FROM users WHERE is_active AND role IN ('CLINICIAN_MODERATOR','SYSTEM_ADMIN')",
+    'SELECT id FROM users WHERE is_active AND role=$1',
+    [role],
   );
   await notify(client, {
     ...input,
     recipients: staff.rows.map((row) => row.id),
   });
 }
+
+type RoleNotice = Parameters<typeof notifyRole>[2];
+export const notifyModerators = (client: PoolClient, input: RoleNotice) =>
+  notifyRole(client, 'CLINICIAN_MODERATOR', input);
+export const notifyAdmins = (client: PoolClient, input: RoleNotice) =>
+  notifyRole(client, 'SYSTEM_ADMIN', input);
 
 export async function notifySubmission(
   client: PoolClient,
@@ -79,7 +97,7 @@ export async function notifySubmission(
     eventKey: `submission:${entity}:${input.revision}`,
     context,
   });
-  await notifyStaff(client, {
+  await notifyModerators(client, {
     kind: input.commentId ? 'REPLY_REVIEW_REQUIRED' : 'POST_REVIEW_REQUIRED',
     actorId: input.authorId,
     eventKey: `review:${entity}:${input.revision}`,

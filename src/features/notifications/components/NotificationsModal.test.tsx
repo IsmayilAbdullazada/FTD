@@ -218,3 +218,31 @@ test('rejecting from notifications requires a deliberate reason and confirmation
     }),
   );
 });
+
+test('admins see system notifications without the pending moderation queue', () => {
+  render(
+    <NotificationsModal
+      isOpen
+      onClose={vi.fn()}
+      currentUser={{ ...clinicianUser, role: 'SYSTEM_ADMIN' }}
+      notifications={[
+        {
+          id: 'system-alert',
+          recipientUserId: clinicianUser.id,
+          title: 'Email delivery needs attention',
+          message: 'Review delivery details.',
+          type: 'SYSTEM',
+          kind: 'ADMIN_EMAIL_DELIVERY_FAILED',
+          read: false,
+          createdAt: '2026-11-22T00:00:00Z',
+        },
+      ]}
+      pendingQueue={[pendingReply]}
+      onRefreshNotifications={vi.fn()}
+      onQueueUpdated={vi.fn()}
+    />,
+  );
+  expect(screen.queryByText(/Pending Submissions/)).toBeNull();
+  expect(screen.getByText('System notifications')).toBeTruthy();
+  expect(screen.getByText('Email delivery needs attention')).toBeTruthy();
+});

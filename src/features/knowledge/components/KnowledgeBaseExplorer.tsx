@@ -10,7 +10,11 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
+import { GuideEditor } from './GuideEditor';
+import { guideApi } from '../api/guideApi';
+import type { ChatbotGuideFile } from '../types';
+import type { ClinicalResource } from '@/types';
 import { CreateResourceDialog } from './CreateResourceDialog';
 import { ResourceInspectorDialogs } from './ResourceInspectorDialogs';
 
@@ -24,6 +28,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   currentUser,
 }) => {
   const {
+    openResourceForm,
+    loadResources,
     loading,
     searchQuery,
     setSearchQuery,
@@ -69,6 +75,33 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     currentUser,
   });
 
+  const [showChoices, setShowChoices] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingGuide, setEditingGuide] = useState<ChatbotGuideFile>();
+  const [guideError, setGuideError] = useState<string | null>(null);
+  async function guideAction(
+    item: ClinicalResource,
+    action: 'edit' | 'approve' | 'toggle',
+  ) {
+    try {
+      setGuideError(null);
+      if (action === 'edit') {
+        const result = await guideApi.getChatbotGuides();
+        const guide = result.guides.find((g) => g.id === item.id);
+        if (!guide) throw new Error('This guide is no longer available.');
+        setEditingGuide(guide);
+        setEditorOpen(true);
+      } else {
+        if (action === 'approve') await guideApi.approveChatbotGuide(item.id);
+        else await guideApi.toggleChatbotGuide(item.id);
+        await loadResources();
+      }
+    } catch (error) {
+      setGuideError(
+        error instanceof Error ? error.message : 'Could not update this guide.',
+      );
+    }
+  }
   const deleteDialogRef = useDialogFocus(
     Boolean(isClinician && pendingDelete),
     () => setPendingDelete(null),
@@ -76,12 +109,51 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
+      {guideError && <p role="alert">{guideError}</p>}
+      {editorOpen && currentUser && (
+        <GuideEditor
+          currentUser={currentUser}
+          guide={editingGuide}
+          onClose={() => setEditorOpen(false)}
+          onSaved={() => {
+            setEditorOpen(false);
+            void loadResources();
+          }}
+        />
+      )}
+      {showChoices && (
+        <div
+          role="group"
+          aria-label="Add guide options"
+          className="flex flex-wrap gap-3"
+        >
+          <button
+            className="min-h-11 rounded-lg border px-4"
+            onClick={() => {
+              setEditingGuide(undefined);
+              setEditorOpen(true);
+              setShowChoices(false);
+            }}
+          >
+            Upload PDF or text
+          </button>
+          <button
+            className="min-h-11 rounded-lg border px-4"
+            onClick={() => {
+              openResourceForm();
+              setShowChoices(false);
+            }}
+          >
+            Link to a webpage
+          </button>
+        </div>
+      )}
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">
-              Guides & Care Sheets
+              Guides
             </h1>
             <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-md border border-emerald-100 dark:border-emerald-900/60">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -89,19 +161,18 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             </div>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-sans">
-            Trauma-informed, non-pharmacological protocols curated by Johns
-            Hopkins specialists.
+            Approved guides are visible to care partners in Guides.
           </p>
         </div>
 
         {/* Clinician Action: Add Guide */}
         {isClinician && (
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => setShowChoices(!showChoices)}
             className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition shrink-0 shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Guide</span>
+            <span>Add guide</span>
           </button>
         )}
 
@@ -225,7 +296,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((res) => (
             <article
-              key={res.id}
+              key={`${res.source || 'resource'}:${res.id}`}
               onClick={() => setActiveResource(res)}
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
             >
@@ -262,6 +333,59 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   </div>
                 </div>
 
+                {isClinician && res.source !== 'guide' && (
+                  <button
+                    className="min-h-11 text-xs underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openResourceForm(res);
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
+                {isClinician && res.source === 'guide' && (
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span>
+                      {res.status === 'DRAFT'
+                        ? 'Draft'
+                        : res.isActive
+                          ? 'Approved'
+                          : 'Unpublished'}
+                    </span>
+                    <button
+                      className="min-h-11 underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void guideAction(res, 'edit');
+                      }}
+                    >
+                      Edit
+                    </button>
+                    {res.status === 'DRAFT' && (
+                      <button
+                        className="min-h-11 underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void guideAction(res, 'approve');
+                        }}
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {res.status === 'APPROVED' && (
+                      <button
+                        className="min-h-11 underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void guideAction(res, 'toggle');
+                        }}
+                      >
+                        {res.isActive ? 'Unpublish' : 'Publish'}
+                      </button>
+                    )}
+                  </div>
+                )}
                 <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
                   {res.title}
                 </h3>

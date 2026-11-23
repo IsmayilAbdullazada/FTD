@@ -119,14 +119,14 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 Invite Care Partner
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-sans truncate">
-                Verified caregiver access invitation
+                Verified care partner access invitation
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+            className="min-h-11 min-w-11 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
@@ -199,7 +199,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 />
                 <button
                   onClick={handleCopyLink}
-                  className="px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0 transition cursor-pointer"
+                  className="min-h-11 min-w-11 px-4 py-2.5 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 shrink-0 transition cursor-pointer"
                 >
                   {copied ? (
                     <Check className="w-4 h-4" />
@@ -233,7 +233,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                   setPhone('');
                   setCondition('');
                 }}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl transition cursor-pointer text-center"
+                className="min-h-11 min-w-11 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-xl transition cursor-pointer text-center"
               >
                 Send Another Invite
               </button>
@@ -247,7 +247,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
           >
             <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 text-sm overscroll-contain flex-1">
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
-                Only vetted family members and verified caregivers can access
+                Only vetted family members and verified care partners can access
                 this closed community.
               </p>
 
@@ -263,10 +263,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-                    Caregiver First Name
+                    Care partner first name
                   </label>
                   <input
-                    aria-label="Caregiver First Name"
+                    aria-label="Care partner first name"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -277,10 +277,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                 </div>
                 <div>
                   <label className="block font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-                    Caregiver Last Name
+                    Care partner last name
                   </label>
                   <input
-                    aria-label="Caregiver Last Name"
+                    aria-label="Care partner last name"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -294,10 +294,10 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-300 mb-1.5">
-                    Caregiver Email Address
+                    Care partner email address
                   </label>
                   <input
-                    aria-label="Caregiver Email Address"
+                    aria-label="Care partner email address"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -339,7 +339,7 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
                       key={value}
                       type="button"
                       onClick={() => setCondition(value)}
-                      className={`px-3 py-2.5 rounded-lg text-sm font-semibold border transition cursor-pointer ${
+                      className={`min-h-11 min-w-11 px-3 py-2.5 rounded-lg text-sm font-semibold border transition cursor-pointer ${
                         condition === value
                           ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600 shadow-2xs'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
@@ -381,14 +381,14 @@ export const InvitationModal: React.FC<InvitationModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                className="min-h-11 min-w-11 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !condition}
-                className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg text-sm font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                className="min-h-11 min-w-11 px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg text-sm font-bold transition shadow-2xs cursor-pointer flex items-center gap-1.5"
               >
                 <Send className="w-4 h-4" />
                 <span>{isSubmitting ? 'Sending...' : 'Send Invitation'}</span>

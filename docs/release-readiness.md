@@ -1,5 +1,11 @@
 # Release verification
 
+## Platform update (2026-11-23)
+
+The current eight-task update adds versioned guidelines, one condition-aware Guides library, role-specific guide tools and notifications, and the optional CS Admin console. See [platform-update verification](qa/platform-update.md) for the current test results, screenshots, manual script and limits, and [the console runbook](admin-console.md) for permissions and endpoint coverage. Historical figures below describe earlier releases and are not the current test counts.
+
+Deployment must back up the database and uploads, deploy matching frontend/backend artifacts, apply pending migrations through **013**, run compiled preflight, restart `systemctl --user restart ftdcare-api.service` on the rootless server and verify the public origin. Preserve `PORT=3003`. The console is off unless `ENABLE_ADMIN_CONSOLE=true` is explicitly configured. Apache/nginx must pass `X-Preview-Token` and the application API method policy must allow `PUT PATCH DELETE`; keep the WAF enabled. No production deployment or real inbox delivery is established by the isolated checks.
+
 This change addresses the browser audit of `0a6aefb` and the follow-up review of `7815e61`. The [historical workflow inventory](qa/workflow-audit-baseline.md) records the original scope and failures. The final verification results in this directory supersede that baseline; passing local checks is not a claim that the public deployment has been updated.
 
 ## Previous workflow verification (commit `8335b8d`)
@@ -38,7 +44,7 @@ This run does not establish real inbox delivery/rendering, Safari/iOS or physica
 | F16: effective security headers                  | Keep nginx header inheritance, protect direct production Express responses, and provide a read-only deployment checker. Public-origin verification remains a deployment gate.                                 |
 | R1–R4: release packaging                         | Repair workspace/standalone dependency locks, package PGlite with the backend, forbid production embedded storage and automatic fallback, restore Node 24 pinning, and build the complete Docker application. |
 
-Additional improvements make the assistant's retrieval-only results explicit, deduplicate citations, replace unsupported “doctor approved”/review-time promises, display the scheduling timezone, and consistently group calendar events by local date. Clinical policy wording, optional email preferences/digests, staff content-edit tools, and an invitation-management screen remain product decisions rather than claims of delivered functionality.
+Additional improvements make the assistant's retrieval-only results explicit, deduplicate citations, replace unsupported “doctor approved”/review-time promises, display the scheduling timezone, and consistently group calendar events by local date. Clinical policy wording, optional email preferences/digests, a separate invitation-management screen remain product decisions rather than claims of delivered functionality.
 
 ## Repeatable repository checks
 

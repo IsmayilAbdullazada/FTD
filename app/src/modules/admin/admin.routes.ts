@@ -1,3 +1,4 @@
+import consoleRoutes from './adminConsole.routes.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { env } from '../../config/env.js';
@@ -7,7 +8,7 @@ import { authenticateToken, requireRole } from '../../middleware/auth.js';
 
 const router = Router();
 router.use(authenticateToken);
-router.use(authenticateToken, requireRole(['SYSTEM_ADMIN']));
+router.use(requireRole(['SYSTEM_ADMIN']));
 
 async function counts() {
   const r = await query(`SELECT
@@ -100,4 +101,5 @@ router.post(
     });
   }),
 );
+router.use(consoleRoutes);
 export default router;

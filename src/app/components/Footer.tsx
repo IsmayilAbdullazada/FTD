@@ -9,7 +9,8 @@ interface FooterProps {
   isClinician?: boolean;
 }
 
-type PolicyKey = 'privacy' | 'npp' | 'nondiscrimination' | 'rights' | null;
+type PolicyKey =
+  'privacy' | 'npp' | 'nondiscrimination' | 'rights' | 'guidelines' | null;
 
 interface PolicyContent {
   title: string;
@@ -28,11 +29,11 @@ const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
       },
       {
         title: 'Anonymous Handles & Protected Communications',
-        text: 'To ensure a safe and candid peer environment, all caregivers participate using pseudonym handles. Direct personal identifying information is segregated from peer discussion channels and visible only to credentialed Johns Hopkins clinical moderators.',
+        text: 'To ensure a safe and candid peer environment, all care partners participate using pseudonym handles. Direct personal identifying information is segregated from peer discussion channels and visible only to credentialed Johns Hopkins clinical moderators.',
       },
       {
         title: 'Information Usage & Security Standards',
-        text: 'We do not sell, rent, or monetize caregiver data. Access to community information is restricted by account role. Please contact the care team with questions about how this service handles your information.',
+        text: 'We do not sell, rent, or monetize care partner data. Access to community information is restricted by account role. Please contact the care team with questions about how this service handles your information.',
       },
       {
         title: 'Inquiries & Contact',
@@ -98,6 +99,28 @@ const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
       },
     ],
   },
+  guidelines: {
+    title: 'Community Guidelines',
+    badge: 'Community Safety & Guidelines',
+    sections: [
+      {
+        title: 'Community Expectations',
+        text: 'Keep posts focused on FTD and young-onset dementias. Stay on topic so the conversation stays helpful and easy to follow. Be kind, respectful, and supportive to others.',
+      },
+      {
+        title: 'What Not to Post',
+        text: 'Personal details such as names, phone numbers, addresses, or email addresses. Hateful, threatening, violent, or offensive words. Political opinions, campaign messages, and endorsements out of the community. Advertisements or sales messages. Any messages regarding donations or fundraising support.',
+      },
+      {
+        title: 'Privacy',
+        text: 'Please be thoughtful about the personal information you share. Anything you post may be visible to others and could be used in ways you may not expect.',
+      },
+      {
+        title: 'Moderation',
+        text: 'The moderator may remove posts or limit access if someone does not follow the guidelines. The moderator does not provide clinical guidance through this portal. For questions requiring clinic support, message the moderator through EPIC.',
+      },
+    ],
+  },
 };
 
 export const Footer: React.FC<FooterProps> = () => {
@@ -144,6 +167,7 @@ export const Footer: React.FC<FooterProps> = () => {
                   ['npp', 'Notice of Privacy Practices'],
                   ['nondiscrimination', 'Non-Discrimination Policy'],
                   ['rights', 'Patient Rights'],
+                  ['guidelines', 'Community Guidelines'],
                 ] as [Exclude<PolicyKey, null>, string][]
               ).map(([key, label]) => (
                 <button

@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [showPersonaMenu]);
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const reviewAlertsCount = isClinician || isAdmin ? pendingTriageCount : 0;
+  const reviewAlertsCount = isClinician ? pendingTriageCount : 0;
   const totalNotificationBadge = unreadCount + reviewAlertsCount;
 
   return (
@@ -304,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
                             setActiveTab('feed');
                           }
                         }}
-                        className="w-full px-3 py-2.5 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
+                        className="min-h-11 w-full px-3 py-2.5 rounded-lg text-left transition flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/50 hover:text-[#002D72] dark:hover:text-blue-300 cursor-pointer"
                       >
                         <div className="flex items-center gap-2.5">
                           <MessageSquare className="w-4 h-4 text-[#002D72] dark:text-blue-400 shrink-0" />
@@ -312,9 +312,6 @@ export const Header: React.FC<HeaderProps> = ({
                             My Posts
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">
-                          Track your posts →
-                        </span>
                       </button>
 
                       <button
@@ -331,6 +328,19 @@ export const Header: React.FC<HeaderProps> = ({
                         </span>
                       </button>
                     </div>
+
+                    {isAdmin && currentUser.adminConsoleEnabled && (
+                      <button
+                        type="button"
+                        className="min-h-11 w-full rounded-lg px-4 text-left text-sm font-semibold"
+                        onClick={() => {
+                          setShowPersonaMenu(false);
+                          setActiveTab('admin');
+                        }}
+                      >
+                        CS Admin console
+                      </button>
+                    )}
 
                     {/* Dedicated Appearance / Theme Switcher in the Dropdown */}
                     <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">

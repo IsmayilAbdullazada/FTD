@@ -1,3 +1,4 @@
+import { KnowledgeBaseExplorer } from '@/features/knowledge/components/KnowledgeBaseExplorer';
 import { useEffectEvent } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { CurrentUser, Condition, CommunityGroup } from '@/types';
@@ -7,10 +8,6 @@ import { useMemberManagement } from '@/features/community/hooks/useMemberManagem
 import { useDiscussionManagement } from '@/features/discussions/hooks/useDiscussionManagement';
 import { useCreatePostForm } from '@/features/discussions/hooks/useCreatePostForm';
 import { useCreateCohortForm } from '@/features/community/hooks/useCreateCohortForm';
-import { GuideManagementTab } from '@/features/knowledge/components/GuideManagementTab';
-import { GuideUploadDialog } from '@/features/knowledge/components/GuideUploadDialog';
-import { GuideInspectorDialog } from '@/features/knowledge/components/GuideInspectorDialog';
-import { DeleteGuideDialog } from '@/features/knowledge/components/DeleteGuideDialog';
 import { CohortsTab } from '@/features/community/components/CohortsTab';
 import { MembersTab } from '@/features/community/components/MembersTab';
 import { DiscussionsTab } from '@/features/discussions/components/DiscussionsTab';
@@ -189,64 +186,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setActionSuccessNotice,
   });
 
-  const {
-    chatbotGuides,
-    loadingGuides,
-    guideSearchFilter,
-    setGuideSearchFilter,
-    showUploadGuideModal,
-    setShowUploadGuideModal,
-    inspectGuideModal,
-    setInspectGuideModal,
-    guideToDelete,
-    setGuideToDelete,
-    isDeletingGuide,
-    guideStatusFilter,
-    setGuideStatusFilter,
-    uploadTitle,
-    setUploadTitle,
-    uploadCondition,
-    setUploadCondition,
-    uploadTopicTag,
-    setUploadTopicTag,
-    uploadFileName,
-    uploadPages,
-    showExtractedInspector,
-    setShowExtractedInspector,
-    selectedInspectPage,
-    setSelectedInspectPage,
-    showMoreOptions,
-    setShowMoreOptions,
-    showTechDetails,
-    setShowTechDetails,
-    uploadPdfPreviewUrl,
-    editingGuideId,
-    isUploadingGuide,
-    isExtractingPdf,
-    extractedPdfStats,
-    dragActive,
-    fileInputRef,
-    testQuery,
-    setTestQuery,
-    isTesting,
-    testResult,
-    copiedInspect,
-    setCopiedInspect,
-    filteredGuides,
-    handleDrag,
-    handleDrop,
-    loadChatbotGuides,
-    handleToggleGuide,
-    handleRequestDeleteGuide,
-    handleConfirmDeleteGuide,
-    resetUploadModal,
-    handleOpenReviewModal,
-    handleQuickApprove,
-    handleLoadResourceFile,
-    handleProcessFile,
-    handleSaveGuide,
-    handleRunTestQuery,
-  } = useGuideManagement({
+  const { chatbotGuides, loadChatbotGuides } = useGuideManagement({
     currentUser,
     onQueueUpdated,
     setActionSuccessNotice,
@@ -273,11 +213,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     filteredMembers,
     15,
     JSON.stringify([audienceFilter, selectedCohortFilter, searchMemberQuery]),
-  );
-  const guidePage = usePagination(
-    filteredGuides,
-    10,
-    JSON.stringify([guideStatusFilter, guideSearchFilter]),
   );
 
   return (
@@ -389,26 +324,7 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* TAB 5: CHATBOT KNOWLEDGE MANAGEMENT */}
       {activeTab === 'chatbot-knowledge' && (
-        <GuideManagementTab
-          guides={chatbotGuides}
-          loading={loadingGuides}
-          searchFilter={guideSearchFilter}
-          onSearchFilterChange={setGuideSearchFilter}
-          statusFilter={guideStatusFilter}
-          onStatusFilterChange={setGuideStatusFilter}
-          pagination={guidePage}
-          testQuery={testQuery}
-          onTestQueryChange={setTestQuery}
-          testing={isTesting}
-          testResult={testResult}
-          onOpenUpload={setShowUploadGuideModal}
-          onResetUpload={resetUploadModal}
-          onOpenReview={handleOpenReviewModal}
-          onQuickApprove={handleQuickApprove}
-          onToggleGuide={handleToggleGuide}
-          onRequestDelete={handleRequestDeleteGuide}
-          onRunTestQuery={handleRunTestQuery}
-        />
+        <KnowledgeBaseExplorer currentUser={currentUser} />
       )}
 
       <CreateCohortDialog
@@ -473,53 +389,6 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         submitting={isSubmittingPost}
         cohorts={cohorts}
         onSubmit={handleCreatePost}
-      />
-
-      <GuideUploadDialog
-        open={showUploadGuideModal}
-        onClose={resetUploadModal}
-        title={uploadTitle}
-        onTitleChange={setUploadTitle}
-        condition={uploadCondition}
-        onConditionChange={setUploadCondition}
-        topicTag={uploadTopicTag}
-        onTopicTagChange={setUploadTopicTag}
-        fileName={uploadFileName}
-        pages={uploadPages}
-        showExtractedInspector={showExtractedInspector}
-        onShowExtractedInspectorChange={setShowExtractedInspector}
-        selectedInspectPage={selectedInspectPage}
-        onSelectedInspectPageChange={setSelectedInspectPage}
-        showMoreOptions={showMoreOptions}
-        onShowMoreOptionsChange={setShowMoreOptions}
-        showTechDetails={showTechDetails}
-        onShowTechDetailsChange={setShowTechDetails}
-        pdfPreviewUrl={uploadPdfPreviewUrl}
-        editingGuideId={editingGuideId}
-        uploading={isUploadingGuide}
-        extractingPdf={isExtractingPdf}
-        extractedPdfStats={extractedPdfStats}
-        dragActive={dragActive}
-        fileInputRef={fileInputRef}
-        onDrag={handleDrag}
-        onDrop={handleDrop}
-        onLoadResourceFile={handleLoadResourceFile}
-        onProcessFile={handleProcessFile}
-        onSave={handleSaveGuide}
-      />
-      <GuideInspectorDialog
-        guide={inspectGuideModal}
-        onGuideChange={setInspectGuideModal}
-        copied={copiedInspect}
-        onCopiedChange={setCopiedInspect}
-        onToggleGuide={handleToggleGuide}
-        onRequestDelete={handleRequestDeleteGuide}
-      />
-      <DeleteGuideDialog
-        guide={guideToDelete}
-        deleting={isDeletingGuide}
-        onGuideChange={setGuideToDelete}
-        onConfirm={handleConfirmDeleteGuide}
       />
     </div>
   );

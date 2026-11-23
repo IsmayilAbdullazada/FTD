@@ -86,15 +86,15 @@ export function CreateResourceDialog({
                   Add Care Source / Protocol
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Publish verified guidance to the caregiver knowledge base and
-                  assistant.
+                  Publish verified guidance to the care partner knowledge base
+                  and assistant.
                 </p>
               </div>
               <button
                 type="button"
                 aria-label="Close dialog"
                 onClick={handleClose}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                className="min-h-11 min-w-11 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -156,8 +156,8 @@ export function CreateResourceDialog({
                     Speech & Communication (PPA)
                   </option>
                   <option value="NUTRITION_DIET">Nutrition & Swallowing</option>
-                  <option value="CAREGIVER_SUPPORT">
-                    Caregiver Support & Wellbeing
+                  <option value="CARE_PARTNER_SUPPORT">
+                    Care Partner Support & Wellbeing
                   </option>
                   <option value="DAILY_CARE">Daily Care & Routines</option>
                   <option value="GENERAL_EDUCATION">
@@ -227,7 +227,7 @@ export function CreateResourceDialog({
                       key={value}
                       type="button"
                       onClick={() => setNewAudience(value)}
-                      className={`w-full px-3 py-2 border rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      className={`min-h-11 min-w-11 w-full px-3 py-2 border rounded-lg text-xs font-semibold transition cursor-pointer ${
                         newAudience === value
                           ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
@@ -300,14 +300,14 @@ export function CreateResourceDialog({
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                  className="min-h-11 min-w-11 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !newAudience}
-                  className="px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
+                  className="min-h-11 min-w-11 px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
                 >
                   {isSubmitting ? 'Publishing...' : 'Publish Guide'}
                 </button>

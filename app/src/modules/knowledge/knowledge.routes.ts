@@ -55,7 +55,9 @@ router.post(
           category: r.category,
           snippet: r.summary,
           url: `/?tab=knowledge&resource=${r.id}`,
-          confidenceScore: Number(r.score),
+          ...(req.user!.role === 'SYSTEM_ADMIN'
+            ? { confidenceScore: Number(r.score) }
+            : {}),
         })),
         ...discussions.map((r) => ({
           sourceType: 'PAST_DISCUSSION',
@@ -64,7 +66,9 @@ router.post(
           title: r.title,
           snippet: r.sanitized_content.slice(0, 180),
           url: `/?tab=feed&post=${r.id}`,
-          confidenceScore: Number(r.score),
+          ...(req.user!.role === 'SYSTEM_ADMIN'
+            ? { confidenceScore: Number(r.score) }
+            : {}),
         })),
       ],
     });
@@ -104,13 +108,17 @@ router.post(
     }));
     res.json({
       answer: '',
-      retrievedChunks: chunks.rows.map((r) => ({
-        guideTitle: r.title,
-        fileName: r.file_name,
-        page: r.page,
-        content: r.content,
-        score: Number(r.score),
-      })),
+      ...(req.user!.role === 'SYSTEM_ADMIN'
+        ? {
+            retrievedChunks: chunks.rows.map((r) => ({
+              guideTitle: r.title,
+              fileName: r.file_name,
+              page: r.page,
+              content: r.content,
+              score: Number(r.score),
+            })),
+          }
+        : {}),
       citedResources: cited,
       suggestedQuestions: [],
       isUploadedGuideSourced: cited.length > 0,

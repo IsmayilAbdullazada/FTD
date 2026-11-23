@@ -80,7 +80,7 @@ export function useAppController() {
         setComposerInitialTitle(discussionDraft.title || '');
         setComposerInitialContent(discussionDraft.content || '');
       }
-      setActiveTab(permittedTab(tab, user.role));
+      setActiveTab(permittedTab(tab, user.role, user.adminConsoleEnabled));
     } else {
       setActiveTab(defaultTabFor(user));
     }
@@ -96,6 +96,7 @@ export function useAppController() {
     const tab = permittedTab(
       location.tab || 'feed',
       currentUser?.role || 'CARE_PARTNER',
+      currentUser?.adminConsoleEnabled,
     );
     setInspectedResourceId(location.resourceId);
     const { postId, inviteToken, discussionDraft } = location;
@@ -195,7 +196,11 @@ export function useAppController() {
 
   function selectTab(tab: string): void {
     if (tab === 'feed') setFeedResetKey((previous) => previous + 1);
-    const nextTab = permittedTab(tab, currentUser?.role || 'CARE_PARTNER');
+    const nextTab = permittedTab(
+      tab,
+      currentUser?.role || 'CARE_PARTNER',
+      currentUser?.adminConsoleEnabled,
+    );
     setActiveTab(nextTab);
     setInspectedResourceId(null);
     setTargetDiscussionId(null);
@@ -318,7 +323,7 @@ export function useAppController() {
       },
       sessionTimedOut: () =>
         signOut(
-          'Your session timed out due to inactivity to protect patient and caregiver privacy. Please sign in again.',
+          'Your session timed out due to inactivity to protect patient and care partner privacy. Please sign in again.',
         ),
     },
   };

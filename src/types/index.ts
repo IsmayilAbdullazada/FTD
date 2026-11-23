@@ -165,6 +165,10 @@ export interface QueueItem {
 }
 
 export interface ClinicalResource {
+  source?: 'resource' | 'guide';
+  status?: 'DRAFT' | 'APPROVED';
+  isActive?: boolean;
+  createdBy?: string;
   id: string;
   title: string;
   summary: string;
@@ -180,9 +184,11 @@ export interface ClinicalResource {
     | 'SAFETY_WANDERING'
     | 'COMMUNICATION_PPA'
     | 'NUTRITION_DIET'
-    | 'CAREGIVER_SUPPORT'
+    | 'CARE_PARTNER_SUPPORT'
     | 'DAILY_CARE'
-    | 'GENERAL_EDUCATION';
+    | 'GENERAL_EDUCATION'
+    | 'GUIDE'
+    | (string & {});
   keyTakeaways: string[];
   createdAt: string;
 }
@@ -195,7 +201,7 @@ export interface DeflectionMatch {
   snippet: string;
   url?: string;
   postId?: string;
-  confidenceScore: number;
+  confidenceScore?: number;
 }
 
 export interface ModerationAuditEvent {
@@ -222,7 +228,8 @@ export interface DirectMessage {
     | 'DIRECT_CHAT'
     | 'MODERATION'
     | 'ACTIVITY'
-    | 'SECURITY';
+    | 'SECURITY'
+    | 'SYSTEM';
   createdAt: string;
   read: boolean;
   kind?: string;
@@ -262,6 +269,7 @@ export interface GroupMember {
 }
 
 export interface CurrentUser {
+  adminConsoleEnabled?: boolean;
   id: string;
   email: string;
   role: UserRole;

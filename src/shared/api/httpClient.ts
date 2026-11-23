@@ -1,8 +1,21 @@
+let previewSession: { token: string; name: string; targetId?: string } | null =
+  null;
+export function setPreviewSession(
+  token: string | null,
+  name = '',
+  targetId?: string,
+) {
+  previewSession = token ? { token, name, targetId } : null;
+}
+export function getPreviewSession() {
+  return previewSession ? { name: previewSession.name, readOnly: true } : null;
+}
 let authenticatedSession = false;
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -13,11 +26,43 @@ export async function apiFetch(
   input: RequestInfo | URL,
   options?: RequestInit,
 ): Promise<Response> {
+  const headers = new Headers(options?.headers);
+  if (previewSession) {
+    if ((options?.method || 'GET').toUpperCase() !== 'GET')
+      throw new ApiError('Preview is read-only', 403, 'PREVIEW_READ_ONLY');
+    const raw =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+    const url = new URL(raw, window.location.origin);
+    if (
+      url.origin === window.location.origin &&
+      (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/'))
+    )
+      headers.set('X-Preview-Token', previewSession.token);
+  }
   const response = await fetch(input, {
     ...options,
-    headers: new Headers(options?.headers),
+    headers,
     credentials: 'include',
   });
+  if (
+    previewSession?.targetId &&
+    response.ok &&
+    /\/users\/me/.test(String(input))
+  ) {
+    const identity = await response
+      .clone()
+      .json()
+      .catch(() => null);
+    if (identity?.user?.id !== previewSession.targetId)
+      throw new ApiError(
+        'Preview identity could not be verified. Check proxy forwarding before continuing.',
+        403,
+      );
+  }
   const url = String(input);
   const publicAuth = /\/auth\//.test(url);
   if (
@@ -54,7 +99,13 @@ async function responseError(
     );
   }
   const body = await response.json().catch(() => ({}));
-  return new ApiError(body?.error || fallbackMessage, response.status);
+  if (body?.code === 'GUIDELINES_ACK_REQUIRED')
+    window.dispatchEvent(new Event('jh:guidelines-required'));
+  return new ApiError(
+    body?.error || fallbackMessage,
+    response.status,
+    body?.code,
+  );
 }
 
 export async function requestJson<T>(

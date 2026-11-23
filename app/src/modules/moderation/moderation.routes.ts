@@ -1,3 +1,4 @@
+import { notifyModerators } from '../../services/notifications.js';
 import {
   notify,
   notifyPublishedPost,
@@ -186,6 +187,13 @@ router.post(
             postId,
           ]);
       }
+      if (input.action === 'CLINICAL_REDIRECT')
+        await notifyModerators(client, {
+          kind: 'CLINICAL_FOLLOWUP_REQUIRED',
+          actorId: req.user!.id,
+          eventKey: `clinical-followup:${postId}`,
+          context: { postId },
+        });
       if (input.entityType === 'POST' && input.action === 'APPROVE')
         await notifyPublishedPost(client, postId, req.user!.id);
       else {

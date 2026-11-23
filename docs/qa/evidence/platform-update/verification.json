@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-23",
+  "base": "2068493",
+  "browser": "Chromium",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "touch": true
+    }
+  ],
+  "frontendTests": 47,
+  "backendTests": {
+    "postgres16": 66,
+    "postgres18": 66
+  },
+  "accessibilityScans": 64,
+  "accessibilityViolations": 0,
+  "browserActionRegistryEntriesPerViewport": 41,
+  "browserConfirmationsPerViewport": 50,
+  "productionTested": false,
+  "mail": "local STARTTLS sink only",
+  "terminologyReportCounts": {
+    "resources": 0,
+    "clinic_updates": 0,
+    "calendar_events": 0,
+    "cohorts": 0,
+    "app_settings": 0
+  },
+  "screenshots": [
+    "desktop-admin-preview-care.png",
+    "desktop-admin-preview-moderator.png",
+    "desktop-final-admin-dark.png",
+    "desktop-final-care-guide.png",
+    "desktop-final-composer.png",
+    "desktop-final-data-editor.png",
+    "desktop-final-diagnostics.png",
+    "desktop-final-guide-upload.png",
+    "desktop-final-guidelines-agree.png",
+    "desktop-final-guidelines-top.png",
+    "desktop-final-notifications-admin.png",
+    "desktop-final-notifications-moderator.png",
+    "mobile-admin-preview-care.png",
+    "mobile-admin-preview-moderator.png",
+    "mobile-final-admin-dark.png",
+    "mobile-final-care-guide.png",
+    "mobile-final-composer.png",
+    "mobile-final-data-editor.png",
+    "mobile-final-diagnostics.png",
+    "mobile-final-guide-upload.png",
+    "mobile-final-guidelines-agree.png",
+    "mobile-final-guidelines-top.png",
+    "mobile-final-notifications-admin.png",
+    "mobile-final-notifications-moderator.png"
+  ]
+}

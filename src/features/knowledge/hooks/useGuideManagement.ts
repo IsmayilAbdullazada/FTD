@@ -22,6 +22,7 @@ interface UseGuideManagementOptions {
 }
 
 export function useGuideManagement({
+  currentUser,
   onQueueUpdated,
   setActionSuccessNotice,
 }: UseGuideManagementOptions) {
@@ -41,6 +42,12 @@ export function useGuideManagement({
   >('ALL');
 
   // Upload Guide Form State (Condition, Title, Topic Tag, Page-by-Page Extraction)
+  const [uploadMetadata, setUploadMetadata] = useState({
+    category: '',
+    description: '',
+    publisher: '',
+    year: '',
+  });
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(
     null,
@@ -160,6 +167,12 @@ export function useGuideManagement({
 
   const resetUploadModal = () => {
     setShowUploadGuideModal(false);
+    setUploadMetadata({
+      category: '',
+      description: '',
+      publisher: '',
+      year: '',
+    });
     setUploadTitle('');
     setUploadCondition(null);
     setUploadTopicTag('');
@@ -176,6 +189,12 @@ export function useGuideManagement({
   };
 
   const handleOpenReviewModal = (guide: ChatbotGuideFile) => {
+    setUploadMetadata({
+      category: guide.category || '',
+      description: guide.description || '',
+      publisher: guide.publisher || '',
+      year: guide.year || '',
+    });
     setEditingGuideId(guide.id);
     setUploadTitle(guide.title);
     setUploadCondition(guide.condition || null);
@@ -231,7 +250,7 @@ export function useGuideManagement({
     try {
       const response = await guideApi.approveChatbotGuide(guide.id);
       setChatbotGuides((previous) => replaceGuide(previous, response.guide));
-      setActionSuccessNotice(`Approved "${guide.title}" for chatbot!`);
+      setActionSuccessNotice(`Approved "${guide.title}"!`);
       setTimeout(() => setActionSuccessNotice(null), 3500);
       loadChatbotGuides();
     } catch (err) {
@@ -292,7 +311,7 @@ export function useGuideManagement({
         try {
           const result = await guideApi.extractPdfText(file);
           // Text and pages returned cleanly from server
-          setUploadContent(result.text);
+          setUploadContent(result.text || '');
           setUploadPages(result.pages || []);
           if (result.pdfUrl) {
             setUploadPdfPreviewUrl(result.pdfUrl);
@@ -300,8 +319,8 @@ export function useGuideManagement({
             setUploadPdfPreviewUrl(`/resources/${file.name}`);
           }
           setExtractedPdfStats({
-            pages: result.pageCount,
-            words: result.wordCount,
+            pages: result.pageCount || 0,
+            words: result.wordCount || 0,
           });
           // If title was empty, refine from page 1 text
           setUploadTitle((prev) =>
@@ -310,7 +329,9 @@ export function useGuideManagement({
               : suggestGuideTitle(file.name, result.pages?.[0]?.text),
           );
           setActionSuccessNotice(
-            `Extracted ${result.pageCount} pages (${result.wordCount.toLocaleString()} words) from "${file.name}".`,
+            currentUser.role === 'SYSTEM_ADMIN'
+              ? `Extracted ${result.pageCount} pages (${result.wordCount?.toLocaleString() || 0} words) from "${file.name}".`
+              : 'PDF ready',
           );
           setTimeout(() => setActionSuccessNotice(null), 3500);
         } catch (err) {
@@ -362,7 +383,8 @@ export function useGuideManagement({
     if (!uploadTitle.trim() || isUploadingGuide) return;
     const finalContent =
       uploadContent.trim() || uploadPages.map((p) => p.text).join('\n\n');
-    if (!finalContent && uploadPages.length === 0) return;
+    if (!finalContent && uploadPages.length === 0 && !uploadPdfPreviewUrl)
+      return;
 
     setIsUploadingGuide(true);
     try {
@@ -376,6 +398,7 @@ export function useGuideManagement({
 
       if (editingGuideId) {
         await guideApi.updateChatbotGuide(editingGuideId, {
+          ...uploadMetadata,
           title: uploadTitle.trim(),
           condition: uploadCondition,
           topicTag: uploadTopicTag.trim() || undefined,
@@ -387,11 +410,12 @@ export function useGuideManagement({
         });
         setActionSuccessNotice(
           isApproved
-            ? `Guide "${uploadTitle}" approved for chatbot!`
+            ? `Guide "${uploadTitle}" approved!`
             : `Guide "${uploadTitle}" draft updated.`,
         );
       } else {
         const res = await guideApi.uploadChatbotGuide({
+          ...uploadMetadata,
           title: uploadTitle.trim(),
           condition: uploadCondition,
           topicTag: uploadTopicTag.trim() || undefined,
@@ -409,13 +433,14 @@ export function useGuideManagement({
         });
         setActionSuccessNotice(
           isApproved
-            ? `Guide "${res.title}" approved for chatbot!`
+            ? `Guide "${res.title}" approved!`
             : `Guide "${res.title}" saved as draft.`,
         );
       }
       resetUploadModal();
       setTimeout(() => setActionSuccessNotice(null), 4500);
       loadChatbotGuides();
+      return true;
     } catch (err) {
       reportError('Failed to save guide:', err);
       setActionSuccessNotice(
@@ -451,6 +476,8 @@ export function useGuideManagement({
   );
 
   return {
+    uploadMetadata,
+    setUploadMetadata,
     chatbotGuides,
     loadingGuides,
     guideSearchFilter,

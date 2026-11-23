@@ -312,9 +312,6 @@ export const Header: React.FC<HeaderProps> = ({
                             My Posts
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">
-                          Track your posts →
-                        </span>
                       </button>
 
                       <button

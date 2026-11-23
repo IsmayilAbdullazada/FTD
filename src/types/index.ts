@@ -269,6 +269,7 @@ export interface GroupMember {
 }
 
 export interface CurrentUser {
+  adminConsoleEnabled?: boolean;
   id: string;
   email: string;
   role: UserRole;

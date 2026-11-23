@@ -329,6 +329,19 @@ export const Header: React.FC<HeaderProps> = ({
                       </button>
                     </div>
 
+                    {isAdmin && currentUser.adminConsoleEnabled && (
+                      <button
+                        type="button"
+                        className="min-h-11 w-full rounded-lg px-4 text-left text-sm font-semibold"
+                        onClick={() => {
+                          setShowPersonaMenu(false);
+                          setActiveTab('admin');
+                        }}
+                      >
+                        CS Admin console
+                      </button>
+                    )}
+
                     {/* Dedicated Appearance / Theme Switcher in the Dropdown */}
                     <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-2.5 text-sm font-medium text-slate-700 dark:text-slate-300">

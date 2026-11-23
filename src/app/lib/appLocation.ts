@@ -19,6 +19,7 @@ export function normalizeTab(tab: string | null): string | null {
       'knowledge',
       'updates',
       'calendar',
+      'admin',
       'moderation',
       'audit',
       'login',
@@ -29,7 +30,13 @@ export function normalizeTab(tab: string | null): string | null {
     : tab;
 }
 
-export function permittedTab(tab: string, role: string): string {
+export function permittedTab(
+  tab: string,
+  role: string,
+  adminEnabled = false,
+): string {
+  if (tab === 'admin')
+    return role === 'SYSTEM_ADMIN' && adminEnabled ? 'admin' : 'feed';
   return role === 'CARE_PARTNER' && (tab === 'moderation' || tab === 'audit')
     ? 'feed'
     : normalizeTab(tab) || 'feed';

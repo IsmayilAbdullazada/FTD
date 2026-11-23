@@ -1,5 +1,8 @@
+import { env } from '../config/env.js';
 import type { UserRow, CohortRow, ResourceRow } from '../db/rows.js';
 export const currentUser = (row: UserRow) => ({
+  adminConsoleEnabled:
+    row.role === 'SYSTEM_ADMIN' && env.ENABLE_ADMIN_CONSOLE === 'true',
   id: row.id,
   email: row.email,
   role: row.role,

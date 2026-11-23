@@ -81,6 +81,16 @@ app.use(
   }),
 );
 app.use('/api/v1', (req, res, next) => {
+  if (req.header('X-Preview-Token')) {
+    if (req.method !== 'GET') {
+      res
+        .status(403)
+        .json({ error: 'Preview is read-only', code: 'PREVIEW_READ_ONLY' });
+      return;
+    }
+    authenticateToken(req, res, () => globalLimiter(req, res, next));
+    return;
+  }
   if (req.path === '/health' || req.path.startsWith('/auth/')) return next();
   authenticateToken(req, res, () => globalLimiter(req, res, next));
 });

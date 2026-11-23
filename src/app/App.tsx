@@ -1,3 +1,4 @@
+import { PreviewBootstrap } from './components/PreviewBootstrap';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { lazy, Suspense, useMemo, useState, useEffect } from 'react';
 import { Footer } from '@/app/components/Footer';
@@ -10,6 +11,11 @@ import { useAppController } from '@/app/hooks/useAppController';
 import { GuidelinesGate } from '@/features/policies';
 import { policiesApi } from '@/features/policies/api/policiesApi';
 
+const AdminConsole = lazy(() =>
+  import('@/features/admin/components/AdminConsole').then((module) => ({
+    default: module.AdminConsole,
+  })),
+);
 const ClinicianDashboard = lazy(() =>
   import('@/features/clinician-workspace').then((module) => ({
     default: module.ClinicianDashboard,
@@ -260,6 +266,9 @@ function AppContent() {
             />
           )}
 
+          {activeTab === 'admin' &&
+            currentUser.role === 'SYSTEM_ADMIN' &&
+            currentUser.adminConsoleEnabled && <AdminConsole />}
           {activeTab === 'updates' && <UpdatesPage currentUser={currentUser} />}
           {activeTab === 'calendar' && (
             <CalendarPage currentUser={currentUser} />
@@ -336,7 +345,9 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <PreviewBootstrap>
+        <AppContent />
+      </PreviewBootstrap>
     </ErrorBoundary>
   );
 }

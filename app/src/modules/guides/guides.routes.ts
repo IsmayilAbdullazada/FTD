@@ -86,7 +86,7 @@ function map(r: GuideRow & { uploaded_by_name?: string }, technical = false) {
     updatedAt: r.updated_at,
   };
 }
-async function reindex(client: PoolClient, guide: GuideRow) {
+export async function reindex(client: PoolClient, guide: GuideRow) {
   await client.query(`DELETE FROM guide_chunks WHERE guide_id=$1`, [guide.id]);
   if (!guide.is_active || guide.status !== 'APPROVED') {
     await client.query(`UPDATE chatbot_guides SET total_chunks=0 WHERE id=$1`, [

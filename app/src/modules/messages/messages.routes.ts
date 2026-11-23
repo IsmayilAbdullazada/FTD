@@ -60,7 +60,7 @@ router.get(
     const readIds = result.rows
       .filter((row) => row.recipient_id === req.user!.id)
       .map((row) => row.id);
-    if (readIds.length) {
+    if (readIds.length && !req.preview) {
       await query(
         'UPDATE private_messages SET read_at=COALESCE(read_at,NOW()) WHERE id=ANY($1::text[]) AND recipient_id=$2',
         [readIds, req.user!.id],
@@ -71,7 +71,10 @@ router.get(
     }
     const total = countResult.rows[0].total as number;
     res.json({
-      messages: result.rows.map((row) => map(row as Parameters<typeof map>[0])),
+      messages: result.rows.map((row) => ({
+        ...map(row as Parameters<typeof map>[0]),
+        ...(req.preview ? { content: '[Hidden in preview]' } : {}),
+      })),
       pagination: paginationMeta(page, pageSize, total),
     });
   }),

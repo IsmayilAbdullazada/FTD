@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1200,
-  keyGenerator: (req) => req.user!.id,
+  keyGenerator: (req) => req.previewActor?.id ?? req.user!.id,
   skip: (req) => req.method === 'GET' && req.path === '/v1/health',
   standardHeaders: true,
   legacyHeaders: false,

@@ -34,6 +34,7 @@ const schema = z.object({
     .string()
     .default('http://localhost:3000,http://localhost:5173'),
   ENABLE_DEV_PERSONAS: z.enum(['true', 'false']).default('false'),
+  ENABLE_ADMIN_CONSOLE: z.enum(['true', 'false']).default('false'),
   ENABLE_DATABASE_RESET: z.enum(['true', 'false']).default('false'),
   ALLOW_PRODUCTION_SEED: z.enum(['true', 'false']).default('false'),
   ENABLE_DEV_AUTH_PREVIEWS: z.enum(['true', 'false']).default('false'),

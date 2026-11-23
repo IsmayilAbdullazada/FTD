@@ -231,7 +231,7 @@ export function useGuideManagement({
     try {
       const response = await guideApi.approveChatbotGuide(guide.id);
       setChatbotGuides((previous) => replaceGuide(previous, response.guide));
-      setActionSuccessNotice(`Approved "${guide.title}" for chatbot!`);
+      setActionSuccessNotice(`Approved "${guide.title}"!`);
       setTimeout(() => setActionSuccessNotice(null), 3500);
       loadChatbotGuides();
     } catch (err) {
@@ -387,7 +387,7 @@ export function useGuideManagement({
         });
         setActionSuccessNotice(
           isApproved
-            ? `Guide "${uploadTitle}" approved for chatbot!`
+            ? `Guide "${uploadTitle}" approved!`
             : `Guide "${uploadTitle}" draft updated.`,
         );
       } else {
@@ -409,13 +409,14 @@ export function useGuideManagement({
         });
         setActionSuccessNotice(
           isApproved
-            ? `Guide "${res.title}" approved for chatbot!`
+            ? `Guide "${res.title}" approved!`
             : `Guide "${res.title}" saved as draft.`,
         );
       }
       resetUploadModal();
       setTimeout(() => setActionSuccessNotice(null), 4500);
       loadChatbotGuides();
+      return true;
     } catch (err) {
       reportError('Failed to save guide:', err);
       setActionSuccessNotice(

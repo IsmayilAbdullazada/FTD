@@ -29,6 +29,8 @@ export function useKnowledgeResources({
 
   // Add Source Modal State
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingResource, setEditingResource] =
+    useState<ClinicalResource | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<ClinicalResource['category']>(
     'BEHAVIORAL_AGITATION',
@@ -114,14 +116,19 @@ export function useKnowledgeResources({
       return;
     }
 
-    if (!newExternalUrl.trim() && !newPdfFile) {
+    if (
+      !newExternalUrl.trim() &&
+      !newPdfFile &&
+      !editingResource?.fileAttachmentUrl
+    ) {
       setFormError('Please provide an external URL or upload a PDF resource.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      let fileAttachmentUrl: string | undefined;
+      let fileAttachmentUrl: string | undefined =
+        editingResource?.fileAttachmentUrl;
       if (newPdfFile) {
         if (!newPdfFile.name.toLowerCase().endsWith('.pdf')) {
           setFormError('Only PDF files (.pdf) can be attached.');
@@ -150,7 +157,7 @@ export function useKnowledgeResources({
         })
         .filter((link) => link.label && link.url);
 
-      const created = await contentApi.createResource({
+      const payload = {
         title: newTitle.trim(),
         category: newCategory,
         summary: newSummary.trim() || newTitle.trim(),
@@ -163,9 +170,16 @@ export function useKnowledgeResources({
         fileAttachmentUrl,
         additionalLinks,
         diseaseDomain: newAudience,
-      });
+      };
+      const created = editingResource
+        ? await contentApi.updateResource(editingResource.id, payload)
+        : await contentApi.createResource(payload);
 
-      setResources((prev) => [created, ...prev]);
+      setResources((prev) => [
+        created,
+        ...prev.filter((item) => item.id !== created.id),
+      ]);
+      setEditingResource(null);
       setShowAddModal(false);
       setNewTitle('');
       setNewSummary('');
@@ -191,9 +205,29 @@ export function useKnowledgeResources({
     }
   };
 
+  const openResourceForm = (resource?: ClinicalResource) => {
+    setEditingResource(resource || null);
+    setNewTitle(resource?.title || '');
+    setNewSummary(resource?.summary || '');
+    setNewContentBody(resource?.contentBody || '');
+    setNewCategory(resource?.category || 'GENERAL_EDUCATION');
+    setNewAudience(resource?.diseaseDomain || '');
+    setNewExternalUrl(resource?.externalUrl || '');
+    setNewKeyTakeaways(resource?.keyTakeaways.join('\n') || '');
+    setNewAdditionalLinks(
+      resource?.additionalLinks
+        ?.map((link) => `${link.label}|${link.url}`)
+        .join('\n') || '',
+    );
+    setNewPdfFile(null);
+    setFormError(null);
+    setShowAddModal(true);
+  };
   const handleDeleteGuide = async (resource: ClinicalResource) => {
     try {
-      await contentApi.deleteResource(resource.id);
+      if (resource.source === 'guide')
+        await guideApi.deleteChatbotGuide(resource.id);
+      else await contentApi.deleteResource(resource.id);
       setResources((prev) => prev.filter((r) => r.id !== resource.id));
       setActiveResource((prev) => (prev?.id === resource.id ? null : prev));
       setPendingDelete(null);
@@ -209,7 +243,9 @@ export function useKnowledgeResources({
   };
 
   return {
+    openResourceForm,
     resources,
+    loadResources,
     setResources,
     loading,
     setLoading,
@@ -249,7 +285,6 @@ export function useKnowledgeResources({
     newPdfFile,
     setNewPdfFile,
     isClinician,
-    loadResources,
     categories,
     filtered,
     handleCreateGuide,

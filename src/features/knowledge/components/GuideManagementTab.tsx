@@ -83,7 +83,7 @@ export function GuideManagementTab({
               <FileText className="w-5 h-5" />
             </div>
             <h2 className="font-serif text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-              Assistant Guides
+              Guides
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
@@ -318,7 +318,7 @@ export function GuideManagementTab({
                           }`}
                           title={
                             guide.isActive
-                              ? 'Active for assistant guidance'
+                              ? 'Published in Guides and Care Companion'
                               : 'Paused'
                           }
                         >

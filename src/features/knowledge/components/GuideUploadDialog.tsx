@@ -351,7 +351,7 @@ export function GuideUploadDialog({
                           {
                             id: 'GENERAL',
                             label: 'General',
-                            name: 'All Dementia Care',
+                            name: 'All care partners (FTD and AD)',
                           },
                         ] as const
                       ).map((item) => {
@@ -652,7 +652,7 @@ export function GuideUploadDialog({
                 <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>
                   Drafts are saved safely and are <strong>not</strong> served by
-                  the assistant until approved.
+                  Guides or Care Companion until approved.
                 </span>
               </div>
 
@@ -676,7 +676,7 @@ export function GuideUploadDialog({
                     uploadPages.length === 0
                   }
                   className="px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 disabled:opacity-40 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                  title="Save as Draft (will not be active in assistant)"
+                  title="Save as draft (not published)"
                 >
                   <Clock className="w-3.5 h-3.5 text-amber-500" />
                   <span>Save as Draft</span>
@@ -693,7 +693,7 @@ export function GuideUploadDialog({
                     uploadPages.length === 0
                   }
                   className="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-40 text-white transition flex items-center gap-2 shadow-xs cursor-pointer"
-                  title="Approve extraction for chatbot"
+                  title="Approve guide"
                 >
                   {isUploadingGuide ? (
                     <>
@@ -703,7 +703,7 @@ export function GuideUploadDialog({
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4" />
-                      <span>Approve for chatbot</span>
+                      <span>Approve</span>
                     </>
                   )}
                 </button>

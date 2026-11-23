@@ -165,6 +165,10 @@ export interface QueueItem {
 }
 
 export interface ClinicalResource {
+  source?: 'resource' | 'guide';
+  status?: 'DRAFT' | 'APPROVED';
+  isActive?: boolean;
+  createdBy?: string;
   id: string;
   title: string;
   summary: string;
@@ -182,7 +186,9 @@ export interface ClinicalResource {
     | 'NUTRITION_DIET'
     | 'CAREGIVER_SUPPORT'
     | 'DAILY_CARE'
-    | 'GENERAL_EDUCATION';
+    | 'GENERAL_EDUCATION'
+    | 'GUIDE'
+    | (string & {});
   keyTakeaways: string[];
   createdAt: string;
 }

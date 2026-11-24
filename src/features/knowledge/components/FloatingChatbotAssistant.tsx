@@ -1,3 +1,4 @@
+import { assistantAnswer } from '../lib/assistantAnswer';
 import { useEffectEvent } from 'react';
 import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
 import { useFooterClearance } from '@/features/knowledge/hooks/useFooterClearance';
@@ -308,13 +309,7 @@ export const FloatingChatbotAssistant: React.FC<
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         sender: 'assistant',
-        text:
-          res.answer ||
-          (res.citedResources?.length
-            ? 'Here are relevant pages from the care guides. Review the source documents for details.'
-            : res.discussions?.length
-              ? 'These community discussions may help. You can also start a new discussion.'
-              : 'I could not find a matching guide or discussion. Try different keywords, or ask the community by creating a discussion post.'),
+        text: assistantAnswer(res),
         isMedicationRefusal: res.isMedicationRefusal,
         matchedGuide: res.matchedGuide,
         citedResources: res.citedResources,

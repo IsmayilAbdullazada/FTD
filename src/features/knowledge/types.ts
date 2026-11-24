@@ -41,6 +41,12 @@ export interface ChatbotKnowledgeConfig {
 }
 
 export interface ChatbotGuideTestResult {
+  discussions?: Array<{
+    id: string;
+    title: string;
+    url: string;
+    replyCount: number;
+  }>;
   query?: string;
   answer: string;
   retrievedChunks?: Array<{

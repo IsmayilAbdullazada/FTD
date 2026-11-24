@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { useEffect, useState } from 'react';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { adminApi } from '../api/adminApi';
@@ -88,7 +89,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           Table
           <select
             aria-label="Table"
-            className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+            className={`mt-1 ${fieldClassName}`}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -107,7 +108,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
         <label>
           Search
           <input
-            className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+            className={`mt-1 ${fieldClassName}`}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -119,7 +120,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           Sort column
           <select
             aria-label="Sort column"
-            className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+            className={`mt-1 ${fieldClassName}`}
             value={sort}
             onChange={(e) => setSort(e.target.value)}
           >
@@ -135,7 +136,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           Direction
           <select
             aria-label="Direction"
-            className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+            className={`mt-1 ${fieldClassName}`}
             value={direction}
             onChange={(e) => setDirection(e.target.value)}
           >
@@ -149,7 +150,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           Filter column
           <select
             aria-label="Filter column"
-            className="block min-h-11 rounded border bg-transparent p-2"
+            className={fieldClassName}
             value={filterColumn}
             onChange={(e) => {
               setFilterColumn(e.target.value);
@@ -167,7 +168,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
         <label>
           Exact filter value
           <input
-            className="block min-h-11 rounded border bg-transparent p-2"
+            className={fieldClassName}
             value={filterValue}
             onChange={(e) => {
               setFilterValue(e.target.value);
@@ -179,7 +180,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           Rows per page
           <select
             aria-label="Rows per page"
-            className="block min-h-11 rounded border bg-transparent p-2"
+            className={fieldClassName}
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -191,8 +192,7 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
             ))}
           </select>
         </label>
-        <button
-          className="min-h-11 rounded border px-4"
+        <Button
           onClick={() =>
             void adminApi
               .exportPage(name, new URLSearchParams(serialized))
@@ -200,14 +200,13 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           }
         >
           Export masked CSV page
-        </button>
+        </Button>
         {!table.readOnly && (
-          <button
-            className="min-h-11 rounded bg-blue-900 px-4 text-white"
+          <Button
             onClick={() => setEditor({ mode: 'create', row: {}, keys: [] })}
           >
             Create row
-          </button>
+          </Button>
         )}
       </div>
       {table.readOnly && (
@@ -221,13 +220,12 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
           <label>
             Reason for change
             <input
-              className="block min-h-11 rounded border bg-transparent p-2"
+              className={fieldClassName}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
-          <button
-            className="min-h-11 rounded border px-4"
+          <Button
             onClick={() =>
               setEditor({
                 mode: 'update',
@@ -241,13 +239,10 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
             }
           >
             Edit selected
-          </button>
-          <button
-            className="min-h-11 rounded border px-4 text-red-700 dark:text-red-300"
-            onClick={() => remove(selected)}
-          >
+          </Button>
+          <Button variant="danger" onClick={() => remove(selected)}>
             Delete selected
-          </button>
+          </Button>
         </div>
       )}
       <div
@@ -276,37 +271,38 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
               >
                 {!table.readOnly && (
                   <td className="p-3">
-                    <input
-                      className="h-11 w-11 accent-blue-900"
-                      type="checkbox"
-                      aria-label={`Select row ${index + 1}`}
-                      checked={selected.some(
-                        (key) =>
-                          JSON.stringify(key) === JSON.stringify(row._key),
-                      )}
-                      onChange={(e) =>
-                        setSelected((keys) =>
-                          e.target.checked
-                            ? [...keys, row._key!].slice(0, 200)
-                            : keys.filter(
-                                (key) =>
-                                  JSON.stringify(key) !==
-                                  JSON.stringify(row._key),
-                              ),
-                        )
-                      }
-                    />
+                    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
+                      <input
+                        className="h-4 w-4 accent-[#002D72] dark:accent-blue-500"
+                        type="checkbox"
+                        aria-label={`Select row ${index + 1}`}
+                        checked={selected.some(
+                          (key) =>
+                            JSON.stringify(key) === JSON.stringify(row._key),
+                        )}
+                        onChange={(e) =>
+                          setSelected((keys) =>
+                            e.target.checked
+                              ? [...keys, row._key!].slice(0, 200)
+                              : keys.filter(
+                                  (key) =>
+                                    JSON.stringify(key) !==
+                                    JSON.stringify(row._key),
+                                ),
+                          )
+                        }
+                      />
+                    </label>
                   </td>
                 )}
                 <td className="p-3">
-                  <button
-                    className="min-h-11 underline"
+                  <Button
                     onClick={() =>
                       setEditor({ mode: 'update', row, keys: [row._key!] })
                     }
                   >
                     {table.readOnly ? 'View' : 'View / edit'}
-                  </button>
+                  </Button>
                 </td>
                 {table.columns.map((c) => (
                   <td key={c.name} className="max-w-52 truncate p-3">
@@ -321,23 +317,18 @@ export function AdminDataPanel({ tables }: { tables: AdminTable[] }) {
         </table>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          className="min-h-11 rounded border px-4"
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-        >
+        <Button disabled={page <= 1} onClick={() => setPage(page - 1)}>
           Previous
-        </button>
+        </Button>
         <span>
           Page {page}; {result?.total ?? 0} rows
         </span>
-        <button
-          className="min-h-11 rounded border px-4"
+        <Button
           disabled={!result || page * pageSize >= result.total}
           onClick={() => setPage(page + 1)}
         >
           Next
-        </button>
+        </Button>
       </div>
       {editor && (
         <RowEditor
@@ -506,7 +497,7 @@ function RowEditor({
           Reason (at least 10 characters)
           <textarea
             aria-label="Reason (at least 10 characters)"
-            className="mt-1 min-h-24 w-full rounded border bg-transparent p-2"
+            className={`mt-1 min-h-24 ${fieldClassName}`}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
@@ -514,23 +505,15 @@ function RowEditor({
         <div className="mt-4 flex flex-wrap justify-end gap-3">
           {editor.mode === 'update' &&
             table.columns.some((c) => c.sensitive) && (
-              <button
-                className="min-h-11 rounded border px-4"
-                onClick={() => void reveal()}
-              >
+              <Button onClick={() => void reveal()}>
                 Reveal protected text (audited)
-              </button>
+              </Button>
             )}
-          <button className="min-h-11 rounded border px-4" onClick={onClose}>
-            Close
-          </button>
+          <Button onClick={onClose}>Close</Button>
           {!table.readOnly && (
-            <button
-              className="min-h-11 rounded bg-blue-900 px-4 text-white"
-              onClick={preview}
-            >
+            <Button variant="primary" onClick={preview}>
               Preview change
-            </button>
+            </Button>
           )}
         </div>
       </div>

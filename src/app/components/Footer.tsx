@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Shield, X, FileText, CheckCircle2 } from 'lucide-react';
-import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
+import { useState } from 'react';
+import { CommunityGuidelinesModal } from '@/features/policies/components/CommunityGuidelinesModal';
 
 interface FooterProps {
   onNavigateTab?: (tab: string) => void;
@@ -8,129 +7,8 @@ interface FooterProps {
   onOpenAudit?: () => void;
   isClinician?: boolean;
 }
-
-type PolicyKey =
-  'privacy' | 'npp' | 'nondiscrimination' | 'rights' | 'guidelines' | null;
-
-interface PolicyContent {
-  title: string;
-  badge: string;
-  sections: { title: string; text: string }[];
-}
-
-const POLICY_DETAILS: Record<Exclude<PolicyKey, null>, PolicyContent> = {
-  privacy: {
-    title: 'Johns Hopkins Medicine Privacy Policy',
-    badge: 'Privacy & Data Protection',
-    sections: [
-      {
-        title: 'Commitment to Family Care Partners',
-        text: 'Johns Hopkins Medicine is committed to protecting the personal privacy and confidential communications of family care partners and clinicians participating in the Care Partner Connect platform.',
-      },
-      {
-        title: 'Anonymous Handles & Protected Communications',
-        text: 'To ensure a safe and candid peer environment, all care partners participate using pseudonym handles. Direct personal identifying information is segregated from peer discussion channels and visible only to credentialed Johns Hopkins clinical moderators.',
-      },
-      {
-        title: 'Information Usage & Security Standards',
-        text: 'We do not sell, rent, or monetize care partner data. Access to community information is restricted by account role. Please contact the care team with questions about how this service handles your information.',
-      },
-      {
-        title: 'Inquiries & Contact',
-        text: 'Questions regarding website privacy practices may be directed to the Johns Hopkins Medicine Privacy Office at privacy@jhmi.edu.',
-      },
-    ],
-  },
-  npp: {
-    title: 'Health Information Privacy',
-    badge: 'Health Privacy',
-    sections: [
-      {
-        title: 'Your Protected Health Information',
-        text: 'For the official notice explaining how Johns Hopkins Medicine uses health information and the privacy rights available to you, contact the Johns Hopkins Medicine Privacy Office. The community information on this page is not a substitute for that notice.',
-      },
-      {
-        title: 'Clinical Care & Educational Coordination',
-        text: 'Information shared within this platform is utilized by the Johns Hopkins Frontotemporal Dementia Center multidisciplinary team to coordinate educational support, triage safety concerns, and provide evidence-based dementia guidance.',
-      },
-      {
-        title: 'Your Rights Under HIPAA',
-        text: 'You have the right to inspect relevant health records, request restrictions on disclosures, receive confidential communications, and obtain an electronic copy of your records from the Johns Hopkins Health System.',
-      },
-      {
-        title: 'Privacy Official Contact',
-        text: 'For questions or to file a privacy grievance, contact the Johns Hopkins Privacy Officer at (410) 735-6509 or via HIPAA hotline at (888) 546-3965.',
-      },
-    ],
-  },
-  nondiscrimination: {
-    title: 'Johns Hopkins Medicine Non-Discrimination Policy',
-    badge: 'Equal Access & Civil Rights',
-    sections: [
-      {
-        title: 'Equal Access to Care & Support',
-        text: 'Johns Hopkins Medicine complies with applicable federal civil rights laws and does not discriminate, exclude people, or treat them differently on the basis of race, color, national origin, age, disability, religion, sex, sexual orientation, or gender identity.',
-      },
-      {
-        title: 'Language Assistance & Accommodations',
-        text: 'Johns Hopkins Medicine provides free aids and services to people with disabilities to communicate effectively, such as qualified sign language interpreters and written information in alternate formats, as well as free language services for individuals whose primary language is not English.',
-      },
-      {
-        title: 'Filing a Civil Rights Grievance',
-        text: 'If you believe Johns Hopkins Medicine has failed to provide these services or discriminated in another way, you can file a grievance with the Office of Institutional Equity, 600 N. Wolfe Street, Baltimore, MD 21287.',
-      },
-    ],
-  },
-  rights: {
-    title: 'Patient & Family Care Partner Rights',
-    badge: 'Dignity & Care Standards',
-    sections: [
-      {
-        title: 'Respectful, Compassionate Engagement',
-        text: 'Every care partner and patient has the right to respectful, considerate care and communication that recognizes personal values, cultural beliefs, and personal dignity throughout the dementia journey.',
-      },
-      {
-        title: 'Clinical Transparency & Evidence-Based Guidance',
-        text: 'Care partners have the right to receive accurate, transparent, and evidence-grounded information regarding disease progression, behavioral management protocols, and institutional support resources.',
-      },
-      {
-        title: 'Safety, Confidentiality & Non-Retaliation',
-        text: 'Participants have the right to personal safety, confidentiality, and freedom from harassment. Expressing concerns or requesting clinical reviews will never adversely impact your access to care or support services at Johns Hopkins Medicine.',
-      },
-    ],
-  },
-  guidelines: {
-    title: 'Community Guidelines',
-    badge: 'Community Safety & Guidelines',
-    sections: [
-      {
-        title: 'Community Expectations',
-        text: 'Keep posts focused on FTD and young-onset dementias. Stay on topic so the conversation stays helpful and easy to follow. Be kind, respectful, and supportive to others.',
-      },
-      {
-        title: 'What Not to Post',
-        text: 'Personal details such as names, phone numbers, addresses, or email addresses. Hateful, threatening, violent, or offensive words. Political opinions, campaign messages, and endorsements out of the community. Advertisements or sales messages. Any messages regarding donations or fundraising support.',
-      },
-      {
-        title: 'Privacy',
-        text: 'Please be thoughtful about the personal information you share. Anything you post may be visible to others and could be used in ways you may not expect.',
-      },
-      {
-        title: 'Moderation',
-        text: 'The moderator may remove posts or limit access if someone does not follow the guidelines. The moderator does not provide clinical guidance through this portal. For questions requiring clinic support, message the moderator through EPIC.',
-      },
-    ],
-  },
-};
-
-export const Footer: React.FC<FooterProps> = () => {
-  const [activePolicy, setActivePolicy] = useState<PolicyKey>(null);
-
-  const selectedPolicyData = activePolicy ? POLICY_DETAILS[activePolicy] : null;
-  const policyDialogRef = useDialogFocus(Boolean(selectedPolicyData), () =>
-    setActivePolicy(null),
-  );
-
+export function Footer(_props: FooterProps) {
+  const [showGuidelines, setShowGuidelines] = useState(false);
   return (
     <>
       <footer
@@ -158,27 +36,16 @@ export const Footer: React.FC<FooterProps> = () => {
               </div>
             </div>
             <nav
-              aria-label="Policies and patient rights"
-              className="grid grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-1 content-start"
+              aria-label="Community information"
+              className="flex items-start lg:justify-end"
             >
-              {(
-                [
-                  ['privacy', 'Privacy Policy'],
-                  ['npp', 'Notice of Privacy Practices'],
-                  ['nondiscrimination', 'Non-Discrimination Policy'],
-                  ['rights', 'Patient Rights'],
-                  ['guidelines', 'Community Guidelines'],
-                ] as [Exclude<PolicyKey, null>, string][]
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActivePolicy(key)}
-                  className="min-h-11 flex items-start py-2 text-left text-base leading-normal text-blue-100 hover:text-white underline underline-offset-4 decoration-blue-300/50 hover:decoration-white rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#001D4A]"
-                >
-                  {label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setShowGuidelines(true)}
+                className="min-h-11 rounded-lg px-3 py-2 text-left text-sm font-semibold text-blue-100 underline decoration-blue-300/50 underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+              >
+                Community Guidelines
+              </button>
             </nav>
           </div>
           <div className="mt-5 sm:mt-6 border-t border-blue-200/20 pt-4">
@@ -190,92 +57,9 @@ export const Footer: React.FC<FooterProps> = () => {
         </div>
       </footer>
 
-      {/* INSTITUTIONAL POLICY MODAL */}
-      {selectedPolicyData && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
-          ref={policyDialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="policy-modal-title"
-        >
-          <div
-            className="fixed inset-0"
-            onClick={() => setActivePolicy(null)}
-          />
-
-          <div
-            tabIndex={-1}
-            className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 flex flex-col max-h-[85vh] animate-in zoom-in-95 outline-none"
-          >
-            {/* Modal Header */}
-            <div className="px-5 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-[#002D72] dark:text-sky-400 flex items-center justify-center">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400 block">
-                    {selectedPolicyData.badge}
-                  </span>
-                  <h3
-                    id="policy-modal-title"
-                    className="text-base font-semibold text-slate-900 dark:text-white"
-                  >
-                    {selectedPolicyData.title}
-                  </h3>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActivePolicy(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer"
-                aria-label="Close policy modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div
-              tabIndex={0}
-              role="region"
-              aria-label="Policy details"
-              className="p-5 overflow-y-auto space-y-4 text-sm text-slate-600 dark:text-slate-300 font-sans leading-relaxed"
-            >
-              {selectedPolicyData.sections.map((section, idx) => (
-                <div key={idx} className="space-y-1">
-                  <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm sm:text-base">
-                    <CheckCircle2 className="w-4 h-4 text-sky-500 shrink-0" />
-                    <span>{section.title}</span>
-                  </h4>
-                  <p className="text-slate-600 dark:text-slate-300 text-sm pl-5.5">
-                    {section.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400 shrink-0">
-              <span className="flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                <span>
-                  Johns Hopkins Medicine · Privacy and support information
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setActivePolicy(null)}
-                className="px-3.5 py-1.5 rounded-lg bg-[#002D72] hover:bg-[#001D4A] dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-sm font-medium transition cursor-pointer shrink-0"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+      {showGuidelines && (
+        <CommunityGuidelinesModal onClose={() => setShowGuidelines(false)} />
       )}
     </>
   );
-};
+}

@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { useEffect, useState } from 'react';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { ApiError } from '@/shared/api/httpClient';
@@ -129,7 +130,7 @@ export function MutationDialog({
                 <input
                   type="password"
                   autoComplete="current-password"
-                  className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+                  className={`mt-1 ${fieldClassName}`}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -138,7 +139,7 @@ export function MutationDialog({
             <label className="block text-sm">
               Type {preview.table} to confirm
               <input
-                className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+                className={`mt-1 ${fieldClassName}`}
                 autoComplete="off"
                 value={confirmation}
                 onChange={(e) => setConfirmation(e.target.value)}
@@ -147,15 +148,11 @@ export function MutationDialog({
           </>
         )}
         <div className="mt-5 flex flex-wrap justify-end gap-3">
-          <button
-            className="min-h-11 rounded border px-4"
-            onClick={onClose}
-            disabled={busy}
-          >
+          <Button onClick={onClose} disabled={busy}>
             Cancel
-          </button>
-          <button
-            className="min-h-11 rounded bg-blue-900 px-4 text-white disabled:opacity-50"
+          </Button>
+          <Button
+            variant="primary"
             disabled={
               !preview ||
               busy ||
@@ -165,7 +162,7 @@ export function MutationDialog({
             onClick={() => void commit()}
           >
             {busy ? 'Saving…' : 'Confirm change'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

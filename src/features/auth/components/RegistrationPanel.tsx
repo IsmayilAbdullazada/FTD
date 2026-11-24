@@ -1,8 +1,14 @@
+import { Button } from '@/shared/components/Button';
+import { GuidelinesAcknowledgment } from '@/features/policies/components/GuidelinesAcknowledgment';
+import { CarePartnerDetailsFields } from './CarePartnerDetailsFields';
+import { parseCarePartnerDetails } from '../lib/carePartnerDetails';
 import { useAuthState } from '../hooks/AuthStateContext';
 import { AlertCircle, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-react';
 
 export function RegistrationPanel() {
   const {
+    registration,
+    setRegistration,
     mode,
     setMode,
     inviteToken,
@@ -39,8 +45,8 @@ export function RegistrationPanel() {
               <span>Join Care Partner Connect</span>
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Welcome! Set up your password below to create your account and
-              join the community.
+              Welcome! First, tell us about yourself and the person you support.
+              Then set your password and review the Community Guidelines.
             </p>
           </div>
 
@@ -80,8 +86,50 @@ export function RegistrationPanel() {
             </div>
           )}
 
-          {inviteData && (
+          {inviteData && registration.step === 'details' && (
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!parseCarePartnerDetails(registration.details)) {
+                  setRegisterError(
+                    'Complete all five fields with valid details.',
+                  );
+                  return;
+                }
+                setRegisterError(null);
+                setRegistration({ ...registration, step: 'password' });
+              }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Step 1 of 2 · Your details
+              </p>
+              <CarePartnerDetailsFields
+                value={registration.details}
+                onChange={(details) =>
+                  setRegistration({ ...registration, details })
+                }
+              />
+              <Button type="submit" variant="primary" className="w-full">
+                Continue to password
+              </Button>
+            </form>
+          )}
+          {inviteData && registration.step === 'password' && (
             <form onSubmit={handleCompleteRegistration} className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Step 2 of 2 · Account setup
+                </p>
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    setRegistration({ ...registration, step: 'details' })
+                  }
+                >
+                  Edit details
+                </Button>
+              </div>
               {/* The database assigns a unique, neutral public tag during registration */}
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2">
                 <div>
@@ -110,6 +158,8 @@ export function RegistrationPanel() {
                   type="password"
                   required
                   minLength={8}
+                  maxLength={128}
+                  autoComplete="new-password"
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
                   placeholder="At least 8 characters"
@@ -117,10 +167,17 @@ export function RegistrationPanel() {
                 />
               </div>
 
-              <button
+              <GuidelinesAcknowledgment
+                checked={registration.acceptedGuidelines}
+                onChange={(acceptedGuidelines) =>
+                  setRegistration({ ...registration, acceptedGuidelines })
+                }
+              />
+              <Button
                 type="submit"
+                variant="primary"
+                className="w-full"
                 disabled={isRegistering}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition cursor-pointer disabled:opacity-60"
               >
                 {isRegistering ? (
                   <>
@@ -133,7 +190,7 @@ export function RegistrationPanel() {
                     <span>Join Community</span>
                   </>
                 )}
-              </button>
+              </Button>
             </form>
           )}
         </div>

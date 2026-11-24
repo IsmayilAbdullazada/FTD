@@ -1,3 +1,7 @@
+import { Button } from '@/shared/components/Button';
+import { GuidelinesAcknowledgment } from '@/features/policies/components/GuidelinesAcknowledgment';
+import { CarePartnerDetailsFields } from './CarePartnerDetailsFields';
+import { parseCarePartnerDetails } from '../lib/carePartnerDetails';
 import { useAuthState } from '../hooks/AuthStateContext';
 import {
   AlertCircle,
@@ -9,6 +13,8 @@ import {
 
 export function RecoveryPanel() {
   const {
+    recovery,
+    setRecovery,
     mode,
     setMode,
     forgotEmail,
@@ -98,10 +104,11 @@ export function RecoveryPanel() {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                className="w-full"
                 disabled={isSendingReset}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 focus:outline-none transition cursor-pointer disabled:opacity-60"
               >
                 {isSendingReset ? (
                   <>
@@ -114,10 +121,10 @@ export function RecoveryPanel() {
                     <span>Send reset link</span>
                   </>
                 )}
-              </button>
+              </Button>
             </form>
           ) : (
-            <form onSubmit={handleConfirmPasswordReset} className="space-y-4">
+            <div className="space-y-4">
               <button
                 type="button"
                 onClick={() => {
@@ -131,65 +138,123 @@ export function RecoveryPanel() {
                 Request a new link
               </button>
 
-              <div>
-                <label
-                  htmlFor="reset-new-password"
-                  className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+              {recovery.stage === 'checking' && (
+                <p
+                  role="status"
+                  className="text-sm text-slate-600 dark:text-slate-300"
                 >
-                  New password
-                </label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  maxLength={128}
-                  autoComplete="new-password"
-                  id="reset-new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  className="block w-full px-3.5 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="reset-confirm-password"
-                  className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                  Checking your reset link…
+                </p>
+              )}
+              {recovery.stage === 'details' && (
+                <form
+                  className="space-y-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!parseCarePartnerDetails(recovery.details)) {
+                      setResetError(
+                        'Complete all five fields with valid details.',
+                      );
+                      return;
+                    }
+                    setResetError(null);
+                    setRecovery({ ...recovery, stage: 'password' });
+                  }}
                 >
-                  Confirm new password
-                </label>
-                <input
-                  type="password"
-                  required
-                  id="reset-confirm-password"
-                  autoComplete="new-password"
-                  maxLength={128}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter your new password"
-                  className="block w-full px-3.5 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
-                />
-              </div>
+                  <CarePartnerDetailsFields
+                    value={recovery.details}
+                    onChange={(details) =>
+                      setRecovery({ ...recovery, details })
+                    }
+                  />
+                  <Button type="submit" variant="primary" className="w-full">
+                    Continue to password
+                  </Button>
+                </form>
+              )}
+              {recovery.stage === 'password' && (
+                <form
+                  onSubmit={handleConfirmPasswordReset}
+                  className="space-y-4"
+                >
+                  {recovery.requiresProfile && (
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        setRecovery({ ...recovery, stage: 'details' })
+                      }
+                    >
+                      Edit details
+                    </Button>
+                  )}
+                  <div>
+                    <label
+                      htmlFor="reset-new-password"
+                      className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    >
+                      New password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      autoComplete="new-password"
+                      id="reset-new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 8 characters"
+                      className="block w-full px-3.5 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
+                    />
+                  </div>
 
-              <button
-                type="submit"
-                disabled={isSendingReset}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition cursor-pointer disabled:opacity-60"
-              >
-                {isSendingReset ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Updating password...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Reset password</span>
-                  </>
-                )}
-              </button>
-            </form>
+                  <div>
+                    <label
+                      htmlFor="reset-confirm-password"
+                      className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    >
+                      Confirm new password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      id="reset-confirm-password"
+                      autoComplete="new-password"
+                      maxLength={128}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your new password"
+                      className="block w-full px-3.5 py-2.5 text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#002D72] dark:focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <GuidelinesAcknowledgment
+                    checked={recovery.acceptedGuidelines}
+                    onChange={(acceptedGuidelines) =>
+                      setRecovery({ ...recovery, acceptedGuidelines })
+                    }
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full"
+                    disabled={isSendingReset}
+                  >
+                    {isSendingReset ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Updating password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Reset password</span>
+                      </>
+                    )}
+                  </Button>
+                </form>
+              )}
+            </div>
           )}
         </div>
       )}

@@ -106,3 +106,9 @@ with separate replies and action-dialog components. Composer matching rules live
 in `lib/discussionSearch.ts`, and suggestions render in `SimilarDiscussionsBox`.
 
 Collection adapters request one server page at a time. The feed and clinician workspace apply search, audience, ownership, and discussion policy filters on the server before counting and selecting a page.
+
+## Visual consistency for new UI
+
+Use the existing navy/blue primary palette, slate surfaces, rounded-xl controls and rounded-2xl cards in both themes. New feature and admin controls should use `shared/components/Button.tsx` and its shared field styles rather than introducing new button treatments. Use primary buttons for the main action, secondary buttons for edits and alternatives, and danger buttons for destructive actions. Publication states such as Approved, Draft and Unpublished are badges, not buttons.
+
+Preserve visible keyboard focus, meaningful labels and at least 44px control height. Check desktop and mobile widths, both themes, hover/focus states and modal focus restoration. Do not use color alone to convey status. The footer and agreement forms share the canonical Community Guidelines modal; do not duplicate policy copy in individual features. See [UI and intake verification](qa/consistent-ui-intake.md) for the current flow checks.

@@ -10,6 +10,16 @@ import { pool } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 
 test('link-only recovery is private, expiring, single-use under concurrent requests and revokes sessions', async () => {
+  const intake = {
+    carePartnerDetails: {
+      patientAge: 70,
+      carePartnerAge: 45,
+      relationshipToPatient: 'Daughter',
+      county: 'Baltimore',
+      state: 'Maryland',
+    },
+    guidelinesAccepted: true,
+  };
   const id = randomUUID();
   const email = id + '@example.test';
   const sent: Array<{ text: string; html: string; from: string }> = [];
@@ -125,12 +135,19 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
     assert.equal(stored.code_hash, undefined);
     assert.ok(new Date(stored.expires_at).getTime() > Date.now() + 19 * 60_000);
     assert.equal(
-      (await request('reset-password', { token, newPassword: 'short' })).status,
+      (
+        await request('reset-password', {
+          ...intake,
+          token,
+          newPassword: 'short',
+        })
+      ).status,
       400,
     );
     assert.equal(
       (
         await request('reset-password', {
+          ...intake,
           token: randomBytes(32).toString('base64url'),
           newPassword: 'Other-fixture-password!',
         })
@@ -144,6 +161,7 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
     assert.equal(
       (
         await request('reset-password', {
+          ...intake,
           token,
           newPassword: 'Other-fixture-password!',
         })
@@ -154,6 +172,7 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
     assert.equal(
       (
         await request('reset-password', {
+          ...intake,
           token,
           newPassword: 'Other-fixture-password!',
         })
@@ -163,7 +182,11 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
     const outcomes = await Promise.all(
       ['First-new-fixture-password!', 'Second-new-fixture-password!'].map(
         (newPassword) =>
-          request('reset-password', { token: replacement, newPassword }),
+          request('reset-password', {
+            ...intake,
+            token: replacement,
+            newPassword,
+          }),
       ),
     );
     assert.deepEqual(outcomes.map((r) => r.status).sort(), [200, 400]);
@@ -196,6 +219,7 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
     assert.equal(
       (
         await request('reset-password', {
+          ...intake,
           token: replacement,
           newPassword: 'Replay-fixture-password!',
         })
@@ -207,6 +231,7 @@ test('link-only recovery is private, expiring, single-use under concurrent reque
     assert.equal(
       (
         await request('reset-password', {
+          ...intake,
           token: inactiveToken,
           newPassword: 'Inactive-fixture-password!',
         })

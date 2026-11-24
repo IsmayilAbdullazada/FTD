@@ -1,3 +1,4 @@
+import { Button } from '@/shared/components/Button';
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api/adminApi';
 import { AdminDataPanel } from './AdminDataPanel';
@@ -42,14 +43,14 @@ export function AdminConsole() {
       </p>
       <nav aria-label="Admin console sections" className="flex flex-wrap gap-2">
         {sections.map((name) => (
-          <button
-            className={`min-h-11 rounded-lg border px-4 text-sm ${section === name ? 'bg-blue-900 text-white' : ''}`}
+          <Button
+            variant={section === name ? 'primary' : 'secondary'}
             aria-current={section === name ? 'page' : undefined}
             key={name}
             onClick={() => setSection(name)}
           >
             {name}
-          </button>
+          </Button>
         ))}
       </nav>
       {error && (
@@ -143,21 +144,16 @@ function AuditLog() {
         </article>
       ))}
       <div className="flex items-center gap-3">
-        <button
-          className="min-h-11 rounded border px-4"
-          disabled={page <= 1}
-          onClick={() => setPage(page - 1)}
-        >
+        <Button disabled={page <= 1} onClick={() => setPage(page - 1)}>
           Previous
-        </button>
+        </Button>
         <span>Page {page}</span>
-        <button
-          className="min-h-11 rounded border px-4"
+        <Button
           disabled={!data || page * 50 >= data.total}
           onClick={() => setPage(page + 1)}
         >
           Next
-        </button>
+        </Button>
       </div>
     </section>
   );

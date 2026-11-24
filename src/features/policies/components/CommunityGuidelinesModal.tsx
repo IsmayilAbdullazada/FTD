@@ -1,3 +1,4 @@
+import { Button } from '@/shared/components/Button';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { ShieldCheck, X } from 'lucide-react';
 import { CommunityGuidelines } from './CommunityGuidelines';
@@ -32,7 +33,7 @@ export function CommunityGuidelinesModal({
             </div>
 
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">
                 Community Safety & Guidelines
               </p>
               <h2
@@ -54,7 +55,12 @@ export function CommunityGuidelinesModal({
           </button>
         </header>
 
-        <div className="min-h-0 overflow-y-auto p-5">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Community Guidelines content"
+          className="min-h-0 overflow-y-auto p-4 sm:p-5"
+        >
           <CommunityGuidelines variant="embedded" />
         </div>
 
@@ -63,13 +69,9 @@ export function CommunityGuidelinesModal({
             Care Partner Connect
           </span>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-[#002D72] px-5 py-2 text-sm font-semibold text-white hover:bg-[#001D4A]"
-          >
+          <Button variant="primary" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </footer>
       </div>
     </div>

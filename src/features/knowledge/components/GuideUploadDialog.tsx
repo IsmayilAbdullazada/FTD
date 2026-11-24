@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { GuideMetadataFields } from './GuideMetadataFields';
 import type { GuideUploadDialogProps } from './guideDialog.types';
 import { TechnicalGuideUploadDialog } from './TechnicalGuideUploadDialog';
@@ -33,14 +34,9 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
           <h2 id="guide-editor-title" className="text-lg font-semibold">
             {p.editingGuideId ? 'Edit guide' : 'Upload guide'}
           </h2>
-          <button
-            type="button"
-            className="min-h-11 min-w-11"
-            aria-label="Close guide"
-            onClick={close}
-          >
+          <Button type="button" aria-label="Close guide" onClick={close}>
             ✕
-          </button>
+          </Button>
         </header>
         <div className="overflow-y-auto p-4 sm:p-6">
           <p className="mb-4 text-sm">
@@ -99,7 +95,7 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
                 <input
                   aria-label="Title"
                   placeholder="e.g. Managing Aggressive Behavior in FTD"
-                  className="mt-1 min-h-11 w-full rounded-lg border bg-transparent p-2"
+                  className={`mt-1 ${fieldClassName}`}
                   value={p.title}
                   onChange={(e) => p.onTitleChange(e.target.value)}
                 />
@@ -110,24 +106,26 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
                 </legend>
                 <div className="flex flex-wrap gap-2">
                   {(['FTD', 'AD', 'GENERAL'] as const).map((condition) => (
-                    <button
+                    <Button
                       type="button"
                       key={condition}
                       aria-pressed={p.condition === condition}
-                      className={`min-h-11 rounded-lg border px-3 text-sm ${p.condition === condition ? 'bg-blue-900 text-white' : ''}`}
+                      variant={
+                        p.condition === condition ? 'primary' : 'secondary'
+                      }
                       onClick={() => p.onConditionChange(condition)}
                     >
                       {condition === 'GENERAL'
                         ? 'All care partners (FTD and AD)'
                         : condition}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </fieldset>
               <label className="block text-sm font-semibold">
                 Topic
                 <input
-                  className="mt-1 min-h-11 w-full rounded-lg border bg-transparent p-2"
+                  className={`mt-1 ${fieldClassName}`}
                   value={p.topicTag}
                   onChange={(e) => p.onTopicTagChange(e.target.value)}
                 />
@@ -140,9 +138,8 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
           </div>
         </div>
         <footer className="flex flex-wrap justify-end gap-3 border-t p-4 dark:border-slate-700">
-          <button
+          <Button
             type="button"
-            className="min-h-11 rounded-lg border px-4"
             disabled={
               !ready ||
               !p.title.trim() ||
@@ -153,10 +150,9 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
             onClick={() => p.onSave('DRAFT')}
           >
             Save as Draft
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="min-h-11 rounded-lg bg-blue-900 px-4 text-white disabled:opacity-50"
             disabled={
               !ready ||
               !p.title.trim() ||
@@ -164,10 +160,11 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
               p.uploading ||
               p.extractingPdf
             }
+            variant="primary"
             onClick={() => p.onSave('APPROVED')}
           >
             {p.uploading ? 'Saving…' : 'Approve'}
-          </button>
+          </Button>
         </footer>
       </div>
     </div>

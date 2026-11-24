@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { useState } from 'react';
 import { MutationDialog } from './MutationDialog';
 import { AdminField, parseFields } from './AdminField';
@@ -40,7 +41,7 @@ export function AdminActionsPanel({ actions }: { actions: AdminAction[] }) {
         Action
         <select
           aria-label="Action"
-          className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+          className={`mt-1 ${fieldClassName}`}
           value={id}
           onChange={(e) => {
             setId(e.target.value);
@@ -72,17 +73,14 @@ export function AdminActionsPanel({ actions }: { actions: AdminAction[] }) {
         Reason (at least 10 characters)
         <textarea
           aria-label="Reason (at least 10 characters)"
-          className="mt-1 min-h-24 w-full rounded border bg-transparent p-2"
+          className={`mt-1 min-h-24 ${fieldClassName}`}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
       </label>
-      <button
-        className="min-h-11 rounded bg-blue-900 px-4 text-white"
-        onClick={preview}
-      >
+      <Button variant="primary" onClick={preview}>
         Preview action
-      </button>
+      </Button>
       {intent && (
         <MutationDialog
           intent={intent}

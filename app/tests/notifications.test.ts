@@ -773,6 +773,14 @@ test('new account registration notifies the member and inviter without sensitive
       body: JSON.stringify({
         token,
         password: 'Invited-fixture-password!',
+        carePartnerDetails: {
+          patientAge: 70,
+          carePartnerAge: 45,
+          relationshipToPatient: 'Daughter',
+          county: 'Baltimore',
+          state: 'Maryland',
+        },
+        guidelinesAccepted: true,
         anonymousHandle: invited.slice(0, 40),
       }),
     });

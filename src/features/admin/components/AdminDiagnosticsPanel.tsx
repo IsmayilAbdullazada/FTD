@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api/adminApi';
 import { guideApi } from '@/features/knowledge/api/guideApi';
@@ -56,18 +57,17 @@ export function AdminDiagnosticsPanel() {
         <label className="block">
           Test query
           <input
-            className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+            className={`mt-1 ${fieldClassName}`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <button
-          className="min-h-11 rounded bg-blue-900 px-4 text-white disabled:opacity-50"
+        <Button
           disabled={query.trim().length < 2 || busy}
           onClick={() => void test()}
         >
           {busy ? 'Searching…' : 'Run test query'}
-        </button>
+        </Button>
         {result && (
           <>
             <p>
@@ -104,7 +104,7 @@ export function AdminDiagnosticsPanel() {
         Reason for maintenance
         <textarea
           aria-label="Reason for maintenance"
-          className="mt-1 min-h-24 w-full rounded border bg-transparent p-2"
+          className={`mt-1 min-h-24 ${fieldClassName}`}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
@@ -124,12 +124,9 @@ export function AdminDiagnosticsPanel() {
                 {guide.is_active ? 'active' : 'inactive'}
               </p>
             </div>
-            <button
-              className="min-h-11 rounded border px-4"
-              onClick={() => action('rebuild-guide', { id: guide.id })}
-            >
+            <Button onClick={() => action('rebuild-guide', { id: guide.id })}>
               Rebuild search index
-            </button>
+            </Button>
           </div>
         ))}
       </section>
@@ -141,12 +138,9 @@ export function AdminDiagnosticsPanel() {
         >
           {JSON.stringify(data?.orphanUploads || [], null, 2)}
         </pre>
-        <button
-          className="min-h-11 rounded border px-4"
-          onClick={() => action('delete-orphan-uploads', {})}
-        >
+        <Button onClick={() => action('delete-orphan-uploads', {})}>
           Preview aged upload cleanup
-        </button>
+        </Button>
       </section>
       {intent && (
         <MutationDialog

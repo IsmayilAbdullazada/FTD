@@ -1,4 +1,10 @@
 import {
+  carePartnerDetailsSchema,
+  guidelinesAgreementSchema,
+  saveCarePartnerDetails,
+} from './carePartnerIntake.js';
+import { acknowledgeGuidelines } from '../policies/policies.service.js';
+import {
   notifyStaffSecurity,
   recordFailedSignIn,
 } from '../../services/accountSecurity.js';
@@ -263,6 +269,8 @@ router.post(
       .object({
         token: z.string().min(20),
         password: z.string().min(8).max(128),
+        carePartnerDetails: carePartnerDetailsSchema,
+        guidelinesAccepted: guidelinesAgreementSchema,
         firstName: z.string().trim().optional(),
         lastName: z.string().trim().optional(),
         phoneNumber: z.string().trim().optional(),
@@ -297,6 +305,8 @@ router.post(
           invite.condition,
         ],
       );
+      await saveCarePartnerDetails(client, id, input.carePartnerDetails);
+      await acknowledgeGuidelines(id);
       await client.query(
         `INSERT INTO cohort_members(cohort_id,user_id,is_primary) VALUES($1,$2,true),('group-general',$2,false) ON CONFLICT DO NOTHING`,
         [invite.cohort_id, id],
@@ -348,19 +358,46 @@ router.post(
 );
 
 router.post(
+  '/password-reset-context',
+  asyncHandler(async (req, res) => {
+    const { token } = z
+      .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) })
+      .parse(req.body);
+    const result = await query(
+      `SELECT u.role, EXISTS(SELECT 1 FROM care_partner_profiles p WHERE p.user_id=u.id) AS has_profile
+       FROM users u JOIN password_resets pr ON pr.user_id=u.id
+       WHERE pr.token_hash=$1 AND u.is_active AND pr.consumed_at IS NULL AND pr.expires_at>NOW()`,
+      [sha256(token)],
+    );
+    const user = result.rows[0];
+    if (!user)
+      throw new HttpError(
+        400,
+        'Reset link is invalid or expired. Request a new link.',
+      );
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      requiresProfile: user.role === 'CARE_PARTNER' && !user.has_profile,
+    });
+  }),
+);
+
+router.post(
   '/reset-password',
   asyncHandler(async (req, res) => {
     const input = z
       .object({
         token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
         newPassword: z.string().min(8).max(128),
+        guidelinesAccepted: guidelinesAgreementSchema,
+        carePartnerDetails: carePartnerDetailsSchema.optional(),
       })
       .parse(req.body);
     const passwordHash = await bcrypt.hash(input.newPassword, 12);
     await transaction(async (client) => {
       // Lock the user before their resets, matching the recovery worker's order.
       const users = await client.query(
-        `SELECT u.id FROM users u JOIN password_resets pr ON pr.user_id=u.id
+        `SELECT u.id,u.role FROM users u JOIN password_resets pr ON pr.user_id=u.id
          WHERE pr.token_hash=$1 AND u.is_active AND pr.consumed_at IS NULL AND pr.expires_at>NOW()
          FOR UPDATE OF u`,
         [sha256(input.token)],
@@ -371,6 +408,25 @@ router.post(
           400,
           'Reset link is invalid or expired. Request a new link.',
         );
+      if (user.role === 'CARE_PARTNER') {
+        const profile = await client.query(
+          'SELECT 1 FROM care_partner_profiles WHERE user_id=$1',
+          [user.id],
+        );
+        if (!profile.rowCount) {
+          if (!input.carePartnerDetails)
+            throw new HttpError(
+              400,
+              'Complete your care partner details before setting your password.',
+            );
+          await saveCarePartnerDetails(
+            client,
+            user.id,
+            input.carePartnerDetails,
+          );
+        }
+      }
+      await acknowledgeGuidelines(user.id);
       const consumed = await client.query(
         `UPDATE password_resets SET consumed_at=clock_timestamp()
          WHERE token_hash=$1 AND user_id=$2 AND consumed_at IS NULL AND expires_at>clock_timestamp()

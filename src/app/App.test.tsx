@@ -1,5 +1,4 @@
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -8,17 +7,12 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+// Load real workspace modules during collection, before per-test timers/act scopes.
+// These tests exercise App workflows rather than chunk-download performance.
+import '@/features/auth';
+import '@/features/discussions';
+import '@/features/knowledge';
 import App from './App';
-
-async function renderApp() {
-  // Bootstrap can select a lazy workspace after its asynchronous session check.
-  await act(async () => {
-    render(<App />);
-  });
-  await act(async () => {
-    await vi.dynamicImportSettled();
-  });
-}
 
 // jsdom does not implement the layout observer used by Care Companion.
 beforeEach(() => {
@@ -60,7 +54,7 @@ test('a signed-out invitation opens registration and preserves its token', async
       );
     }),
   );
-  await renderApp();
+  render(<App />);
   await waitFor(() => expect(screen.queryByText('Session Expired')).toBeNull());
   expect(
     await screen.findByRole('button', { name: 'Join Community' }),
@@ -83,7 +77,7 @@ test('wrong credentials display the login error without expiring a session', asy
       ),
     ),
   );
-  await renderApp();
+  render(<App />);
   fireEvent.change(await screen.findByPlaceholderText('you@example.com'), {
     target: { value: 'care@example.test' },
   });
@@ -118,7 +112,7 @@ test('the signed-out App accepts an email reset link without an email or code fi
       );
     }),
   );
-  await renderApp();
+  render(<App />);
   fireEvent.change(await screen.findByLabelText('New password'), {
     target: { value: 'New-app-fixture-password!' },
   });
@@ -188,7 +182,7 @@ test('activity email links open the signed-in notification inbox and closing it 
       return Response.json([]);
     }),
   );
-  await renderApp();
+  render(<App />);
   expect(
     await screen.findByText(
       'Please review the feedback from your moderation team.',
@@ -227,14 +221,15 @@ test('a care-partner staff URL resolves to the feed without requesting staff dat
     return Response.json({ pool: [] });
   });
   vi.stubGlobal('fetch', fetchMock);
-  await renderApp();
+  render(<App />);
   expect(
     screen.queryByRole('dialog', {
       name: 'Community Guidelines acknowledgment',
     }),
   ).toBeNull();
+  const main = await screen.findByRole('main');
   expect(
-    within(screen.getByRole('main')).getByRole('button', { name: 'New Post' }),
+    await within(main).findByRole('button', { name: 'New Post' }),
   ).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull();
   expect(
@@ -252,7 +247,7 @@ test('a bootstrap service failure shows retry feedback instead of a misleading s
     ),
   );
   vi.stubGlobal('fetch', fetchMock);
-  await renderApp();
+  render(<App />);
   expect(
     await screen.findByRole('button', { name: 'Retry loading' }),
   ).toBeTruthy();
@@ -313,7 +308,7 @@ test('a required guidelines acknowledgment preserves an in-progress discussion d
       return Response.json([]);
     }),
   );
-  await renderApp();
+  render(<App />);
   const title = await screen.findByPlaceholderText(
     'e.g. Managing resistance when bathing',
   );

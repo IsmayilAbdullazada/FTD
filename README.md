@@ -194,7 +194,7 @@ Load the test configuration explicitly when initializing that database:
 npm run backend:test
 ```
 
-Frontend tests use Vitest, Testing Library, and jsdom, including `<App/>` invitation and login regressions. Backend tests use Node's test runner and real PostgreSQL, covering authorization, sessions, moderation, messages, recovery, uploads, indexes, and legacy-password upgrades. A local SMTP relay test verifies actual STARTTLS delivery without authentication or sending messages outside the test process. Browser smoke checks and delivery through your deployed SMTP relay are separate from these automated suites.
+Frontend tests use Vitest, Testing Library, and jsdom, including `<App/>` invitation and login regressions. `npm run test:app-loading` repeats the App workflows with deliberately slow workspace imports that exceed the normal per-test timeout; CI runs this guard to catch cold-loading races. Backend tests use Node's test runner and real PostgreSQL, covering authorization, sessions, moderation, messages, recovery, uploads, indexes, and legacy-password upgrades. A local SMTP relay test verifies actual STARTTLS delivery without authentication or sending messages outside the test process. Browser smoke checks and delivery through your deployed SMTP relay are separate from these automated suites.
 
 [GitHub Actions](.github/workflows/ci.yml) runs checks against PostgreSQL 16 and 18, applies migrations twice, seeds the test database, runs both test suites, builds both packages and the Docker image, and audits dependencies. CI has read-only repository permissions; moderate, high and critical audit findings fail the workflow.
 

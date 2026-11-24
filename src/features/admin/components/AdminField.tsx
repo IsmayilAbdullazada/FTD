@@ -1,3 +1,4 @@
+import { fieldClassName } from '@/shared/components/Button';
 import { useEffect, useState } from 'react';
 import { adminApi } from '../api/adminApi';
 import type { AdminActionField, AdminColumn, AdminTable } from '../types';
@@ -45,8 +46,7 @@ export function AdminField({
                 .slice(0, 16);
         })()
       : String(value ?? '');
-  const common =
-    'mt-1 min-h-11 w-full rounded border border-slate-400 bg-transparent p-2 text-sm disabled:opacity-50';
+  const common = `mt-1 disabled:opacity-50 ${fieldClassName}`;
   return (
     <label className="block text-sm font-semibold">
       {field.label}

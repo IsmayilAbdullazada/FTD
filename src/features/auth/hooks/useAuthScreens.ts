@@ -1,3 +1,7 @@
+import {
+  emptyCarePartnerDetails,
+  parseCarePartnerDetails,
+} from '../lib/carePartnerDetails';
 import { invitationToken } from '../lib/invitationToken';
 import { authApi } from '@/features/auth/api/authApi';
 import { reportError } from '@/shared/lib/logger';
@@ -43,6 +47,83 @@ export function useAuthScreens({
     null,
   );
   const [resetToken, setResetToken] = useState<string | null>(null);
+
+  const [registration, setRegistration] = useState({
+    step: 'details' as 'details' | 'password',
+    details: { ...emptyCarePartnerDetails },
+    acceptedGuidelines: false,
+  });
+  const [recovery, setRecovery] = useState({
+    stage: 'checking' as 'checking' | 'details' | 'password' | 'invalid',
+    requiresProfile: false,
+    details: { ...emptyCarePartnerDetails },
+    acceptedGuidelines: false,
+  });
+  useEffect(() => {
+    if (!resetToken) {
+      setNewPassword('');
+      setConfirmPassword('');
+      setRecovery({
+        stage: 'checking',
+        requiresProfile: false,
+        details: { ...emptyCarePartnerDetails },
+        acceptedGuidelines: false,
+      });
+      return;
+    }
+    let cancelled = false;
+    setNewPassword('');
+    setConfirmPassword('');
+    setRecovery({
+      stage: 'checking',
+      requiresProfile: false,
+      details: { ...emptyCarePartnerDetails },
+      acceptedGuidelines: false,
+    });
+    authApi
+      .passwordResetContext(resetToken)
+      .then((context) => {
+        if (!cancelled)
+          setRecovery((previous) => ({
+            ...previous,
+            requiresProfile: context.requiresProfile,
+            stage: context.requiresProfile ? 'details' : 'password',
+          }));
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setRecovery((previous) => ({ ...previous, stage: 'invalid' }));
+          setResetSuccessMessage(null);
+          setResetError(
+            error instanceof Error
+              ? error.message
+              : 'Could not check this reset link. Request a new link.',
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resetToken]);
+  useEffect(() => {
+    if (mode === 'login') {
+      setRegistration({
+        step: 'details',
+        details: { ...emptyCarePartnerDetails },
+        acceptedGuidelines: false,
+      });
+      setRegisterPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetToken(null);
+      setRecovery({
+        stage: 'checking',
+        requiresProfile: false,
+        details: { ...emptyCarePartnerDetails },
+        acceptedGuidelines: false,
+      });
+    }
+  }, [mode]);
 
   // Invite / Register State
   const [inviteToken, setInviteToken] = useState(initialToken || '');
@@ -97,6 +178,12 @@ export function useAuthScreens({
       const res = await authApi.getInvitation(normalized);
       setInviteToken(normalized);
       setInviteData(res.invitation);
+      setRegisterPassword('');
+      setRegistration({
+        step: 'details',
+        details: { ...emptyCarePartnerDetails },
+        acceptedGuidelines: false,
+      });
     } catch (err: unknown) {
       reportError('Failed to load invitation:', err);
       setRegisterError(
@@ -168,6 +255,22 @@ export function useAuthScreens({
       setResetError('Reset link is missing. Request a new link.');
       return;
     }
+    const details = recovery.requiresProfile
+      ? parseCarePartnerDetails(recovery.details)
+      : undefined;
+    if (
+      recovery.stage !== 'password' ||
+      (recovery.requiresProfile && !details)
+    ) {
+      setResetError(
+        'Complete your care partner details before setting your password.',
+      );
+      return;
+    }
+    if (!recovery.acceptedGuidelines) {
+      setResetError('Please read and agree to the Community Guidelines.');
+      return;
+    }
     if (!newPassword || newPassword.length < 8) {
       setResetError('Password must be at least 8 characters long.');
       return;
@@ -183,6 +286,8 @@ export function useAuthScreens({
       await authApi.resetPassword({
         token: resetToken,
         newPassword,
+        guidelinesAccepted: true,
+        ...(details ? { carePartnerDetails: details } : {}),
       });
 
       setMode('login');
@@ -223,6 +328,17 @@ export function useAuthScreens({
       setRegisterError('Invitation token is required.');
       return;
     }
+    const details = parseCarePartnerDetails(registration.details);
+    if (!details) {
+      setRegisterError(
+        'Complete all five care partner details before setting your password.',
+      );
+      return;
+    }
+    if (!registration.acceptedGuidelines) {
+      setRegisterError('Please read and agree to the Community Guidelines.');
+      return;
+    }
     if (!registerPassword || registerPassword.length < 8) {
       setRegisterError('Please choose a password with at least 8 characters.');
       return;
@@ -234,6 +350,8 @@ export function useAuthScreens({
       const res = await authApi.registerWithInvite({
         token: invitationToken(inviteToken),
         password: registerPassword,
+        carePartnerDetails: details,
+        guidelinesAccepted: true,
         firstName: inviteData?.firstName,
         lastName: inviteData?.lastName,
       });
@@ -254,6 +372,10 @@ export function useAuthScreens({
   };
 
   return {
+    registration,
+    setRegistration,
+    recovery,
+    setRecovery,
     mode,
     setMode,
     showPassword,

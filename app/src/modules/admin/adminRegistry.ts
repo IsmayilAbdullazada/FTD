@@ -3,6 +3,7 @@ import { HttpError } from '../../lib/http.js';
 
 export const TABLES = [
   'users',
+  'care_partner_profiles',
   'cohorts',
   'cohort_members',
   'invitations',
@@ -30,6 +31,7 @@ export const TABLES = [
   'admin_audit_log',
 ] as const;
 const protectedTables = new Set([
+  'care_partner_profiles',
   'schema_migrations',
   'email_outbox',
   'password_resets',
@@ -46,7 +48,15 @@ export const secretColumn = (name: string) =>
 export const sensitiveColumn = (table: string, name: string) =>
   ['raw_content', 'sanitized_content', 'phi_alerts'].includes(name) ||
   (table === 'private_messages' && name === 'content') ||
-  (table === 'moderator_private_notes' && name === 'message');
+  (table === 'moderator_private_notes' && name === 'message') ||
+  (table === 'care_partner_profiles' &&
+    [
+      'patient_age',
+      'care_partner_age',
+      'relationship_to_patient',
+      'county',
+      'state',
+    ].includes(name));
 export function identifier(value: string) {
   return '"' + value.replaceAll('"', '""') + '"';
 }

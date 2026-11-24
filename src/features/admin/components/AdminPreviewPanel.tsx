@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { useEffect, useRef, useState } from 'react';
 import { adminApi } from '../api/adminApi';
 import type { PreviewTarget } from '../types';
@@ -90,8 +91,7 @@ export function AdminPreviewPanel() {
           ['CLINICIAN_MODERATOR', 'Moderator view'],
           ['CARE_PARTNER', 'Care partner view'],
         ].map(([value, label]) => (
-          <button
-            className="min-h-11 rounded border px-4"
+          <Button
             key={value}
             aria-pressed={role === value}
             onClick={() => {
@@ -101,7 +101,7 @@ export function AdminPreviewPanel() {
             }}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
       {error && (
@@ -112,7 +112,7 @@ export function AdminPreviewPanel() {
       <label className="block">
         Find account by name, email or tag
         <input
-          className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+          className={`mt-1 ${fieldClassName}`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -121,7 +121,7 @@ export function AdminPreviewPanel() {
         Account
         <select
           aria-label="Account"
-          className="mt-1 min-h-11 w-full rounded border bg-transparent p-2"
+          className={`mt-1 ${fieldClassName}`}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
         >
@@ -138,28 +138,19 @@ export function AdminPreviewPanel() {
         Reason for preview
         <textarea
           aria-label="Reason for preview"
-          className="mt-1 min-h-24 w-full rounded border bg-transparent p-2"
+          className={`mt-1 min-h-24 ${fieldClassName}`}
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
       </label>
-      <button
-        className="min-h-11 rounded bg-blue-900 px-4 text-white disabled:opacity-50"
-        disabled={!target}
-        onClick={() => void start()}
-      >
+      <Button variant="primary" disabled={!target} onClick={() => void start()}>
         Start read-only preview
-      </button>
+      </Button>
       {session && (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded bg-amber-100 p-3 text-amber-950">
             <strong>Previewing as {session.target.name} (read-only)</strong>
-            <button
-              className="min-h-11 rounded border px-4"
-              onClick={() => setSession(null)}
-            >
-              Close preview
-            </button>
+            <Button onClick={() => setSession(null)}>Close preview</Button>
           </div>
           <iframe
             ref={frame}

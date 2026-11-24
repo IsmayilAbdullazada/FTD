@@ -57,7 +57,7 @@ test('a signed-out invitation opens registration and preserves its token', async
   render(<App />);
   await waitFor(() => expect(screen.queryByText('Session Expired')).toBeNull());
   expect(
-    await screen.findByRole('button', { name: 'Join Community' }),
+    await screen.findByRole('button', { name: 'Continue to password' }),
   ).toBeTruthy();
   expect(window.location.search).toContain('token=valid-invitation-token');
 });
@@ -99,6 +99,8 @@ test('the signed-out App accepts an email reset link without an email or code fi
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/auth/password-reset-context'))
+        return Response.json({ requiresProfile: false });
       if (String(input).includes('/auth/reset-password')) {
         requests.push(JSON.parse(String(init?.body)));
         return Response.json({
@@ -121,6 +123,9 @@ test('the signed-out App accepts an email reset link without an email or code fi
   });
   expect(window.location.href).not.toContain('resetToken');
   expect(screen.queryByText(/6-digit/i)).toBeNull();
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: /I have read and agree/ }),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Reset password' }));
   expect(
     await screen.findByRole('heading', { name: 'Sign in to your account' }),
@@ -129,6 +134,7 @@ test('the signed-out App accepts an email reset link without an email or code fi
     {
       token: 'app-reset-fixture-token',
       newPassword: 'New-app-fixture-password!',
+      guidelinesAccepted: true,
     },
   ]);
   expect(screen.queryByText('Session Expired')).toBeNull();

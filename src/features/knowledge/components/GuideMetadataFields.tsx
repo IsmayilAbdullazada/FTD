@@ -1,3 +1,4 @@
+import { fieldClassName } from '@/shared/components/Button';
 import type { GuideUploadDialogProps } from './guideDialog.types';
 export function GuideMetadataFields({
   metadata,
@@ -10,7 +11,7 @@ export function GuideMetadataFields({
         <label key={key} className="block text-sm font-semibold capitalize">
           {key}
           <input
-            className="mt-1 min-h-11 w-full rounded-lg border bg-transparent p-2"
+            className={`mt-1 ${fieldClassName}`}
             value={value}
             onChange={(event) =>
               onMetadataChange?.({ ...metadata, [key]: event.target.value })

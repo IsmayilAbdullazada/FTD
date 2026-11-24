@@ -123,6 +123,14 @@ test('parallel invited registrations get unique stored neutral tags and cannot c
           body: JSON.stringify({
             token,
             password: 'Unique-tag-fixture-password!',
+            carePartnerDetails: {
+              patientAge: 70,
+              carePartnerAge: 45,
+              relationshipToPatient: 'Daughter',
+              county: 'Baltimore',
+              state: 'Maryland',
+            },
+            guidelinesAccepted: true,
             anonymousHandle: 'User-FTD-untrusted-long-value',
           }),
         });

@@ -1,3 +1,4 @@
+import type { CarePartnerDetails } from '../lib/carePartnerDetails';
 import { apiFetch, requestJson, safeFetchJson } from '@/shared/api/httpClient';
 import { Condition, CurrentUser } from '@/types';
 
@@ -79,9 +80,23 @@ export const authApi = {
     );
   },
 
+  passwordResetContext(token: string): Promise<{ requiresProfile: boolean }> {
+    return requestJson(
+      '/api/v1/auth/password-reset-context',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      },
+      'Reset link is invalid or expired. Request a new link.',
+    );
+  },
+
   resetPassword(payload: {
     token: string;
     newPassword: string;
+    guidelinesAccepted: true;
+    carePartnerDetails?: CarePartnerDetails;
   }): Promise<{ success: boolean; message: string }> {
     return requestJson(
       '/api/v1/auth/reset-password',
@@ -119,6 +134,8 @@ export const authApi = {
 
   registerWithInvite(payload: {
     token: string;
+    carePartnerDetails: CarePartnerDetails;
+    guidelinesAccepted: true;
     password?: string;
     firstName?: string;
     lastName?: string;

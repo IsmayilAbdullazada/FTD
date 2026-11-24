@@ -10,11 +10,16 @@ import { KnowledgeBaseExplorer } from './KnowledgeBaseExplorer';
 import { contentApi } from '@/features/content/api/contentApi';
 import { guideApi } from '../api/guideApi';
 import type { ClinicalResource, CurrentUser } from '@/types';
+import type { ChatbotGuideFile } from '../types';
 vi.mock('@/features/content/api/contentApi', () => ({
   contentApi: { getResources: vi.fn(), createResource: vi.fn() },
 }));
 vi.mock('../api/guideApi', () => ({
-  guideApi: { getChatbotGuides: vi.fn(), uploadChatbotGuide: vi.fn() },
+  guideApi: {
+    getChatbotGuides: vi.fn(),
+    uploadChatbotGuide: vi.fn(),
+    updateChatbotGuide: vi.fn(),
+  },
 }));
 const resource: ClinicalResource = {
   id: 'fixture',
@@ -135,5 +140,86 @@ test('a webpage publishes without mandatory protocol content and updates dashboa
         isActive: true,
       }),
     ]),
+  );
+});
+
+test('legacy daily-living topics share one filter and unassigned guides have no generic badge', async () => {
+  vi.mocked(contentApi.getResources).mockResolvedValue([
+    {
+      ...resource,
+      id: 'one',
+      title: 'Toileting guide',
+      category: 'INCONTINENCE',
+    },
+    { ...resource, id: 'two', title: 'Routine guide', category: 'DAILY_CARE' },
+    {
+      ...resource,
+      id: 'three',
+      title: 'Unassigned resource',
+      category: 'GUIDE',
+    },
+  ]);
+  render(<KnowledgeBaseExplorer currentUser={user('CARE_PARTNER')} />);
+  await screen.findByRole('heading', { name: 'Unassigned resource' });
+  expect(screen.queryByText('GUIDE', { exact: true })).toBeNull();
+  const filter = screen.getByLabelText('Topic:');
+  fireEvent.change(filter, { target: { value: 'DAILY_CARE' } });
+  expect(screen.getByRole('heading', { name: 'Toileting guide' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Routine guide' })).toBeTruthy();
+  expect(
+    screen.queryByRole('heading', { name: 'Unassigned resource' }),
+  ).toBeNull();
+  fireEvent.change(filter, { target: { value: 'UNCATEGORIZED' } });
+  expect(
+    screen.getByRole('heading', { name: 'Unassigned resource' }),
+  ).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Routine guide' })).toBeNull();
+});
+
+test('editing a title preserves an older custom topic until staff select a replacement', async () => {
+  const guide: ChatbotGuideFile = {
+    id: 'fixture',
+    title: 'Bathing guide',
+    condition: 'FTD',
+    category: 'Legacy custom topic',
+    fileName: 'notes.txt',
+    fileSize: 48,
+    mimeType: 'text/plain',
+    content: 'A readable text document.',
+    isActive: true,
+    status: 'APPROVED',
+    uploadedBy: 'fixture',
+    uploadedByName: 'Moderator',
+    createdAt: '2026-01-01',
+    updatedAt: '2026-01-01',
+  };
+  vi.mocked(contentApi.getResources).mockResolvedValue([
+    { ...resource, source: 'guide', category: guide.category! },
+  ]);
+  vi.mocked(guideApi.getChatbotGuides).mockResolvedValue({
+    guides: [guide],
+    config: { totalActiveGuides: 1, totalWords: 5 },
+  });
+  vi.mocked(guideApi.updateChatbotGuide).mockResolvedValue({
+    success: true,
+    guide,
+  });
+  render(<KnowledgeBaseExplorer currentUser={user('CLINICIAN_MODERATOR')} />);
+  await screen.findByRole('heading', { name: 'Bathing guide' });
+  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  await screen.findByRole('dialog', { name: 'Edit guide' });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
+    target: { value: 'Updated title' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+  await waitFor(() =>
+    expect(guideApi.updateChatbotGuide).toHaveBeenCalledWith(
+      'fixture',
+      expect.objectContaining({
+        title: 'Updated title',
+        category: 'Legacy custom topic',
+        topicTag: 'Legacy custom topic',
+      }),
+    ),
   );
 });

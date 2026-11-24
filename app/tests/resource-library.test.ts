@@ -57,6 +57,20 @@ test('unified library filters publication and condition, deduplicates PDFs, and 
     const mapped = ftd.find((g) => g.id === guideIds[0])!;
     assert.equal(mapped.contentBody, '');
     assert.equal(mapped.source, 'guide');
+    await pool.query(
+      "UPDATE chatbot_guides SET category='GUIDE',topic_tag='SAFETY_WANDERING' WHERE id=$1",
+      [guideIds[0]],
+    );
+    assert.equal(
+      (
+        await listLibrary({
+          id: ids[0],
+          email: 'ftd@example.test',
+          role: 'CARE_PARTNER',
+        })
+      ).find((guide) => guide.id === guideIds[0])?.category,
+      'SAFETY_WANDERING',
+    );
     assert.equal('status' in mapped, false);
     const ad = await listLibrary({
       id: ids[1],

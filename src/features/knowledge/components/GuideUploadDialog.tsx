@@ -143,14 +143,6 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
                   ))}
                 </div>
               </fieldset>
-              <label className="block text-sm font-semibold">
-                Topic
-                <input
-                  className={`mt-1 ${fieldClassName}`}
-                  value={p.topicTag}
-                  onChange={(e) => p.onTopicTagChange(e.target.value)}
-                />
-              </label>
               <GuideMetadataFields
                 metadata={p.metadata}
                 onMetadataChange={p.onMetadataChange}

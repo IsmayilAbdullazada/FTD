@@ -1,3 +1,4 @@
+import { guideTopicLabel } from '../lib/guideTopics';
 import { Button } from '@/shared/components/Button';
 import { AssistantGuidanceTester } from './AssistantGuidanceTester';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
@@ -324,10 +325,11 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             >
               <div className="space-y-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-semibold text-[#002D72] dark:text-blue-400">
-                    {categories.find((c) => c.key === res.category)?.label ||
-                      res.category}
-                  </span>
+                  {guideTopicLabel(res.category) && (
+                    <span className="text-xs font-semibold text-[#002D72] dark:text-blue-400">
+                      {guideTopicLabel(res.category)}
+                    </span>
+                  )}
                   {isClinician && (
                     <AudienceBadge condition={res.diseaseDomain} />
                   )}
@@ -472,7 +474,6 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         activeResource={activeResource}
         setActiveResource={setActiveResource}
         isClinician={isClinician}
-        categories={categories}
         onClearInitialResource={onClearInitialResource}
       />
       <CreateResourceDialog

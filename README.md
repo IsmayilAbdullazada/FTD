@@ -253,6 +253,8 @@ Migration `014_care_partner_intake` stores these details in a separate private `
 
 Care partners also acknowledge the current Community Guidelines once per version before posting or replying. Staff are exempt from the posting gate. The backend responds with `428` and `GUIDELINES_ACK_REQUIRED` if acknowledgment is missing; the frontend opens the gate while preserving a discussion draft. Raising the policy version requires a new acknowledgment. Policy records are read-only in the console. The current policy wording mentions FTD and young-onset dementias; it still needs the policy owner's review for the app's AD audience.
 
+Guide filters and authoring forms use the shared **Topic** dropdown. Topics are optional; unassigned guides have no generic Guide badge and can be found using **Without a Topic**. Migration `015_guide_topics_and_resources` merges legacy daily-living topics and adds six reviewed pages and two bundled PDFs with FTD/AD audience assignments. Migration `016_ad_resource_audiences` makes YES! and the Alzheimer’s Association AD-only, including existing matching sources. Deploy the new frontend assets and migrate before restarting the API. See the [reviewed titles, topics, source links and validation](docs/guide-topics-and-resources.md).
+
 ## CS Admin console
 
 Set `ENABLE_ADMIN_CONSOLE=true` deliberately to enable **Account menu → CS Admin console** (`?tab=admin`) for active `SYSTEM_ADMIN` accounts. Leave it off when administrative browser access is not needed. The backend enforces the same role and feature flag.

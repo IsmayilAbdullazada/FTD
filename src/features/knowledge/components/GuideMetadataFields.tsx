@@ -1,4 +1,5 @@
 import { fieldClassName } from '@/shared/components/Button';
+import { GuideTopicSelect } from './GuideTopicSelect';
 import type { GuideUploadDialogProps } from './guideDialog.types';
 export function GuideMetadataFields({
   metadata,
@@ -7,12 +8,22 @@ export function GuideMetadataFields({
   if (!metadata) return null;
   return (
     <>
-      {Object.entries(metadata).map(([key, value]) => (
-        <label key={key} className="block text-sm font-semibold capitalize">
-          {key}
+      <GuideTopicSelect
+        value={metadata.category}
+        onChange={(category) => onMetadataChange?.({ ...metadata, category })}
+      />
+      {(
+        [
+          ['description', 'Summary'],
+          ['publisher', 'Publisher'],
+          ['year', 'Publication year'],
+        ] as const
+      ).map(([key, label]) => (
+        <label key={key} className="block text-sm font-semibold">
+          {label}
           <input
             className={`mt-1 ${fieldClassName}`}
-            value={value}
+            value={metadata[key]}
             onChange={(event) =>
               onMetadataChange?.({ ...metadata, [key]: event.target.value })
             }

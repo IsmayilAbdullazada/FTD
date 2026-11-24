@@ -59,16 +59,12 @@ export function GuideEditor({
         onTitleChange={g.setUploadTitle}
         condition={g.uploadCondition}
         onConditionChange={g.setUploadCondition}
-        topicTag={g.uploadTopicTag}
-        onTopicTagChange={g.setUploadTopicTag}
         fileName={g.uploadFileName}
         pages={g.uploadPages}
         showExtractedInspector={g.showExtractedInspector}
         onShowExtractedInspectorChange={g.setShowExtractedInspector}
         selectedInspectPage={g.selectedInspectPage}
         onSelectedInspectPageChange={g.setSelectedInspectPage}
-        showMoreOptions={g.showMoreOptions}
-        onShowMoreOptionsChange={g.setShowMoreOptions}
         showTechDetails={g.showTechDetails}
         onShowTechDetailsChange={g.setShowTechDetails}
         pdfPreviewUrl={g.uploadPdfPreviewUrl}
@@ -80,7 +76,6 @@ export function GuideEditor({
         fileInputRef={g.fileInputRef}
         onDrag={g.handleDrag}
         onDrop={g.handleDrop}
-        onLoadResourceFile={g.handleLoadResourceFile}
         onProcessFile={g.handleProcessFile}
         onSave={(status) => {
           void g.handleSaveGuide(status).then((saved) => {

@@ -45,7 +45,10 @@ export async function listLibrary(user: AuthenticatedUser) {
       additionalLinks: [],
       keyTakeaways: [],
       diseaseDomain: g.condition === 'GENERAL' ? 'BOTH' : g.condition,
-      category: g.category || g.topic_tag || 'GUIDE',
+      category:
+        g.category && g.category !== 'GUIDE'
+          ? g.category
+          : g.topic_tag || 'GUIDE',
       createdBy: g.uploaded_by,
       createdAt: g.approved_at || g.created_at,
       source: 'guide' as const,

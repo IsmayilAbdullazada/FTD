@@ -1,5 +1,4 @@
 import { GuideMetadataFields } from './GuideMetadataFields';
-import { INSTITUTIONAL_RESOURCE_FILES } from '@/features/knowledge/lib/guideTitle';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import {
   AlertTriangle,
@@ -25,16 +24,12 @@ export function TechnicalGuideUploadDialog({
   onTitleChange: setUploadTitle,
   condition: uploadCondition,
   onConditionChange: setUploadCondition,
-  topicTag: uploadTopicTag,
-  onTopicTagChange: setUploadTopicTag,
   fileName: uploadFileName,
   pages: uploadPages,
   showExtractedInspector,
   onShowExtractedInspectorChange: setShowExtractedInspector,
   selectedInspectPage,
   onSelectedInspectPageChange: setSelectedInspectPage,
-  showMoreOptions,
-  onShowMoreOptionsChange: setShowMoreOptions,
   showTechDetails,
   onShowTechDetailsChange: setShowTechDetails,
   pdfPreviewUrl: uploadPdfPreviewUrl,
@@ -46,7 +41,6 @@ export function TechnicalGuideUploadDialog({
   fileInputRef,
   onDrag: handleDrag,
   onDrop: handleDrop,
-  onLoadResourceFile: handleLoadResourceFile,
   onProcessFile: handleProcessFile,
   onSave: handleSaveGuide,
 }: GuideUploadDialogProps) {
@@ -235,30 +229,6 @@ export function TechnicalGuideUploadDialog({
                             Accepts institutional guidelines, protocols, and
                             manuals (.pdf, .txt, .md)
                           </p>
-                        </div>
-                      </div>
-
-                      {/* Quick library selection helper */}
-                      <div className="w-full max-w-md mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
-                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2.5 text-center">
-                          Or select an institutional guideline from the clinic
-                          library:
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
-                          {INSTITUTIONAL_RESOURCE_FILES.map((resFile) => (
-                            <button
-                              key={resFile.fileName}
-                              type="button"
-                              onClick={() =>
-                                handleLoadResourceFile(resFile.fileName)
-                              }
-                              className="px-2.5 py-1.5 text-left rounded-lg bg-white dark:bg-slate-850 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200 dark:border-slate-750 text-slate-800 dark:text-slate-200 hover:border-blue-300 dark:hover:border-blue-800 transition text-[11px] truncate flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                              title={resFile.label}
-                            >
-                              <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                              <span className="truncate">{resFile.label}</span>
-                            </button>
-                          ))}
                         </div>
                       </div>
                     </div>
@@ -542,35 +512,6 @@ export function TechnicalGuideUploadDialog({
                       </p>
                     </div>
                   )}
-
-                  {/* Topic Tag behind "More options" */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowMoreOptions((prev) => !prev)}
-                      className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium cursor-pointer"
-                    >
-                      <span>
-                        {showMoreOptions ? '− Fewer options' : '+ More options'}
-                      </span>
-                    </button>
-
-                    {showMoreOptions && (
-                      <div className="mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 animate-in fade-in">
-                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
-                          Topic Tag (Optional)
-                        </label>
-                        <input
-                          aria-label="Topic Tag (Optional)"
-                          type="text"
-                          value={uploadTopicTag}
-                          onChange={(e) => setUploadTopicTag(e.target.value)}
-                          placeholder="e.g. Aggression, Sleep, Bathing"
-                          className="w-full px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                    )}
-                  </div>
 
                   {/* Technical details (Closed by default) */}
                   <div className="pt-0.5">

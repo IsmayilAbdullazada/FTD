@@ -8,6 +8,11 @@
 /* to seamlessly match bold, medium, and regular weights across the site       */
 /* -------------------------------------------------------------------------- */
 
+/* Accessibility: adjustable text size */
+html {
+  font-size: var(--app-font-size, 100%);
+}
+
 /* 1. Variable Font Face (200..800 Normal) */
 @font-face {
   font-family: 'CleanZero';

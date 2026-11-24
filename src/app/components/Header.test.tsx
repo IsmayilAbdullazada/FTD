@@ -27,6 +27,8 @@ test('My Posts keeps its action without secondary tracking copy', () => {
         notifications={[]}
         onOpenNotifications={vi.fn()}
         onOpenMyPosts={open}
+        fontSize={100}
+        onFontSizeChange={() => {}}
       />
     </ThemeProvider>,
   );

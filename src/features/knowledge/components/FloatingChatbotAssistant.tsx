@@ -139,7 +139,7 @@ const createWelcomeMessage = (user?: CurrentUser | null): ChatMessage => {
   return {
     id: `msg-welcome-${Date.now()}`,
     sender: 'assistant',
-    text: `${openingLine}\n\nI can find verified care guides and link you to the relevant pages. If no guide matches, I can help you prepare a discussion post.\n\nWhat is on your mind today?`,
+    text: `${openingLine}\n\nI can find verified guides and link you to the relevant pages. If no guide matches, I can help you prepare a discussion post.\n\nWhat is on your mind today?`,
     timestamp: 'Now',
   };
 };
@@ -458,7 +458,7 @@ export const FloatingChatbotAssistant: React.FC<
                     Care Companion
                   </h2>
                   <span
-                    title="Verified Care Knowledge"
+                    title="Verified Knowledge"
                     className="inline-flex items-center"
                   >
                     <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -577,7 +577,7 @@ export const FloatingChatbotAssistant: React.FC<
                           </p>
                           <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
                             <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />
-                            <span>Care Sources:</span>
+                            <span>Sources:</span>
                           </div>
                           <div className="flex flex-col gap-1.5">
                             {(msg.citedResources &&

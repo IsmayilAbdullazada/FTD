@@ -187,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => setShowCallMenu(!showCallMenu)}
                 className="min-h-11 px-2.5 sm:px-3 flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#002D72] dark:text-sky-300 bg-blue-50/80 hover:bg-blue-100/90 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
-                aria-label="Direct Clinic Contact & Support Lines"
+                aria-label="Call Clinic: contact and support lines"
                 aria-expanded={showCallMenu}
                 title="Direct Clinic & Support Phone Numbers"
               >
@@ -223,7 +223,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenNotifications}
               className="relative w-11 h-11 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition shrink-0 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-              aria-label="Notifications"
+              aria-label={
+                totalNotificationBadge > 0
+                  ? `Notifications, ${totalNotificationBadge > 99 ? '99+' : totalNotificationBadge} unread`
+                  : 'Notifications'
+              }
               title={
                 totalNotificationBadge > 0
                   ? `${totalNotificationBadge} notifications`

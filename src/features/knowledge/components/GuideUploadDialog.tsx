@@ -1,3 +1,4 @@
+import { isGuideDescriptionValid } from '../lib/guideDescription';
 import { Button, fieldClassName } from '@/shared/components/Button';
 import { GuideMetadataFields } from './GuideMetadataFields';
 import type { GuideUploadDialogProps } from './guideDialog.types';
@@ -154,6 +155,7 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
           <Button
             type="button"
             disabled={
+              !isGuideDescriptionValid(p.metadata?.description) ||
               !ready ||
               !p.title.trim() ||
               !p.condition ||
@@ -167,6 +169,7 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
           <Button
             type="button"
             disabled={
+              !isGuideDescriptionValid(p.metadata?.description) ||
               !ready ||
               !p.title.trim() ||
               !p.condition ||

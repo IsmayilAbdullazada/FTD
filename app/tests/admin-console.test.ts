@@ -554,6 +554,8 @@ test('domain actions preserve invariants and create masked audit records', async
   });
   await action('create-guide', {
     title: 'Console guide ' + suffix,
+    description:
+      'Practical information about planning a calm day and familiar routines.',
     condition: 'FTD',
     fileName: 'fixture.txt',
     content:

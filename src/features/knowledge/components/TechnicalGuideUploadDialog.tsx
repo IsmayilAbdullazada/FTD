@@ -1,3 +1,4 @@
+import { isGuideDescriptionValid } from '../lib/guideDescription';
 import { GuideMetadataFields } from './GuideMetadataFields';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import {
@@ -578,6 +579,7 @@ export function TechnicalGuideUploadDialog({
                   type="button"
                   onClick={() => handleSaveGuide('DRAFT')}
                   disabled={
+                    !isGuideDescriptionValid(metadata?.description) ||
                     isUploadingGuide ||
                     isExtractingPdf ||
                     !uploadCondition ||
@@ -595,6 +597,7 @@ export function TechnicalGuideUploadDialog({
                   type="button"
                   onClick={() => handleSaveGuide('APPROVED')}
                   disabled={
+                    !isGuideDescriptionValid(metadata?.description) ||
                     isUploadingGuide ||
                     isExtractingPdf ||
                     !uploadCondition ||

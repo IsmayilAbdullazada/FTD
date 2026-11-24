@@ -17,7 +17,7 @@ interface UploadGuidePayload {
   fileSize?: number;
   mimeType?: string;
   category?: string;
-  description?: string;
+  description: string;
   content?: string;
   pages?: GuidePageData[];
   totalChunks?: number;

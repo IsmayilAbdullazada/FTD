@@ -123,6 +123,7 @@ test('guide saves reuse owned PDF text and metadata updates preserve its pages',
   const uploaded = await upload(form());
   const input = {
     title: 'Multipart stored PDF',
+    description: 'A practical guide to supporting familiar daily routines.',
     condition: 'FTD',
     fileName: 'guide.pdf',
     pdfUrl: uploaded.body.pdfUrl,
@@ -133,6 +134,9 @@ test('guide saves reuse owned PDF text and metadata updates preserve its pages',
       headers: { ...staffHeaders, 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
+  for (const description of [undefined, 'x'.repeat(19), 'x'.repeat(241)]) {
+    assert.equal((await post({ ...input, description })).status, 400);
+  }
   const saved = await post(input);
   assert.equal(saved.status, 201);
   const guide = await saved.json();

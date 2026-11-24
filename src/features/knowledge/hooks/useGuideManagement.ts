@@ -1,3 +1,8 @@
+import {
+  isGuideDescriptionValid,
+  suggestGuideDescription,
+  editableGuideDescription,
+} from '../lib/guideDescription';
 import { normalizeGuideTopic } from '../lib/guideTopics';
 import { guideApi } from '@/features/knowledge/api/guideApi';
 import {
@@ -52,6 +57,18 @@ export function useGuideManagement({
     publisher: '',
     year: '',
   });
+  const automaticDescription = useRef('');
+  function fillDescriptionSuggestion(content: string, title: string) {
+    const previousSuggestion = automaticDescription.current;
+    const nextSuggestion = suggestGuideDescription(content, title);
+    automaticDescription.current = nextSuggestion;
+    setUploadMetadata((previous) =>
+      !previous.description.trim() ||
+      previous.description === previousSuggestion
+        ? { ...previous, description: nextSuggestion }
+        : previous,
+    );
+  }
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(
     null,
@@ -169,6 +186,7 @@ export function useGuideManagement({
 
   const resetUploadModal = () => {
     setShowUploadGuideModal(false);
+    automaticDescription.current = '';
     setUploadMetadata({
       category: '',
       description: '',
@@ -193,9 +211,14 @@ export function useGuideManagement({
       guide.category === 'GUIDE'
         ? guide.topicTag
         : guide.category || guide.topicTag;
+    automaticDescription.current = '';
     setUploadMetadata({
       category: normalizeGuideTopic(existingTopic) || existingTopic || '',
-      description: guide.description || '',
+      description: editableGuideDescription(
+        guide.description,
+        guide.content,
+        guide.title,
+      ),
       publisher: guide.publisher || '',
       year: guide.year || '',
     });
@@ -307,6 +330,10 @@ export function useGuideManagement({
           const result = await guideApi.extractPdfText(file);
           // Text and pages returned cleanly from server
           setUploadContent(result.text || '');
+          fillDescriptionSuggestion(
+            result.text || '',
+            uploadTitle || suggestGuideTitle(file.name),
+          );
           setUploadPages(result.pages || []);
           if (result.pdfUrl) {
             setUploadPdfPreviewUrl(result.pdfUrl);
@@ -350,6 +377,10 @@ export function useGuideManagement({
         const text = (e.target?.result as string) || '';
         const cleaned = cleanPdfText(text);
         setUploadContent(cleaned);
+        fillDescriptionSuggestion(
+          cleaned,
+          uploadTitle || suggestGuideTitle(file.name),
+        );
         const words = cleaned.trim().split(/\s+/).filter(Boolean).length;
         setUploadPages([
           {
@@ -370,6 +401,7 @@ export function useGuideManagement({
   const handleTextChange = (text: string) => {
     const words = text.trim().split(/\s+/).filter(Boolean).length;
     setUploadContent(text);
+    fillDescriptionSuggestion(text, uploadTitle);
     setUploadFileName('guide.txt');
     setUploadPdfPreviewUrl(null);
     setUploadPages(
@@ -387,6 +419,12 @@ export function useGuideManagement({
   };
 
   const handleSaveGuide = async (statusToSet: 'DRAFT' | 'APPROVED') => {
+    if (!isGuideDescriptionValid(uploadMetadata.description)) {
+      setActionSuccessNotice(
+        'Add a short description of 20–240 characters before saving.',
+      );
+      return false;
+    }
     if (!uploadCondition) {
       setActionSuccessNotice(
         'Please select a Target Condition (FTD, AD, or General) before saving.',

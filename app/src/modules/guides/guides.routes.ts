@@ -1,4 +1,8 @@
 import {
+  MIN_GUIDE_DESCRIPTION_LENGTH,
+  MAX_GUIDE_DESCRIPTION_LENGTH,
+} from '../../contracts/guideDescription.js';
+import {
   notify,
   notifyModerators,
   notifyAdmins,
@@ -37,7 +41,11 @@ const guideInput = z.object({
   fileSize: z.number().nonnegative().optional(),
   mimeType: z.string().optional(),
   category: z.string().optional(),
-  description: z.string().optional(),
+  description: z
+    .string()
+    .trim()
+    .min(MIN_GUIDE_DESCRIPTION_LENGTH)
+    .max(MAX_GUIDE_DESCRIPTION_LENGTH),
   content: z.string().optional(),
   pages: pagesSchema.optional(),
   status: z.enum(['DRAFT', 'APPROVED']).default('DRAFT'),

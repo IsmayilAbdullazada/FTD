@@ -21,10 +21,14 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { ChangePasswordModal } from '@/features/auth/components/ChangePasswordModal';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { CurrentUser, DirectMessage, PersonaOption } from '@/types';
+import { FontSizeSelector } from "../../features/accessibility/components/FontSizeSelector";
+import type { FontSize } from "../../features/accessibility/hooks/useFontSize";
 
 interface HeaderProps {
   currentUser: CurrentUser;
   allPersonas: PersonaOption[];
+  fontSize: FontSize;
+  onFontSizeChange: (size: FontSize) => void;
   onSwitchPersona: (userId: string) => void;
   onSignOut?: () => void;
   activeTab: string;
@@ -46,6 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
   notifications,
   onOpenNotifications,
   onOpenMyPosts,
+  fontSize,
+  onFontSizeChange,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const isClinician = currentUser.role === 'CLINICIAN_MODERATOR';
@@ -195,6 +201,12 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Call Clinic</span>
               </button>
             </div>
+            
+            {/* Font Size Change Selector */}
+            <FontSizeSelector
+              fontSize={fontSize}
+              onFontSizeChange={onFontSizeChange}
+            />
 
             {/* DARK / LIGHT MODE TOGGLE BUTTON (44px min tap target) */}
             <button

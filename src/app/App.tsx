@@ -10,6 +10,7 @@ import { NotificationsModal } from '@/features/notifications';
 import { useAppController } from '@/app/hooks/useAppController';
 import { GuidelinesGate } from '@/features/policies';
 import { policiesApi } from '@/features/policies/api/policiesApi';
+import { useFontSize } from "../features/accessibility/hooks/useFontSize";
 
 const AdminConsole = lazy(() =>
   import('@/features/admin/components/AdminConsole').then((module) => ({
@@ -58,6 +59,7 @@ const CalendarPage = lazy(() =>
 function AppContent() {
   const { state, actions } = useAppController();
   const [showGuidelines, setShowGuidelines] = useState(false);
+  const { fontSize, setFontSize } = useFontSize();
   const {
     bootstrapError,
     currentUser,
@@ -188,6 +190,8 @@ function AppContent() {
         notifications={notifications}
         onOpenNotifications={actions.openNotifications}
         onOpenMyPosts={actions.openMyPosts}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
       />
 
       {bootstrapAlert}

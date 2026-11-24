@@ -1,12 +1,37 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import App from './App';
+
+async function renderApp() {
+  // Bootstrap can select a lazy workspace after its asynchronous session check.
+  await act(async () => {
+    render(<App />);
+  });
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+}
+
+// jsdom does not implement the layout observer used by Care Companion.
+beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -35,7 +60,7 @@ test('a signed-out invitation opens registration and preserves its token', async
       );
     }),
   );
-  render(<App />);
+  await renderApp();
   await waitFor(() => expect(screen.queryByText('Session Expired')).toBeNull());
   expect(
     await screen.findByRole('button', { name: 'Join Community' }),
@@ -58,7 +83,7 @@ test('wrong credentials display the login error without expiring a session', asy
       ),
     ),
   );
-  render(<App />);
+  await renderApp();
   fireEvent.change(await screen.findByPlaceholderText('you@example.com'), {
     target: { value: 'care@example.test' },
   });
@@ -93,7 +118,7 @@ test('the signed-out App accepts an email reset link without an email or code fi
       );
     }),
   );
-  render(<App />);
+  await renderApp();
   fireEvent.change(await screen.findByLabelText('New password'), {
     target: { value: 'New-app-fixture-password!' },
   });
@@ -136,6 +161,8 @@ test('activity email links open the signed-in notification inbox and closing it 
           },
           allPersonas: [],
         });
+      if (url.includes('/policies/status'))
+        return Response.json({ acknowledged: true, currentVersion: '1.0' });
       if (url.includes('/cohorts')) return Response.json([]);
       if (url.includes('/notifications'))
         return Response.json({
@@ -161,7 +188,7 @@ test('activity email links open the signed-in notification inbox and closing it 
       return Response.json([]);
     }),
   );
-  render(<App />);
+  await renderApp();
   expect(
     await screen.findByText(
       'Please review the feedback from your moderation team.',
@@ -190,6 +217,8 @@ test('a care-partner staff URL resolves to the feed without requesting staff dat
         },
         allPersonas: [],
       });
+    if (url.includes('/policies/status'))
+      return Response.json({ acknowledged: true, currentVersion: '1.0' });
     if (url.includes('/cohorts')) return Response.json([]);
     if (url.includes('/notifications'))
       return Response.json({ messages: [], unreadCount: 0 });
@@ -198,8 +227,15 @@ test('a care-partner staff URL resolves to the feed without requesting staff dat
     return Response.json({ pool: [] });
   });
   vi.stubGlobal('fetch', fetchMock);
-  render(<App />);
-  await screen.findByRole('button', { name: 'New Post' });
+  await renderApp();
+  expect(
+    screen.queryByRole('dialog', {
+      name: 'Community Guidelines acknowledgment',
+    }),
+  ).toBeNull();
+  expect(
+    within(screen.getByRole('main')).getByRole('button', { name: 'New Post' }),
+  ).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull();
   expect(
     fetchMock.mock.calls.some(([url]) =>
@@ -216,7 +252,7 @@ test('a bootstrap service failure shows retry feedback instead of a misleading s
     ),
   );
   vi.stubGlobal('fetch', fetchMock);
-  render(<App />);
+  await renderApp();
   expect(
     await screen.findByRole('button', { name: 'Retry loading' }),
   ).toBeTruthy();
@@ -229,14 +265,6 @@ test('a bootstrap service failure shows retry feedback instead of a misleading s
 });
 
 test('a required guidelines acknowledgment preserves an in-progress discussion draft', async () => {
-  vi.stubGlobal(
-    'ResizeObserver',
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
   window.history.replaceState({}, '', '/?tab=compose');
   let acknowledged = true;
   const user = {
@@ -285,7 +313,7 @@ test('a required guidelines acknowledgment preserves an in-progress discussion d
       return Response.json([]);
     }),
   );
-  render(<App />);
+  await renderApp();
   const title = await screen.findByPlaceholderText(
     'e.g. Managing resistance when bathing',
   );

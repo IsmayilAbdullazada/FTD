@@ -4,6 +4,8 @@ Use Node 24, PostgreSQL 16/18, Apache/nginx with a valid TLS certificate, an app
 
 ## Build locally
 
+On WSL, prefer a checkout in the Linux filesystem (for example `~/projects/FTD`) instead of `/mnt/c/...`. Dependency installation and cold module loading can be substantially slower on a mounted Windows drive. The release checks still need to pass before transfer.
+
 Run the repository checks and test suites against an isolated database first. Commit the reviewed changes, then:
 
 ```bash

@@ -428,6 +428,7 @@ test('cohort reassignment, guide review and approval, and private messages notif
   assert.equal(notices.rowCount, 1);
   const guide = await request(ids.staff, '/chatbot/guides', {
     title: 'Private draft fixture',
+    description: 'A practical guide to supporting familiar daily routines.',
     condition: 'FTD',
     fileName: 'fixture.pdf',
     content: 'Sensitive educational draft',

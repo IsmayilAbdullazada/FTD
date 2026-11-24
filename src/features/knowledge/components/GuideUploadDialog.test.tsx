@@ -7,6 +7,12 @@ afterEach(cleanup);
 const fn = vi.fn();
 const props: GuideUploadDialogProps = {
   open: true,
+  metadata: {
+    category: '',
+    description: 'A practical overview of this document and its purpose.',
+    publisher: '',
+    year: '',
+  },
   onClose: fn,
   title: 'Test PDF',
   onTitleChange: fn,

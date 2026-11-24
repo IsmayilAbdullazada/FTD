@@ -1,21 +1,11 @@
-import { guideTopicLabel } from '../lib/guideTopics';
+import { GuideCard } from './GuideCard';
+import { Pagination } from '@/shared/components/Pagination';
+import { usePagination } from '@/shared/hooks/usePagination';
 import { Button } from '@/shared/components/Button';
 import { AssistantGuidanceTester } from './AssistantGuidanceTester';
-import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
-import {
-  AlertCircle,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  Plus,
-  Pencil,
-  EyeOff,
-  Eye,
-  Search,
-  Trash2,
-} from 'lucide-react';
-import React, { useState } from 'react';
+import { AlertCircle, CheckCircle2, Plus, Search } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GuideEditor } from './GuideEditor';
 import { guideApi } from '../api/guideApi';
 import type { ChatbotGuideFile } from '../types';
@@ -82,15 +72,67 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     onResourcesChanged,
   });
 
+  const guidePage = usePagination(
+    filtered,
+    6,
+    JSON.stringify([searchQuery, selectedCategory, currentUser?.id]),
+  );
+
   const [showChoices, setShowChoices] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [textMode, setTextMode] = useState(false);
   const [editingGuide, setEditingGuide] = useState<ChatbotGuideFile>();
   const [guideError, setGuideError] = useState<string | null>(null);
+  const [busyGuides, setBusyGuides] = useState<Set<string>>(new Set());
+  const [publication, setPublication] = useState<{
+    id: number;
+    guideId: string;
+    title: string;
+    wasActive: boolean;
+    active: boolean;
+  } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const operationId = useRef(0);
+  useEffect(() => {
+    if (!publication) return;
+    const timer = window.setTimeout(
+      () =>
+        setPublication((current) =>
+          current?.id === publication.id ? null : current,
+        ),
+      6000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [publication]);
+  async function undoPublication() {
+    if (!publication || undoing) return;
+    const operation = publication;
+    setUndoing(true);
+    setGuideError(null);
+    try {
+      await guideApi.updateChatbotGuide(operation.guideId, {
+        isActive: operation.wasActive,
+      });
+      await loadResources();
+      setPublication((current) =>
+        current?.id === operation.id ? null : current,
+      );
+    } catch (error) {
+      setGuideError(
+        error instanceof Error
+          ? error.message
+          : 'Could not undo the publication change.',
+      );
+    } finally {
+      setUndoing(false);
+    }
+  }
   async function guideAction(
     item: ClinicalResource,
     action: 'edit' | 'approve' | 'toggle',
   ) {
+    if (busyGuides.has(item.id)) return;
+    setBusyGuides((previous) => new Set(previous).add(item.id));
     try {
       setGuideError(null);
       if (action === 'edit') {
@@ -102,13 +144,28 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         setEditorOpen(true);
       } else {
         if (action === 'approve') await guideApi.approveChatbotGuide(item.id);
-        else await guideApi.toggleChatbotGuide(item.id);
+        else {
+          const result = await guideApi.toggleChatbotGuide(item.id);
+          setPublication({
+            id: ++operationId.current,
+            guideId: item.id,
+            title: item.title,
+            wasActive: !result.guide.isActive,
+            active: result.guide.isActive,
+          });
+        }
         await loadResources();
       }
     } catch (error) {
       setGuideError(
         error instanceof Error ? error.message : 'Could not update this guide.',
       );
+    } finally {
+      setBusyGuides((previous) => {
+        const next = new Set(previous);
+        next.delete(item.id);
+        return next;
+      });
     }
   }
   const deleteDialogRef = useDialogFocus(
@@ -118,7 +175,28 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-7 space-y-6">
-      {guideError && <p role="alert">{guideError}</p>}
+      {guideError && (
+        <p
+          role="alert"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
+        >
+          {guideError}
+        </p>
+      )}
+      {publication && (
+        <div
+          role="status"
+          className="fixed bottom-24 left-4 right-4 z-[80] mx-auto flex max-w-xl items-center justify-between gap-3 rounded-2xl border border-slate-300 bg-white p-3 pl-4 text-sm text-slate-800 shadow-xl dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 xl:bottom-6"
+        >
+          <span className="min-w-0 break-words">
+            “{publication.title}”{' '}
+            {publication.active ? 'published' : 'unpublished'}.
+          </span>
+          <Button disabled={undoing} onClick={() => void undoPublication()}>
+            {undoing ? 'Undoing…' : 'Undo'}
+          </Button>
+        </div>
+      )}
       {editorOpen && currentUser && (
         <GuideEditor
           currentUser={currentUser}
@@ -261,6 +339,10 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         </p>
       )}
 
+      {currentUser?.role === 'CLINICIAN_MODERATOR' && (
+        <AssistantGuidanceTester />
+      )}
+
       {/* FILTER AND SEARCH BAR */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1">
@@ -301,6 +383,8 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         </div>
       </div>
 
+      {!loading && <Pagination label="Guides" {...guidePage} />}
+
       {/* RESOURCES LIST */}
       {loading ? (
         <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-sm">
@@ -317,157 +401,24 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((res) => (
-            <article
+          {guidePage.items.map((res) => (
+            <GuideCard
               key={`${res.source || 'resource'}:${res.id}`}
-              onClick={() => setActiveResource(res)}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 space-y-3 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group text-left"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {guideTopicLabel(res.category) && (
-                    <span className="text-xs font-semibold text-[#002D72] dark:text-blue-400">
-                      {guideTopicLabel(res.category)}
-                    </span>
-                  )}
-                  {isClinician && (
-                    <AudienceBadge condition={res.diseaseDomain} />
-                  )}
-                  <div className="ml-auto flex items-center gap-3 shrink-0">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(res.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </span>
-                    {isClinician && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPendingDelete(res);
-                        }}
-                        aria-label="Delete guide"
-                        className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {isClinician && res.source !== 'guide' && (
-                  <Button
-                    className=""
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openResourceForm(res);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" /> Edit
-                  </Button>
-                )}
-                {isClinician && res.source === 'guide' && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold ${res.status === 'DRAFT' ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300' : res.isActive ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
-                    >
-                      {res.status === 'APPROVED' && res.isActive && (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      )}
-                      {res.status === 'DRAFT'
-                        ? 'Draft'
-                        : res.isActive
-                          ? 'Approved'
-                          : 'Unpublished'}
-                    </span>
-                    <Button
-                      className=""
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void guideAction(res, 'edit');
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" /> Edit
-                    </Button>
-                    {res.status === 'DRAFT' && (
-                      <Button
-                        variant="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void guideAction(res, 'approve');
-                        }}
-                      >
-                        <CheckCircle2 className="h-4 w-4" /> Approve
-                      </Button>
-                    )}
-                    {res.status === 'APPROVED' && (
-                      <Button
-                        variant="primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void guideAction(res, 'toggle');
-                        }}
-                      >
-                        {res.isActive ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                        {res.isActive ? 'Unpublish' : 'Publish'}
-                      </Button>
-                    )}
-                  </div>
-                )}
-                <h3 className="font-serif font-semibold text-lg sm:text-xl text-slate-900 dark:text-white leading-snug group-hover:text-[#002D72] dark:group-hover:text-blue-400 transition">
-                  {res.title}
-                </h3>
-
-                <p className="text-sm sm:text-[15px] text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed font-sans">
-                  {res.summary}
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
-                <div className="flex flex-wrap items-center gap-2">
-                  {res.fileAttachmentUrl && (
-                    <span className="inline-flex items-center gap-1 text-[#002D72] dark:text-blue-400">
-                      <FileText className="w-4 h-4" />
-                      PDF available
-                    </span>
-                  )}
-                  {res.externalUrl && (
-                    <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                      <ExternalLink className="w-4 h-4" />
-                      Website
-                    </span>
-                  )}
-                  {res.additionalLinks?.length ? (
-                    <span className="text-slate-500 dark:text-slate-400">
-                      +{res.additionalLinks.length} more link
-                      {res.additionalLinks.length === 1 ? '' : 's'}
-                    </span>
-                  ) : null}
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setActiveResource(res);
-                  }}
-                  aria-label={`View guide: ${res.title}`}
-                >
-                  View guide →
-                </Button>
-              </div>
-            </article>
+              resource={res}
+              staff={isClinician}
+              busy={busyGuides.has(res.id)}
+              onOpen={() => setActiveResource(res)}
+              onEdit={() =>
+                res.source === 'guide'
+                  ? void guideAction(res, 'edit')
+                  : openResourceForm(res)
+              }
+              onApprove={() => void guideAction(res, 'approve')}
+              onToggle={() => void guideAction(res, 'toggle')}
+              onDelete={() => setPendingDelete(res)}
+            />
           ))}
         </div>
-      )}
-
-      {currentUser?.role === 'CLINICIAN_MODERATOR' && (
-        <AssistantGuidanceTester />
       )}
 
       <ResourceInspectorDialogs

@@ -420,6 +420,7 @@ export const domainActions: DomainAction[] = [
     () => '/',
     [
       field('title'),
+      field('description', 'longtext'),
       field('condition', 'select', true, ['FTD', 'AD', 'GENERAL']),
       field('fileName'),
       field('pdfUrl', 'text', false),

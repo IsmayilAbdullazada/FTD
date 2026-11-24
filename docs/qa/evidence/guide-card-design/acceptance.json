@@ -1,0 +1,402 @@
+[
+  {
+    "screen": "desktop-light",
+    "contrast": [
+      {
+        "label": "Support and Wellbeing",
+        "ratio": 12.98
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.11
+      },
+      {
+        "label": "Unpublished",
+        "ratio": 9.45
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "PDF",
+        "ratio": 7.58
+      },
+      {
+        "label": "Safety and Driving",
+        "ratio": 12.98
+      },
+      {
+        "label": "AD",
+        "ratio": 8.36
+      },
+      {
+        "label": "Draft",
+        "ratio": 6.84
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "PDF",
+        "ratio": 7.58
+      },
+      {
+        "label": "Behavior and Personality",
+        "ratio": 12.98
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.11
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "PDF",
+        "ratio": 7.58
+      },
+      {
+        "label": "Understanding Dementia",
+        "ratio": 12.98
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "Website: alz.org",
+        "ratio": 7.58
+      }
+    ],
+    "cards": [
+      {
+        "x": 232,
+        "y": 742.75,
+        "title": 847.75,
+        "footer": 1007.75
+      },
+      {
+        "x": 728,
+        "y": 742.75,
+        "title": 847.75,
+        "footer": 1007.75
+      },
+      {
+        "x": 232,
+        "y": 1109.75,
+        "title": 1214.75,
+        "footer": 1374.75
+      },
+      {
+        "x": 728,
+        "y": 1109.75,
+        "title": 1214.75,
+        "footer": 1374.75
+      }
+    ],
+    "axeViolations": []
+  },
+  {
+    "screen": "desktop-dark",
+    "contrast": [
+      {
+        "label": "Support and Wellbeing",
+        "ratio": 9.83
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.95
+      },
+      {
+        "label": "Unpublished",
+        "ratio": 11.86
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "PDF",
+        "ratio": 12
+      },
+      {
+        "label": "Safety and Driving",
+        "ratio": 9.83
+      },
+      {
+        "label": "AD",
+        "ratio": 9.07
+      },
+      {
+        "label": "Draft",
+        "ratio": 12.05
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "PDF",
+        "ratio": 12
+      },
+      {
+        "label": "Behavior and Personality",
+        "ratio": 9.83
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.95
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "PDF",
+        "ratio": 12
+      },
+      {
+        "label": "Understanding Dementia",
+        "ratio": 9.83
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "Website: alz.org",
+        "ratio": 12
+      }
+    ],
+    "cards": [
+      {
+        "x": 232,
+        "y": 742.75,
+        "title": 847.75,
+        "footer": 1007.75
+      },
+      {
+        "x": 728,
+        "y": 742.75,
+        "title": 847.75,
+        "footer": 1007.75
+      },
+      {
+        "x": 232,
+        "y": 1109.75,
+        "title": 1214.75,
+        "footer": 1374.75
+      },
+      {
+        "x": 728,
+        "y": 1109.75,
+        "title": 1214.75,
+        "footer": 1374.75
+      }
+    ],
+    "axeViolations": []
+  },
+  {
+    "screen": "mobile-light",
+    "contrast": [
+      {
+        "label": "Support and Wellbeing",
+        "ratio": 12.98
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.11
+      },
+      {
+        "label": "Unpublished",
+        "ratio": 9.45
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "PDF",
+        "ratio": 7.58
+      },
+      {
+        "label": "Safety and Driving",
+        "ratio": 12.98
+      },
+      {
+        "label": "AD",
+        "ratio": 8.36
+      },
+      {
+        "label": "Draft",
+        "ratio": 6.84
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "PDF",
+        "ratio": 7.58
+      },
+      {
+        "label": "Behavior and Personality",
+        "ratio": 12.98
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.11
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "PDF",
+        "ratio": 7.58
+      },
+      {
+        "label": "Understanding Dementia",
+        "ratio": 12.98
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 7.58
+      },
+      {
+        "label": "Website: alz.org",
+        "ratio": 7.58
+      }
+    ],
+    "cards": [
+      {
+        "x": 16,
+        "y": 1041.25,
+        "title": 1142.25,
+        "footer": 1302.25
+      },
+      {
+        "x": 16,
+        "y": 1400.25,
+        "title": 1501.25,
+        "footer": 1661.25
+      },
+      {
+        "x": 16,
+        "y": 1759.25,
+        "title": 1860.25,
+        "footer": 2072.25
+      },
+      {
+        "x": 16,
+        "y": 2170.25,
+        "title": 2271.25,
+        "footer": 2459.25
+      }
+    ],
+    "axeViolations": []
+  },
+  {
+    "screen": "mobile-dark",
+    "contrast": [
+      {
+        "label": "Support and Wellbeing",
+        "ratio": 9.83
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.95
+      },
+      {
+        "label": "Unpublished",
+        "ratio": 11.86
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "PDF",
+        "ratio": 12
+      },
+      {
+        "label": "Safety and Driving",
+        "ratio": 9.83
+      },
+      {
+        "label": "AD",
+        "ratio": 9.07
+      },
+      {
+        "label": "Draft",
+        "ratio": 12.05
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "PDF",
+        "ratio": 12
+      },
+      {
+        "label": "Behavior and Personality",
+        "ratio": 9.83
+      },
+      {
+        "label": "FTD",
+        "ratio": 8.95
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "PDF",
+        "ratio": 12
+      },
+      {
+        "label": "Understanding Dementia",
+        "ratio": 9.83
+      },
+      {
+        "label": "Nov 25, 2026",
+        "ratio": 6.78
+      },
+      {
+        "label": "Website: alz.org",
+        "ratio": 12
+      }
+    ],
+    "cards": [
+      {
+        "x": 16,
+        "y": 1041.25,
+        "title": 1142.25,
+        "footer": 1302.25
+      },
+      {
+        "x": 16,
+        "y": 1400.25,
+        "title": 1501.25,
+        "footer": 1661.25
+      },
+      {
+        "x": 16,
+        "y": 1759.25,
+        "title": 1860.25,
+        "footer": 2072.25
+      },
+      {
+        "x": 16,
+        "y": 2170.25,
+        "title": 2271.25,
+        "footer": 2459.25
+      }
+    ],
+    "axeViolations": []
+  }
+]

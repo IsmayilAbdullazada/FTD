@@ -1,17 +1,10 @@
+import { guideCardDescription } from '../../contracts/guideDescription.js';
 import { query } from '../../config/db.js';
 import { resource } from '../../lib/serializers.js';
 import type { GuideRow } from '../../db/rows.js';
 import type { AuthenticatedUser } from '../../middleware/auth.js';
 import { isStaffRole } from '../../lib/roles.js';
 
-function summary(text: string) {
-  if (text.length <= 240) return text;
-  const excerpt = text.slice(0, 241);
-  return excerpt.slice(
-    0,
-    excerpt.lastIndexOf(' ') > 0 ? excerpt.lastIndexOf(' ') : 240,
-  );
-}
 export async function listLibrary(user: AuthenticatedUser) {
   const staff = isStaffRole(user.role);
   const condition = staff
@@ -38,7 +31,11 @@ export async function listLibrary(user: AuthenticatedUser) {
     ...(guides.rows as GuideRow[]).map((g) => ({
       id: g.id,
       title: g.title,
-      summary: g.description || summary(g.content),
+      summary: guideCardDescription({
+        description: g.description,
+        content: g.content,
+        title: g.title,
+      }),
       contentBody: g.pdf_url ? g.description || '' : g.content,
       fileAttachmentUrl: g.pdf_url,
       externalUrl: null,

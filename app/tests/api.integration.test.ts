@@ -611,6 +611,7 @@ test('staff content, invitation, guide retrieval, and admin contracts use Postgr
     '/api/v1/chatbot/guides',
     json(clinicianToken, {
       title: 'Integration guide',
+      description: 'A practical guide to supporting familiar daily routines.',
       condition: 'FTD',
       fileName: 'integration.pdf',
       content:
@@ -824,6 +825,7 @@ test('request errors, protected PDF parsing, and inactive guide edits preserve s
     '/api/v1/chatbot/guides',
     json(clinicianToken, {
       title: 'Inactive guide fixture',
+      description: 'A practical guide to supporting familiar daily routines.',
       condition: 'FTD',
       fileName: 'inactive.pdf',
       content: 'This is a test guide.',

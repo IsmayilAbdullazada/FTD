@@ -1,0 +1,45 @@
+{
+  "scope": "Isolated local browser database only; production database was not accessed",
+  "issues": [
+    {
+      "id": "card-design-qa-live",
+      "title": "Card Design QA: Understanding compulsive behaviors and supporting daily routines",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-8e3405d5-19b6-4d98-9922-bfad5e6197fe",
+      "title": "QA plain guide desktop 1795399311392284449",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-103b9f22-0b5a-4482-aaad-96b4d575b637",
+      "title": "QA plain guide desktop 1795399363633615210",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-a3a249e3-0f3f-41b5-a863-0999d7fda9be",
+      "title": "QA plain guide mobile 1795399376118600397",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-91a32143-128b-47cf-8329-54729bceb856",
+      "title": "QA text desktop 1795544899534142989",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-c02d5e22-ec8b-4c31-aac6-7ba37728e58e",
+      "title": "QA unified guide desktop 1795399008166754549",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-8480e89e-be3f-487c-9ba8-8c2c96d58459",
+      "title": "QA unified guide mobile 1795399022349115794",
+      "reason": "Missing description"
+    },
+    {
+      "id": "guide-c157fa55-dd0e-4572-bf89-e840e76ac1ad",
+      "title": "WAF guide 1795446729972454207",
+      "reason": "Missing description"
+    }
+  ]
+}

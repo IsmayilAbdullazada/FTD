@@ -1,3 +1,4 @@
+import { CLINIC_NAME } from '@/shared/lib/siteContent';
 import React, { useEffect, useState } from 'react';
 import {
   Shield,
@@ -601,7 +602,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  Johns Hopkins FTD &amp; Memory Care Center
+                  {CLINIC_NAME}
                 </p>
               </div>
               <button

@@ -1,3 +1,4 @@
+import { Button, fieldClassName } from '@/shared/components/Button';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { Audience, ClinicalResource } from '@/types';
 import { AlertCircle, X } from 'lucide-react';
@@ -75,7 +76,7 @@ export function CreateResourceDialog({
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Add Care Source or Protocol"
+            aria-label="Add webpage guide"
             tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
             className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 cursor-default transition-colors outline-none"
@@ -83,21 +84,20 @@ export function CreateResourceDialog({
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
               <div>
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">
-                  Add Care Source / Protocol
+                  Add webpage guide
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Publish verified guidance to the care partner knowledge base
-                  and assistant.
+                  Publish a source link in Guides for the selected care
+                  partners.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 aria-label="Close dialog"
                 onClick={handleClose}
-                className="min-h-11 min-w-11 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
 
             <form
@@ -123,7 +123,7 @@ export function CreateResourceDialog({
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g. Swallowing Assessment & Choking Prevention in bvFTD"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  className={fieldClassName}
                   required
                 />
               </div>
@@ -140,7 +140,7 @@ export function CreateResourceDialog({
                       e.target.value as ClinicalResource['category'],
                     )
                   }
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 cursor-pointer"
+                  className={fieldClassName}
                 >
                   <option value="BEHAVIORAL_AGITATION">
                     Sensory & Agitation
@@ -176,23 +176,22 @@ export function CreateResourceDialog({
                   value={newSummary}
                   onChange={(e) => setNewSummary(e.target.value)}
                   placeholder="Short 1-2 sentence overview shown in search results..."
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  className={fieldClassName}
                   required
                 />
               </div>
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Full Care Protocol Content
+                  Additional context (optional)
                 </label>
                 <textarea
-                  aria-label="Full Care Protocol Content"
+                  aria-label="Additional context (optional)"
                   rows={6}
                   value={newContentBody}
                   onChange={(e) => setNewContentBody(e.target.value)}
-                  placeholder="Detailed step-by-step guidance, de-escalation methods, safety warnings..."
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400 font-sans"
-                  required
+                  placeholder="Optional background about this source…"
+                  className={fieldClassName}
                 />
               </div>
 
@@ -206,7 +205,7 @@ export function CreateResourceDialog({
                   value={newKeyTakeaways}
                   onChange={(e) => setNewKeyTakeaways(e.target.value)}
                   placeholder="Consult speech-language pathologist early&#10;Tuck chin downward while swallowing&#10;Avoid straw use for thin liquids"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  className={fieldClassName}
                 />
               </div>
 
@@ -223,24 +222,20 @@ export function CreateResourceDialog({
                       ['BOTH', 'Both'],
                     ] as [Audience, string][]
                   ).map(([value, label]) => (
-                    <button
+                    <Button
                       key={value}
                       type="button"
                       onClick={() => setNewAudience(value)}
-                      className={`min-h-11 min-w-11 w-full px-3 py-2 border rounded-lg text-xs font-semibold transition cursor-pointer ${
-                        newAudience === value
-                          ? 'bg-[#002D72] text-white border-[#002D72] dark:bg-blue-600 dark:border-blue-600'
-                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
-                      }`}
+                      variant={newAudience === value ? 'primary' : 'secondary'}
+                      aria-pressed={newAudience === value}
+                      className="w-full"
                     >
                       {label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 {!newAudience && (
-                  <p className="mt-1 text-slate-500 dark:text-slate-400">
-                    Select an audience to enable publishing.
-                  </p>
+                  <p>Select an audience to enable publishing.</p>
                 )}
               </div>
 
@@ -254,7 +249,7 @@ export function CreateResourceDialog({
                   value={newExternalUrl}
                   onChange={(e) => setNewExternalUrl(e.target.value)}
                   placeholder="https://www.theaftd.org/..."
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#002D72] dark:focus:ring-blue-400"
+                  className={fieldClassName}
                 />
               </div>
 
@@ -270,7 +265,7 @@ export function CreateResourceDialog({
                   placeholder={
                     'AFTD driving guidance | https://www.theaftd.org/help-and-hope/hs-driving-and-ftd/\nAnother source | https://example.org'
                   }
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                  className={fieldClassName}
                 />
               </div>
 
@@ -283,7 +278,7 @@ export function CreateResourceDialog({
                   type="file"
                   accept="application/pdf,.pdf"
                   onChange={(e) => setNewPdfFile(e.target.files?.[0] ?? null)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                  className={fieldClassName}
                 />
                 {newPdfFile && (
                   <p className="mt-1 text-slate-500 dark:text-slate-400">
@@ -297,20 +292,16 @@ export function CreateResourceDialog({
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="min-h-11 min-w-11 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
-                >
+                <Button type="button" onClick={() => setShowAddModal(false)}>
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
+                  variant="primary"
                   disabled={isSubmitting || !newAudience}
-                  className="min-h-11 min-w-11 px-4 py-2 bg-[#002D72] hover:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-lg font-semibold transition cursor-pointer"
                 >
                   {isSubmitting ? 'Publishing...' : 'Publish Guide'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

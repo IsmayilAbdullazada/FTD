@@ -104,7 +104,11 @@ router.post(
       title: r.title,
       fileName: r.file_name,
       page: r.page,
-      url: `${r.pdf_url || `/resources/${r.file_name}`}#page=${r.page}`,
+      url: r.pdf_url
+        ? `${r.pdf_url}#page=${r.page}`
+        : r.file_name.toLowerCase().endsWith('.pdf')
+          ? `/resources/${encodeURIComponent(r.file_name)}#page=${r.page}`
+          : `/?tab=knowledge&resource=${encodeURIComponent(r.guide_id)}`,
     }));
     res.json({
       answer: '',

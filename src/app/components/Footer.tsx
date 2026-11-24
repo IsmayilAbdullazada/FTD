@@ -1,3 +1,4 @@
+import { CLINIC_AFFILIATION } from '@/shared/lib/siteContent';
 import { useState } from 'react';
 import { CommunityGuidelinesModal } from '@/features/policies/components/CommunityGuidelinesModal';
 
@@ -30,8 +31,7 @@ export function Footer(_props: FooterProps) {
                   Hopkins Care Partner Connect
                 </p>
                 <p className="text-sm leading-relaxed text-blue-100">
-                  Department of Neurology · Division of Cognitive Neurology ·
-                  Baltimore, MD
+                  {CLINIC_AFFILIATION} · Baltimore, MD
                 </p>
               </div>
             </div>

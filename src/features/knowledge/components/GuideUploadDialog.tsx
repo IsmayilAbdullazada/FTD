@@ -5,7 +5,8 @@ import { TechnicalGuideUploadDialog } from './TechnicalGuideUploadDialog';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 
 export function GuideUploadDialog(props: GuideUploadDialogProps) {
-  if (props.isAdmin) return <TechnicalGuideUploadDialog {...props} />;
+  if (props.isAdmin && !props.textMode)
+    return <TechnicalGuideUploadDialog {...props} />;
   return <PlainGuideUploadDialog {...props} />;
 }
 function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
@@ -15,7 +16,9 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
   const ref = useDialogFocus(p.open, close);
   if (!p.open) return null;
   const ready = Boolean(
-    p.pdfPreviewUrl || p.pages.some((page) => page.text.trim()),
+    p.textMode
+      ? p.textContent?.trim()
+      : p.pdfPreviewUrl || p.pages.some((page) => page.text.trim()),
   );
   return (
     <div
@@ -32,7 +35,11 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
       >
         <header className="flex items-center justify-between gap-3 border-b p-4 dark:border-slate-700">
           <h2 id="guide-editor-title" className="text-lg font-semibold">
-            {p.editingGuideId ? 'Edit guide' : 'Upload guide'}
+            {p.editingGuideId
+              ? 'Edit guide'
+              : p.textMode
+                ? 'Write a guide'
+                : 'Upload guide'}
           </h2>
           <Button type="button" aria-label="Close guide" onClick={close}>
             ✕
@@ -50,18 +57,32 @@ function PlainGuideUploadDialog(p: GuideUploadDialogProps) {
               onDrop={p.onDrop}
               className="space-y-3"
             >
-              <label className="block text-sm font-semibold">
-                PDF or text document
-                <input
-                  ref={p.fileInputRef}
-                  type="file"
-                  accept=".pdf,.txt,.md"
-                  className="mt-2 block w-full min-h-11 text-sm"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) p.onProcessFile(e.target.files[0]);
-                  }}
-                />
-              </label>
+              {p.textMode ? (
+                <label className="block text-sm font-semibold">
+                  Guide text
+                  <textarea
+                    className={`mt-2 min-h-64 ${fieldClassName}`}
+                    rows={12}
+                    value={p.textContent ?? ''}
+                    onChange={(event) => p.onTextChange?.(event.target.value)}
+                    placeholder="Write or paste your guide here…"
+                  />
+                </label>
+              ) : (
+                <label className="block text-sm font-semibold">
+                  PDF or text document
+                  <input
+                    ref={p.fileInputRef}
+                    type="file"
+                    accept=".pdf,.txt,.md"
+                    className="mt-2 block w-full min-h-11 text-sm"
+                    onChange={(e) => {
+                      if (e.target.files?.[0])
+                        p.onProcessFile(e.target.files[0]);
+                    }}
+                  />
+                </label>
+              )}
               <p role="status" className="text-sm">
                 {p.extractingPdf
                   ? 'Reading your PDF…'

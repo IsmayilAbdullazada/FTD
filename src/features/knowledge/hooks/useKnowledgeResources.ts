@@ -9,11 +9,13 @@ export interface KnowledgeBaseExplorerProps {
   initialResourceId?: string | null;
   onClearInitialResource?: () => void;
   currentUser?: CurrentUser;
+  onResourcesChanged?: (resources: ClinicalResource[]) => void;
 }
 
 export function useKnowledgeResources({
   initialResourceId,
   currentUser,
+  onResourcesChanged,
 }: KnowledgeBaseExplorerProps) {
   const [resources, setResources] = useState<ClinicalResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,10 @@ export function useKnowledgeResources({
   const isClinician =
     currentUser?.role === 'CLINICIAN_MODERATOR' ||
     currentUser?.role === 'SYSTEM_ADMIN';
+
+  useEffect(() => {
+    if (!loading) onResourcesChanged?.(resources);
+  }, [loading, resources, onResourcesChanged]);
 
   const loadResources = async () => {
     try {
@@ -106,8 +112,8 @@ export function useKnowledgeResources({
     if (isSubmitting) return;
     setFormError(null);
 
-    if (!newTitle.trim() || !newSummary.trim() || !newContentBody.trim()) {
-      setFormError('Please fill in the title, summary, and protocol content.');
+    if (!newTitle.trim() || !newSummary.trim()) {
+      setFormError('Please fill in the title and summary.');
       return;
     }
 
@@ -161,7 +167,7 @@ export function useKnowledgeResources({
         title: newTitle.trim(),
         category: newCategory,
         summary: newSummary.trim() || newTitle.trim(),
-        contentBody: newContentBody.trim(),
+        contentBody: newContentBody.trim() || newSummary.trim(),
         keyTakeaways:
           takeawaysList.length > 0
             ? takeawaysList
@@ -176,7 +182,7 @@ export function useKnowledgeResources({
         : await contentApi.createResource(payload);
 
       setResources((prev) => [
-        created,
+        { ...created, source: 'resource', status: 'APPROVED', isActive: true },
         ...prev.filter((item) => item.id !== created.id),
       ]);
       setEditingResource(null);

@@ -1,3 +1,4 @@
+import { Button } from '@/shared/components/Button';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { CheckCircle2, ExternalLink, FileText, X } from 'lucide-react';
@@ -60,7 +61,7 @@ export function ResourceInspectorDialogs({
                 type="button"
                 aria-label="Close resource"
                 onClick={handleClose}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -68,17 +69,26 @@ export function ResourceInspectorDialogs({
 
             {/* Scrollable Body */}
             <div className="p-5 sm:p-7 overflow-y-auto space-y-5 text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-300">
-              <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 space-y-1.5">
-                <div className="font-semibold text-[#002D72] dark:text-blue-400 text-xs uppercase tracking-wider">
-                  Care Overview
+              {!(
+                activeResource.source === 'guide' &&
+                !activeResource.fileAttachmentUrl &&
+                activeResource.summary.trim() ===
+                  activeResource.contentBody.trim()
+              ) && (
+                <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 text-sm text-slate-800 dark:text-slate-200 space-y-1.5">
+                  <div className="font-semibold text-[#002D72] dark:text-blue-400 text-xs uppercase tracking-wider">
+                    Care Overview
+                  </div>
+                  <p className="leading-relaxed">{activeResource.summary}</p>
                 </div>
-                <p className="leading-relaxed">{activeResource.summary}</p>
-              </div>
+              )}
 
               {/* Source Documents */}
-              {(activeResource.fileAttachmentUrl ||
+              {Boolean(
+                activeResource.fileAttachmentUrl ||
                 activeResource.externalUrl ||
-                activeResource.additionalLinks?.length) && (
+                activeResource.additionalLinks?.length,
+              ) && (
                 <div className="space-y-2">
                   <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
                     Source Documents
@@ -131,15 +141,17 @@ export function ResourceInspectorDialogs({
                 </div>
               )}
 
-              {/* Protocol Content */}
-              <div className="space-y-2">
-                <div className="font-semibold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
-                  Step-by-Step Care Strategies
-                </div>
-                <div className="whitespace-pre-line text-sm sm:text-[15px] font-sans text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 p-5 rounded-xl border border-slate-200/80 dark:border-slate-750 leading-relaxed">
-                  {activeResource.contentBody}
-                </div>
-              </div>
+              {/* Text documents retain their readable content without a care-instruction section. */}
+              {activeResource.source === 'guide' &&
+                !activeResource.fileAttachmentUrl &&
+                activeResource.contentBody && (
+                  <section
+                    aria-label="Guide text"
+                    className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800 dark:text-slate-200"
+                  >
+                    {activeResource.contentBody}
+                  </section>
+                )}
 
               {/* Key Takeaways */}
               {activeResource.keyTakeaways &&
@@ -175,20 +187,14 @@ export function ResourceInspectorDialogs({
                   <ExternalLink className="w-4 h-4" />
                 </a>
               ) : (
-                <span className="text-slate-400 dark:text-slate-500">
+                <span className="text-slate-500 dark:text-slate-400">
                   Resource details
                 </span>
               )}
 
-              <button
-                onClick={() => {
-                  setActiveResource(null);
-                  if (onClearInitialResource) onClearInitialResource();
-                }}
-                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl font-semibold transition cursor-pointer"
-              >
+              <Button variant="primary" onClick={handleClose}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>

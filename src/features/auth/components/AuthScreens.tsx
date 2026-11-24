@@ -1,3 +1,4 @@
+import { CLINIC_NAME } from '@/shared/lib/siteContent';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { AuthStateContext } from '../hooks/AuthStateContext';
@@ -65,7 +66,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                 Care Partner Connect
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                Memory and Alzheimer's Treatment Center
+                {CLINIC_NAME}
               </p>
             </div>
           </div>
@@ -100,9 +101,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
             {/* Clinical Disclaimer & Emergency Line */}
             <div className="mt-5 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 space-y-1">
-              <p>
-                Johns Hopkins Medicine • Memory and Alzheimer's Treatment Center
-              </p>
+              <p>Johns Hopkins Medicine • {CLINIC_NAME}</p>
               <p>
                 Clinical Inquiries: (410) 955-5147 • In a life-threatening
                 crisis, dial <strong>911</strong> immediately.

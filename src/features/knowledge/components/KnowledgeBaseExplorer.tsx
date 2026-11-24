@@ -31,6 +31,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
   initialResourceId,
   onClearInitialResource,
   currentUser,
+  onResourcesChanged,
 }) => {
   const {
     openResourceForm,
@@ -78,10 +79,12 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
     initialResourceId,
     onClearInitialResource,
     currentUser,
+    onResourcesChanged,
   });
 
   const [showChoices, setShowChoices] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [textMode, setTextMode] = useState(false);
   const [editingGuide, setEditingGuide] = useState<ChatbotGuideFile>();
   const [guideError, setGuideError] = useState<string | null>(null);
   async function guideAction(
@@ -94,6 +97,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         const result = await guideApi.getChatbotGuides();
         const guide = result.guides.find((g) => g.id === item.id);
         if (!guide) throw new Error('This guide is no longer available.');
+        setTextMode(false);
         setEditingGuide(guide);
         setEditorOpen(true);
       } else {
@@ -118,6 +122,7 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
       {editorOpen && currentUser && (
         <GuideEditor
           currentUser={currentUser}
+          textMode={textMode}
           guide={editingGuide}
           onClose={() => setEditorOpen(false)}
           onSaved={() => {
@@ -175,8 +180,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
                   Delete this guide?
                 </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                  "{pendingDelete.title}" will be removed for all care partners.
-                  This can't be undone.
+                  "{pendingDelete.title}" will be permanently deleted. This
+                  cannot be undone. To hide an uploaded guide temporarily and
+                  keep it for later, use Unpublish.
                 </p>
               </div>
               <div className="flex items-center justify-end gap-2">
@@ -203,12 +209,23 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
           <Button
             variant="secondary"
             onClick={() => {
+              setTextMode(false);
               setEditingGuide(undefined);
               setEditorOpen(true);
               setShowChoices(false);
             }}
           >
             Upload PDF or text
+          </Button>
+          <Button
+            onClick={() => {
+              setTextMode(true);
+              setEditingGuide(undefined);
+              setEditorOpen(true);
+              setShowChoices(false);
+            }}
+          >
+            Write or paste text
           </Button>
           <Button
             variant="secondary"
@@ -238,6 +255,14 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           )}
         </div>
+      )}
+
+      {isClinician && (
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+          Unpublish hides an uploaded guide from care partners and Care
+          Companion so you can publish it again later. Remove permanently
+          deletes the guide.
+        </p>
       )}
 
       {/* FILTER AND SEARCH BAR */}
@@ -444,7 +469,9 @@ export const KnowledgeBaseExplorer: React.FC<KnowledgeBaseExplorerProps> = ({
         </div>
       )}
 
-      {isClinician && <AssistantGuidanceTester />}
+      {currentUser?.role === 'CLINICIAN_MODERATOR' && (
+        <AssistantGuidanceTester />
+      )}
 
       <ResourceInspectorDialogs
         activeResource={activeResource}

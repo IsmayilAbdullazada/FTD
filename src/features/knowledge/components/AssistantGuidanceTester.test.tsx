@@ -79,7 +79,7 @@ test('retrieval-only responses show the same fallback as Care Companion instead 
   );
   expect(
     await screen.findByText(
-      'Here are relevant pages from the care guides. Review the source documents for details.',
+      "You may find what you're looking for on these guide pages",
     ),
   ).toBeTruthy();
 });

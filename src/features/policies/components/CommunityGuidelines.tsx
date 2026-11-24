@@ -1,3 +1,4 @@
+import { EDUCATIONAL_SUPPORT } from '@/shared/lib/siteContent';
 import {
   HeartHandshake,
   ShieldAlert,
@@ -92,6 +93,9 @@ export function CommunityGuidelines({
             Please be thoughtful about the personal information you share.
             Anything you post may be visible to others and could be used in ways
             you may not expect.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+            <strong>Educational support:</strong> {EDUCATIONAL_SUPPORT}
           </p>
         </section>
 

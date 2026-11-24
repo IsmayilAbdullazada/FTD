@@ -3,7 +3,9 @@ import { useEffectEvent } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { CurrentUser, Condition, CommunityGroup } from '@/types';
 import { usePagination } from '@/shared/hooks/usePagination';
-import { useGuideManagement } from '@/features/knowledge/hooks/useGuideManagement';
+import { contentApi } from '@/features/content/api/contentApi';
+import { reportError } from '@/shared/lib/logger';
+import type { ClinicalResource } from '@/types';
 import { useMemberManagement } from '@/features/community/hooks/useMemberManagement';
 import { useDiscussionManagement } from '@/features/discussions/hooks/useDiscussionManagement';
 import { useCreatePostForm } from '@/features/discussions/hooks/useCreatePostForm';
@@ -186,15 +188,18 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
     setActionSuccessNotice,
   });
 
-  const { chatbotGuides, loadChatbotGuides } = useGuideManagement({
-    currentUser,
-    onQueueUpdated,
-    setActionSuccessNotice,
-  });
+  const [libraryGuides, setLibraryGuides] = useState<ClinicalResource[]>([]);
+  async function loadLibraryGuides() {
+    try {
+      setLibraryGuides(await contentApi.getResources());
+    } catch (error) {
+      reportError('Could not load dashboard guide counts:', error);
+    }
+  }
 
   const refreshAudience = useEffectEvent(() => {
     loadMembers();
-    loadChatbotGuides();
+    void loadLibraryGuides();
   });
   const refreshQueue = useEffectEvent(() => loadQueue());
   useEffect(() => {
@@ -232,11 +237,11 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
         pendingCount={queuePage.total}
         discussionCount={discussionPage.total}
         activeGuideCount={
-          chatbotGuides.filter(
+          libraryGuides.filter(
             (guide) => guide.isActive && guide.status === 'APPROVED',
           ).length
         }
-        guideCount={chatbotGuides.length}
+        guideCount={libraryGuides.length}
         cohortCount={cohorts.length}
         memberCount={members.length}
         onTabChange={setActiveTab}
@@ -324,7 +329,10 @@ export const ClinicianDashboard: React.FC<ClinicianDashboardProps> = ({
 
       {/* TAB 5: CHATBOT KNOWLEDGE MANAGEMENT */}
       {activeTab === 'chatbot-knowledge' && (
-        <KnowledgeBaseExplorer currentUser={currentUser} />
+        <KnowledgeBaseExplorer
+          currentUser={currentUser}
+          onResourcesChanged={setLibraryGuides}
+        />
       )}
 
       <CreateCohortDialog

@@ -12,6 +12,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '@/features/auth';
 import '@/features/discussions';
 import '@/features/knowledge';
+import '@/features/clinician-workspace';
 import App from './App';
 
 // jsdom does not implement the layout observer used by Care Companion.
@@ -345,4 +346,61 @@ test('a required guidelines acknowledgment preserves an in-progress discussion d
   expect((screen.getByLabelText('Details') as HTMLTextAreaElement).value).toBe(
     'Keep these details while I review the guidelines.',
   );
+});
+
+test('dashboard Guides stays in the dashboard and exposes the shared publishing library', async () => {
+  window.history.replaceState({}, '', '/?tab=moderation');
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/users/me'))
+        return Response.json({
+          user: {
+            id: 'moderator-fixture',
+            role: 'CLINICIAN_MODERATOR',
+            email: 'moderator@example.test',
+            firstName: 'Moderator',
+            lastName: 'Fixture',
+            badgeLabel: 'Moderator',
+            avatarColor: '#002D72',
+            condition: 'FTD',
+          },
+          allPersonas: [],
+        });
+      if (url.includes('/moderation/queue'))
+        return Response.json({ totalPending: 0, items: [] });
+      if (url.includes('/notifications'))
+        return Response.json({ messages: [] });
+      if (url.includes('/posts')) return Response.json({ total: 0, posts: [] });
+      return Response.json([]);
+    }),
+  );
+  render(<App />);
+  await screen.findByRole('heading', { name: 'Dashboard' });
+  const guidesTab = screen
+    .getAllByRole('button', { name: /^Guides/ })
+    .find(
+      (button) =>
+        button.tagName === 'BUTTON' &&
+        !button.closest('header') &&
+        !button.closest('nav'),
+    );
+  expect(guidesTab).toBeTruthy();
+  fireEvent.click(guidesTab!);
+  expect(
+    await screen.findByRole('heading', { name: 'Test Assistant Guidance' }),
+  ).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeTruthy();
+  expect(window.location.search).toBe('?tab=moderation');
+  fireEvent.click(screen.getByRole('button', { name: 'Add guide' }));
+  expect(
+    screen.getByRole('button', { name: 'Upload PDF or text' }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Write or paste text' }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Link to a webpage' }),
+  ).toBeTruthy();
 });

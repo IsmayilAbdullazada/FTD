@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { createRef } from 'react';
 import { GuideUploadDialog } from './GuideUploadDialog';
@@ -51,4 +51,28 @@ test('admin upload retains extraction tools', () => {
   expect(
     screen.getAllByRole('button', { name: /Check text/i })[0],
   ).toBeTruthy();
+});
+
+test('direct text entry accepts pasted content and enables publication without a PDF', () => {
+  const onTextChange = vi.fn();
+  render(
+    <GuideUploadDialog
+      {...props}
+      textMode
+      textContent="Offer choices and allow extra time."
+      onTextChange={onTextChange}
+      pdfPreviewUrl={null}
+      pages={[]}
+    />,
+  );
+  expect(screen.getByRole('heading', { name: 'Write a guide' })).toBeTruthy();
+  expect(screen.queryByText('PDF or text document')).toBeNull();
+  fireEvent.change(screen.getByLabelText('Guide text'), {
+    target: { value: 'A revised text guide.' },
+  });
+  expect(onTextChange).toHaveBeenCalledWith('A revised text guide.');
+  expect(
+    (screen.getByRole('button', { name: 'Approve' }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(false);
 });

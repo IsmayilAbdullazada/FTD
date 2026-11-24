@@ -94,6 +94,44 @@ test('unified library filters publication and condition, deduplicates PDFs, and 
       200,
     );
     assert.equal((await fetch(base + url)).status, 401);
+    const textId = 'text-' + randomUUID();
+    const keyword = 'plaintextsource' + randomUUID().replaceAll('-', '');
+    guideIds.push(textId);
+    await pool.query(
+      "INSERT INTO chatbot_guides(id,title,condition,status,is_active,file_name,content,uploaded_by) VALUES($1,'Readable text guide','FTD','APPROVED',true,'guide.txt',$2,'user-clinician-1')",
+      [textId, keyword],
+    );
+    await pool.query(
+      'INSERT INTO guide_chunks(id,guide_id,page,content) VALUES($1,$2,1,$3)',
+      [randomUUID(), textId, keyword],
+    );
+    const chat = await fetch(base + '/api/v1/knowledge/chat', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer ' + token,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ query: keyword }),
+    });
+    assert.equal(chat.status, 200);
+    const answer = await chat.json();
+    assert.equal(
+      answer.citedResources.find(
+        (source: { id: string }) => source.id === textId,
+      )?.url,
+      '/?tab=knowledge&resource=' + encodeURIComponent(textId),
+    );
+    assert.equal(answer.retrievedChunks, undefined);
+    assert.equal(
+      (
+        await listLibrary({
+          id: ids[0],
+          email: 'ftd@example.test',
+          role: 'CARE_PARTNER',
+        })
+      ).find((guide) => guide.id === textId)?.contentBody,
+      keyword,
+    );
   } finally {
     server.closeIdleConnections();
     await new Promise<void>((r) => server.close(() => r()));

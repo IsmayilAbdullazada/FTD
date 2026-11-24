@@ -242,7 +242,12 @@ export function useGuideManagement({
       });
     }
 
-    setUploadPdfPreviewUrl(guide.pdfUrl || `/resources/${guide.fileName}`);
+    setUploadPdfPreviewUrl(
+      guide.pdfUrl ||
+        (guide.fileName.toLowerCase().endsWith('.pdf')
+          ? `/resources/${encodeURIComponent(guide.fileName)}`
+          : null),
+    );
     setShowUploadGuideModal(true);
   };
 
@@ -372,6 +377,25 @@ export function useGuideManagement({
     }
   };
 
+  const handleTextChange = (text: string) => {
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    setUploadContent(text);
+    setUploadFileName('guide.txt');
+    setUploadPdfPreviewUrl(null);
+    setUploadPages(
+      text.trim()
+        ? [
+            {
+              pageNumber: 1,
+              text,
+              wordCount: words,
+              chunkCount: Math.max(1, Math.ceil(words / 340)),
+            },
+          ]
+        : [],
+    );
+  };
+
   const handleSaveGuide = async (statusToSet: 'DRAFT' | 'APPROVED') => {
     if (!uploadCondition) {
       setActionSuccessNotice(
@@ -499,6 +523,7 @@ export function useGuideManagement({
     setUploadTopicTag,
     uploadFileName,
     uploadContent,
+    handleTextChange,
     uploadPages,
     showExtractedInspector,
     setShowExtractedInspector,

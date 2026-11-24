@@ -7,6 +7,9 @@ import type {
 } from 'react';
 export interface GuideUploadDialogProps {
   isAdmin?: boolean;
+  textMode?: boolean;
+  textContent?: string;
+  onTextChange?: (text: string) => void;
   metadata?: {
     category: string;
     description: string;

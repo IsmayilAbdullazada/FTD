@@ -242,10 +242,7 @@ function AppContent() {
                 currentUser={currentUser}
                 cohorts={cohorts}
                 activeTab={clinicianTab}
-                onTabChange={(tab) => {
-                  if (tab === 'chatbot-knowledge') handleSelectTab('knowledge');
-                  else actions.setClinicianTab(tab);
-                }}
+                onTabChange={actions.setClinicianTab}
                 onQueueUpdated={handleQueueUpdated}
                 onOpenAudit={actions.openAudit}
                 onOpenInvite={actions.openInvite}

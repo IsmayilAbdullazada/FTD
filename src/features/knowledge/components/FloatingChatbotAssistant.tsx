@@ -1,4 +1,4 @@
-import { assistantAnswer } from '../lib/assistantAnswer';
+import { assistantAnswer, GUIDE_PAGES_INTRO } from '../lib/assistantAnswer';
 import { useEffectEvent } from 'react';
 import { knowledgeApi } from '@/features/knowledge/api/knowledgeApi';
 import { useFooterClearance } from '@/features/knowledge/hooks/useFooterClearance';
@@ -465,7 +465,7 @@ export const FloatingChatbotAssistant: React.FC<
                   </span>
                 </div>
                 <p className="text-xs text-blue-200 dark:text-slate-400 truncate">
-                  24/7 Educational Guidance · Johns Hopkins
+                  24/7 Peer Support · Johns Hopkins
                 </p>
               </div>
             </div>
@@ -558,7 +558,11 @@ export const FloatingChatbotAssistant: React.FC<
                       <div className="whitespace-pre-line select-text text-base leading-relaxed font-sans">
                         {msg.text}
                       </div>
-                    ) : msg.text ? (
+                    ) : msg.text &&
+                      !(
+                        msg.text === GUIDE_PAGES_INTRO &&
+                        (msg.matchedGuide || msg.citedResources?.length)
+                      ) ? (
                       <FormattedMessageText text={msg.text} />
                     ) : null}
 
@@ -569,8 +573,7 @@ export const FloatingChatbotAssistant: React.FC<
                           msg.citedResources.length > 0)) && (
                         <div className="pt-2.5 pb-0.5 space-y-1.5 text-xs">
                           <p className="text-base leading-relaxed text-slate-800 dark:text-slate-200">
-                            You may find what you're looking for on these guide
-                            pages.
+                            {GUIDE_PAGES_INTRO}
                           </p>
                           <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
                             <FileText className="w-3.5 h-3.5 text-[#002D72] dark:text-sky-400 shrink-0" />

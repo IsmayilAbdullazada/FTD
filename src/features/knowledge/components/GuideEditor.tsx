@@ -6,11 +6,13 @@ import { GuideUploadDialog } from './GuideUploadDialog';
 export function GuideEditor({
   currentUser,
   guide,
+  textMode = false,
   onClose,
   onSaved,
 }: {
   currentUser: CurrentUser;
   guide?: ChatbotGuideFile;
+  textMode?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -38,6 +40,16 @@ export function GuideEditor({
         </p>
       )}
       <GuideUploadDialog
+        textMode={
+          textMode ||
+          Boolean(
+            guide &&
+            !guide.pdfUrl &&
+            !guide.fileName.toLowerCase().endsWith('.pdf'),
+          )
+        }
+        textContent={g.uploadContent}
+        onTextChange={g.handleTextChange}
         isAdmin={currentUser.role === 'SYSTEM_ADMIN'}
         metadata={g.uploadMetadata}
         onMetadataChange={g.setUploadMetadata}

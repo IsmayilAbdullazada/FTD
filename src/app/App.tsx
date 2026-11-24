@@ -10,7 +10,7 @@ import { NotificationsModal } from '@/features/notifications';
 import { useAppController } from '@/app/hooks/useAppController';
 import { GuidelinesGate } from '@/features/policies';
 import { policiesApi } from '@/features/policies/api/policiesApi';
-import { useFontSize } from "../features/accessibility/hooks/useFontSize";
+import { useFontSize } from '../features/accessibility/hooks/useFontSize';
 
 const AdminConsole = lazy(() =>
   import('@/features/admin/components/AdminConsole').then((module) => ({

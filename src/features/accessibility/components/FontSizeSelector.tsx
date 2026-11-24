@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { CaseSensitive, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState } from 'react';
+import { CaseSensitive, RotateCcw } from 'lucide-react';
 
 import {
   DEFAULT_FONT_SIZE,
   MIN_FONT_SIZE,
   MAX_FONT_SIZE,
   FONT_SIZE_STEP,
-} from "../hooks/useFontSize";
+} from '../hooks/useFontSize';
 
-import type { FontSize } from "../hooks/useFontSize";
+import type { FontSize } from '../hooks/useFontSize';
 
 interface FontSizeSelectorProps {
   fontSize: FontSize;
@@ -37,32 +37,20 @@ export function FontSizeSelector({
     }
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setIsOpen(false);
         buttonRef.current?.focus();
       }
     }
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside,
-    );
+    document.addEventListener('mousedown', handleClickOutside);
 
-    document.addEventListener(
-      "keydown",
-      handleEscape,
-    );
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside,
-      );
+      document.removeEventListener('mousedown', handleClickOutside);
 
-      document.removeEventListener(
-        "keydown",
-        handleEscape,
-      );
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen]);
 
@@ -112,7 +100,8 @@ export function FontSizeSelector({
             </span>
           </div>
 
-          <p className="mb-4 mt-1 text-xs
+          <p
+            className="mb-4 mt-1 text-xs
             text-slate-500 dark:text-slate-400"
           >
             Adjust text for comfortable reading.
@@ -120,10 +109,7 @@ export function FontSizeSelector({
 
           {/* Font size slider */}
           <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="text-xs font-semibold"
-            >
+            <span aria-hidden="true" className="text-xs font-semibold">
               A
             </span>
 
@@ -135,36 +121,31 @@ export function FontSizeSelector({
               step={FONT_SIZE_STEP}
               value={fontSize}
               aria-valuetext={`${fontSize}%`}
-              onChange={(event) =>
-                onFontSizeChange(Number(event.target.value))
-              }
+              onChange={(event) => onFontSizeChange(Number(event.target.value))}
               className="min-w-0 flex-1 cursor-pointer
                 accent-[#002D72] dark:accent-sky-400"
             />
 
-            <span
-              aria-hidden="true"
-              className="text-xl font-semibold"
-            >
+            <span aria-hidden="true" className="text-xl font-semibold">
               A
             </span>
           </div>
 
-          <div className="mt-1 flex justify-between
+          <div
+            className="mt-1 flex justify-between
             text-xs text-slate-500 dark:text-slate-400"
           >
             <span>{MIN_FONT_SIZE}%</span>
             <span>{MAX_FONT_SIZE}%</span>
           </div>
 
-          <div className="mt-4 border-t border-slate-200
+          <div
+            className="mt-4 border-t border-slate-200
             pt-3 dark:border-slate-700"
           >
             <button
               type="button"
-              onClick={() =>
-                onFontSizeChange(DEFAULT_FONT_SIZE)
-              }
+              onClick={() => onFontSizeChange(DEFAULT_FONT_SIZE)}
               className="flex w-full items-center
                 justify-center gap-2 rounded-lg py-2
                 text-xs font-medium text-slate-600

@@ -21,8 +21,8 @@ import { useTheme } from '@/app/providers/ThemeProvider';
 import { ChangePasswordModal } from '@/features/auth/components/ChangePasswordModal';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
 import { CurrentUser, DirectMessage, PersonaOption } from '@/types';
-import { FontSizeSelector } from "../../features/accessibility/components/FontSizeSelector";
-import type { FontSize } from "../../features/accessibility/hooks/useFontSize";
+import { FontSizeSelector } from '../../features/accessibility/components/FontSizeSelector';
+import type { FontSize } from '../../features/accessibility/hooks/useFontSize';
 
 interface HeaderProps {
   currentUser: CurrentUser;
@@ -201,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Call Clinic</span>
               </button>
             </div>
-            
+
             {/* Font Size Change Selector */}
             <FontSizeSelector
               fontSize={fontSize}

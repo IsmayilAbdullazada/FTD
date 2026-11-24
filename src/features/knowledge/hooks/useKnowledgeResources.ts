@@ -1,3 +1,4 @@
+import { GUIDE_TOPICS, normalizeGuideTopic } from '../lib/guideTopics';
 import { useEffectEvent } from 'react';
 import { contentApi } from '@/features/content/api/contentApi';
 import { guideApi } from '@/features/knowledge/api/guideApi';
@@ -34,9 +35,8 @@ export function useKnowledgeResources({
   const [editingResource, setEditingResource] =
     useState<ClinicalResource | null>(null);
   const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState<ClinicalResource['category']>(
-    'BEHAVIORAL_AGITATION',
-  );
+  const [newCategory, setNewCategory] =
+    useState<ClinicalResource['category']>('');
   const [newSummary, setNewSummary] = useState('');
   const [newContentBody, setNewContentBody] = useState('');
   const [newKeyTakeaways, setNewKeyTakeaways] = useState('');
@@ -80,20 +80,16 @@ export function useKnowledgeResources({
 
   const categories = [
     { key: 'ALL', label: 'All Topics' },
-    { key: 'BEHAVIORAL_AGITATION', label: 'Behavior and Agitation' },
-    { key: 'INCONTINENCE', label: 'Daily Care and Hygiene' },
-    { key: 'SAFETY_WANDERING', label: 'Safety and Wandering' },
-    { key: 'LEGAL_MEDICAID', label: 'Legal and Financial' },
-    { key: 'COMMUNICATION_PPA', label: 'Speech and Communication' },
-    { key: 'NUTRITION_DIET', label: 'Eating and Nutrition' },
-    { key: 'CARE_PARTNER_SUPPORT', label: 'Care Partner Support & Wellbeing' },
-    { key: 'DAILY_CARE', label: 'Daily Care & Routines' },
-    { key: 'GENERAL_EDUCATION', label: 'General Dementia Education' },
+    ...GUIDE_TOPICS,
+    { key: 'UNCATEGORIZED', label: 'Without a Topic' },
   ];
 
   const filtered = resources.filter((res) => {
     const matchesCategory =
-      selectedCategory === 'ALL' || res.category === selectedCategory;
+      selectedCategory === 'ALL' ||
+      (selectedCategory === 'UNCATEGORIZED'
+        ? !normalizeGuideTopic(res.category)
+        : normalizeGuideTopic(res.category) === selectedCategory);
     const matchesSearch =
       res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -165,7 +161,7 @@ export function useKnowledgeResources({
 
       const payload = {
         title: newTitle.trim(),
-        category: newCategory,
+        category: normalizeGuideTopic(newCategory) || newCategory || 'GUIDE',
         summary: newSummary.trim() || newTitle.trim(),
         contentBody: newContentBody.trim() || newSummary.trim(),
         keyTakeaways:
@@ -216,7 +212,9 @@ export function useKnowledgeResources({
     setNewTitle(resource?.title || '');
     setNewSummary(resource?.summary || '');
     setNewContentBody(resource?.contentBody || '');
-    setNewCategory(resource?.category || 'GENERAL_EDUCATION');
+    setNewCategory(
+      normalizeGuideTopic(resource?.category) || resource?.category || '',
+    );
     setNewAudience(resource?.diseaseDomain || '');
     setNewExternalUrl(resource?.externalUrl || '');
     setNewKeyTakeaways(resource?.keyTakeaways.join('\n') || '');

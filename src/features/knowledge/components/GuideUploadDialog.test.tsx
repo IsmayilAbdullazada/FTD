@@ -12,8 +12,6 @@ const props: GuideUploadDialogProps = {
   onTitleChange: fn,
   condition: 'FTD',
   onConditionChange: fn,
-  topicTag: '',
-  onTopicTagChange: fn,
   fileName: 'test.pdf',
   pages: [
     { pageNumber: 1, text: 'Clinical document', wordCount: 2, chunkCount: 1 },
@@ -22,8 +20,6 @@ const props: GuideUploadDialogProps = {
   onShowExtractedInspectorChange: fn,
   selectedInspectPage: 1,
   onSelectedInspectPageChange: fn,
-  showMoreOptions: false,
-  onShowMoreOptionsChange: fn,
   showTechDetails: false,
   onShowTechDetailsChange: fn,
   pdfPreviewUrl: '/uploads/guides/test.pdf',
@@ -35,7 +31,6 @@ const props: GuideUploadDialogProps = {
   fileInputRef: createRef<HTMLInputElement>(),
   onDrag: fn,
   onDrop: fn,
-  onLoadResourceFile: fn,
   onProcessFile: fn,
   onSave: fn,
 };
@@ -51,6 +46,15 @@ test('admin upload retains extraction tools', () => {
   expect(
     screen.getAllByRole('button', { name: /Check text/i })[0],
   ).toBeTruthy();
+  cleanup();
+  render(
+    <GuideUploadDialog {...props} isAdmin pages={[]} pdfPreviewUrl={null} />,
+  );
+  expect(screen.queryByText(/Or select an institutional guideline/)).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: /Managing Aggressive Behavior/ }),
+  ).toBeNull();
+  expect(document.querySelector('input[type="file"]')).toBeTruthy();
 });
 
 test('direct text entry accepts pasted content and enables publication without a PDF', () => {
@@ -75,4 +79,35 @@ test('direct text entry accepts pasted content and enables publication without a
     (screen.getByRole('button', { name: 'Approve' }) as HTMLButtonElement)
       .disabled,
   ).toBe(false);
+});
+
+test('guide editing uses the same optional Topic dropdown for moderators and admins', () => {
+  for (const isAdmin of [false, true]) {
+    const change = vi.fn();
+    render(
+      <GuideUploadDialog
+        {...props}
+        isAdmin={isAdmin}
+        metadata={{
+          category: 'INCONTINENCE',
+          description: '',
+          publisher: '',
+          year: '',
+        }}
+        onMetadataChange={change}
+      />,
+    );
+    const select = screen.getByRole('combobox', {
+      name: 'Topic',
+    }) as HTMLSelectElement;
+    expect(select.value).toBe('DAILY_CARE');
+    expect(
+      screen.queryByRole('textbox', { name: /category|topic tag/i }),
+    ).toBeNull();
+    fireEvent.change(select, { target: { value: 'GRIEF_LOSS' } });
+    expect(change).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'GRIEF_LOSS' }),
+    );
+    cleanup();
+  }
 });

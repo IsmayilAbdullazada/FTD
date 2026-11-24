@@ -1,6 +1,7 @@
+import { GuideTopicSelect } from './GuideTopicSelect';
 import { Button, fieldClassName } from '@/shared/components/Button';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
-import { Audience, ClinicalResource } from '@/types';
+import { Audience } from '@/types';
 import { AlertCircle, X } from 'lucide-react';
 
 import type { useKnowledgeResources } from '../hooks/useKnowledgeResources';
@@ -128,43 +129,7 @@ export function CreateResourceDialog({
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Discipline / Category
-                </label>
-                <select
-                  aria-label="Discipline / Category"
-                  value={newCategory}
-                  onChange={(e) =>
-                    setNewCategory(
-                      e.target.value as ClinicalResource['category'],
-                    )
-                  }
-                  className={fieldClassName}
-                >
-                  <option value="BEHAVIORAL_AGITATION">
-                    Sensory & Agitation
-                  </option>
-                  <option value="INCONTINENCE">Toileting & Incontinence</option>
-                  <option value="SAFETY_WANDERING">
-                    Wandering & Driving Safety
-                  </option>
-                  <option value="LEGAL_MEDICAID">
-                    Legal & Medicaid Spend-Down
-                  </option>
-                  <option value="COMMUNICATION_PPA">
-                    Speech & Communication (PPA)
-                  </option>
-                  <option value="NUTRITION_DIET">Nutrition & Swallowing</option>
-                  <option value="CARE_PARTNER_SUPPORT">
-                    Care Partner Support & Wellbeing
-                  </option>
-                  <option value="DAILY_CARE">Daily Care & Routines</option>
-                  <option value="GENERAL_EDUCATION">
-                    General Dementia Education
-                  </option>
-                </select>
-              </div>
+              <GuideTopicSelect value={newCategory} onChange={setNewCategory} />
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">

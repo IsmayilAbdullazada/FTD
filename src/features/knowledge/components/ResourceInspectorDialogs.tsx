@@ -1,3 +1,4 @@
+import { guideTopicLabel } from '../lib/guideTopics';
 import { Button } from '@/shared/components/Button';
 import { AudienceBadge } from '@/shared/components/AudienceBadge';
 import { useDialogFocus } from '@/shared/hooks/useDialogFocus';
@@ -10,14 +11,13 @@ import type {
 
 type Props = Pick<
   ReturnType<typeof useKnowledgeResources>,
-  'activeResource' | 'setActiveResource' | 'isClinician' | 'categories'
+  'activeResource' | 'setActiveResource' | 'isClinician'
 > &
   Pick<KnowledgeBaseExplorerProps, 'onClearInitialResource'>;
 export function ResourceInspectorDialogs({
   activeResource,
   setActiveResource,
   isClinician,
-  categories,
   onClearInitialResource,
 }: Props) {
   const handleClose = () => {
@@ -47,8 +47,7 @@ export function ResourceInspectorDialogs({
             <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 bg-white dark:bg-slate-900">
               <div className="space-y-1.5">
                 <span className="font-semibold text-[#002D72] dark:text-blue-400 flex items-center gap-2">
-                  {categories.find((c) => c.key === activeResource.category)
-                    ?.label || activeResource.category}
+                  {guideTopicLabel(activeResource.category)}
                   {isClinician && (
                     <AudienceBadge condition={activeResource.diseaseDomain} />
                   )}

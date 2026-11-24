@@ -1,5 +1,9 @@
+import { normalizeGuideTopic } from '../lib/guideTopics';
 import { guideApi } from '@/features/knowledge/api/guideApi';
-import { suggestGuideTitle } from '@/features/knowledge/lib/guideTitle';
+import {
+  suggestGuideTitle,
+  INSTITUTIONAL_RESOURCE_FILES,
+} from '@/features/knowledge/lib/guideTitle';
 import {
   filterGuides,
   replaceGuide,
@@ -41,7 +45,7 @@ export function useGuideManagement({
     'ALL' | 'DRAFT' | 'APPROVED'
   >('ALL');
 
-  // Upload Guide Form State (Condition, Title, Topic Tag, Page-by-Page Extraction)
+  // Upload Guide Form State (Condition, Title, Topic, Page-by-Page Extraction)
   const [uploadMetadata, setUploadMetadata] = useState({
     category: '',
     description: '',
@@ -52,13 +56,11 @@ export function useGuideManagement({
   const [uploadCondition, setUploadCondition] = useState<GuideCondition | null>(
     null,
   );
-  const [uploadTopicTag, setUploadTopicTag] = useState('');
   const [uploadFileName, setUploadFileName] = useState('');
   const [uploadContent, setUploadContent] = useState('');
   const [uploadPages, setUploadPages] = useState<GuidePageData[]>([]);
   const [showExtractedInspector, setShowExtractedInspector] = useState(false);
   const [selectedInspectPage, setSelectedInspectPage] = useState<number>(1);
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showTechDetails, setShowTechDetails] = useState(false);
   const [uploadPdfPreviewUrl, setUploadPdfPreviewUrl] = useState<string | null>(
     null,
@@ -175,13 +177,11 @@ export function useGuideManagement({
     });
     setUploadTitle('');
     setUploadCondition(null);
-    setUploadTopicTag('');
     setUploadFileName('');
     setUploadContent('');
     setUploadPages([]);
     setShowExtractedInspector(false);
     setSelectedInspectPage(1);
-    setShowMoreOptions(false);
     setShowTechDetails(false);
     setUploadPdfPreviewUrl(null);
     setEditingGuideId(null);
@@ -189,8 +189,12 @@ export function useGuideManagement({
   };
 
   const handleOpenReviewModal = (guide: ChatbotGuideFile) => {
+    const existingTopic =
+      guide.category === 'GUIDE'
+        ? guide.topicTag
+        : guide.category || guide.topicTag;
     setUploadMetadata({
-      category: guide.category || '',
+      category: normalizeGuideTopic(existingTopic) || existingTopic || '',
       description: guide.description || '',
       publisher: guide.publisher || '',
       year: guide.year || '',
@@ -198,12 +202,10 @@ export function useGuideManagement({
     setEditingGuideId(guide.id);
     setUploadTitle(guide.title);
     setUploadCondition(guide.condition || null);
-    setUploadTopicTag(guide.topicTag || guide.category || '');
     setUploadContent(guide.content);
     setUploadFileName(guide.fileName);
     setShowExtractedInspector(false);
     setSelectedInspectPage(1);
-    setShowMoreOptions(false);
     setShowTechDetails(false);
 
     if (guide.pages && guide.pages.length > 0) {
@@ -265,32 +267,6 @@ export function useGuideManagement({
     }
   };
 
-  const handleLoadResourceFile = async (resourceFileName: string) => {
-    try {
-      setIsExtractingPdf(true);
-      setUploadFileName(resourceFileName);
-      setUploadTitle(suggestGuideTitle(resourceFileName));
-      setUploadCondition(null); // Never preselect FTD!
-      setUploadTopicTag('');
-      setUploadPages([]);
-      setShowExtractedInspector(false);
-      setSelectedInspectPage(1);
-      setUploadPdfPreviewUrl(`/resources/${resourceFileName}`);
-
-      const res = await fetch(`/resources/${resourceFileName}`);
-      const blob = await res.blob();
-      const file = new File([blob], resourceFileName, {
-        type: 'application/pdf',
-      });
-      handleProcessFile(file);
-    } catch (err) {
-      reportError('Failed to load resource file:', err);
-      setIsExtractingPdf(false);
-      setActionSuccessNotice('Could not load library PDF file.');
-      setTimeout(() => setActionSuccessNotice(null), 3000);
-    }
-  };
-
   const handleProcessFile = (file: File) => {
     const isPdf =
       file.name.toLowerCase().endsWith('.pdf') ||
@@ -301,10 +277,24 @@ export function useGuideManagement({
       prev && prev.trim() ? prev : suggestGuideTitle(file.name),
     );
     setUploadCondition(null); // Start with NOTHING selected so reviewer must make a deliberate choice
-    setUploadTopicTag('');
     setUploadPages([]);
     setShowExtractedInspector(false);
     setSelectedInspectPage(1);
+
+    const known = INSTITUTIONAL_RESOURCE_FILES.find(
+      (source) => source.fileName.toLowerCase() === file.name.toLowerCase(),
+    );
+    if (known) {
+      setUploadCondition((previous) => previous ?? known.condition);
+      setUploadMetadata((previous) => ({
+        ...previous,
+        category: previous.category || known.topic,
+        publisher:
+          previous.publisher ||
+          'The Association for Frontotemporal Degeneration (AFTD)',
+        year: previous.year || known.year,
+      }));
+    }
 
     if (isPdf) {
       // Do NOT set temporary blob URL (causes broken viewer in iframes); show extraction spinner until server returns stable path
@@ -425,7 +415,7 @@ export function useGuideManagement({
           ...uploadMetadata,
           title: uploadTitle.trim(),
           condition: uploadCondition,
-          topicTag: uploadTopicTag.trim() || undefined,
+          topicTag: uploadMetadata.category,
           content: useStoredPdf ? undefined : finalContent,
           pages: useStoredPdf ? undefined : uploadPages,
           totalChunks: totalChunksCalc,
@@ -442,7 +432,7 @@ export function useGuideManagement({
           ...uploadMetadata,
           title: uploadTitle.trim(),
           condition: uploadCondition,
-          topicTag: uploadTopicTag.trim() || undefined,
+          topicTag: uploadMetadata.category,
           fileName:
             uploadFileName.trim() ||
             `${uploadTitle.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`,
@@ -519,8 +509,6 @@ export function useGuideManagement({
     setUploadTitle,
     uploadCondition,
     setUploadCondition,
-    uploadTopicTag,
-    setUploadTopicTag,
     uploadFileName,
     uploadContent,
     handleTextChange,
@@ -529,8 +517,6 @@ export function useGuideManagement({
     setShowExtractedInspector,
     selectedInspectPage,
     setSelectedInspectPage,
-    showMoreOptions,
-    setShowMoreOptions,
     showTechDetails,
     setShowTechDetails,
     uploadPdfPreviewUrl,
@@ -556,7 +542,6 @@ export function useGuideManagement({
     resetUploadModal,
     handleOpenReviewModal,
     handleQuickApprove,
-    handleLoadResourceFile,
     handleProcessFile,
     handleSaveGuide,
     handleRunTestQuery,
